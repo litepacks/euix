@@ -314,4 +314,35 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         closeBtn.dispatchEvent(new window.MouseEvent('click'));
         expect(engine.getState('help_open')).toBe('false');
     });
+
+    it('should render PostsCrudSection.xml REST API component and display initial posts', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="posts_open" type="string">true</state>
+                <state id="posts_loading" type="string">false</state>
+                <state id="posts_error" type="string"></state>
+                <state id="new_post_title" type="string"></state>
+                <state id="new_post_body" type="string"></state>
+                <state id="posts" type="array">
+                    <item id="101" title="Test Post Title" body="Test Post Body Content" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <posts-crud-section />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('posts').length).toBe(1);
+
+        const postTitle = document.querySelector('span.capitalize');
+        expect(postTitle).not.toBeNull();
+        expect(postTitle.textContent).toBe('Test Post Title');
+
+        const postBody = document.querySelector('span.leading-relaxed');
+        expect(postBody).not.toBeNull();
+        expect(postBody.textContent).toBe('Test Post Body Content');
+    });
 });

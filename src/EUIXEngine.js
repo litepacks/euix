@@ -254,7 +254,6 @@ class EUIXEngine {
         if (!EUIXEngine._globalComponentSpecs) {
             EUIXEngine._globalComponentSpecs = new Map();
         }
-        this.ensureDefaultStyles();
     }
 
     enableDevTools() {
@@ -284,78 +283,6 @@ class EUIXEngine {
                 this.onError(error, contextInfo);
             } catch (_) {}
         }
-    }
-
-    ensureDefaultStyles() {
-        if (typeof document === "undefined" || document.getElementById("euix-default-styles")) return;
-        const style = document.createElement("style");
-        style.id = "euix-default-styles";
-        style.textContent = `
-            .dialog-backdrop {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                bottom: 0 !important;
-                background-color: rgba(15, 23, 42, 0.6) !important;
-                backdrop-filter: blur(4px) !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                z-index: 9999 !important;
-                padding: 1rem !important;
-                animation: euix-fade-in 0.15s ease-out !important;
-            }
-            .dialog-panel {
-                background: #ffffff !important;
-                border-radius: 1rem !important;
-                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-                border: 1px solid rgba(226, 232, 240, 0.8) !important;
-                width: 100% !important;
-                max-width: 28rem !important;
-                overflow: hidden !important;
-                animation: euix-zoom-in 0.15s ease-out !important;
-            }
-            .dialog-header {
-                display: flex !important;
-                align-items: center !important;
-                justify-content: space-between !important;
-                padding: 1rem 1.25rem !important;
-                border-bottom: 1px solid #f1f5f9 !important;
-            }
-            .dialog-title {
-                font-size: 1rem !important;
-                font-weight: 700 !important;
-                color: #0f172a !important;
-                margin: 0 !important;
-            }
-            .dialog-close {
-                background: transparent !important;
-                border: none !important;
-                font-size: 1.25rem !important;
-                line-height: 1 !important;
-                color: #64748b !important;
-                cursor: pointer !important;
-                padding: 0.25rem 0.5rem !important;
-                border-radius: 0.375rem !important;
-            }
-            .dialog-close:hover {
-                color: #0f172a !important;
-                background-color: #f1f5f9 !important;
-            }
-            .dialog-body {
-                padding: 1.25rem !important;
-            }
-            @keyframes euix-fade-in {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-            @keyframes euix-zoom-in {
-                from { opacity: 0; transform: scale(0.95); }
-                to { opacity: 1; transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
     }
 
     static mount(xmlString, containerSelector = "#app") {
@@ -464,7 +391,10 @@ class EUIXEngine {
             const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
             const xml = (script.tagName.toLowerCase() === "euix-app" ) ? script.innerHTML.trim() : script.textContent.trim();
             if (xml) {
-                EUIXEngine.mount(xml, targetSelector);
+                const engine = EUIXEngine.mount(xml, targetSelector);
+                if (engine) {
+                    engine.enableDevTools();
+                }
             }
         });
     }
@@ -903,6 +833,9 @@ class EUIXEngine {
         const itemMapNode = this.getChild(actionNode, "item_map");
         const bodyNode = this.getChild(actionNode, "body");
 
+        const targetOpNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "target_op");
+        const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : "SET";
+
         if (loadingPath) this.setState(loadingPath, "true");
         if (errorPath) this.setState(errorPath, "", { silent: true });
 
@@ -944,7 +877,38 @@ class EUIXEngine {
                     if (Array.isArray(data)) {
                         data = this.mapResponseItems(data, itemMapNode);
                     }
-                    this.setState(target, data);
+
+                    if (target) {
+                        if (targetOp === "UNSHIFT" || targetOp === "PREPEND") {
+                            const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                            const newItem = (typeof data === "object" && data !== null && (data.id || data.title)) ? data : { id: Date.now(), ...data };
+                            currentList.unshift(newItem);
+                            this.setState(target, currentList);
+                        } else if (targetOp === "PUSH" || targetOp === "APPEND") {
+                            const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                            const newItem = (typeof data === "object" && data !== null && (data.id || data.title)) ? data : { id: Date.now(), ...data };
+                            currentList.push(newItem);
+                            this.setState(target, currentList);
+                        } else if (targetOp === "REMOVE" || targetOp === "DELETE") {
+                            const whereNode = this.getChild(actionNode, "where");
+                            const rawEquals = whereNode ? (whereNode.getAttribute("equals") || whereNode.textContent.trim()) : "";
+                            const removeId = rawEquals ? this.interpolate(rawEquals, context) : context.id;
+                            const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                            const nextList = currentList.filter(item => String(item.id) !== String(removeId));
+                            this.setState(target, nextList);
+                        } else if (targetOp === "UPDATE") {
+                            const whereNode = this.getChild(actionNode, "where");
+                            const rawEquals = whereNode ? (whereNode.getAttribute("equals") || whereNode.textContent.trim()) : "";
+                            const updateId = rawEquals ? this.interpolate(rawEquals, context) : context.id;
+                            const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                            const nextList = currentList.map(item => String(item.id) === String(updateId) ? { ...item, ...data } : item);
+                            this.setState(target, nextList);
+                        } else {
+                            this.setState(target, data);
+                        }
+                    }
+
+                    this.applyResets(actionNode);
                     if (errorPath) this.setState(errorPath, "", { silent: true });
                 });
             })
@@ -1282,7 +1246,7 @@ class EUIXEngine {
 
         const backdrop = document.createElement("div");
         const extraClass = xmlNode.getAttribute("class") || "";
-        backdrop.className = xmlNode.getAttribute("backdrop_class") || ["dialog-backdrop", extraClass].filter(Boolean).join(" ");
+        backdrop.className = xmlNode.getAttribute("backdrop_class") || ["dialog-backdrop fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4", extraClass].filter(Boolean).join(" ");
         backdrop.tabIndex = -1;
         backdrop.setAttribute("role", "presentation");
 
@@ -1294,21 +1258,21 @@ class EUIXEngine {
         };
 
         const panel = document.createElement("div");
-        panel.className = xmlNode.getAttribute("panel_class") || "dialog-panel";
+        panel.className = xmlNode.getAttribute("panel_class") || "dialog-panel bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden";
         panel.setAttribute("role", "dialog");
         panel.setAttribute("aria-modal", "true");
         panel.setAttribute("aria-label", title);
 
         const header = document.createElement("div");
-        header.className = xmlNode.getAttribute("header_class") || "dialog-header";
+        header.className = xmlNode.getAttribute("header_class") || "dialog-header p-4 border-b border-slate-100 flex items-center justify-between";
 
         const titleEl = document.createElement("h3");
-        titleEl.className = "dialog-title";
+        titleEl.className = "dialog-title text-base font-bold text-slate-800";
         titleEl.textContent = title;
 
         const closeBtn = document.createElement("button");
         closeBtn.type = "button";
-        closeBtn.className = "dialog-close";
+        closeBtn.className = "dialog-close text-slate-400 hover:text-slate-700 text-lg font-bold px-2 py-1 rounded-md cursor-pointer";
         closeBtn.setAttribute("aria-label", "Kapat");
         closeBtn.textContent = "×";
         closeBtn.onclick = (e) => {
@@ -1320,7 +1284,7 @@ class EUIXEngine {
         header.appendChild(closeBtn);
 
         const body = document.createElement("div");
-        body.className = xmlNode.getAttribute("body_class") || "dialog-body";
+        body.className = xmlNode.getAttribute("body_class") || "dialog-body p-5";
         Array.from(xmlNode.childNodes).forEach(child => {
             if (child.nodeType === Node.ELEMENT_NODE &&
                 ["summary", "actions"].includes(child.tagName.toLowerCase())) {
@@ -1650,10 +1614,17 @@ class EUIXEngine {
         if (tagName === "img" || tagName === "image") {
             const el = document.createElement("img");
             if (xmlNode.getAttribute("class")) el.className = this.interpolate(xmlNode.getAttribute("class"), context);
-            const src = xmlNode.getAttribute("src") || "";
+            const rawSrc = xmlNode.getAttribute("src") || "";
             const alt = xmlNode.getAttribute("alt") || "";
-            el.src = this.interpolate(src, context);
+            const resolvedSrc = this.interpolate(rawSrc, context);
+            const fallbackSrc = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80";
+
+            el.src = resolvedSrc || fallbackSrc;
             el.alt = this.interpolate(alt, context);
+            el.onerror = () => {
+                el.src = fallbackSrc;
+            };
+
             if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
             if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
             this.bindEvents(xmlNode, el, context);

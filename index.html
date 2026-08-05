@@ -1,15 +1,16 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla .EUIX Engine - Modular Components</title>
-    <!-- Tailwind CSS stable play CDN -->
+    <title>Vanilla .EUIX Engine</title>
+    <!-- Tailwind CSS (CDN for quick Demo styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom collapse arrow rotations handled cleanly */
-        .euix-collapse.is-closed .euix-collapse-chevron::before { content: "▶"; }
-        .euix-collapse.is-open .euix-collapse-chevron::before { content: "▼"; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
     </style>
 </head>
 <body class="bg-slate-50/70 min-h-screen py-12 px-4 flex flex-col items-center justify-start">
@@ -38,9 +39,14 @@
             <state id="pokemons" type="array"></state>
             <state id="pokemon_loading" type="string">false</state>
             <state id="pokemon_error" type="string"></state>
+            <state id="pokemon_open" type="string">true</state>
+            <state id="posts" type="array"></state>
+            <state id="posts_loading" type="string">false</state>
+            <state id="posts_error" type="string"></state>
+            <state id="posts_open" type="string">true</state>
+            <state id="new_post_title" type="string"></state>
+            <state id="new_post_body" type="string"></state>
             <state id="todos_open" type="string">true</state>
-            <state id="pokemon_open" type="string">false</state>
-            <state id="compare_open" type="string">false</state>
             <state id="events_open" type="string">true</state>
             <state id="form_open" type="string">true</state>
             <state id="quick_todo_input" type="string"></state>
@@ -56,10 +62,6 @@
             <state id="selected_todo_id" type="string"></state>
             <state id="counter_value" type="string">0</state>
             <state id="counter_open" type="string">true</state>
-            <state id="pokemon_open" type="string">true</state>
-            <state id="pokemon_loading" type="string">false</state>
-            <state id="pokemon_error" type="string"></state>
-            <state id="pokemons" type="array"></state>
         </data_model>
 
         <on_mount action="XHR">
@@ -76,12 +78,22 @@
             </item_map>
         </on_mount>
 
+        <on_mount action="XHR">
+            <method>GET</method>
+            <url>https://jsonplaceholder.typicode.com/posts?_limit=4</url>
+            <target>data.posts</target>
+            <loading>data.posts_loading</loading>
+            <error>data.posts_error</error>
+        </on_mount>
+
         <imports>
             <import name="user-badge" src="components/UserBadge.xml" />
             <import name="app-header" src="components/AppHeader.xml" />
             <import name="counter-section" src="components/CounterSection.xml" />
             <import name="todo-section" src="components/TodoSection.xml" />
+            <import name="pokemon-card" src="components/PokemonCard.xml" />
             <import name="pokemon-section" src="components/PokemonSection.xml" />
+            <import name="posts-crud-section" src="components/PostsCrudSection.xml" />
             <import name="events-section" src="components/EventsSection.xml" />
             <import name="form-section" src="components/FormSection.xml" />
             <import name="confirm-modal" src="components/ConfirmModal.xml" />
@@ -92,8 +104,9 @@
             <app-header />
             <counter-section />
             <todo-section />
-            <form-section />
+            <posts-crud-section />
             <pokemon-section />
+            <form-section />
             <events-section />
             <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
             <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
@@ -103,7 +116,16 @@
     </script>
 
     <!-- EUIX Engine & DevTools Script (Auto-Init & Inspector) -->
-    <script src="src/EUIXEngine.js"></script>
-    <script type="module" src="src/EUIXDevTools.js" data-euix-devtools></script>
+    <script type="module" src="/src/EUIXEngine.js"></script>
+    <script type="module">
+        import { EUIXEngine } from '/src/EUIXEngine.js';
+        import { EUIXDevTools } from '/src/EUIXDevTools.js';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.EUIXEngine && window.EUIXEngine.instance) {
+                EUIXDevTools.init(window.EUIXEngine.instance);
+            }
+        });
+    </script>
 </body>
 </html>

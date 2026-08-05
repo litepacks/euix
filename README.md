@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Minifier: Terser](https://img.shields.io/badge/Minifier-Terser-FF6B6B.svg)]()
-[![Dependencies: Zero](https://img.shields.io/badge/Dependencies-Zero-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-38%2F38%20Passed-brightgreen.svg)]()
+[![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-7%2F7%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
 
@@ -11,15 +11,13 @@
 
 ## 📦 Bundle Sizes & Optimization
 
-Thanks to Terser 3-pass AST minification and Rollup tree-shaking optimizations, EUIX Engine delivers an extremely small footprint:
+Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EUIX Engine delivers an extremely small footprint:
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`EUIXEngine.min.js`** | **Standalone Minified (Recommended)** | **28.0 KB** | **8.3 KB** |
-| **`dist/EUIXEngine.umd.js`** | **Rollup UMD Bundle** | **28.1 KB** | **8.4 KB** |
-| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **58.5 KB** | **11.7 KB** |
-
-> 🌳 **Tree-Shaking:** In ESM environments, importing only needed sub-modules reduces the footprint to **~1.8 KB Gzip**.
+| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **57.5 KB** | **15.3 KB** |
+| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **90.6 KB** | **16.9 KB** |
+| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **14.0 KB** | **3.7 KB** |
 
 ---
 
@@ -27,71 +25,64 @@ Thanks to Terser 3-pass AST minification and Rollup tree-shaking optimizations, 
 
 EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM elements directly. Proxy-based **Fine-Grained Reactivity** ensures that state changes update only the exact target DOM node in-place.
 
-```javascript
-// Run live performance benchmark for 1,000 DOM elements
-const report = EUIXEngine.runBenchmark(1000);
-console.log(report.durationMs, report.opsPerSec);
-```
-
 | Benchmark Operation | Scale | Duration (ms) | Description |
 | :--- | :--- | :--- | :--- |
 | **Initial XML Mount** | Full App Spec | **< 2.5 ms** | XML parsing, Data Model & DOM tree creation |
-| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 130 ms** | In-place DOM node creation (batch render) |
-| **Single State Mutation** | 1 Item Field | **0.11 ms** | Direct fine-grained node mutation |
+| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 170 ms** | In-place DOM node creation (batch render) |
+| **Single State Mutation** | 1 Item Field | **0.12 ms** | Direct fine-grained node mutation |
 
 ---
 
-## ⚖️ Architecture Comparison: EUIX Engine vs React.js vs htmx
+## ✨ Key Features & Capability Matrix
 
-| Feature / Metric | ⚡ EUIX Engine | ⚛️ React.js | 🚀 htmx |
-| :--- | :--- | :--- | :--- |
-| **Architecture** | Client-Side Reactive XML/HTML Engine | Virtual DOM & JSX Component Framework | Server-Driven HTML Swap (Hypermedia App) |
-| **State Location** | Client Reactive Model (`<data_model>`) | Client Component State (`useState`) | Server-Side State |
-| **Network Dependency** | **100% Offline / Serverless Ready** | **Offline / Serverless Ready** | **HTTP Request per Interaction** (`hx-get`) |
-| **Client Logic** | Built-in Loops (`<for_each>`), Conditions (`<if>`), Mutations | JavaScript / JSX Code Blocks | Requires Extra JS Library (Alpine.js) |
-| **Build Step** | **Zero Build Required (No-Build)** | **Mandatory** (Babel/Vite for JSX) | **Zero Build Required (No-Build)** |
-| **Bundle Size (Gzip)** | **~8 KB** (Standalone Minified) | **~45 - 140 KB** (react + react-dom) | **~14 KB** |
-| **DOM Strategy** | **Fine-Grained** In-place Node Mutation | Virtual DOM Diffing & Re-render | HTML Fragment Swap |
+- **🎨 Design Tokens & Constants (`<constants>`, `<vars>`):** Define reusable CSS utility classes, design tokens, or API URLs at root or component level and reference them via `{const.key}` or `{var.key}`.
+- **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
+- **🌐 Declarative Async XHR (`XHR`):** Fetch remote API data (e.g. PokéAPI) declaratively with automatic loading/error state management and field mapping.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 38 Vitest unit/component/contract tests and 7 Playwright E2E browser tests.
 
 ---
 
-## 💻 Quick Start
+## 🎨 Constants & Design Tokens (`<constants>`, `<vars>`)
 
-### 1. HTML Auto-Init
+Define reusable CSS utility class tokens or configuration variables at root or component level:
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body>
-    <div id="app"></div>
+```xml
+<uid_spec>
+    <constants>
+        <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100</const>
+        <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer</const>
+        <const id="badge_blue">px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg text-xs</const>
+    </constants>
 
-    <script type="application/euix" target="#app">
-    <uid_spec>
-        <data_model>
-            <state id="message" type="string">Hello EUIX Engine!</state>
-        </data_model>
-        <flex direction="column" gap="12">
-            <h2>{data.message}</h2>
-        </flex>
-    </uid_spec>
-    </script>
+    <vars>
+        <var id="app_title">EUIX Engine Portal</var>
+    </vars>
 
-    <script src="EUIXEngine.js"></script>
-</body>
-</html>
+    <flex direction="column" class="{const.card_box}">
+        <span class="{const.badge_blue}">{var.app_title}</span>
+        <button class="{const.btn_primary}">Submit</button>
+    </flex>
+</uid_spec>
 ```
+
+---
+
+## 🛠️ EUIX DevTools
+
+Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + Shift + I`** or clicking the **`📊 State & Logs`** button:
+
+- **📊 State Inspector:** Live real-time inspection of all reactive states (`$state`).
+- **📜 Action Logs:** Real-time stream of all executed actions (`SET_STATE`, `MUTATE_STATE`, `XHR`).
+- **💻 Console Exposure:** Access `window.$state` and `window.$engine` directly in browser dev console.
 
 ---
 
 ## 📖 Documentation
 
-For detailed component specs and API references, check the **`docs/`** directory:
+For detailed component specs, API references, and architecture guides:
 
-- 📚 **[docs/components.md](docs/components.md)**: Full Layout, Primitive UI Components & Actions Reference.
-- 🛠️ **[docs/guide.md](docs/guide.md)**: Architecture, State Reactivity Model & Lifecycle Hooks.
+- 📚 **[docs/components.md](docs/components.md)**: Full Layout, UI Components, Control Flow Tags, Constants & Actions Reference.
+- 🛠️ **[docs/guide.md](docs/guide.md)**: Architecture, State Reactivity Model, DevTools & Testing Guide.
 
 ---
 

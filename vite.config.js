@@ -7,6 +7,7 @@ export default defineConfig({
     open: true
   },
   build: {
+    target: ['es2015', 'chrome64', 'firefox60', 'safari12', 'edge79'],
     lib: {
       entry: resolve(__dirname, 'src/EUIXEngine.js'),
       name: 'EUIXEngine',
@@ -38,8 +39,8 @@ export default defineConfig({
     sourcemap: true
   },
   test: {
-    environment: 'jsdom',
     globals: true,
-    include: ['tests/**/*.test.js', 'tests/**/*.bench.js']
+    environment: 'jsdom',
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**']
   }
 });

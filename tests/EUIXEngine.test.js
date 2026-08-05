@@ -552,4 +552,203 @@ describe('EUIXEngine Unit Tests', () => {
         expect(span.className).toContain('dark-mode');
         expect(span.textContent).toBe('token-123');
     });
+
+    it('should handle REST XHR CRUD operations (POST with UNSHIFT, DELETE with REMOVE)', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="posts" type="array">
+                    <item id="1" title="Post One" />
+                </state>
+                <state id="loading" type="string">false</state>
+                <state id="error" type="string"></state>
+            </data_model>
+            <flex direction="column">
+                <button class="create-btn">
+                    Create
+                    <on_click action="XHR">
+                        <method>POST</method>
+                        <url>https://jsonplaceholder.typicode.com/posts</url>
+                        <body>{"title": "New Post"}</body>
+                        <target>data.posts</target>
+                        <operation>UNSHIFT</operation>
+                        <loading>data.loading</loading>
+                    </on_click>
+                </button>
+
+                <button class="delete-btn">
+                    Delete
+                    <on_click action="XHR">
+                        <method>DELETE</method>
+                        <url>https://jsonplaceholder.typicode.com/posts/1</url>
+                        <target>data.posts</target>
+                        <operation>REMOVE</operation>
+                        <where field="id" equals="1" />
+                    </on_click>
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        // Mock global fetch for XHR CRUD test
+        const originalFetch = global.fetch;
+        global.fetch = vi.fn().mockImplementation((url, options) => {
+            if (options?.method === 'POST') {
+                return Promise.resolve({
+                    ok: true,
+                    headers: new Map([['content-type', 'application/json']]),
+                    json: () => Promise.resolve({ id: 101, title: 'New Post' })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                headers: new Map([['content-type', 'application/json']]),
+                json: () => Promise.resolve({})
+            });
+        });
+
+        try {
+            const engine = await EUIXEngine.mount(xml, '#app');
+            expect(engine.getState('posts').length).toBe(1);
+
+            const createBtn = document.querySelector('.create-btn');
+            createBtn.dispatchEvent(new window.MouseEvent('click'));
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+            expect(engine.getState('posts').length).toBe(2);
+            expect(engine.getState('posts')[0].title).toBe('New Post');
+
+            const deleteBtn = document.querySelector('.delete-btn');
+            deleteBtn.dispatchEvent(new window.MouseEvent('click'));
+
+            await new Promise(resolve => setTimeout(resolve, 50));
+            expect(engine.getState('posts').length).toBe(1);
+        } finally {
+            global.fetch = originalFetch;
+        }
+    });
+
+    it('should evaluate complex math and string conditions in ExpressionParser', () => {
+        const EUIXExpressionParser = EUIXEnginePkg.EUIXExpressionParser;
+        const resolveFn = (path) => {
+            if (path === 'data.count') return 10;
+            if (path === 'data.status') return 'active';
+            if (path === 'data.user.role') return 'admin';
+            return undefined;
+        };
+
+        expect(EUIXExpressionParser.eval('{data.count} > 5', resolveFn)).toBe(true);
+        expect(EUIXExpressionParser.eval('{data.count} + 5', resolveFn)).toBe(15);
+        expect(EUIXExpressionParser.eval('{data.status} == active', resolveFn)).toBe(true);
+        expect(EUIXExpressionParser.eval('{data.user.role} == admin', resolveFn)).toBe(true);
+        expect(EUIXExpressionParser.eval('{data.count} == 0', resolveFn)).toBe(false);
+    });
+
+    it('should handle nested <if>, <else_if>, <else> branches correctly', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="status" type="string">pending</state>
+            </data_model>
+            <flex direction="column">
+                <if condition="{data.status} == success">
+                    <span class="res">Success Status</span>
+                    <else_if condition="{data.status} == pending">
+                        <span class="res">Pending Status</span>
+                    </else_if>
+                    <else>
+                        <span class="res">Unknown Status</span>
+                    </else>
+                </if>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        let resEl = document.querySelector('.res');
+        expect(resEl.textContent).toBe('Pending Status');
+
+        engine.setState('status', 'success');
+        resEl = document.querySelector('.res');
+        expect(resEl.textContent).toBe('Success Status');
+
+        engine.setState('status', 'error');
+        resEl = document.querySelector('.res');
+        expect(resEl.textContent).toBe('Unknown Status');
+    });
+
+    it('should perform all MUTATE_STATE operations (PUSH, UNSHIFT, UPDATE, REMOVE, CLEAR)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="items" type="array">
+                    <item id="1" text="Item 1" />
+                    <item id="2" text="Item 2" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.items}" var="it">
+                    <span>{it.text}</span>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('items').length).toBe(2);
+
+        // PUSH
+        engine.handleAction({
+            tagName: 'on_click',
+            getAttribute: (a) => a === 'action' ? 'MUTATE_STATE' : null,
+            children: [
+                { tagName: 'path', textContent: 'data.items' },
+                { tagName: 'operation', textContent: 'PUSH' },
+                { tagName: 'item', getAttribute: (a) => a === 'id' ? '3' : (a === 'text' ? 'Item 3' : null), attributes: [] }
+            ]
+        });
+
+        // UNSHIFT
+        engine.handleAction({
+            tagName: 'on_click',
+            getAttribute: (a) => a === 'action' ? 'MUTATE_STATE' : null,
+            children: [
+                { tagName: 'path', textContent: 'data.items' },
+                { tagName: 'operation', textContent: 'UNSHIFT' },
+                { tagName: 'item', getAttribute: (a) => a === 'id' ? '0' : (a === 'text' ? 'Item 0' : null), attributes: [] }
+            ]
+        });
+
+        expect(engine.getState('items')[0].text).toBe('Item 0');
+
+        // CLEAR
+        engine.handleAction({
+            tagName: 'on_click',
+            getAttribute: (a) => a === 'action' ? 'MUTATE_STATE' : null,
+            children: [
+                { tagName: 'path', textContent: 'data.items' },
+                { tagName: 'operation', textContent: 'CLEAR' }
+            ]
+        });
+
+        expect(engine.getState('items').length).toBe(0);
+    });
+
+    it('should support component-scoped constants overriding global constants', () => {
+        EUIXEngine.registerConstant('theme_color', 'blue-600');
+        EUIXEngine.registerComponentSpec('custom-badge', `
+            <component_def name="custom-badge">
+                <constants>
+                    <const id="theme_color">purple-700</const>
+                </constants>
+                <span class="custom-badge bg-{const.theme_color}">Badge</span>
+            </component_def>
+        `);
+
+        const xml = `<uid_spec><custom-badge /></uid_spec>`;
+        EUIXEngine.mount(xml, '#app');
+
+        const badge = document.querySelector('.custom-badge');
+        expect(badge.className).toContain('purple-700');
+    });
 });

@@ -72,12 +72,12 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await page.locator('button:has-text("Add Task")').click();
 
     // Verify new task was appended
-    const lastTask = page.locator('.euix-if-branch span').last();
+    const lastTask = page.locator('span:has-text("Playwright E2E Test Task")');
     await expect(lastTask).toHaveText('Playwright E2E Test Task');
   });
 
   test('should reflect form inputs live in the summary box', async ({ page }) => {
-    const textarea = page.locator('textarea');
+    const textarea = page.locator('textarea[placeholder*="biography"]');
     await textarea.fill('Playwright Engineer Bio');
 
     const summary = page.locator('.bg-indigo-50\\/50');
@@ -115,5 +115,36 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Click Logs tab
     await page.locator('#euix-tab-logs').click();
     await expect(panel).toContainText('Logs');
+  });
+
+  test('should interact with JSONPlaceholder Posts CRUD section (create new post and delete post)', async ({ page }) => {
+    // Fill title and body for new post
+    const titleInput = page.locator('input[placeholder="Post title..."]');
+    const bodyTextarea = page.locator('textarea[placeholder="Post body content..."]');
+    await titleInput.fill('Playwright Test Post Title');
+    await bodyTextarea.fill('Playwright Test Post Body Content');
+
+    // Click Publish Post
+    await page.locator('button:has-text("Publish Post")').click();
+
+    // Verify post was prepended
+    const newPostTitle = page.locator('span:has-text("Playwright Test Post Title")');
+    await expect(newPostTitle).toBeVisible();
+
+    // Delete the new post
+    const deleteBtn = page.locator('button:has-text("Delete")').first();
+    await deleteBtn.click();
+  });
+
+  test('should reload Pokémon cards from PokéAPI and display cards', async ({ page }) => {
+    const reloadBtn = page.locator('button:has-text("Reload Pokémon")');
+    await expect(reloadBtn).toBeVisible();
+
+    // Click Reload Pokémon
+    await reloadBtn.click();
+
+    // Verify Pokémon cards are rendered in grid
+    const cards = page.locator('.pokemon-name, span.capitalize');
+    await expect(cards.first()).toBeVisible();
   });
 });

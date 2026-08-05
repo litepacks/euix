@@ -1,15 +1,16 @@
-# EUIX Engine - Component Reference Guide (`components.md`)
+# EUIX Engine - Component Reference Guide (`docs/components.md`)
 
-This document provides a comprehensive guide to all layout containers, UI components, control flow tags, actions, universal event listeners (`<event>`), and the custom component registry in **EUIX Engine**.
+This document provides a comprehensive guide to layout containers, UI elements, control flow tags, constants, actions, event listeners (`<event>`), and the custom component registry in **EUIX Engine**.
 
 ---
 
 ## 📌 Table of Contents
 - [1. Layout & Container Components](#1-layout--container-components)
-- [2. Primitive & Native UI Elements](#2-primitive--native-ui-elements)
-- [3. Logic & Control Flow Tags](#3-logic--control-flow-tags)
-- [4. Universal Event Listeners (`<event>`) & Actions](#4-universal-event-listeners-event--actions)
-- [5. Custom Component & Action Registry API](#5-custom-component--action-registry-api)
+- [2. Constants & Design Tokens (`<constants>`, `<vars>`)](#2-constants--design-tokens-constants-vars)
+- [3. Primitive & Native UI Elements](#3-primitive--native-ui-elements)
+- [4. Logic & Control Flow Tags](#4-logic--control-flow-tags)
+- [5. Universal Event Listeners & Actions](#5-universal-event-listeners--actions)
+- [6. Custom Component & Action Registry API](#6-custom-component--action-registry-api)
 
 ---
 
@@ -26,9 +27,9 @@ Flexible Flexbox container using standard `display: flex`.
 - `wrap`: `true` (`wrap`) | `false` (`nowrap`) | `wrap-reverse`
 
 ```xml
-<flex direction="row" align="center" justify="between" gap="16" class="p-4 bg-white">
+<flex direction="row" align="center" justify="between" gap="16" class="{const.card_box}">
     <h2>Header Title</h2>
-    <button class="btn border p-2">Click Me</button>
+    <button class="{const.btn_primary}">Click Me</button>
 </flex>
 ```
 
@@ -41,12 +42,10 @@ CSS Grid layout container using `display: grid`.
 - `cols` / `columns`: Number of columns (e.g., `cols="3"`) or explicit template string (`cols="1fr 2fr 1fr"`).
 - `rows`: Number of rows or explicit template string.
 - `gap`: Grid gap in pixels.
-- `gap_x` / `col_gap`: Horizontal column gap.
-- `gap_y` / `row_gap`: Vertical row gap.
 
 ```xml
 <grid cols="3" gap="12">
-    <div class="col-span-2 bg-blue-50">Main Grid Content</div>
+    <div class="col-span-2 bg-blue-50">Main Content</div>
     <div class="bg-slate-50">Sidebar</div>
 </grid>
 ```
@@ -57,7 +56,7 @@ CSS Grid layout container using `display: grid`.
 Interactive accordion / collapsible container with reactive state binding.
 
 **Attributes:**
-- `bind`: Reaktif state key (e.g., `data.todos_open`).
+- `bind`: Reactive state key (e.g., `data.todos_open`).
 - `title`: Summary header title text.
 - `header_class`: CSS classes for header button.
 - `body_class`: CSS classes for collapsible body.
@@ -77,7 +76,7 @@ Interactive accordion / collapsible container with reactive state binding.
 Modal dialog backdrop overlay with focus management and ESC key support.
 
 **Attributes:**
-- `bind`: Reaktif state key for modal visibility (e.g., `data.confirm_modal_open`).
+- `bind`: Reactive state key for modal visibility (e.g., `data.confirm_modal_open`).
 - `title`: Modal header title.
 - `close_on_backdrop`: `true` (default) | `false`.
 
@@ -93,13 +92,36 @@ Modal dialog backdrop overlay with focus management and ESC key support.
 
 ---
 
-## 2. 🧩 Primitive & Native UI Elements
+## 2. 🎨 Constants & Design Tokens (`<constants>`, `<vars>`)
+
+Define reusable CSS utility class tokens or variables at root or component level:
+
+```xml
+<constants>
+    <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl border border-slate-100</const>
+    <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm</const>
+</constants>
+
+<vars>
+    <var id="app_title">EUIX Engine Admin Portal</var>
+</vars>
+```
+
+### Template & Class Usage:
+- `class="{const.card_box}"`
+- `class="{const.btn_primary}"`
+- `<span>{var.app_title}</span>`
+
+---
+
+## 3. 🧩 Primitive & Native UI Elements
 
 EUIX Engine supports standard native HTML elements (`<span>`, `<h2>`, `<button>`, `<input>`, `<img>`, `<textarea>`, `<select>`, `<option>`) as first-class citizens:
 
 ```xml
 <input type="text" bind="data.username" placeholder="Enter username..." />
-<button class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg">
+<img src="{props.avatar}" width="32" height="32" class="w-8 h-8 rounded-full object-cover" alt="Avatar" />
+<button class="{const.btn_primary}">
     Submit
     <on_click action="SET_STATE">
         <path>data.submitted</path>
@@ -110,7 +132,7 @@ EUIX Engine supports standard native HTML elements (`<span>`, `<h2>`, `<button>`
 
 ---
 
-## 3. 🔀 Logic & Control Flow Tags
+## 4. 🔀 Logic & Control Flow Tags
 
 ### `<if>`, `<else_if>`, `<else>`
 Conditional rendering based on reactive state expressions.
@@ -142,42 +164,9 @@ Fine-grained dynamic list rendering.
 
 ---
 
-## 4. ⚡ Universal Event Listeners & Actions
+## 5. ⚡ Universal Event Listeners & Actions
 
 ### Action Types:
 - `SET_STATE`: Updates state value (`<path>`, `<value>`).
 - `MUTATE_STATE`: Performs array operations (`PUSH`, `UNSHIFT`, `UPDATE`, `REMOVE`, `CLEAR`).
-- `XHR`: Performs declarative async HTTP requests.
-- `FOCUS`: Focuses DOM element (`<target>`).
-- `RUN_BENCHMARK`: Executes live performance benchmark (`count`, `target`).
-
-```xml
-<button>
-    Clear All
-    <on_click action="MUTATE_STATE">
-        <path>data.todos</path>
-        <operation>CLEAR</operation>
-    </on_click>
-</button>
-```
-
----
-
-## 5. 🛠️ Custom Component & Action Registry API
-
-```javascript
-import { EUIXEngine } from 'euix';
-
-// Register custom component
-EUIXEngine.registerComponentSpec('custom-badge', `
-    <component_def name="custom-badge">
-        <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs">{props.label}</span>
-    </component_def>
-`);
-
-// Register custom action
-const engine = EUIXEngine.mount(xml, '#app');
-engine.registerAction('LOG_STATE', (actionNode, context, engineInstance) => {
-    console.log('Current state:', engineInstance.getState('todos'));
-});
-```
+- `XHR`: Performs declarative async HTTP requests with loading/error handling.
