@@ -2,8 +2,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-38%2F38%20Passed-brightgreen.svg)]()
-[![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-7%2F7%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-46%2F46%20Passed-brightgreen.svg)]()
+[![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-9%2F9%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
 
@@ -15,9 +15,9 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **57.5 KB** | **15.3 KB** |
-| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **90.6 KB** | **16.9 KB** |
-| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **14.0 KB** | **3.7 KB** |
+| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **57.5 KB** | **15.5 KB** |
+| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **93.0 KB** | **17.5 KB** |
+| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **14.4 KB** | **3.8 KB** |
 
 ---
 
@@ -36,9 +36,10 @@ EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM ele
 ## ✨ Key Features & Capability Matrix
 
 - **🎨 Design Tokens & Constants (`<constants>`, `<vars>`):** Define reusable CSS utility classes, design tokens, or API URLs at root or component level and reference them via `{const.key}` or `{var.key}`.
+- **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates) and component recursion depth guard (>20 depth) preventing browser freezes or crashes.
 - **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
-- **🌐 Declarative Async XHR (`XHR`):** Fetch remote API data (e.g. PokéAPI) declaratively with automatic loading/error state management and field mapping.
-- **🛡️ Contract & E2E Test Suite:** Fully verified with 38 Vitest unit/component/contract tests and 7 Playwright E2E browser tests.
+- **🌐 Declarative Async XHR (`XHR`):** Fetch remote REST APIs (e.g. JSONPlaceholder, PokéAPI) declaratively with automatic loading/error state management and `POST`, `PUT`, `DELETE` operations.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 46 Vitest unit/component/contract/benchmark tests and 9 Playwright E2E browser tests.
 
 ---
 

@@ -519,11 +519,24 @@ class EUIXEngine {
     setState(key, value, { silent = false, sourceEl = null } = {}) {
         if (!this._rawState) return;
 
-        this._rawState[key] = value;
-        if (this._devtools && this._devtools.enabled && !silent) {
-            this._devtools.logAction("setState", { path: key, value });
+        this._updateDepth = (this._updateDepth || 0) + 1;
+        if (this._updateDepth > (this._maxUpdateDepth || 50)) {
+            const currentDepth = this._updateDepth;
+            this._updateDepth = 0;
+            const err = new Error(`[EUIXEngine Infinite Loop Guard] Cascade limit exceeded (${currentDepth} updates) on state key "${key}". Possible circular state reactivity loop.`);
+            this.reportError(err, "Infinite Loop Guard");
+            throw err;
         }
-        this.syncBindings(key, value, sourceEl);
+
+        try {
+            this._rawState[key] = value;
+            if (this._devtools && this._devtools.enabled && !silent) {
+                this._devtools.logAction("setState", { path: key, value });
+            }
+            this.syncBindings(key, value, sourceEl);
+        } finally {
+            this._updateDepth = Math.max(0, (this._updateDepth || 1) - 1);
+        }
     }
 
     registerBinding(path, el, kind, updateFn = null) {
@@ -1957,10 +1970,22 @@ class EUIXEngine {
             if (id) compConstants[id] = node.textContent.trim();
         });
 
+        const compDepth = (context._compDepth || 0) + 1;
+        const compName = specNode.getAttribute("name") || specNode.getAttribute("id") || (usageNode.tagName ? usageNode.tagName.toLowerCase() : "component");
+        if (compDepth > 20) {
+            const err = new Error(`[EUIXEngine Infinite Loop Guard] Maximum component recursion depth (20) exceeded for component <${compName}>`);
+            this.reportError(err, "Infinite Component Loop Guard");
+            const errEl = document.createElement("div");
+            errEl.className = "euix-recursion-error text-xs text-rose-600 font-bold p-2 bg-rose-50 border border-rose-200 rounded";
+            errEl.textContent = `[Recursion Error] <${compName}> exceeds max depth (20)`;
+            return errEl;
+        }
+
         const childContext = {
             ...context,
             props,
             ...props,
+            _compDepth: compDepth,
             constants: {
                 ...(context.constants || {}),
                 ...compConstants

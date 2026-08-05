@@ -751,4 +751,53 @@ describe('EUIXEngine Unit Tests', () => {
         const badge = document.querySelector('.custom-badge');
         expect(badge.className).toContain('purple-700');
     });
+
+    it('should catch and prevent infinite reactivity state loops using Infinite Loop Guard', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="val" type="string">0</state>
+            </data_model>
+            <flex direction="column">
+                <input bind="data.val" class="inp" />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        let errorCaught = false;
+        engine.onError = (err) => {
+            if (err.message.includes('Infinite Loop Guard')) errorCaught = true;
+        };
+
+        // Register a cyclic binding listener that triggers infinite recursion
+        engine.registerBinding('val', document.querySelector('.inp'), 'custom', () => {
+            engine.setState('val', String(Math.random()));
+        });
+
+        expect(() => {
+            engine.setState('val', 'trigger');
+        }).toThrow(/Infinite Loop Guard/);
+
+        expect(errorCaught).toBe(true);
+    });
+
+    it('should catch and prevent infinite component recursion (>20 depth)', () => {
+        EUIXEngine.registerComponentSpec('recursive-comp', `
+            <component_def name="recursive-comp">
+                <recursive-comp />
+            </component_def>
+        `);
+
+        const xml = `<uid_spec><recursive-comp /></uid_spec>`;
+        let recursionReported = false;
+        const engine = new EUIXEngine('#app');
+        engine.onError = (err) => {
+            if (err.message.includes('recursion depth')) recursionReported = true;
+        };
+
+        engine.mount(xml);
+        expect(recursionReported).toBe(true);
+        expect(document.querySelector('.euix-recursion-error')).not.toBeNull();
+    });
 });
