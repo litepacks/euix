@@ -1,0 +1,29 @@
+{
+  "name": "xui",
+  "version": "1.0.0",
+  "description": "Vanilla .XUI Engine - Lightweight declarative XML UI framework",
+  "type": "module",
+  "main": "XUIEngine.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench": "vitest bench"
+  },
+  "keywords": [
+    "xui",
+    "declarative-ui",
+    "xml",
+    "vanilla-js"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jsdom": "^27.0.1",
+    "terser": "^5.49.2",
+    "vite": "^5.4.0",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,1618 @@
+/**
+ * XUIExpressionParser
+ * Lightweight AST-based expression tokenizer, parser and evaluator for XUI Engine.
+ */
+class XUIExpressionParser {
+    static tokenize(expr) {
+        const tokens = [];
+        let i = 0;
+        while (i < expr.length) {
+            const char = expr[i];
+
+            if (/\s/.test(char)) {
+                i++;
+                continue;
+            }
+
+            // String literals
+            if (char === '"' || char === "'") {
+                const quote = char;
+                let str = "";
+                i++;
+                while (i < expr.length && expr[i] !== quote) {
+                    if (expr[i] === "\\" && i + 1 < expr.length) {
+                        i++;
+                        str += expr[i];
+                    } else {
+                        str += expr[i];
+                    }
+                    i++;
+                }
+                i++; // skip closing quote
+                tokens.push({ type: "STRING", value: str });
+                continue;
+            }
+
+            // Numbers
+            if (/\d/.test(char) || (char === "." && /\d/.test(expr[i + 1]))) {
+                let numStr = "";
+                while (i < expr.length && (/[\d.]/).test(expr[i])) {
+                    numStr += expr[i];
+                    i++;
+                }
+                tokens.push({ type: "NUMBER", value: parseFloat(numStr) });
+                continue;
+            }
+
+            // Two-character operators
+            const twoChar = expr.slice(i, i + 2);
+            if (["==", "!=", ">=", "<=", "&&", "||"].includes(twoChar)) {
+                tokens.push({ type: "OPERATOR", value: twoChar });
+                i += 2;
+                continue;
+            }
+
+            // Single-character operators & punctuation
+            if ([">", "<", "!", "+", "-", "*", "/", "(", ")", ","].includes(char)) {
+                if (char === "(" || char === ")" || char === ",") {
+                    tokens.push({ type: char, value: char });
+                } else {
+                    tokens.push({ type: "OPERATOR", value: char });
+                }
+                i++;
+                continue;
+            }
+
+            // Identifiers / Keywords
+            if (/[a-zA-Z_$]/.test(char)) {
+                let idStr = "";
+                while (i < expr.length && /[a-zA-Z0-9_$.[\]]/.test(expr[i])) {
+                    idStr += expr[i];
+                    i++;
+                }
+                if (idStr === "true" || idStr === "false") {
+                    tokens.push({ type: "BOOLEAN", value: idStr === "true" });
+                } else if (idStr === "null") {
+                    tokens.push({ type: "NULL", value: null });
+                } else {
+                    tokens.push({ type: "IDENTIFIER", value: idStr });
+                }
+                continue;
+            }
+
+            i++;
+        }
+        return tokens;
+    }
+
+    static parse(tokens) {
+        let current = 0;
+
+        function peek() { return tokens[current]; }
+        function consume() { return tokens[current++]; }
+
+        function parsePrimary() {
+            const token = peek();
+            if (!token) return { type: "Literal", value: undefined };
+
+            if (token.type === "NUMBER" || token.type === "STRING" || token.type === "BOOLEAN" || token.type === "NULL") {
+                consume();
+                return { type: "Literal", value: token.value };
+            }
+
+            if (token.type === "(") {
+                consume();
+                const expr = parseExpression();
+                if (peek() && peek().type === ")") consume();
+                return expr;
+            }
+
+            if (token.type === "IDENTIFIER") {
+                consume();
+                if (peek() && peek().type === "(") {
+                    consume();
+                    const args = [];
+                    if (peek() && peek().type !== ")") {
+                        args.push(parseExpression());
+                        while (peek() && peek().type === ",") {
+                            consume();
+                            args.push(parseExpression());
+                        }
+                    }
+                    if (peek() && peek().type === ")") consume();
+                    return { type: "CallExpression", callee: token.value, arguments: args };
+                }
+                return { type: "Identifier", name: token.value };
+            }
+
+            if (token.type === "OPERATOR" && (token.value === "!" || token.value === "-")) {
+                consume();
+                return { type: "UnaryExpression", operator: token.value, argument: parsePrimary() };
+            }
+
+            consume();
+            return { type: "Literal", value: undefined };
+        }
+
+        function parseBinary(nextLevelParser, operators) {
+            let left = nextLevelParser();
+            while (peek() && peek().type === "OPERATOR" && operators.includes(peek().value)) {
+                const op = consume().value;
+                const right = nextLevelParser();
+                left = { type: "BinaryExpression", operator: op, left, right };
+            }
+            return left;
+        }
+
+        function parseAdditive() { return parseBinary(parsePrimary, ["+", "-"]); }
+        function parseRelational() { return parseBinary(parseAdditive, [">", "<", ">=", "<="]); }
+        function parseEquality() { return parseBinary(parseRelational, ["==", "!="]); }
+        function parseLogicalAnd() { return parseBinary(parseEquality, ["&&"]); }
+        function parseLogicalOr() { return parseBinary(parseLogicalAnd, ["||"]); }
+
+        function parseExpression() { return parseLogicalOr(); }
+
+        return parseExpression();
+    }
+
+    static evaluate(ast, resolveValueFn) {
+        if (!ast) return undefined;
+
+        switch (ast.type) {
+            case "Literal":
+                return ast.value;
+
+            case "Identifier":
+                return resolveValueFn(ast.name);
+
+            case "UnaryExpression": {
+                const val = this.evaluate(ast.argument, resolveValueFn);
+                if (ast.operator === "!") return !val || val === "false";
+                if (ast.operator === "-") return -val;
+                return val;
+            }
+
+            case "BinaryExpression": {
+                const left = this.evaluate(ast.left, resolveValueFn);
+                const right = this.evaluate(ast.right, resolveValueFn);
+
+                switch (ast.operator) {
+                    case "==": return String(left ?? "").trim() === String(right ?? "").trim();
+                    case "!=": return String(left ?? "").trim() !== String(right ?? "").trim();
+                    case ">": return Number(left) > Number(right);
+                    case "<": return Number(left) < Number(right);
+                    case ">=": return Number(left) >= Number(right);
+                    case "<=": return Number(left) <= Number(right);
+                    case "&&": return Boolean(left) && Boolean(right);
+                    case "||": return Boolean(left) || Boolean(right);
+                    case "+": return left + right;
+                    case "-": return Number(left) - Number(right);
+                    default: return false;
+                }
+            }
+
+            case "CallExpression": {
+                const args = ast.arguments.map(arg => this.evaluate(arg, resolveValueFn));
+                const fnName = ast.callee.toLowerCase();
+
+                if (fnName === "length") {
+                    const target = args[0];
+                    if (Array.isArray(target)) return target.length;
+                    if (typeof target === "string") return target.length;
+                    return 0;
+                }
+                if (fnName === "contains" || fnName === "includes") {
+                    const target = args[0];
+                    const search = args[1];
+                    if (Array.isArray(target)) return target.includes(search);
+                    if (typeof target === "string") return target.includes(String(search));
+                    return false;
+                }
+                if (fnName === "not") {
+                    return !args[0] || args[0] === "false";
+                }
+                return undefined;
+            }
+        }
+        return undefined;
+    }
+
+    static eval(exprString, resolveValueFn) {
+        if (!exprString || !exprString.trim()) return true;
+        try {
+            const tokens = this.tokenize(exprString);
+            const ast = this.parse(tokens);
+            return this.evaluate(ast, resolveValueFn);
+        } catch (_) {
+            return Boolean(exprString);
+        }
+    }
+}
+
+class XUIEngine {
+    constructor(containerSelector) {
+        this.container = typeof containerSelector === "string" 
+            ? document.querySelector(containerSelector) 
+            : containerSelector;
+        this.state = null;
+        this._rawState = null;
+        this.xmlDoc = null;
+        this._batching = false;
+        this._pendingFocusKey = null;
+        this._bindings = new Map();
+        this._customComponents = new Map();
+        this._customActions = new Map();
+    }
+
+    static mount(xmlString, containerSelector = "#app") {
+        const engine = new XUIEngine(containerSelector);
+        XUIEngine.instance = engine;
+        engine.mount(xmlString);
+        return engine;
+    }
+
+    static autoInit() {
+        if (typeof document === "undefined") return;
+        const scripts = document.querySelectorAll('script[type="application/xui"], script[type="text/xui"], script[data-xui-app], xui-app');
+        scripts.forEach(script => {
+            const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
+            const xml = script.tagName.toLowerCase() === "xui-app" ? script.innerHTML.trim() : script.textContent.trim();
+            if (xml) {
+                XUIEngine.mount(xml, targetSelector);
+            }
+        });
+    }
+
+    runBenchmark(count = 1000, targetKey = "todos") {
+        const t0 = performance.now();
+        const items = [];
+        for (let i = 1; i <= count; i++) {
+            items.push({
+                id: `bench_${i}`,
+                text: `Benchmark Görevi ${i}`,
+                completed: i % 2 === 0 ? "true" : "false"
+            });
+        }
+
+        this.setState(targetKey, items);
+
+        const t1 = performance.now();
+        const durationMs = parseFloat((t1 - t0).toFixed(2));
+        const opsPerSec = Math.round((count / (durationMs || 1)) * 1000);
+
+        const report = {
+            count,
+            durationMs,
+            opsPerSec,
+            fineGrained: true,
+            message: `⚡ ${count.toLocaleString('tr-TR')} eleman ${durationMs} ms içerisinde DOM'a yerleştirildi (${opsPerSec.toLocaleString('tr-TR')} ops/sec).`
+        };
+
+        if (typeof console !== "undefined") {
+            console.log(`%c[XUI Engine Benchmark]`, "color: #2563eb; font-weight: bold;", report.message);
+            if (console.table) console.table([report]);
+        }
+        return report;
+    }
+
+    static runBenchmark(count = 1000, targetKey = "todos") {
+        if (XUIEngine.instance) {
+            return XUIEngine.instance.runBenchmark(count, targetKey);
+        }
+        console.warn("XUIEngine aktif bir örneği (instance) bulunamadı.");
+        return null;
+    }
+
+    getChild(node, tagName) {
+        if (!node) return null;
+        const tag = tagName.toLowerCase();
+        return Array.from(node.children || []).find(c => c.tagName && c.tagName.toLowerCase() === tag) || null;
+    }
+
+    getChildren(node, tagName) {
+        if (!node) return [];
+        const tag = tagName.toLowerCase();
+        return Array.from(node.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === tag);
+    }
+
+    registerComponent(type, handler) {
+        if (typeof type === "string" && typeof handler === "function") {
+            this._customComponents.set(type, handler);
+        }
+    }
+
+    registerAction(actionType, handler) {
+        if (typeof actionType === "string" && typeof handler === "function") {
+            this._customActions.set(actionType, handler);
+        }
+    }
+
+    batch(fn) {
+        const wasBatching = this._batching;
+        this._batching = true;
+        try {
+            fn();
+        } finally {
+            this._batching = wasBatching;
+            if (!wasBatching) {
+                if (this._rawState) {
+                    Object.keys(this._rawState).forEach(key => {
+                        this.syncBindings(key, this._rawState[key]);
+                    });
+                }
+            }
+        }
+    }
+
+    parseBindPath(expr) {
+        if (!expr) return "";
+        return String(expr)
+            .trim()
+            .replace(/^\{\s*data\.(\w+)\s*\}$/, "$1")
+            .replace(/^data\./, "")
+            .replace(/^\{\s*|\s*\}$/g, "");
+    }
+
+    extractStateKeys(expr) {
+        if (!expr) return [];
+        const keys = new Set();
+        const matches = expr.match(/data\.(\w+)/g) || [];
+        matches.forEach(m => keys.add(m.replace(/^data\./, "")));
+        const plainMatches = expr.match(/\{(\w+)\}/g) || [];
+        plainMatches.forEach(m => keys.add(m.replace(/^\{|\}$/g, "")));
+        return Array.from(keys);
+    }
+
+    isTruthy(value) {
+        return value === true || value === "true" || value === 1 || value === "1";
+    }
+
+    resolveBinding(xmlNode, context = {}) {
+        const bindAttr = xmlNode.getAttribute("bind");
+        if (bindAttr) {
+            const raw = String(bindAttr).trim().replace(/^\{\s*|\s*\}$/g, "");
+            if (raw.startsWith("data.")) {
+                return { type: "state", path: raw.slice(5) };
+            }
+            const ctxMatch = raw.match(/^(\w+)\.(\w+)$/);
+            if (ctxMatch && context[ctxMatch[1]] && typeof context[ctxMatch[1]] === "object") {
+                return { type: "context", scope: ctxMatch[1], prop: ctxMatch[2] };
+            }
+            return { type: "state", path: this.parseBindPath(raw) };
+        }
+
+        const path = this.resolveBindPath(xmlNode);
+        return path ? { type: "state", path } : null;
+    }
+
+    getBindingValue(binding, context = {}) {
+        if (!binding) return undefined;
+        if (binding.type === "state") return this.getState(binding.path);
+        return context[binding.scope] ? context[binding.scope][binding.prop] : undefined;
+    }
+
+    setBindingValue(binding, value, context = {}, options = {}) {
+        if (!binding) return;
+        if (binding.type === "state") {
+            this.setState(binding.path, value, options);
+            return;
+        }
+        if (context[binding.scope] && typeof context[binding.scope] === "object") {
+            context[binding.scope][binding.prop] = value;
+            if (!options.silent && !this._batching) {
+                this.syncBindings(binding.scope, context[binding.scope]);
+            }
+        }
+    }
+
+    escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+
+    getState(key) {
+        return this._rawState ? this._rawState[key] : undefined;
+    }
+
+    setState(key, value, { silent = false, sourceEl = null } = {}) {
+        if (!this._rawState) return;
+
+        this._rawState[key] = value;
+        this.syncBindings(key, value, sourceEl);
+    }
+
+    registerBinding(path, el, kind, updateFn = null) {
+        if (!path || !el) return;
+        if (!this._bindings.has(path)) this._bindings.set(path, []);
+        this._bindings.get(path).push({ el, kind, updateFn });
+        el.dataset.xuiKey = path;
+        el.dataset.xuiBind = kind;
+    }
+
+    syncBindings(path, value, sourceEl = null) {
+        const list = this._bindings.get(path) || [];
+        const text = value === undefined || value === null ? "" : String(value);
+
+        list.forEach(({ el, kind, updateFn }) => {
+            if (updateFn) {
+                updateFn(value);
+                return;
+            }
+
+            if (!el || el === sourceEl) return;
+
+            if (kind === "input") {
+                if (el.value !== text) el.value = text;
+                return;
+            }
+
+            if (kind === "checkbox") {
+                el.checked = this.isTruthy(text);
+                return;
+            }
+
+            if (kind === "text") {
+                const htmlTemplate = el.dataset.xuiHtmlTemplate;
+                const textTemplate = el.dataset.xuiTextTemplate;
+                if (htmlTemplate) {
+                    el.innerHTML = htmlTemplate.replace(/\{\s*value\s*\}/g, this.escapeHtml(text));
+                } else if (textTemplate) {
+                    el.textContent = textTemplate.replace(/\{\s*value\s*\}/g, text);
+                } else {
+                    el.textContent = text;
+                }
+            }
+        });
+    }
+
+    applyLayoutStyles(el, xmlNode, context) {
+        const formatValue = (val) => {
+            if (!val) return "";
+            const interpolated = this.interpolate(val, context).trim();
+            if (/^\d+$/.test(interpolated)) return interpolated + "px";
+            return interpolated;
+        };
+
+        const alignMap = {
+            start: "flex-start",
+            end: "flex-end",
+            center: "center",
+            stretch: "stretch",
+            baseline: "baseline"
+        };
+
+        const justifyMap = {
+            start: "flex-start",
+            end: "flex-end",
+            center: "center",
+            between: "space-between",
+            around: "space-around",
+            evenly: "space-evenly",
+            stretch: "stretch"
+        };
+
+        const dir = xmlNode.getAttribute("direction") || xmlNode.getAttribute("dir");
+        if (dir) {
+            el.style.flexDirection = this.interpolate(dir, context).trim();
+        }
+
+        const align = xmlNode.getAttribute("align");
+        if (align) {
+            const val = this.interpolate(align, context).trim().toLowerCase();
+            el.style.alignItems = alignMap[val] || val;
+        }
+
+        const justify = xmlNode.getAttribute("justify");
+        if (justify) {
+            const val = this.interpolate(justify, context).trim().toLowerCase();
+            el.style.justifyContent = justifyMap[val] || val;
+        }
+
+        const gap = xmlNode.getAttribute("gap");
+        if (gap) {
+            el.style.gap = formatValue(gap);
+        }
+
+        const gapX = xmlNode.getAttribute("gap_x") || xmlNode.getAttribute("col_gap");
+        if (gapX) {
+            el.style.columnGap = formatValue(gapX);
+        }
+
+        const gapY = xmlNode.getAttribute("gap_y") || xmlNode.getAttribute("row_gap");
+        if (gapY) {
+            el.style.rowGap = formatValue(gapY);
+        }
+
+        const wrap = xmlNode.getAttribute("wrap");
+        if (wrap) {
+            const val = this.interpolate(wrap, context).trim();
+            el.style.flexWrap = val === "true" ? "wrap" : val === "false" ? "nowrap" : val;
+        }
+
+        const cols = xmlNode.getAttribute("cols") || xmlNode.getAttribute("columns");
+        if (cols) {
+            const val = this.interpolate(cols, context).trim();
+            if (/^\d+$/.test(val)) {
+                el.style.gridTemplateColumns = `repeat(${val}, minmax(0, 1fr))`;
+            } else {
+                el.style.gridTemplateColumns = val;
+            }
+        }
+
+        const rows = xmlNode.getAttribute("rows");
+        if (rows) {
+            const val = this.interpolate(rows, context).trim();
+            if (/^\d+$/.test(val)) {
+                el.style.gridTemplateRows = `repeat(${val}, minmax(0, 1fr))`;
+            } else {
+                el.style.gridTemplateRows = val;
+            }
+        }
+
+        const customStyle = xmlNode.getAttribute("style");
+        if (customStyle) {
+            const styleStr = this.interpolate(customStyle, context).trim();
+            if (styleStr) {
+                el.style.cssText += ";" + styleStr;
+            }
+        }
+    }
+
+    applyItemChildStyles(childEl, childXmlNode, context) {
+        if (!childEl || !childXmlNode || childXmlNode.nodeType !== Node.ELEMENT_NODE) return;
+
+        const flex = childXmlNode.getAttribute("flex");
+        if (flex) {
+            childEl.style.flex = this.interpolate(flex, context).trim();
+        }
+
+        const colSpan = childXmlNode.getAttribute("col_span");
+        if (colSpan) {
+            const val = this.interpolate(colSpan, context).trim();
+            childEl.style.gridColumn = val.startsWith("span") ? val : `span ${val} / span ${val}`;
+        }
+
+        const rowSpan = childXmlNode.getAttribute("row_span");
+        if (rowSpan) {
+            const val = this.interpolate(rowSpan, context).trim();
+            childEl.style.gridRow = val.startsWith("span") ? val : `span ${val} / span ${val}`;
+        }
+    }
+
+    async mount(appXmlString) {
+        const sanitizedXml = appXmlString.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+        const parser = new DOMParser();
+        this.xmlDoc = parser.parseFromString(sanitizedXml, "text/xml");
+
+        const parserError = this.xmlDoc.querySelector("parsererror");
+        if (parserError) {
+            console.error("XML Parse Hatası:", parserError.textContent);
+            return;
+        }
+
+        this.initDataModel();
+        this.render();
+        this.runMountActions();
+    }
+
+    runMountActions() {
+        const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec");
+        if (!root) return;
+        this.getChildren(root, "on_mount").forEach(node => {
+            this.handleAction(node, {});
+        });
+    }
+
+    getJsonPath(obj, path) {
+        if (!path) return obj;
+        return String(path).split(".").reduce((acc, key) => {
+            if (acc == null) return acc;
+            return acc[key];
+        }, obj);
+    }
+
+    mapResponseItems(items, itemMapNode) {
+        if (!itemMapNode || !Array.isArray(items)) return items;
+
+        const fieldNodes = this.getChildren(itemMapNode, "field");
+        return items.map((raw) => {
+            const mapped = {};
+            const templates = [];
+
+            fieldNodes.forEach(field => {
+                const as = field.getAttribute("as");
+                if (!as) return;
+
+                const template = field.getAttribute("template");
+                if (template) {
+                    templates.push({ as, template });
+                    return;
+                }
+
+                const from = field.getAttribute("from") || as;
+                let value = raw[from];
+                const match = field.getAttribute("match");
+                if (match && value != null) {
+                    const m = String(value).match(new RegExp(match));
+                    value = m ? (m[1] ?? m[0]) : value;
+                }
+                mapped[as] = value == null ? "" : String(value);
+            });
+
+            templates.forEach(({ as, template }) => {
+                mapped[as] = template.replace(/\{(\w+)\}/g, (_, key) => mapped[key] ?? "");
+            });
+
+            return mapped;
+        });
+    }
+
+    handleXHR(actionNode, context = {}) {
+        const methodNode = this.getChild(actionNode, "method");
+        const method = (methodNode?.textContent || "GET").trim().toUpperCase();
+        const urlNode = this.getChild(actionNode, "url");
+        const targetNode = this.getChild(actionNode, "target");
+        if (!urlNode || !targetNode) return;
+
+        const url = this.interpolate(urlNode.textContent.trim(), context);
+        const target = this.parseBindPath(targetNode.textContent);
+        const selectNode = this.getChild(actionNode, "select");
+        const select = selectNode?.textContent.trim() || "";
+        const loadingNode = this.getChild(actionNode, "loading");
+        const loadingPath = this.parseBindPath(loadingNode?.textContent || "");
+        const errorNode = this.getChild(actionNode, "error");
+        const errorPath = this.parseBindPath(errorNode?.textContent || "");
+        const itemMapNode = this.getChild(actionNode, "item_map");
+        const bodyNode = this.getChild(actionNode, "body");
+
+        if (loadingPath) this.setState(loadingPath, "true");
+        if (errorPath) this.setState(errorPath, "", { silent: true });
+
+        const headersObj = {};
+        this.getChildren(actionNode, "header").forEach(header => {
+            const name = header.getAttribute("name");
+            if (name) headersObj[name] = this.interpolate(header.textContent.trim(), context);
+        });
+
+        const body = bodyNode ? this.interpolate(bodyNode.textContent.trim(), context) : null;
+
+        const fetchOptions = {
+            method,
+            headers: headersObj
+        };
+        if (method !== "GET" && method !== "HEAD" && body !== null) {
+            fetchOptions.body = body;
+        }
+
+        fetch(url, fetchOptions)
+            .then(async (response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const contentType = response.headers.get("content-type") || "";
+                let data;
+                if (contentType.includes("application/json")) {
+                    data = await response.json();
+                } else {
+                    const textData = await response.text();
+                    try { data = JSON.parse(textData); } catch (_) { data = textData; }
+                }
+                return data;
+            })
+            .then((data) => {
+                this.batch(() => {
+                    if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                    if (select) data = this.getJsonPath(data, select);
+                    if (Array.isArray(data)) {
+                        data = this.mapResponseItems(data, itemMapNode);
+                    }
+                    this._rawState[target] = data;
+                    if (errorPath) this.setState(errorPath, "", { silent: true });
+                });
+            })
+            .catch((err) => {
+                this.batch(() => {
+                    if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                    if (errorPath) this.setState(errorPath, err.message || "Ağ hatası", { silent: true });
+                });
+            });
+    }
+
+    initDataModel() {
+        const rawState = {};
+        const dataModelNode = this.getChild(this.xmlDoc.querySelector("uid_spec") || this.xmlDoc, "data_model");
+        const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : this.xmlDoc.querySelectorAll("data_model > state");
+
+        stateNodes.forEach(node => {
+            const id = node.getAttribute("id");
+            const type = node.getAttribute("type");
+
+            if (type === "array") {
+                const items = this.getChildren(node, "item").map(item => {
+                    const obj = {};
+                    Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
+                    return obj;
+                });
+                rawState[id] = items;
+            } else {
+                rawState[id] = node.textContent.trim() || "";
+            }
+        });
+
+        this._rawState = rawState;
+        const self = this;
+        this.state = new Proxy(rawState, {
+            set(target, key, value) {
+                target[key] = value;
+                if (self._batching) {
+                    self.syncBindings(key, value);
+                    return true;
+                }
+                self.syncBindings(key, value);
+                return true;
+            }
+        });
+    }
+
+    interpolate(text, context = {}) {
+        if (!text) return "";
+
+        return text.replace(/\{data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
+            let currentVal = this._rawState ? this._rawState[key] : undefined;
+            if (index !== undefined && Array.isArray(currentVal)) {
+                currentVal = currentVal[parseInt(index, 10)];
+            }
+            if (prop !== undefined && currentVal && typeof currentVal === "object") {
+                currentVal = currentVal[prop];
+            }
+            return currentVal !== undefined && currentVal !== null ? currentVal : "";
+        }).replace(/\{(\w+)\.(\w+)\}/g, (match, scope, prop) => {
+            if (context[scope] && typeof context[scope] === "object") {
+                return context[scope][prop] !== undefined ? context[scope][prop] : "";
+            }
+            return match;
+        });
+    }
+
+    evalCondition(expr, context = {}) {
+        if (!expr) return true;
+
+        const resolved = this.interpolate(expr, context);
+        if (resolved === "true") return true;
+        if (resolved === "false" || resolved === "") return false;
+
+        const resolveValueFn = (name) => {
+            if (name.startsWith("data.")) {
+                return this.getState(name.slice(5));
+            }
+            const ctxMatch = name.match(/^(\w+)(?:\.(\w+))?$/);
+            if (ctxMatch) {
+                const [_, scope, prop] = ctxMatch;
+                if (scope && context[scope] !== undefined) {
+                    if (prop) return context[scope][prop];
+                    return context[scope];
+                }
+            }
+            return this.getState(name);
+        };
+
+        if (/[==|!=|>|<|&&|\|\||!|\(\)]/.test(expr)) {
+            const cleanExpr = expr.replace(/\{([^}]+)\}/g, "$1");
+            return XUIExpressionParser.eval(cleanExpr, resolveValueFn);
+        }
+
+        return Boolean(resolved);
+    }
+
+    appendChildren(fragment, nodes, context, { skipTags = [] } = {}) {
+        Array.from(nodes).forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE && skipTags.includes(child.tagName.toLowerCase())) return;
+            const el = this.createHTMLElement(child, context);
+            if (el) fragment.appendChild(el);
+        });
+        return fragment;
+    }
+
+    renderConditional(xmlNode, context = {}) {
+        const containerNode = document.createElement("div");
+        containerNode.className = "xui-if-branch";
+        containerNode.style.display = "contents";
+
+        const branches = [];
+        let current = {
+            type: "if",
+            condition: xmlNode.getAttribute("condition") || "",
+            nodes: [],
+            sealed: false
+        };
+
+        Array.from(xmlNode.childNodes).forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === "else_if") {
+                branches.push(current);
+                current = {
+                    type: "else_if",
+                    condition: child.getAttribute("condition") || "",
+                    nodes: Array.from(child.childNodes),
+                    sealed: true
+                };
+                return;
+            }
+            if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === "else") {
+                branches.push(current);
+                current = {
+                    type: "else",
+                    condition: null,
+                    nodes: Array.from(child.childNodes),
+                    sealed: true
+                };
+                return;
+            }
+            if (current.sealed) return;
+            current.nodes.push(child);
+        });
+        branches.push(current);
+
+        const getActiveIndex = () => {
+            for (let i = 0; i < branches.length; i++) {
+                const b = branches[i];
+                const ok = b.type === "else" ? true : this.evalCondition(b.condition, context);
+                if (ok) return i;
+            }
+            return -1;
+        };
+
+        let activeIndex = getActiveIndex();
+        if (activeIndex !== -1) {
+            this.appendChildren(containerNode, branches[activeIndex].nodes, context, {
+                skipTags: ["else", "else_if"]
+            });
+        }
+
+        const keys = new Set();
+        branches.forEach(b => {
+            if (b.condition) {
+                this.extractStateKeys(b.condition).forEach(k => keys.add(k));
+            }
+        });
+
+        const updateFn = () => {
+            const newIndex = getActiveIndex();
+            if (newIndex !== activeIndex) {
+                activeIndex = newIndex;
+                containerNode.innerHTML = "";
+                if (newIndex !== -1) {
+                    const fragment = document.createDocumentFragment();
+                    this.appendChildren(fragment, branches[newIndex].nodes, context, {
+                        skipTags: ["else", "else_if"]
+                    });
+                    containerNode.appendChild(fragment);
+                }
+            }
+        };
+
+        keys.forEach(k => this.registerBinding(k, containerNode, "conditional", updateFn));
+
+        return containerNode;
+    }
+
+    renderCollapse(xmlNode, context = {}) {
+        const bindPath = this.parseBindPath(xmlNode.getAttribute("bind") || "");
+        let open = bindPath ? this.isTruthy(this.getState(bindPath)) : true;
+
+        const summaryNode = this.getChild(xmlNode, "summary");
+        const titleAttr = xmlNode.getAttribute("title") || "";
+        const title = summaryNode
+            ? this.interpolate(summaryNode.textContent.trim(), context)
+            : this.interpolate(titleAttr, context) || "Detay";
+
+        const root = document.createElement("div");
+        const extraClass = xmlNode.getAttribute("class") || "";
+
+        const header = document.createElement("button");
+        header.type = "button";
+        header.className = xmlNode.getAttribute("header_class") || "xui-collapse-header";
+
+        const chevron = document.createElement("span");
+        chevron.className = "xui-collapse-chevron";
+
+        const label = document.createElement("span");
+        label.className = "xui-collapse-title";
+        label.textContent = title;
+
+        header.appendChild(chevron);
+        header.appendChild(label);
+
+        const body = document.createElement("div");
+        body.className = xmlNode.getAttribute("body_class") || "xui-collapse-body";
+
+        const renderBodyChildren = () => {
+            body.innerHTML = "";
+            Array.from(xmlNode.childNodes).forEach(child => {
+                if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === "summary") return;
+                const el = this.createHTMLElement(child, context);
+                if (el) body.appendChild(el);
+            });
+        };
+
+        const updateCollapseState = (isOpen) => {
+            open = isOpen;
+            root.className = ["xui-collapse", open ? "is-open" : "is-closed", extraClass].filter(Boolean).join(" ");
+            header.setAttribute("aria-expanded", open ? "true" : "false");
+            chevron.textContent = open ? "▼" : "▶";
+            if (open) {
+                if (!root.contains(body)) {
+                    renderBodyChildren();
+                    root.appendChild(body);
+                }
+            } else {
+                if (root.contains(body)) root.removeChild(body);
+            }
+        };
+
+        updateCollapseState(open);
+
+        if (bindPath) {
+            header.onclick = () => {
+                const next = this.isTruthy(this.getState(bindPath)) ? "false" : "true";
+                this.setState(bindPath, next);
+            };
+            this.registerBinding(bindPath, root, "collapse", (val) => {
+                updateCollapseState(this.isTruthy(val));
+            });
+        }
+
+        root.appendChild(header);
+        if (open) root.appendChild(body);
+
+        return root;
+    }
+
+    renderDialog(xmlNode, context = {}) {
+        const bindPath = this.parseBindPath(xmlNode.getAttribute("bind") || "");
+        let open = bindPath ? this.isTruthy(this.getState(bindPath)) : false;
+
+        const closeOnBackdrop = xmlNode.getAttribute("close_on_backdrop") !== "false";
+        const summaryNode = this.getChild(xmlNode, "summary");
+        const actionsNode = this.getChild(xmlNode, "actions");
+        const titleAttr = xmlNode.getAttribute("title") || "";
+        const title = summaryNode
+            ? this.interpolate(summaryNode.textContent.trim(), context)
+            : this.interpolate(titleAttr, context) || "Dialog";
+
+        const close = () => {
+            if (bindPath) this.setState(bindPath, "false");
+        };
+
+        const containerNode = document.createElement("div");
+        containerNode.className = "xui-dialog-container";
+        containerNode.style.display = "contents";
+
+        const backdrop = document.createElement("div");
+        const extraClass = xmlNode.getAttribute("class") || "";
+        backdrop.className = xmlNode.getAttribute("backdrop_class") || ["dialog-backdrop", extraClass].filter(Boolean).join(" ");
+        backdrop.tabIndex = -1;
+        backdrop.setAttribute("role", "presentation");
+
+        backdrop.onclick = (e) => {
+            if (closeOnBackdrop && e.target === backdrop) close();
+        };
+        backdrop.onkeydown = (e) => {
+            if (e.key === "Escape") close();
+        };
+
+        const panel = document.createElement("div");
+        panel.className = xmlNode.getAttribute("panel_class") || "dialog-panel";
+        panel.setAttribute("role", "dialog");
+        panel.setAttribute("aria-modal", "true");
+        panel.setAttribute("aria-label", title);
+
+        const header = document.createElement("div");
+        header.className = xmlNode.getAttribute("header_class") || "dialog-header";
+
+        const titleEl = document.createElement("h3");
+        titleEl.className = "dialog-title";
+        titleEl.textContent = title;
+
+        const closeBtn = document.createElement("button");
+        closeBtn.type = "button";
+        closeBtn.className = "dialog-close";
+        closeBtn.setAttribute("aria-label", "Kapat");
+        closeBtn.textContent = "×";
+        closeBtn.onclick = (e) => {
+            e.stopPropagation();
+            close();
+        };
+
+        header.appendChild(titleEl);
+        header.appendChild(closeBtn);
+
+        const body = document.createElement("div");
+        body.className = xmlNode.getAttribute("body_class") || "dialog-body";
+        Array.from(xmlNode.childNodes).forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE &&
+                ["summary", "actions"].includes(child.tagName.toLowerCase())) {
+                return;
+            }
+            const el = this.createHTMLElement(child, context);
+            if (el) body.appendChild(el);
+        });
+
+        panel.appendChild(header);
+        panel.appendChild(body);
+
+        if (actionsNode) {
+            const footer = document.createElement("div");
+            footer.className = xmlNode.getAttribute("footer_class") || "dialog-actions";
+            Array.from(actionsNode.childNodes).forEach(child => {
+                const el = this.createHTMLElement(child, context);
+                if (el) footer.appendChild(el);
+            });
+            panel.appendChild(footer);
+        }
+
+        panel.onclick = (e) => e.stopPropagation();
+        backdrop.appendChild(panel);
+
+        const updateDialogState = (isOpen) => {
+            open = isOpen;
+            if (open) {
+                if (!containerNode.contains(backdrop)) {
+                    containerNode.appendChild(backdrop);
+                    requestAnimationFrame(() => backdrop.focus());
+                }
+            } else {
+                if (containerNode.contains(backdrop)) {
+                    containerNode.removeChild(backdrop);
+                }
+            }
+        };
+
+        updateDialogState(open);
+
+        if (bindPath) {
+            this.registerBinding(bindPath, containerNode, "dialog", (val) => {
+                updateDialogState(this.isTruthy(val));
+            });
+        }
+
+        return containerNode;
+    }
+
+    resolveBindPath(xmlNode) {
+        const bindAttr = xmlNode.getAttribute("bind");
+        if (bindAttr) return this.parseBindPath(bindAttr);
+
+        const onChange = this.getChild(xmlNode, "on_change");
+        if (onChange && onChange.getAttribute("action") === "SET_STATE") {
+            const pathNode = this.getChild(onChange, "path");
+            if (pathNode) return this.parseBindPath(pathNode.textContent);
+        }
+
+        const valNode = this.getChild(xmlNode, "value");
+        if (valNode) {
+            const match = String(valNode.textContent || "").trim().match(/^\{data\.(\w+)\}$/);
+            if (match) return match[1];
+        }
+
+        return "";
+    }
+
+    createHTMLElement(xmlNode, context = {}) {
+        if (xmlNode.nodeType === Node.TEXT_NODE) {
+            const txt = xmlNode.textContent.trim();
+            return txt ? document.createTextNode(this.interpolate(txt, context)) : null;
+        }
+
+        if (xmlNode.nodeType !== Node.ELEMENT_NODE) return null;
+
+        const tagName = xmlNode.tagName.toLowerCase();
+        if (["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"].includes(tagName)) {
+            return null;
+        }
+
+        const typeAttr = (xmlNode.getAttribute("type") || "").toLowerCase();
+
+        if (this._customComponents.has(tagName)) {
+            const handler = this._customComponents.get(tagName);
+            const customEl = handler(xmlNode, context, this);
+            if (customEl) return customEl;
+        }
+
+        if (typeAttr && this._customComponents.has(typeAttr)) {
+            const handler = this._customComponents.get(typeAttr);
+            const customEl = handler(xmlNode, context, this);
+            if (customEl) return customEl;
+        }
+
+        const isFlex = tagName === "flex" || typeAttr === "flex";
+        const isGrid = tagName === "grid" || typeAttr === "grid";
+
+        if (isFlex || isGrid) {
+            const el = document.createElement("div");
+            el.style.display = isFlex ? "flex" : "grid";
+            el.className = [isFlex ? "xui-flex" : "xui-grid", xmlNode.getAttribute("class")].filter(Boolean).join(" ");
+            this.applyLayoutStyles(el, xmlNode, context);
+            this.bindEvents(xmlNode, el, context);
+
+            Array.from(xmlNode.childNodes).forEach(child => {
+                const childEl = this.createHTMLElement(child, context);
+                if (childEl) {
+                    this.applyItemChildStyles(childEl, child, context);
+                    el.appendChild(childEl);
+                }
+            });
+
+            return el;
+        }
+
+        if (tagName === "for_each") {
+            const listContainer = document.createElement("div");
+            listContainer.className = "xui-list-container";
+            listContainer.style.display = "contents";
+
+            const itemsAttr = xmlNode.getAttribute("items") || "";
+            const itemsKey = this.parseBindPath(itemsAttr);
+            const varName = xmlNode.getAttribute("var") || "item";
+
+            const renderItems = () => {
+                listContainer.innerHTML = "";
+                const list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
+                    ? this._rawState[itemsKey]
+                    : [];
+
+                list.forEach(item => {
+                    Array.from(xmlNode.children).forEach(child => {
+                        const childContext = { ...context, [varName]: item };
+                        const el = this.createHTMLElement(child, childContext);
+                        if (el) {
+                            this.applyItemChildStyles(el, child, context);
+                            listContainer.appendChild(el);
+                        }
+                    });
+                });
+            };
+
+            renderItems();
+
+            if (itemsKey) {
+                this.registerBinding(itemsKey, listContainer, "for_each", () => {
+                    renderItems();
+                });
+            }
+
+            return listContainer;
+        }
+
+        if (tagName === "if") {
+            return this.renderConditional(xmlNode, context);
+        }
+
+        if (tagName === "else" || tagName === "else_if") {
+            return null;
+        }
+
+        if (tagName === "collapse") {
+            return this.renderCollapse(xmlNode, context);
+        }
+
+        if (tagName === "dialog") {
+            return this.renderDialog(xmlNode, context);
+        }
+
+        if (tagName === "component") {
+            const type = xmlNode.getAttribute("type");
+            const bindPath = this.resolveBindPath(xmlNode);
+            let el;
+
+            if (type === "title") el = document.createElement("h2");
+            else if (type === "text") el = document.createElement("span");
+            else if (type === "button") el = document.createElement("button");
+            else if (type === "image") {
+                el = document.createElement("img");
+                const src = xmlNode.getAttribute("src") || "";
+                const alt = xmlNode.getAttribute("alt") || "";
+                el.src = this.interpolate(src, context);
+                el.alt = this.interpolate(alt, context);
+                if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
+                if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
+            }
+            else if (type === "text_input") {
+                el = document.createElement("input");
+                el.type = "text";
+                el.placeholder = xmlNode.getAttribute("placeholder") || "";
+
+                if (bindPath) {
+                    el.value = this.getState(bindPath) ?? "";
+                    this.registerBinding(bindPath, el, "input");
+
+                    el.oninput = (e) => {
+                        this.setState(bindPath, e.target.value, {
+                            silent: true,
+                            sourceEl: e.target
+                        });
+                    };
+                } else {
+                    const valNode = this.getChild(xmlNode, "value");
+                    if (valNode) el.value = this.interpolate(valNode.textContent, context);
+                }
+
+                if (xmlNode.getAttribute("autofocus") === "true") {
+                    el.dataset.xuiAutofocus = "true";
+                }
+            } else if (type === "checkbox") {
+                el = document.createElement("input");
+                el.type = "checkbox";
+                const binding = this.resolveBinding(xmlNode, context);
+                if (binding) {
+                    el.checked = this.isTruthy(this.getBindingValue(binding, context));
+                    if (binding.type === "state") {
+                        this.registerBinding(binding.path, el, "checkbox");
+                    }
+                    el.onchange = (e) => {
+                        const next = e.target.checked ? "true" : "false";
+                        this.setBindingValue(binding, next, context);
+                    };
+                }
+            } else {
+                el = document.createElement("div");
+            }
+
+            const elClass = xmlNode.getAttribute("class");
+            if (elClass && el) el.className = elClass;
+
+            if (type === "text" && bindPath) {
+                const templateNode = this.getChild(xmlNode, "template");
+                const inlineTemplate = Array.from(xmlNode.childNodes)
+                    .filter(n => n.nodeType === Node.TEXT_NODE)
+                    .map(n => n.textContent)
+                    .join("")
+                    .trim();
+
+                if (templateNode) {
+                    const html = templateNode.innerHTML.trim();
+                    if (html.includes("<")) el.dataset.xuiHtmlTemplate = html;
+                    else el.dataset.xuiTextTemplate = templateNode.textContent.trim();
+                } else if (inlineTemplate.includes("{value}")) {
+                    el.dataset.xuiTextTemplate = inlineTemplate;
+                }
+
+                this.registerBinding(bindPath, el, "text");
+                this.syncBindings(bindPath, this.getState(bindPath));
+            }
+
+            this.bindEvents(xmlNode, el, context);
+
+            Array.from(xmlNode.childNodes).forEach(child => {
+                if (child.nodeType === Node.ELEMENT_NODE &&
+                    ["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on", "value", "template"].includes(child.tagName.toLowerCase())) {
+                    return;
+                }
+                if (type === "text" && bindPath && child.nodeType === Node.TEXT_NODE) {
+                    return;
+                }
+                const childEl = this.createHTMLElement(child, context);
+                if (childEl) {
+                    this.applyItemChildStyles(childEl, child, context);
+                    el.appendChild(childEl);
+                }
+            });
+
+            return el;
+        }
+
+        const div = document.createElement("div");
+        if (tagName === "layout") {
+            const layoutType = xmlNode.getAttribute("type") || "";
+            const extraClass = xmlNode.getAttribute("class") || "";
+            div.className = [layoutType, extraClass].filter(Boolean).join(" ");
+            this.applyLayoutStyles(div, xmlNode, context);
+        }
+
+        this.bindEvents(xmlNode, div, context);
+
+        Array.from(xmlNode.childNodes).forEach(child => {
+            if (child.nodeType === Node.ELEMENT_NODE &&
+                ["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on"].includes(child.tagName.toLowerCase())) {
+                return;
+            }
+            const childEl = this.createHTMLElement(child, context);
+            if (childEl) {
+                this.applyItemChildStyles(childEl, child, context);
+                div.appendChild(childEl);
+            }
+        });
+
+        return div;
+    }
+
+    bindEvents(xmlNode, el, context = {}) {
+        if (!el || xmlNode.nodeType !== Node.ELEMENT_NODE) return;
+
+        const eventMap = new Map();
+
+        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === Node.ELEMENT_NODE);
+
+        childNodes.forEach(child => {
+            const tagName = child.tagName.toLowerCase();
+            let eventType = null;
+
+            if (tagName === "on_click") eventType = "click";
+            else if (tagName === "on_change") eventType = "change";
+            else if (tagName === "on_submit") eventType = "submit";
+            else if (tagName === "on_keyup") eventType = "keyup";
+            else if (tagName === "on_keydown") eventType = "keydown";
+            else if (tagName === "on_mouseenter") eventType = "mouseenter";
+            else if (tagName === "on_mouseleave") eventType = "mouseleave";
+            else if (tagName === "event" || tagName === "on") {
+                eventType = (child.getAttribute("type") || child.getAttribute("name") || child.getAttribute("event") || "click").toLowerCase();
+            }
+
+            if (eventType) {
+                if (!eventMap.has(eventType)) eventMap.set(eventType, []);
+                eventMap.get(eventType).push(child);
+            }
+        });
+
+        eventMap.forEach((handlerNodes, eventType) => {
+            el.addEventListener(eventType, (e) => {
+                if (eventType === "submit") e.preventDefault();
+
+                for (const node of handlerNodes) {
+                    const targetKey = node.getAttribute("key") || node.getAttribute("code");
+                    if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
+                        continue;
+                    }
+
+                    if (!this.confirmAction(node, context)) continue;
+
+                    if (node.getAttribute("action")) {
+                        const actType = node.getAttribute("action");
+                        if (actType === "XHR") this.handleXHR(node, context);
+                        else this.batch(() => this.handleAction(node, context));
+                    }
+
+                    const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
+                    if (childActions.length) {
+                        const syncActions = [];
+                        const xhrActions = [];
+                        childActions.forEach(act => {
+                            if (act.getAttribute("action") === "XHR") xhrActions.push(act);
+                            else syncActions.push(act);
+                        });
+
+                        if (syncActions.length) {
+                            this.batch(() => {
+                                syncActions.forEach(act => this.handleAction(act, context));
+                            });
+                        }
+                        xhrActions.forEach(act => this.handleXHR(act, context));
+                    }
+                }
+            });
+        });
+    }
+
+    applyResets(actionNode) {
+        this.getChildren(actionNode, "reset").forEach(resetNode => {
+            const path = this.parseBindPath(resetNode.textContent || resetNode.getAttribute("path") || "");
+            if (path) this.setState(path, "", { silent: true });
+        });
+    }
+
+    confirmAction(actionNode, context = {}) {
+        const confirmNode = this.getChild(actionNode, "confirm");
+        const confirmAttr = actionNode.getAttribute("confirm");
+
+        if (!confirmNode && !confirmAttr) return true;
+
+        if (confirmNode) {
+            const condition = confirmNode.getAttribute("condition");
+            if (condition && !this.evalCondition(condition, context)) return true;
+            const message = this.interpolate(confirmNode.textContent.trim(), context);
+            return window.confirm(message || "Emin misiniz?");
+        }
+
+        return window.confirm(this.interpolate(confirmAttr, context) || "Emin misiniz?");
+    }
+
+    handleAction(actionNode, context) {
+        const actionType = actionNode.getAttribute("action");
+
+        if (this._customActions.has(actionType)) {
+            const handler = this._customActions.get(actionType);
+            handler(actionNode, context, this);
+            return;
+        }
+
+        if (actionType === "XHR") {
+            this.handleXHR(actionNode, context);
+            return;
+        }
+
+        if (actionType === "BENCHMARK" || actionType === "RUN_BENCHMARK") {
+            const count = parseInt(actionNode.getAttribute("count") || "1000", 10);
+            const targetPath = this.parseBindPath(actionNode.getAttribute("target") || "data.todos");
+            const resultPath = this.parseBindPath(actionNode.getAttribute("result") || "data.benchmark_result");
+
+            const t0 = performance.now();
+            const items = [];
+            for (let i = 1; i <= count; i++) {
+                items.push({ id: `bench_${i}`, text: `Benchmark Görevi ${i}`, completed: i % 2 === 0 ? "true" : "false" });
+            }
+            this.setState(targetPath, items);
+            const t1 = performance.now();
+            const duration = (t1 - t0).toFixed(2);
+
+            const resultMsg = `⚡ ${count.toLocaleString('tr-TR')} eleman ${duration} ms içerisinde ince taneli (fine-grained) olarak DOM'a yerleştirildi.`;
+            if (resultPath) this.setState(resultPath, resultMsg);
+            return;
+        }
+
+        if (actionType === "SET_STATE") {
+            const pathNode = this.getChild(actionNode, "path");
+            const valueNode = this.getChild(actionNode, "value");
+            if (!pathNode) return;
+
+            const path = this.parseBindPath(pathNode.textContent);
+            const rawValue = valueNode ? valueNode.textContent.trim() : "";
+            const nextValue = this.interpolate(rawValue, context);
+            this.setState(path, nextValue);
+
+            const focusNode = this.getChild(actionNode, "focus");
+            if (focusNode) {
+                this._pendingFocusKey = this.parseBindPath(focusNode.textContent);
+            }
+            return;
+        }
+
+        if (actionType === "MUTATE_STATE") {
+            const pathNode = this.getChild(actionNode, "path");
+            const opNode = this.getChild(actionNode, "operation");
+            if (!pathNode || !opNode) return;
+
+            const path = this.parseBindPath(pathNode.textContent);
+            const operation = opNode.textContent.trim();
+
+            if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
+                const valNode = this.getChild(actionNode, "value");
+                const valItem = valNode ? this.getChild(valNode, "item") : this.getChild(actionNode, "item");
+                const rawText = valItem ? (valItem.getAttribute("text") || valItem.textContent.trim()) : "";
+                const textValue = this.interpolate(rawText, context);
+
+                if (!textValue.trim()) return;
+
+                const newItem = { id: Date.now().toString() };
+                if (valItem) {
+                    Array.from(valItem.attributes).forEach(attr => {
+                        newItem[attr.name] = this.interpolate(attr.value, context);
+                    });
+                }
+                if (!newItem.text) newItem.text = textValue;
+                if (newItem.completed === undefined) newItem.completed = "false";
+
+                this.batch(() => {
+                    const currentList = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
+                    if (operation === "UNSHIFT" || operation === "PREPEND") {
+                        this.setState(path, [newItem, ...currentList]);
+                    } else {
+                        this.setState(path, [...currentList, newItem]);
+                    }
+                    this.applyResets(actionNode);
+                    if (!this.getChild(actionNode, "reset") && "new_todo_input" in this._rawState) {
+                        this.setState("new_todo_input", "", { silent: true });
+                    }
+                });
+            }
+
+            if (operation === "REMOVE") {
+                const whereNode = this.getChild(actionNode, "where");
+                if (!whereNode) return;
+
+                const field = whereNode.getAttribute("field") || "id";
+                const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                const matchValue = this.interpolate(rawMatch, context);
+                const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
+
+                this.batch(() => {
+                    const nextList = list.filter(item => String(item[field]) !== String(matchValue));
+                    this.setState(path, nextList);
+                    this.applyResets(actionNode);
+                    if (String(this._rawState.editing_id) === String(matchValue)) {
+                        if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
+                        if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                    }
+                });
+            }
+
+            if (operation === "UPDATE") {
+                const whereNode = this.getChild(actionNode, "where");
+                const fieldsNode = this.getChild(actionNode, "fields");
+                if (!fieldsNode) return;
+
+                const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
+                const updates = {};
+                Array.from(fieldsNode.attributes).forEach(attr => {
+                    updates[attr.name] = this.interpolate(attr.value, context);
+                });
+
+                if (updates.text !== undefined && !String(updates.text).trim()) return;
+
+                const matchesWhere = (item) => {
+                    if (!whereNode) return true;
+                    const field = whereNode.getAttribute("field") || "id";
+                    const op = (whereNode.getAttribute("op") || "eq").toLowerCase();
+                    const rawMatch = whereNode.getAttribute("equals")
+                        ?? whereNode.getAttribute("value")
+                        ?? whereNode.textContent.trim();
+                    const expected = this.interpolate(rawMatch, context);
+                    const actual = item[field];
+
+                    if (op === "neq" || op === "!=" || op === "ne") {
+                        return String(actual) !== String(expected);
+                    }
+                    return String(actual) === String(expected);
+                };
+
+                const touchedIds = [];
+                this.batch(() => {
+                    const nextList = list.map(item => {
+                        if (!matchesWhere(item)) return item;
+                        touchedIds.push(item.id);
+                        return { ...item, ...updates };
+                    });
+                    this.setState(path, nextList);
+                    this.applyResets(actionNode);
+
+                    if (
+                        touchedIds.length === 1 &&
+                        String(this._rawState.editing_id) === String(touchedIds[0])
+                    ) {
+                        if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
+                        if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                    }
+                });
+            }
+        }
+    }
+
+    render() {
+        if (!this.container || !this.xmlDoc) return;
+
+        this._bindings = new Map();
+        this.container.innerHTML = "";
+        
+        const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
+        let layout = this.getChild(root, "layout") || this.getChild(root, "flex") || this.getChild(root, "grid");
+        if (!layout) {
+            layout = root.querySelector("layout, flex, grid");
+        }
+
+        if (layout) {
+            const dom = this.createHTMLElement(layout);
+            if (dom) this.container.appendChild(dom);
+        }
+
+        const autofocusEl = this.container.querySelector("[data-xui-autofocus='true']");
+        if (autofocusEl && typeof autofocusEl.focus === "function") {
+            autofocusEl.focus();
+        }
+    }
+}
+
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+    window.XUIExpressionParser = XUIExpressionParser;
+    window.XUIEngine = XUIEngine;
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => XUIEngine.autoInit());
+    } else {
+        XUIEngine.autoInit();
+    }
+}
+
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = { XUIEngine, XUIExpressionParser, default: XUIEngine };
+}
