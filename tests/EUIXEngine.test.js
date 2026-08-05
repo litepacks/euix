@@ -507,4 +507,49 @@ describe('EUIXEngine Unit Tests', () => {
 
         expect(actionReported).toBe(true);
     });
+
+    it('should extract and interpolate <constants> / <vars> tokens in templates and classes', () => {
+        const xml = `
+        <uid_spec>
+            <constants>
+                <const id="card_style">p-4 bg-white border rounded-xl</const>
+                <const id="btn_primary">px-4 py-2 bg-blue-600 text-white</const>
+            </constants>
+            <vars>
+                <var id="app_title">My EUIX App</var>
+            </vars>
+            <flex class="{const.card_style}">
+                <span class="title">{var.app_title}</span>
+                <button class="{const.btn_primary}">Submit</button>
+            </flex>
+        </uid_spec>
+        `;
+
+        EUIXEngine.mount(xml, '#app');
+
+        const card = document.querySelector('.euix-flex');
+        expect(card.className).toContain('p-4 bg-white border rounded-xl');
+
+        const title = document.querySelector('.title');
+        expect(title.textContent).toBe('My EUIX App');
+
+        const btn = document.querySelector('button');
+        expect(btn.className).toContain('px-4 py-2 bg-blue-600 text-white');
+    });
+
+    it('should support static registerConstant and instance registerConstant', () => {
+        EUIXEngine.registerConstant('global_theme', 'dark-mode');
+        const engine = new EUIXEngine('#app');
+        engine.registerConstant('local_token', 'token-123');
+
+        expect(engine.getConstant('global_theme')).toBe('dark-mode');
+        expect(engine.getConstant('local_token')).toBe('token-123');
+
+        const xml = `<uid_spec><span class="badge {const.global_theme}">{const.local_token}</span></uid_spec>`;
+        engine.mount(xml);
+
+        const span = document.querySelector('.badge');
+        expect(span.className).toContain('dark-mode');
+        expect(span.textContent).toBe('token-123');
+    });
 });

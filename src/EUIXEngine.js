@@ -247,6 +247,10 @@ class EUIXEngine {
         this._componentSpecs = new Map();
         this.refs = {};
         this.onError = null;
+        this.constants = new Map();
+        if (!EUIXEngine._globalConstants) {
+            EUIXEngine._globalConstants = new Map();
+        }
         if (!EUIXEngine._globalComponentSpecs) {
             EUIXEngine._globalComponentSpecs = new Map();
         }
@@ -803,6 +807,7 @@ class EUIXEngine {
                 return Promise.resolve();
             });
             Promise.all(promises).then(() => {
+                this.initConstants();
                 this.initDataModel();
                 this.render();
                 this.runMountActions();
@@ -810,6 +815,7 @@ class EUIXEngine {
             return this;
         }
 
+        this.initConstants();
         this.initDataModel();
         this.render();
         this.runMountActions();
@@ -950,6 +956,35 @@ class EUIXEngine {
             });
     }
 
+    static registerConstant(name, value) {
+        if (!EUIXEngine._globalConstants) EUIXEngine._globalConstants = new Map();
+        EUIXEngine._globalConstants.set(name, value);
+    }
+
+    registerConstant(name, value) {
+        if (!this.constants) this.constants = new Map();
+        this.constants.set(name, value);
+    }
+
+    getConstant(name) {
+        if (this.constants && this.constants.has(name)) return this.constants.get(name);
+        if (EUIXEngine._globalConstants && EUIXEngine._globalConstants.has(name)) return EUIXEngine._globalConstants.get(name);
+        return undefined;
+    }
+
+    initConstants() {
+        if (!this.constants) this.constants = new Map();
+        if (!this.xmlDoc) return;
+
+        const constsNodes = Array.from(this.xmlDoc.querySelectorAll("const, constant, var, variable"));
+        constsNodes.forEach(node => {
+            const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
+            if (id) {
+                this.constants.set(id, node.textContent.trim());
+            }
+        });
+    }
+
     initDataModel() {
         const rawState = {};
         const dataModelNode = this.getChild(this.xmlDoc.querySelector("uid_spec") || this.xmlDoc, "data_model");
@@ -989,7 +1024,24 @@ class EUIXEngine {
     interpolate(text, context = {}) {
         if (!text) return "";
 
-        return text.replace(/\{data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
+        let result = text;
+
+        // 1. Resolve {const.name}, {var.name}, {constants.name}, {vars.name}
+        result = result.replace(/\{(?:const|var|constant|variable|constants|vars)\.(\w+)\}/g, (match, name) => {
+            if (context && context.constants && context.constants[name] !== undefined) {
+                return context.constants[name];
+            }
+            if (this.constants && this.constants.has(name)) {
+                return this.constants.get(name);
+            }
+            if (EUIXEngine._globalConstants && EUIXEngine._globalConstants.has(name)) {
+                return EUIXEngine._globalConstants.get(name);
+            }
+            return match;
+        });
+
+        // 2. Resolve {data.key}
+        result = result.replace(/\{data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
             let currentVal = this._rawState ? this._rawState[key] : undefined;
             if (index !== undefined && Array.isArray(currentVal)) {
                 currentVal = currentVal[parseInt(index, 10)];
@@ -998,12 +1050,17 @@ class EUIXEngine {
                 currentVal = currentVal[prop];
             }
             return currentVal !== undefined && currentVal !== null ? currentVal : "";
-        }).replace(/\{(\w+)\.(\w+)\}/g, (match, scope, prop) => {
+        });
+
+        // 3. Resolve {props.key} and {scope.key}
+        result = result.replace(/\{(\w+)\.(\w+)\}/g, (match, scope, prop) => {
             if (context[scope] && typeof context[scope] === "object") {
                 return context[scope][prop] !== undefined ? context[scope][prop] : "";
             }
             return match;
         });
+
+        return result;
     }
 
     evalCondition(expr, context = {}) {
@@ -1414,7 +1471,7 @@ class EUIXEngine {
         if (isFlex || isGrid) {
             const el = document.createElement("div");
             el.style.display = isFlex ? "flex" : "grid";
-            el.className = [isFlex ? "euix-flex" : "euix-grid", xmlNode.getAttribute("class")].filter(Boolean).join(" ");
+            el.className = [isFlex ? "euix-flex" : "euix-grid", this.interpolate(xmlNode.getAttribute("class") || "", context)].filter(Boolean).join(" ");
             this.applyLayoutStyles(el, xmlNode, context);
             this.bindEvents(xmlNode, el, context);
 
@@ -1477,7 +1534,7 @@ class EUIXEngine {
 
         if (tagName === "form") {
             const form = document.createElement("form");
-            const formClass = xmlNode.getAttribute("class");
+            const formClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
             if (formClass) form.className = formClass;
             this.bindEvents(xmlNode, form, context);
 
@@ -1495,7 +1552,7 @@ class EUIXEngine {
 
         if (tagName === "select") {
             const sel = document.createElement("select");
-            const selClass = xmlNode.getAttribute("class");
+            const selClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
             if (selClass) sel.className = selClass;
             const bindPath = this.resolveBindPath(xmlNode);
 
@@ -1530,7 +1587,7 @@ class EUIXEngine {
 
         if (tagName === "textarea") {
             const ta = document.createElement("textarea");
-            const taClass = xmlNode.getAttribute("class");
+            const taClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
             if (taClass) ta.className = taClass;
             const placeholder = xmlNode.getAttribute("placeholder");
             if (placeholder) ta.placeholder = this.interpolate(placeholder, context);
@@ -1553,7 +1610,7 @@ class EUIXEngine {
             const inputType = (xmlNode.getAttribute("type") || "text").toLowerCase();
             const el = document.createElement("input");
             el.type = inputType;
-            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            if (xmlNode.getAttribute("class")) el.className = this.interpolate(xmlNode.getAttribute("class"), context);
             if (xmlNode.getAttribute("placeholder")) el.placeholder = this.interpolate(xmlNode.getAttribute("placeholder"), context);
             if (xmlNode.getAttribute("autofocus") === "true") el.dataset.xuiAutofocus = "true";
             if (xmlNode.getAttribute("min")) el.min = xmlNode.getAttribute("min");
@@ -1592,7 +1649,7 @@ class EUIXEngine {
 
         if (tagName === "img" || tagName === "image") {
             const el = document.createElement("img");
-            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            if (xmlNode.getAttribute("class")) el.className = this.interpolate(xmlNode.getAttribute("class"), context);
             const src = xmlNode.getAttribute("src") || "";
             const alt = xmlNode.getAttribute("alt") || "";
             el.src = this.interpolate(src, context);
@@ -1605,7 +1662,7 @@ class EUIXEngine {
 
         if (tagName === "button") {
             const el = document.createElement("button");
-            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            if (xmlNode.getAttribute("class")) el.className = this.interpolate(xmlNode.getAttribute("class"), context);
             const btnType = xmlNode.getAttribute("type");
             if (btnType) el.type = btnType;
             this.bindEvents(xmlNode, el, context);
@@ -1735,10 +1792,14 @@ class EUIXEngine {
                     };
                 }
             } else {
-                el = document.createElement("div");
+                try {
+                    el = document.createElement(tagName);
+                } catch (_) {
+                    el = document.createElement("div");
+                }
             }
 
-            const elClass = xmlNode.getAttribute("class");
+            const elClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
             if (elClass && el) el.className = elClass;
 
             if (type === "text" && bindPath) {
@@ -1784,7 +1845,7 @@ class EUIXEngine {
         const allowedTags = ["div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote"];
         const elementTagName = allowedTags.includes(tagName) ? tagName : "div";
         const div = document.createElement(elementTagName);
-        const xmlClass = xmlNode.getAttribute("class");
+        const xmlClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
         if (xmlClass) div.className = xmlClass;
 
         if (tagName === "layout") {
@@ -1918,13 +1979,24 @@ class EUIXEngine {
             }
         });
 
+        const compConstants = {};
+        const constsNodes = Array.from(specNode.querySelectorAll("constants > const, constants > constant, vars > var, variables > variable"));
+        constsNodes.forEach(node => {
+            const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
+            if (id) compConstants[id] = node.textContent.trim();
+        });
+
         const childContext = {
             ...context,
             props,
-            ...props
+            ...props,
+            constants: {
+                ...(context.constants || {}),
+                ...compConstants
+            }
         };
 
-        const metadataTags = ["props", "data_model", "imports", "import"];
+        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables"];
         const templateNode = this.getChild(specNode, "template") ||
             this.getChild(specNode, "flex") ||
             this.getChild(specNode, "grid") ||
@@ -2171,12 +2243,13 @@ class EUIXEngine {
 
         this._bindings = new Map();
         this.refs = {};
-        this.container.innerHTML = "";
-        
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
         let layout = this.getChild(root, "layout") || this.getChild(root, "flex") || this.getChild(root, "grid") || this.getChild(root, "form");
         if (!layout) {
             layout = root.querySelector("layout, flex, grid, form, collapse");
+        }
+        if (!layout) {
+            layout = Array.from(root.children || []).find(c => c.tagName && !["data_model", "imports", "constants", "vars", "variables", "component_def"].includes(c.tagName.toLowerCase())) || root;
         }
 
         if (layout) {

@@ -231,30 +231,6 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         expect(img.src).toContain('25.png');
     });
 
-    it('should render CompareSection.xml with 3-column architectural grid (EUIX vs React vs htmx)', () => {
-        const xml = `
-        <uid_spec>
-            <data_model>
-                <state id="compare_open" type="string">true</state>
-            </data_model>
-            <flex direction="column">
-                <compare-section />
-            </flex>
-        </uid_spec>
-        `;
-
-        EUIXEngine.mount(xml, '#app');
-
-        const gridEl = document.querySelector('.euix-grid');
-        expect(gridEl).not.toBeNull();
-
-        const cards = gridEl.children;
-        expect(cards.length).toBe(3);
-        expect(cards[0].textContent).toContain('EUIX Engine');
-        expect(cards[1].textContent).toContain('React.js');
-        expect(cards[2].textContent).toContain('htmx');
-    });
-
     it('should handle mouseenter/mouseleave hover events in EventsSection.xml', () => {
         const xml = `
         <uid_spec>

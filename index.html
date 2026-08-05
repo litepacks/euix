@@ -18,6 +18,12 @@
     <!-- EUIX Şablonu (Auto-Init) -->
     <script type="application/euix" target="#app">
     <uid_spec id="todo_app">
+        <constants>
+            <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100</const>
+            <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer</const>
+            <const id="badge_blue">px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg text-xs</const>
+        </constants>
+
         <data_model>
             <state id="new_todo_input" type="string"></state>
             <state id="edit_todo_input" type="string"></state>
@@ -76,20 +82,18 @@
             <import name="counter-section" src="components/CounterSection.xml" />
             <import name="todo-section" src="components/TodoSection.xml" />
             <import name="pokemon-section" src="components/PokemonSection.xml" />
-            <import name="compare-section" src="components/CompareSection.xml" />
             <import name="events-section" src="components/EventsSection.xml" />
             <import name="form-section" src="components/FormSection.xml" />
             <import name="confirm-modal" src="components/ConfirmModal.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
-        <flex direction="column" gap="16" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+        <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <counter-section />
             <todo-section />
             <form-section />
             <pokemon-section />
-            <compare-section />
             <events-section />
             <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
             <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
