@@ -1,0 +1,38 @@
+<component_def name="pokemon-section">
+    <imports>
+        <import name="pokemon-card" src="components/PokemonCard.xml" />
+    </imports>
+
+    <collapse bind="data.pokemon_open" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
+        <summary>Pokémon</summary>
+        <flex direction="row" align="center" gap="8">
+            <component type="button" class="px-3.5 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                <label>Yeniden yükle</label>
+                <on_click action="XHR">
+                    <method>GET</method>
+                    <url>https://pokeapi.co/api/v2/pokemon?limit=12</url>
+                    <select>results</select>
+                    <target>data.pokemons</target>
+                    <loading>data.pokemon_loading</loading>
+                    <error>data.pokemon_error</error>
+                    <item_map>
+                        <field as="id" from="url" match="/(\d+)\/?$/" />
+                        <field as="name" from="name" />
+                        <field as="image" template="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png" />
+                    </item_map>
+                </on_click>
+            </component>
+            <if condition="{data.pokemon_loading} == true">
+                <component type="text" class="text-xs text-slate-400 font-medium animate-pulse">Yükleniyor...</component>
+            </if>
+            <if condition="{data.pokemon_error}">
+                <component type="text" class="text-xs text-rose-500 font-medium" bind="data.pokemon_error" />
+            </if>
+        </flex>
+        <grid cols="3" gap="10">
+            <for_each items="{data.pokemons}" var="poke">
+                <pokemon-card id="{poke.id}" name="{poke.name}" image="{poke.image}" />
+            </for_each>
+        </grid>
+    </collapse>
+</component_def>

@@ -1,0 +1,9 @@
+<component_def name="user-badge">
+    <flex direction="row" align="center" gap="8" class="p-2 px-3 bg-indigo-50/70 border border-indigo-100 rounded-xl">
+        <component type="image" src="{props.avatar}" width="32" height="32" class="rounded-full shadow-sm" />
+        <flex direction="column" gap="2">
+            <component type="text" class="text-xs font-bold text-indigo-900">{props.title}</component>
+            <component type="text" class="text-[10px] font-semibold text-indigo-600/80">{props.badge_label}</component>
+        </flex>
+    </flex>
+</component_def>

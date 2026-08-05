@@ -242,6 +242,10 @@ class XUIEngine {
         this._bindings = new Map();
         this._customComponents = new Map();
         this._customActions = new Map();
+        this._componentSpecs = new Map();
+        if (!XUIEngine._globalComponentSpecs) {
+            XUIEngine._globalComponentSpecs = new Map();
+        }
     }
 
     static mount(xmlString, containerSelector = "#app") {
@@ -249,6 +253,98 @@ class XUIEngine {
         XUIEngine.instance = engine;
         engine.mount(xmlString);
         return engine;
+    }
+
+    static async loadComponent(name, url) {
+        try {
+            if (typeof fetch === "undefined") {
+                console.error("[XUIEngine] fetch is not available in this environment.");
+                return null;
+            }
+            const res = await fetch(url);
+            const xmlText = typeof res.text === "function" ? await res.text() : (typeof res === "string" ? res : String(res));
+            
+            const sanitizedXml = xmlText.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(sanitizedXml, "text/xml");
+
+            const nestedImports = Array.from(doc.querySelectorAll("import"));
+            for (const imp of nestedImports) {
+                const impSrc = imp.getAttribute("src");
+                const impName = imp.getAttribute("name") || imp.getAttribute("as");
+                if (impSrc && impName) {
+                    await XUIEngine.loadComponent(impName, impSrc);
+                }
+            }
+
+            return XUIEngine.registerComponentSpec(name, doc);
+        } catch (err) {
+            console.error(`[XUIEngine] Bileşen dosyadan yüklenemedi ('${name}' -> '${url}'):`, err);
+            return null;
+        }
+    }
+
+    static registerComponentSpec(name, xmlStringOrNode) {
+        let node;
+        if (typeof xmlStringOrNode === "string") {
+            const sanitizedXml = xmlStringOrNode.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(sanitizedXml, "text/xml");
+
+            const nestedDefs = Array.from(doc.querySelectorAll("component_def"));
+            nestedDefs.forEach(def => {
+                const defName = def.getAttribute("name") || def.getAttribute("id");
+                if (defName && defName.toLowerCase() !== (name || "").toLowerCase()) {
+                    XUIEngine.registerComponentSpec(defName, def);
+                }
+            });
+
+            node = doc.querySelector("component_def, uid_spec, flex, grid, layout") || doc.documentElement;
+        } else if (xmlStringOrNode && (xmlStringOrNode.nodeType === 1 || xmlStringOrNode.nodeType === 9)) {
+            if (xmlStringOrNode.nodeType === 1) {
+                const tagName = xmlStringOrNode.tagName ? xmlStringOrNode.tagName.toLowerCase() : "";
+                if (["component_def", "uid_spec", "flex", "grid", "layout"].includes(tagName)) {
+                    node = xmlStringOrNode;
+                } else {
+                    node = xmlStringOrNode.querySelector("component_def, uid_spec, flex, grid, layout") || xmlStringOrNode;
+                }
+            } else {
+                node = xmlStringOrNode.querySelector("component_def, uid_spec, flex, grid, layout") || xmlStringOrNode.documentElement;
+            }
+
+            const nestedDefs = Array.from(xmlStringOrNode.querySelectorAll("component_def"));
+            nestedDefs.forEach(def => {
+                const defName = def.getAttribute("name") || def.getAttribute("id");
+                if (defName && defName.toLowerCase() !== (name || "").toLowerCase() && def !== node) {
+                    XUIEngine.registerComponentSpec(defName, def);
+                }
+            });
+        } else {
+            node = xmlStringOrNode;
+        }
+
+        const compName = (name || (node && node.getAttribute && node.getAttribute("name")) || (node && node.getAttribute && node.getAttribute("id")) || "").toLowerCase();
+        if (compName && node) {
+            if (!XUIEngine._globalComponentSpecs) XUIEngine._globalComponentSpecs = new Map();
+            XUIEngine._globalComponentSpecs.set(compName, node);
+        }
+        return compName;
+    }
+
+    async loadComponentFile(name, url) {
+        const compName = await XUIEngine.loadComponent(name, url);
+        if (compName && XUIEngine._globalComponentSpecs.has(compName)) {
+            this._componentSpecs.set(compName, XUIEngine._globalComponentSpecs.get(compName));
+        }
+        return compName;
+    }
+
+    registerComponentSpec(name, xmlStringOrNode) {
+        const compName = XUIEngine.registerComponentSpec(name, xmlStringOrNode);
+        if (compName && XUIEngine._globalComponentSpecs.has(compName)) {
+            this._componentSpecs.set(compName, XUIEngine._globalComponentSpecs.get(compName));
+        }
+        return compName;
     }
 
     static autoInit() {
@@ -582,7 +678,7 @@ class XUIEngine {
         }
     }
 
-    async mount(appXmlString) {
+    mount(appXmlString) {
         const sanitizedXml = appXmlString.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
         const parser = new DOMParser();
         this.xmlDoc = parser.parseFromString(sanitizedXml, "text/xml");
@@ -590,12 +686,37 @@ class XUIEngine {
         const parserError = this.xmlDoc.querySelector("parsererror");
         if (parserError) {
             console.error("XML Parse Hatası:", parserError.textContent);
-            return;
+            return this;
+        }
+
+        const defNodes = Array.from(this.xmlDoc.querySelectorAll("component_def"));
+        defNodes.forEach(def => {
+            const name = def.getAttribute("name") || def.getAttribute("id");
+            if (name) {
+                this.registerComponentSpec(name, def);
+            }
+        });
+
+        const importNodes = Array.from(this.xmlDoc.querySelectorAll("import"));
+        if (importNodes.length > 0 && typeof fetch !== "undefined") {
+            const promises = importNodes.map(imp => {
+                const src = imp.getAttribute("src");
+                const name = imp.getAttribute("name") || imp.getAttribute("as");
+                if (src && name) return this.loadComponentFile(name, src);
+                return Promise.resolve();
+            });
+            Promise.all(promises).then(() => {
+                this.initDataModel();
+                this.render();
+                this.runMountActions();
+            });
+            return this;
         }
 
         this.initDataModel();
         this.render();
         this.runMountActions();
+        return this;
     }
 
     runMountActions() {
@@ -634,10 +755,21 @@ class XUIEngine {
 
                 const from = field.getAttribute("from") || as;
                 let value = raw[from];
-                const match = field.getAttribute("match");
-                if (match && value != null) {
-                    const m = String(value).match(new RegExp(match));
-                    value = m ? (m[1] ?? m[0]) : value;
+                let matchStr = field.getAttribute("match");
+                if (matchStr && value != null) {
+                    let pattern = matchStr;
+                    let flags = "";
+                    const regexLiteralMatch = matchStr.match(/^\/(.+)\/([a-z]*)$/i);
+                    if (regexLiteralMatch) {
+                        pattern = regexLiteralMatch[1];
+                        flags = regexLiteralMatch[2];
+                    }
+                    try {
+                        const m = String(value).match(new RegExp(pattern, flags));
+                        value = m ? (m[1] ?? m[0]) : value;
+                    } catch (e) {
+                        console.warn("[XUIEngine] Regex Match Hatası:", e);
+                    }
                 }
                 mapped[as] = value == null ? "" : String(value);
             });
@@ -1127,6 +1259,16 @@ class XUIEngine {
             if (customEl) return customEl;
         }
 
+        if (this._componentSpecs.has(tagName) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(tagName))) {
+            const specNode = this._componentSpecs.get(tagName) || XUIEngine._globalComponentSpecs.get(tagName);
+            return this.renderComponentSpec(specNode, xmlNode, context);
+        }
+
+        if (typeAttr && (this._componentSpecs.has(typeAttr) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(typeAttr)))) {
+            const specNode = this._componentSpecs.get(typeAttr) || XUIEngine._globalComponentSpecs.get(typeAttr);
+            return this.renderComponentSpec(specNode, xmlNode, context);
+        }
+
         const isFlex = tagName === "flex" || typeAttr === "flex";
         const isGrid = tagName === "grid" || typeAttr === "grid";
 
@@ -1393,6 +1535,42 @@ class XUIEngine {
                 }
             });
         });
+    }
+
+    renderComponentSpec(specNode, usageNode, context = {}) {
+        if (!specNode) return null;
+
+        const props = {};
+
+        Array.from(usageNode.attributes || []).forEach(attr => {
+            if (attr.name !== "type" && attr.name !== "class") {
+                props[attr.name] = this.interpolate(attr.value, context);
+            }
+        });
+
+        const childContext = {
+            ...context,
+            props,
+            ...props
+        };
+
+        const metadataTags = ["props", "data_model", "imports", "import"];
+        const templateNode = this.getChild(specNode, "template") ||
+            this.getChild(specNode, "flex") ||
+            this.getChild(specNode, "grid") ||
+            this.getChild(specNode, "layout") ||
+            this.getChild(specNode, "collapse") ||
+            this.getChild(specNode, "dialog") ||
+            Array.from(specNode.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase())) ||
+            specNode;
+
+        const rendered = this.createHTMLElement(templateNode, childContext);
+        if (rendered && usageNode.getAttribute("class")) {
+            const extraClass = usageNode.getAttribute("class");
+            rendered.className = [rendered.className, extraClass].filter(Boolean).join(" ");
+        }
+
+        return rendered;
     }
 
     applyResets(actionNode) {

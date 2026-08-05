@@ -1,0 +1,15 @@
+<component_def name="app-header">
+    <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-4">
+        <flex direction="row" align="center" gap="12">
+            <component type="title" class="text-xl font-black text-slate-800 tracking-tight">Çalışan Vanilla .XUI</component>
+            <user-badge title="Ahmet Yılmaz" badge_label="XUI Core Team" avatar="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" />
+        </flex>
+        <component type="button" class="px-3.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-all shadow-sm">
+            <label>Hakkında</label>
+            <on_click action="SET_STATE">
+                <path>data.help_open</path>
+                <value>true</value>
+            </on_click>
+        </component>
+    </flex>
+</component_def>

@@ -257,3 +257,76 @@ engine.registerAction('TOAST', (actionNode, context, engine) => {
     alert('Toast Bildirimi: ' + msg);
 });
 ```
+
+---
+
+## 6. 📦 Harici Dosyadan Bileşen Yükleme (Component Architecture & Import)
+
+XUI Engine, projeyi modüler hale getirmek için bileşenleri harici XML/HTML dosyalarından yükleme (`<import>`) veya aynı belgede inline olarak tanımlama (`<component_def>`) olanağı sunar.
+
+### 1. Deklaratif Dosya İçe Aktarma (`<import>`)
+Ana XML şablonunuzda harici bileşen dosyalarını otomatik olarak içe aktarabilirsiniz:
+
+```xml
+<uid_spec>
+    <imports>
+        <!-- components/UserBadge.xml dosyasını yükler ve <user-badge> etiketini tanımlar -->
+        <import name="user-badge" src="components/UserBadge.xml" />
+    </imports>
+
+    <flex direction="column">
+        <!-- İçe aktarılan bileşenin kullanımı ve Props aktarımı -->
+        <user-badge title="Ahmet Yılmaz" badge_label="Admin" avatar="https://i.pravatar.cc/100?u=1" />
+        <component type="user-badge" title="Mehmet Demir" badge_label="Developer" avatar="https://i.pravatar.cc/100?u=2" />
+    </flex>
+</uid_spec>
+```
+
+---
+
+### 2. Bileşen Dosyası Yapısı (`components/UserBadge.xml`)
+Harici bileşen dosyasının içeriği:
+
+```xml
+<component_def name="user-badge">
+    <flex direction="row" align="center" gap="8" class="p-2 px-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+        <component type="image" src="{props.avatar}" width="32" height="32" class="rounded-full" />
+        <flex direction="column">
+            <component type="text" class="text-xs font-bold text-indigo-900">{props.title}</component>
+            <component type="text" class="text-[10px] text-indigo-600">{props.badge_label}</component>
+        </flex>
+    </flex>
+</component_def>
+```
+
+---
+
+### 3. JavaScript API İle Dosyadan Yükleme (`XUIEngine.loadComponent`)
+
+Bileşenleri doğrudan JavaScript ile asenkron yükleyebilirsiniz:
+
+```javascript
+// Harici bileşen dosyasını yükler ve globale kaydeder
+await XUIEngine.loadComponent('user-badge', './components/UserBadge.xml');
+
+// Veya aktif engine örneği üzerinden:
+await engine.loadComponentFile('user-badge', './components/UserBadge.xml');
+```
+
+---
+
+### 4. Inline Bileşen Tanımlama (`<component_def>`)
+Sayfa içinde hızlıca bileşen tanımlamak için:
+
+```xml
+<component_def name="card">
+    <flex direction="column" class="p-4 bg-white border rounded-xl shadow-sm">
+        <component type="title">{props.header}</component>
+        <component type="text">{props.body}</component>
+    </flex>
+</component_def>
+
+<!-- Kullanımı -->
+<card header="Kart 1" body="İçerik detayı..." />
+```
+
