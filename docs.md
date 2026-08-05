@@ -174,3 +174,38 @@ Herhangi bir alt bileşene verilebilen düzen öznitelikleri:
 </body>
 </html>
 ```
+
+---
+
+## 📌 Ref Mantığı (`ref="..."`) & Doğrudan DOM Erişimi
+
+XUI Engine, harici DOM erişimi gerektiren durumlar için **Ref (Reference)** sistemini destekler. Any XML elemanına `ref="referansAdi"` eklendiğinde, oluşturulan canlı DOM nesnesi `engine.refs.referansAdi` altında saklanır.
+
+### 1. XML İçerisinde Ref Tanımlama & Aksiyon Odaklama (Focus)
+
+```xml
+<flex direction="row" gap="8">
+    <!-- input elemanına ref atama -->
+    <component type="text_input" ref="todoInputRef" placeholder="Görev yazın..." />
+    
+    <!-- Butona tıklandığında ilgili ref'e odaklanma -->
+    <component type="button">
+        <label>Girdiye Odaklan</label>
+        <on_click action="FOCUS" target="todoInputRef" />
+    </component>
+</flex>
+```
+
+### 2. JavaScript İle `engine.refs` Üzerinden DOM Erişimi
+
+```javascript
+const engine = await XUIEngine.mount(xmlText, "#app");
+
+// Doğrudan DOM nesnesine erişim (HTMLInputElement)
+const inputEl = engine.refs.todoInputRef;
+
+// Native DOM metodlarını tetikleme
+inputEl.focus();
+inputEl.select();
+console.log(inputEl.getBoundingClientRect());
+```

@@ -96,17 +96,23 @@ Durum tabanlı modal pencere bileşeni. Escape ve arka plan (backdrop) tıklamas
 
 ---
 
-## 2. 🧩 Temel UI Bileşenleri (`<component type="...">`)
+## 2. 🧩 UI Bileşenleri ve Standart HTML Elemanları
 
-| Bileşen Tipi (`type`) | HTML Elemanı | Öne Çıkan Öznitelikler / Alt Etiketler | Örnek Kullanım |
-| :--- | :--- | :--- | :--- |
-| **`title`** | `html h2` | `class` | `<component type="title">Başlık</component>` |
-| **`text`** | `span` | `bind`, `<template>` | `<component type="text" bind="data.username" />` |
-| **`text_input`** | `<input type="text">` | `bind`, `placeholder`, `autofocus` | `<component type="text_input" bind="data.input_val" placeholder="Yazın..." />` |
-| **`checkbox`** | `<input type="checkbox">` | `bind` | `<component type="checkbox" bind="todo.completed" />` |
-| **`button`** | `<button>` | `<label>`, `<event>` | `<component type="button"><label>Ekle</label></component>` |
-| **`image`** | `<img>` | `src`, `alt`, `width`, `height` | `<component type="image" src="{poke.image}" width="64" />` |
-| **`flex` / `grid`** | `<div>` | `direction`, `cols` vb. | `<component type="flex" direction="row">...</component>` |
+Vanilla .XUI Engine, standart **Native HTML elemanlarını** (`<span>`, `<h2>`, `<p>`, `<button>`, `<input>`, `<img>`, `<select>`, `<textarea>`) direkt olarak birinci sınıf bileşen olarak destekler. Dolayısıyla dolaylı ve uzun `<component type="...">` sarmalayıcıları yerine doğrudan standart HTML etiketlerini kullanabilirsiniz.
+
+| Doğrudan Native Etiket | Eski `<component type="...">` Karşılığı | HTML Çıktısı | Öne Çıkan Öznitelikler / Alt Etiketler | Örnek Kullanım |
+| :--- | :--- | :--- | :--- | :--- |
+| **`<span>` / `<p>`** | `<component type="text">` | `<span>` / `<p>` | `bind`, `<template>`, `class` | `<span class="font-bold">Yazı</span>` |
+| **`<h2>` / `<h1>-<h6>`** | `<component type="title">` | `<h2>` | `class` | `<h2 class="text-xl font-bold">Başlık</h2>` |
+| **`<button>`** | `<component type="button">` | `<button>` | `class`, `<on_click>`, `<event>` | `<button class="btn">Kaydet</button>` |
+| **`<input type="text">`** | `<component type="text_input">` | `<input>` | `bind`, `placeholder`, `ref` | `<input type="text" bind="data.name" />` |
+| **`<input type="checkbox">`**| `<component type="checkbox">` | `<input>` | `bind` | `<input type="checkbox" bind="todo.done" />` |
+| **`<input type="radio">`** | `<component type="radio">` | `<input>` | `bind`, `name`, `value` | `<input type="radio" name="lvl" value="sr" bind="data.lvl" />` |
+| **`<input type="range">`** | `<component type="range_input">`| `<input>` | `bind`, `min`, `max`, `step` | `<input type="range" bind="data.salary" min="30" max="200" />` |
+| **`<input type="number">`** | `<component type="number_input">`| `<input>` | `bind`, `min`, `max`, `step` | `<input type="number" bind="data.hours" min="1" max="60" />` |
+| **`<img>`** | `<component type="image">` | `<img>` | `src`, `alt`, `width`, `height` | `<img src="{poke.image}" width="64" />` |
+| **`<textarea>`** | `<textarea>` | `<textarea>` | `bind`, `rows`, `placeholder` | `<textarea bind="data.bio" rows="3" />` |
+| **`<select>`** | `<select>` | `<select>` | `bind`, `<option>` alt etiketleri | `<select bind="data.cat"><option value="1">A</option></select>` |
 
 ---
 

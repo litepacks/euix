@@ -215,6 +215,103 @@ describe('XUIEngine Unit Tests', () => {
         expect(subSpan.textContent).toBe('Sub: Alt Bilgi');
     });
 
+    it('should register refs (engine.refs) for elements with ref attribute', async () => {
+        const xml = `
+        <uid_spec>
+            <flex direction="column">
+                <component type="text_input" ref="userInput" placeholder="Test" />
+                <component type="button" ref="submitBtn"><label>Gönder</label></component>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await XUIEngine.mount(xml, '#app');
+        expect(engine.refs.userInput).toBeDefined();
+        expect(engine.refs.userInput.tagName).toBe('INPUT');
+
+        expect(engine.refs.submitBtn).toBeDefined();
+        expect(engine.refs.submitBtn.tagName).toBe('BUTTON');
+    });
+
+    it('should toggle item completed state and update conditional text styling on checkbox change', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="todos" type="array">
+                    <item id="1" text="Görev 1" completed="false" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.todos}" var="todo">
+                    <component type="checkbox" bind="todo.completed" />
+                    <if condition="{todo.completed} == true">
+                        <component type="text" class="completed-text">{todo.text}</component>
+                        <else>
+                            <component type="text" class="active-text">{todo.text}</component>
+                        </else>
+                    </if>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await XUIEngine.mount(xml, '#app');
+        let activeEl = document.querySelector('.active-text');
+        expect(activeEl).not.toBeNull();
+        expect(activeEl.textContent).toBe('Görev 1');
+
+        const checkbox = document.querySelector('input[type="checkbox"]');
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new window.Event('change'));
+
+        let completedEl = document.querySelector('.completed-text');
+        expect(completedEl).not.toBeNull();
+        expect(completedEl.textContent).toBe('Görev 1');
+    });
+
+    it('should support form, select, textarea, and radio form controls', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="bio" type="string">Kısa biyografi</state>
+                <state id="category" type="string">frontend</state>
+                <state id="level" type="string">senior</state>
+            </data_model>
+            <form class="test-form">
+                <textarea bind="data.bio" />
+                <select bind="data.category">
+                    <option value="frontend">Frontend</option>
+                    <option value="backend">Backend</option>
+                </select>
+                <component type="radio" name="level" value="junior" bind="data.level" />
+                <component type="radio" name="level" value="senior" bind="data.level" />
+            </form>
+        </uid_spec>
+        `;
+
+        const engine = await XUIEngine.mount(xml, '#app');
+
+        const formEl = document.querySelector('form');
+        const textareaEl = document.querySelector('textarea');
+        const selectEl = document.querySelector('select');
+        const radioEls = document.querySelectorAll('input[type="radio"]');
+
+        expect(formEl).not.toBeNull();
+        expect(textareaEl).not.toBeNull();
+        expect(textareaEl.value).toBe('Kısa biyografi');
+
+        expect(selectEl).not.toBeNull();
+        expect(selectEl.value).toBe('frontend');
+
+        expect(radioEls.length).toBe(2);
+        expect(radioEls[1].checked).toBe(true);
+
+        // Change select value
+        selectEl.value = 'backend';
+        selectEl.dispatchEvent(new window.Event('change'));
+        expect(engine.getState('category')).toBe('backend');
+    });
+
     it('should evaluate complex expression conditions correctly using XUIExpressionParser', () => {
         expect(XUIExpressionParser.eval('10 > 5', () => 0)).toBe(true);
         expect(XUIExpressionParser.eval('"active" == "active" && 5 < 10', () => 0)).toBe(true);

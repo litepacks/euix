@@ -35,10 +35,19 @@
             <state id="todos_open" type="string">true</state>
             <state id="pokemon_open" type="string">false</state>
             <state id="compare_open" type="string">false</state>
-            <state id="events_open" type="string">false</state>
+            <state id="events_open" type="string">true</state>
+            <state id="form_open" type="string">true</state>
             <state id="quick_todo_input" type="string"></state>
             <state id="hover_status" type="string">Fareyi bu kutunun üzerine getirin...</state>
             <state id="help_open" type="string">false</state>
+            <state id="form_bio" type="string">Vanilla .XUI Engine geliştiricisiyim.</state>
+            <state id="form_category" type="string">frontend</state>
+            <state id="form_level" type="string">senior</state>
+            <state id="form_salary" type="string">85</state>
+            <state id="form_hours" type="string">40</state>
+            <state id="confirm_modal_open" type="string">false</state>
+            <state id="delete_modal_open" type="string">false</state>
+            <state id="selected_todo_id" type="string"></state>
         </data_model>
 
         <on_mount action="XHR">
@@ -62,15 +71,20 @@
             <import name="pokemon-section" src="components/PokemonSection.xml" />
             <import name="compare-section" src="components/CompareSection.xml" />
             <import name="events-section" src="components/EventsSection.xml" />
+            <import name="form-section" src="components/FormSection.xml" />
+            <import name="confirm-modal" src="components/ConfirmModal.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
         <flex direction="column" gap="16" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
             <app-header />
             <todo-section />
+            <form-section />
             <pokemon-section />
             <compare-section />
             <events-section />
+            <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Tüm Görevleri Sil?" message="Tüm Todo görevlerini kalıcı olarak silmek istediğinize emin misiniz?" confirm_text="Evet, Tümünü Sil" cancel_text="Vazgeç" />
+            <confirm-modal bind="data.delete_modal_open" mode="remove" title="Görevi Sil?" message="Seçilen bu görevi listeden kaldırmak istediğinize emin misiniz?" confirm_text="Evet, Sil" cancel_text="Vazgeç" />
             <help-modal />
         </flex>
     </uid_spec>

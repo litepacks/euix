@@ -3,18 +3,18 @@
         <summary>React.js vs XUI Engine Karşılaştırması</summary>
         <grid cols="2" gap="8">
             <flex direction="column" gap="4" class="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl text-xs">
-                <component type="text" class="font-black text-blue-700 text-sm">⚡ Vanilla .XUI Engine</component>
-                <component type="text" class="text-slate-600">• ~8 KB Gzip Paket Boyutu</component>
-                <component type="text" class="text-slate-600">• Sıfır Bağımlılık (0 Dependency)</component>
-                <component type="text" class="text-slate-600">• Derleyici Gerektirmez (No Build)</component>
-                <component type="text" class="text-slate-600">• İnce Taneli (Fine-Grained) DOM</component>
+                <span class="font-black text-blue-700 text-sm">⚡ Vanilla .XUI Engine</span>
+                <span class="text-slate-600">• ~8 KB Gzip Paket Boyutu</span>
+                <span class="text-slate-600">• Sıfır Bağımlılık (0 Dependency)</span>
+                <span class="text-slate-600">• Derleyici Gerektirmez (No Build)</span>
+                <span class="text-slate-600">• İnce Taneli (Fine-Grained) DOM</span>
             </flex>
             <flex direction="column" gap="4" class="p-3.5 bg-slate-100/60 border border-slate-200 rounded-xl text-xs">
-                <component type="text" class="font-black text-slate-700 text-sm">⚛️ React.js</component>
-                <component type="text" class="text-slate-500">• ~45-140 KB Gzip Runtime</component>
-                <component type="text" class="text-slate-500">• react + react-dom + build araçları</component>
-                <component type="text" class="text-slate-500">• JSX Derleyicisi Zorunlu (Babel/Vite)</component>
-                <component type="text" class="text-slate-500">• Virtual DOM &amp; Bileşen Re-render</component>
+                <span class="font-black text-slate-700 text-sm">⚛️ React.js</span>
+                <span class="text-slate-500">• ~45-140 KB Gzip Runtime</span>
+                <span class="text-slate-500">• react + react-dom + build araçları</span>
+                <span class="text-slate-500">• JSX Derleyicisi Zorunlu (Babel/Vite)</span>
+                <span class="text-slate-500">• Virtual DOM &amp; Bileşen Re-render</span>
             </flex>
         </grid>
     </collapse>

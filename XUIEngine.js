@@ -243,9 +243,83 @@ class XUIEngine {
         this._customComponents = new Map();
         this._customActions = new Map();
         this._componentSpecs = new Map();
+        this.refs = {};
         if (!XUIEngine._globalComponentSpecs) {
             XUIEngine._globalComponentSpecs = new Map();
         }
+        this.ensureDefaultStyles();
+    }
+
+    ensureDefaultStyles() {
+        if (typeof document === "undefined" || document.getElementById("xui-default-styles")) return;
+        const style = document.createElement("style");
+        style.id = "xui-default-styles";
+        style.textContent = `
+            .dialog-backdrop {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                background-color: rgba(15, 23, 42, 0.6) !important;
+                backdrop-filter: blur(4px) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                z-index: 9999 !important;
+                padding: 1rem !important;
+                animation: xui-fade-in 0.15s ease-out !important;
+            }
+            .dialog-panel {
+                background: #ffffff !important;
+                border-radius: 1rem !important;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+                border: 1px solid rgba(226, 232, 240, 0.8) !important;
+                width: 100% !important;
+                max-width: 28rem !important;
+                overflow: hidden !important;
+                animation: xui-zoom-in 0.15s ease-out !important;
+            }
+            .dialog-header {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                padding: 1rem 1.25rem !important;
+                border-bottom: 1px solid #f1f5f9 !important;
+            }
+            .dialog-title {
+                font-size: 1rem !important;
+                font-weight: 700 !important;
+                color: #0f172a !important;
+                margin: 0 !important;
+            }
+            .dialog-close {
+                background: transparent !important;
+                border: none !important;
+                font-size: 1.25rem !important;
+                line-height: 1 !important;
+                color: #64748b !important;
+                cursor: pointer !important;
+                padding: 0.25rem 0.5rem !important;
+                border-radius: 0.375rem !important;
+            }
+            .dialog-close:hover {
+                color: #0f172a !important;
+                background-color: #f1f5f9 !important;
+            }
+            .dialog-body {
+                padding: 1.25rem !important;
+            }
+            @keyframes xui-fade-in {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes xui-zoom-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     static mount(xmlString, containerSelector = "#app") {
@@ -497,6 +571,9 @@ class XUIEngine {
             context[binding.scope][binding.prop] = value;
             if (!options.silent && !this._batching) {
                 this.syncBindings(binding.scope, context[binding.scope]);
+                if (context._parentStateKey) {
+                    this.syncBindings(context._parentStateKey, this.getState(context._parentStateKey));
+                }
             }
         }
     }
@@ -547,6 +624,11 @@ class XUIEngine {
 
             if (kind === "checkbox") {
                 el.checked = this.isTruthy(text);
+                return;
+            }
+
+            if (kind === "radio") {
+                el.checked = (String(el.value || "") === text);
                 return;
             }
 
@@ -1031,7 +1113,9 @@ class XUIEngine {
     }
 
     renderCollapse(xmlNode, context = {}) {
-        const bindPath = this.parseBindPath(xmlNode.getAttribute("bind") || "");
+        const rawBind = xmlNode.getAttribute("bind") || "";
+        const interpolatedBind = this.interpolate(rawBind, context);
+        const bindPath = this.parseBindPath(interpolatedBind);
         let open = bindPath ? this.isTruthy(this.getState(bindPath)) : true;
 
         const summaryNode = this.getChild(xmlNode, "summary");
@@ -1103,7 +1187,9 @@ class XUIEngine {
     }
 
     renderDialog(xmlNode, context = {}) {
-        const bindPath = this.parseBindPath(xmlNode.getAttribute("bind") || "");
+        const rawBind = xmlNode.getAttribute("bind") || "";
+        const interpolatedBind = this.interpolate(rawBind, context);
+        const bindPath = this.parseBindPath(interpolatedBind);
         let open = bindPath ? this.isTruthy(this.getState(bindPath)) : false;
 
         const closeOnBackdrop = xmlNode.getAttribute("close_on_backdrop") !== "false";
@@ -1193,7 +1279,11 @@ class XUIEngine {
             if (open) {
                 if (!containerNode.contains(backdrop)) {
                     containerNode.appendChild(backdrop);
-                    requestAnimationFrame(() => backdrop.focus());
+                    if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+                    window.requestAnimationFrame(() => backdrop.focus());
+                } else {
+                    setTimeout(() => backdrop.focus(), 0);
+                }
                 }
             } else {
                 if (containerNode.contains(backdrop)) {
@@ -1232,6 +1322,19 @@ class XUIEngine {
         return "";
     }
 
+    applyRef(el, xmlNode, context = {}) {
+        if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
+        const refAttr = xmlNode.getAttribute("ref");
+        if (refAttr) {
+            const resolvedRef = this.interpolate(refAttr, context);
+            if (resolvedRef) {
+                this.refs[resolvedRef] = el;
+                el.dataset.xuiRef = resolvedRef;
+            }
+        }
+        return el;
+    }
+
     createHTMLElement(xmlNode, context = {}) {
         if (xmlNode.nodeType === Node.TEXT_NODE) {
             const txt = xmlNode.textContent.trim();
@@ -1250,23 +1353,25 @@ class XUIEngine {
         if (this._customComponents.has(tagName)) {
             const handler = this._customComponents.get(tagName);
             const customEl = handler(xmlNode, context, this);
-            if (customEl) return customEl;
+            if (customEl) return this.applyRef(customEl, xmlNode, context);
         }
 
         if (typeAttr && this._customComponents.has(typeAttr)) {
             const handler = this._customComponents.get(typeAttr);
             const customEl = handler(xmlNode, context, this);
-            if (customEl) return customEl;
+            if (customEl) return this.applyRef(customEl, xmlNode, context);
         }
 
         if (this._componentSpecs.has(tagName) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(tagName))) {
             const specNode = this._componentSpecs.get(tagName) || XUIEngine._globalComponentSpecs.get(tagName);
-            return this.renderComponentSpec(specNode, xmlNode, context);
+            const res = this.renderComponentSpec(specNode, xmlNode, context);
+            return this.applyRef(res, xmlNode, context);
         }
 
         if (typeAttr && (this._componentSpecs.has(typeAttr) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(typeAttr)))) {
             const specNode = this._componentSpecs.get(typeAttr) || XUIEngine._globalComponentSpecs.get(typeAttr);
-            return this.renderComponentSpec(specNode, xmlNode, context);
+            const res = this.renderComponentSpec(specNode, xmlNode, context);
+            return this.applyRef(res, xmlNode, context);
         }
 
         const isFlex = tagName === "flex" || typeAttr === "flex";
@@ -1307,7 +1412,7 @@ class XUIEngine {
 
                 list.forEach(item => {
                     Array.from(xmlNode.children).forEach(child => {
-                        const childContext = { ...context, [varName]: item };
+                        const childContext = { ...context, [varName]: item, _parentStateKey: itemsKey };
                         const el = this.createHTMLElement(child, childContext);
                         if (el) {
                             this.applyItemChildStyles(el, child, context);
@@ -1334,6 +1439,161 @@ class XUIEngine {
 
         if (tagName === "else" || tagName === "else_if") {
             return null;
+        }
+
+        if (tagName === "form") {
+            const form = document.createElement("form");
+            const formClass = xmlNode.getAttribute("class");
+            if (formClass) form.className = formClass;
+            this.bindEvents(xmlNode, form, context);
+
+            form.onsubmit = (e) => {
+                e.preventDefault();
+                const onSubmitNode = this.getChild(xmlNode, "on_submit");
+                if (onSubmitNode) {
+                    this.handleAction(onSubmitNode, context);
+                }
+            };
+
+            Array.from(xmlNode.childNodes).forEach(child => {
+                const childEl = this.createHTMLElement(child, context);
+                if (childEl) form.appendChild(childEl);
+            });
+
+            return this.applyRef(form, xmlNode, context);
+        }
+
+        if (tagName === "select") {
+            const sel = document.createElement("select");
+            const selClass = xmlNode.getAttribute("class");
+            if (selClass) sel.className = selClass;
+            const bindPath = this.resolveBindPath(xmlNode);
+
+            if (bindPath) {
+                sel.value = this.getState(bindPath) ?? "";
+                this.registerBinding(bindPath, sel, "input");
+                sel.onchange = (e) => {
+                    this.setState(bindPath, e.target.value);
+                };
+            }
+
+            this.bindEvents(xmlNode, sel, context);
+
+            Array.from(xmlNode.childNodes).forEach(child => {
+                const childEl = this.createHTMLElement(child, context);
+                if (childEl) sel.appendChild(childEl);
+            });
+
+            if (bindPath) sel.value = this.getState(bindPath) ?? "";
+
+            return this.applyRef(sel, xmlNode, context);
+        }
+
+        if (tagName === "option") {
+            const opt = document.createElement("option");
+            const valAttr = xmlNode.getAttribute("value");
+            opt.value = valAttr ? this.interpolate(valAttr, context) : xmlNode.textContent.trim();
+            opt.textContent = this.interpolate(xmlNode.textContent.trim(), context);
+            if (xmlNode.getAttribute("selected") === "true") opt.selected = true;
+            return opt;
+        }
+
+        if (tagName === "textarea") {
+            const ta = document.createElement("textarea");
+            const taClass = xmlNode.getAttribute("class");
+            if (taClass) ta.className = taClass;
+            const placeholder = xmlNode.getAttribute("placeholder");
+            if (placeholder) ta.placeholder = this.interpolate(placeholder, context);
+            const rows = xmlNode.getAttribute("rows");
+            if (rows) ta.rows = parseInt(rows, 10);
+
+            const bindPath = this.resolveBindPath(xmlNode);
+            if (bindPath) {
+                ta.value = this.getState(bindPath) ?? "";
+                this.registerBinding(bindPath, ta, "input");
+                ta.oninput = (e) => {
+                    this.setState(bindPath, e.target.value, { sourceEl: e.target });
+                };
+            }
+            this.bindEvents(xmlNode, ta, context);
+            return this.applyRef(ta, xmlNode, context);
+        }
+
+        if (tagName === "input") {
+            const inputType = (xmlNode.getAttribute("type") || "text").toLowerCase();
+            const el = document.createElement("input");
+            el.type = inputType;
+            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            if (xmlNode.getAttribute("placeholder")) el.placeholder = this.interpolate(xmlNode.getAttribute("placeholder"), context);
+            if (xmlNode.getAttribute("autofocus") === "true") el.dataset.xuiAutofocus = "true";
+            if (xmlNode.getAttribute("min")) el.min = xmlNode.getAttribute("min");
+            if (xmlNode.getAttribute("max")) el.max = xmlNode.getAttribute("max");
+            if (xmlNode.getAttribute("step")) el.step = xmlNode.getAttribute("step");
+            if (xmlNode.getAttribute("name")) el.name = this.interpolate(xmlNode.getAttribute("name"), context);
+            if (xmlNode.getAttribute("value")) el.value = this.interpolate(xmlNode.getAttribute("value"), context);
+
+            const bindPath = this.resolveBindPath(xmlNode);
+            const binding = this.resolveBinding(xmlNode, context);
+
+            if (inputType === "checkbox") {
+                if (binding) {
+                    el.checked = this.isTruthy(this.getBindingValue(binding, context));
+                    if (binding.type === "state") this.registerBinding(binding.path, el, "checkbox");
+                    el.onchange = (e) => this.setBindingValue(binding, e.target.checked ? "true" : "false", context);
+                }
+            } else if (inputType === "radio") {
+                if (binding) {
+                    const current = String(this.getBindingValue(binding, context) ?? "");
+                    el.checked = (current === el.value);
+                    if (binding.type === "state") this.registerBinding(binding.path, el, "radio");
+                    el.onchange = (e) => {
+                        if (e.target.checked) this.setBindingValue(binding, el.value, context);
+                    };
+                }
+            } else if (bindPath) {
+                el.value = this.getState(bindPath) ?? "";
+                this.registerBinding(bindPath, el, "input");
+                el.oninput = (e) => this.setState(bindPath, e.target.value, { sourceEl: e.target });
+            }
+
+            this.bindEvents(xmlNode, el, context);
+            return this.applyRef(el, xmlNode, context);
+        }
+
+        if (tagName === "img" || tagName === "image") {
+            const el = document.createElement("img");
+            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            const src = xmlNode.getAttribute("src") || "";
+            const alt = xmlNode.getAttribute("alt") || "";
+            el.src = this.interpolate(src, context);
+            el.alt = this.interpolate(alt, context);
+            if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
+            if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
+            this.bindEvents(xmlNode, el, context);
+            return this.applyRef(el, xmlNode, context);
+        }
+
+        if (tagName === "button") {
+            const el = document.createElement("button");
+            if (xmlNode.getAttribute("class")) el.className = xmlNode.getAttribute("class");
+            const btnType = xmlNode.getAttribute("type");
+            if (btnType) el.type = btnType;
+            this.bindEvents(xmlNode, el, context);
+
+            Array.from(xmlNode.childNodes).forEach(child => {
+                if (child.nodeType === Node.ELEMENT_NODE &&
+                    ["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on", "label"].includes(child.tagName.toLowerCase())) {
+                    if (child.tagName.toLowerCase() === "label") {
+                        const lblText = this.interpolate(child.textContent.trim(), context);
+                        el.appendChild(document.createTextNode(lblText));
+                    }
+                    return;
+                }
+                const childEl = this.createHTMLElement(child, context);
+                if (childEl) el.appendChild(childEl);
+            });
+
+            return this.applyRef(el, xmlNode, context);
         }
 
         if (tagName === "collapse") {
@@ -1372,7 +1632,6 @@ class XUIEngine {
 
                     el.oninput = (e) => {
                         this.setState(bindPath, e.target.value, {
-                            silent: true,
                             sourceEl: e.target
                         });
                     };
@@ -1396,6 +1655,53 @@ class XUIEngine {
                     el.onchange = (e) => {
                         const next = e.target.checked ? "true" : "false";
                         this.setBindingValue(binding, next, context);
+                    };
+                }
+            } else if (type === "radio") {
+                el = document.createElement("input");
+                el.type = "radio";
+                const radioName = xmlNode.getAttribute("name") || "xui_radio";
+                el.name = this.interpolate(radioName, context);
+                const radioVal = xmlNode.getAttribute("value") || "";
+                el.value = this.interpolate(radioVal, context);
+
+                const binding = this.resolveBinding(xmlNode, context);
+                if (binding) {
+                    const current = String(this.getBindingValue(binding, context) ?? "");
+                    el.checked = (current === el.value);
+                    if (binding.type === "state") {
+                        this.registerBinding(binding.path, el, "radio");
+                    }
+                    el.onchange = (e) => {
+                        if (e.target.checked) {
+                            this.setBindingValue(binding, el.value, context);
+                        }
+                    };
+                }
+            } else if (type === "textarea") {
+                el = document.createElement("textarea");
+                if (xmlNode.getAttribute("placeholder")) el.placeholder = this.interpolate(xmlNode.getAttribute("placeholder"), context);
+                if (xmlNode.getAttribute("rows")) el.rows = parseInt(xmlNode.getAttribute("rows"), 10);
+                if (bindPath) {
+                    el.value = this.getState(bindPath) ?? "";
+                    this.registerBinding(bindPath, el, "input");
+                    el.oninput = (e) => {
+                        this.setState(bindPath, e.target.value, { sourceEl: e.target });
+                    };
+                }
+            } else if (["number_input", "range_input", "date_input", "color_input", "file_input"].includes(type)) {
+                el = document.createElement("input");
+                el.type = type.replace("_input", "");
+                if (xmlNode.getAttribute("min")) el.min = xmlNode.getAttribute("min");
+                if (xmlNode.getAttribute("max")) el.max = xmlNode.getAttribute("max");
+                if (xmlNode.getAttribute("step")) el.step = xmlNode.getAttribute("step");
+                if (xmlNode.getAttribute("placeholder")) el.placeholder = xmlNode.getAttribute("placeholder");
+
+                if (bindPath) {
+                    el.value = this.getState(bindPath) ?? "";
+                    this.registerBinding(bindPath, el, "input");
+                    el.oninput = (e) => {
+                        this.setState(bindPath, e.target.value, { sourceEl: e.target });
                     };
                 }
             } else {
@@ -1442,14 +1748,18 @@ class XUIEngine {
                 }
             });
 
-            return el;
+            return this.applyRef(el, xmlNode, context);
         }
 
-        const div = document.createElement("div");
+        const allowedTags = ["div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote"];
+        const elementTagName = allowedTags.includes(tagName) ? tagName : "div";
+        const div = document.createElement(elementTagName);
+        const xmlClass = xmlNode.getAttribute("class");
+        if (xmlClass) div.className = xmlClass;
+
         if (tagName === "layout") {
             const layoutType = xmlNode.getAttribute("type") || "";
-            const extraClass = xmlNode.getAttribute("class") || "";
-            div.className = [layoutType, extraClass].filter(Boolean).join(" ");
+            div.className = [layoutType, xmlClass].filter(Boolean).join(" ");
             this.applyLayoutStyles(div, xmlNode, context);
         }
 
@@ -1467,7 +1777,17 @@ class XUIEngine {
             }
         });
 
-        return div;
+        const genericBindPath = this.resolveBindPath(xmlNode);
+        if (genericBindPath && !["input", "select", "textarea", "button", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
+            const rawContent = xmlNode.textContent.trim();
+            if (rawContent.includes("{value}")) {
+                div.dataset.xuiTextTemplate = rawContent;
+            }
+            this.registerBinding(genericBindPath, div, "text");
+            this.syncBindings(genericBindPath, this.getState(genericBindPath));
+        }
+
+        return this.applyRef(div, xmlNode, context);
     }
 
     bindEvents(xmlNode, el, context = {}) {
@@ -1634,14 +1954,37 @@ class XUIEngine {
             const valueNode = this.getChild(actionNode, "value");
             if (!pathNode) return;
 
-            const path = this.parseBindPath(pathNode.textContent);
+            const rawPath = pathNode ? pathNode.textContent.trim() : "";
+            const interpolatedPath = this.interpolate(rawPath, context);
+            const path = this.parseBindPath(interpolatedPath);
+
             const rawValue = valueNode ? valueNode.textContent.trim() : "";
             const nextValue = this.interpolate(rawValue, context);
             this.setState(path, nextValue);
 
             const focusNode = this.getChild(actionNode, "focus");
             if (focusNode) {
-                this._pendingFocusKey = this.parseBindPath(focusNode.textContent);
+                const targetStr = focusNode.textContent.trim();
+                const resolved = this.interpolate(targetStr, context).replace(/^ref:/, '');
+                if (this.refs[resolved] && typeof this.refs[resolved].focus === "function") {
+                    this.refs[resolved].focus();
+                } else {
+                    this._pendingFocusKey = this.parseBindPath(targetStr);
+                }
+            }
+            return;
+        }
+
+        if (actionType === "FOCUS") {
+            const target = actionNode.getAttribute("target") || actionNode.getAttribute("ref") || this.getChild(actionNode, "target")?.textContent || this.getChild(actionNode, "ref")?.textContent;
+            if (target) {
+                const resolved = this.interpolate(target, context).replace(/^ref:/, '');
+                if (this.refs[resolved] && typeof this.refs[resolved].focus === "function") {
+                    this.refs[resolved].focus();
+                } else {
+                    const el = document.querySelector(`[data-xui-ref="${resolved}"], #${resolved}`);
+                    if (el && typeof el.focus === "function") el.focus();
+                }
             }
             return;
         }
@@ -1651,8 +1994,17 @@ class XUIEngine {
             const opNode = this.getChild(actionNode, "operation");
             if (!pathNode || !opNode) return;
 
-            const path = this.parseBindPath(pathNode.textContent);
+            const rawPath = pathNode ? pathNode.textContent.trim() : "";
+            const interpolatedPath = this.interpolate(rawPath, context);
+            const path = this.parseBindPath(interpolatedPath);
             const operation = opNode.textContent.trim();
+
+            if (operation === "CLEAR" || operation === "EMPTY" || operation === "RESET") {
+                this.batch(() => {
+                    this.setState(path, []);
+                    this.applyResets(actionNode);
+                });
+            }
 
             if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
                 const valNode = this.getChild(actionNode, "value");
@@ -1760,12 +2112,13 @@ class XUIEngine {
         if (!this.container || !this.xmlDoc) return;
 
         this._bindings = new Map();
+        this.refs = {};
         this.container.innerHTML = "";
         
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        let layout = this.getChild(root, "layout") || this.getChild(root, "flex") || this.getChild(root, "grid");
+        let layout = this.getChild(root, "layout") || this.getChild(root, "flex") || this.getChild(root, "grid") || this.getChild(root, "form");
         if (!layout) {
-            layout = root.querySelector("layout, flex, grid");
+            layout = root.querySelector("layout, flex, grid, form, collapse");
         }
 
         if (layout) {

@@ -1,11 +1,11 @@
 <component_def name="events-section">
     <collapse bind="data.events_open" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
-        <summary>⚡ Evrensel Olay Örnekleri (Enter &amp; Mouse Events)</summary>
+        <summary>⚡ Evrensel Olay Örnekleri (Enter &amp; Mouse Events &amp; Ref Focus &amp; Confirm Modal)</summary>
         
         <!-- Örnek 1: Enter Tuşu İle Ekleme -->
         <flex direction="column" gap="6" class="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
-            <component type="text" class="text-xs font-bold text-slate-700">1. Enter Tuşuna Basarak Hızlı Ekle (event type="keyup" key="Enter"):</component>
-            <component type="text_input" bind="data.quick_todo_input" placeholder="Görevi yazıp ENTER'a basın..." class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+            <span class="text-xs font-bold text-slate-700">1. Enter Tuşuna Basarak Hızlı Ekle (event type="keyup" key="Enter"):</span>
+            <input type="text" bind="data.quick_todo_input" placeholder="Görevi yazıp ENTER'a basın..." class="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 <event type="keyup" key="Enter" action="MUTATE_STATE">
                     <path>data.todos</path>
                     <operation>PUSH</operation>
@@ -14,15 +14,15 @@
                     </value>
                     <reset path="data.quick_todo_input" />
                 </event>
-            </component>
-            <component type="text" class="text-[11px] text-slate-400">Yazdıktan sonra Enter'a bastığınızda yukarıdaki Todo Listesine otomatik eklenir.</component>
+            </input>
+            <span class="text-[11px] text-slate-400">Yazdıktan sonra Enter'a bastığınızda yukarıdaki Todo Listesine otomatik eklenir.</span>
         </flex>
 
         <!-- Örnek 2: MouseEnter / MouseLeave Olayları -->
         <flex direction="column" gap="6" class="p-3.5 bg-indigo-50/50 border border-indigo-100 rounded-xl transition-all">
-            <component type="text" class="text-xs font-bold text-indigo-900">2. Fare Hareket Olayları (event type="mouseenter" / "mouseleave"):</component>
+            <span class="text-xs font-bold text-indigo-900">2. Fare Hareket Olayları (event type="mouseenter" / "mouseleave"):</span>
             <flex direction="row" align="center" justify="between" class="p-3 bg-white border border-indigo-100 rounded-lg shadow-sm">
-                <component type="text" class="text-xs font-semibold text-slate-700" bind="data.hover_status" />
+                <span class="text-xs font-semibold text-slate-700" bind="data.hover_status" />
                 <event type="mouseenter" action="SET_STATE">
                     <path>data.hover_status</path>
                     <value>🎉 Fare kutunun üzerinde! (mouseenter algılandı)</value>
@@ -31,6 +31,34 @@
                     <path>data.hover_status</path>
                     <value>Fare ayrıldı. (mouseleave algılandı)</value>
                 </event>
+            </flex>
+        </flex>
+
+        <!-- Örnek 3: Ref (ref="...") ve Doğrudan Odaklanma (Focus) -->
+        <flex direction="column" gap="6" class="p-3.5 bg-emerald-50/50 border border-emerald-100 rounded-xl">
+            <span class="text-xs font-bold text-emerald-900">3. Doğrudan DOM Referansı (ref="myFocusInput" &amp; action="FOCUS"):</span>
+            <flex direction="row" align="center" gap="8">
+                <input type="text" ref="myFocusInput" placeholder="Butona basarak buraya odaklanın..." class="flex-1 px-3.5 py-2 bg-white border border-emerald-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                <button class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-colors shadow-sm cursor-pointer">
+                    Odaklan (Focus)
+                    <on_click action="FOCUS" target="myFocusInput" />
+                </button>
+            </flex>
+            <span class="text-[11px] text-emerald-700/80">Butona tıklandığında action="FOCUS" target="myFocusInput" veya JS üzerinden <code>engine.refs.myFocusInput.focus()</code> tetiklenir.</span>
+        </flex>
+
+        <!-- Örnek 4: Confirm Modal Açma -->
+        <flex direction="column" gap="6" class="p-3.5 bg-rose-50/50 border border-rose-100 rounded-xl">
+            <span class="text-xs font-bold text-rose-900">4. Yeniden Kullanılabilir Onay Modalı (&lt;confirm-modal&gt;):</span>
+            <flex direction="row" align="center" justify="between" gap="8">
+                <span class="text-xs text-slate-600">Özel onay modalını açarak işlem onaylama örneği:</span>
+                <button class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs transition-colors shadow-md shadow-rose-500/20 cursor-pointer">
+                    Özel Onay Penceresi Aç
+                    <on_click action="SET_STATE">
+                        <path>data.confirm_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                </button>
             </flex>
         </flex>
     </collapse>

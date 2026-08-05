@@ -1,0 +1,83 @@
+<component_def name="form-section">
+    <collapse bind="data.form_open" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
+        <summary>📋 Form Bileşenleri Örneği (Form, Select, Textarea, Radio, Range)</summary>
+
+        <form class="flex flex-col gap-4 bg-slate-50/50 p-4 border border-slate-100 rounded-xl">
+            <on_submit action="SET_STATE">
+                <path>data.form_submitted</path>
+                <value>true</value>
+            </on_submit>
+
+            <!-- 1. Textarea -->
+            <flex direction="column" gap="4">
+                <component type="text" class="text-xs font-bold text-slate-700">Açıklama (Textarea):</component>
+                <textarea bind="data.form_bio" placeholder="Kendiniz hakkında kısa bilgi yazın..." rows="3" class="w-full p-3 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+            </flex>
+
+            <!-- 2. Select / Dropdown -->
+            <flex direction="column" gap="4">
+                <component type="text" class="text-xs font-bold text-slate-700">Uzmanlık Alanı (Select):</component>
+                <select bind="data.form_category" class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer">
+                    <option value="frontend">Frontend Geliştirme</option>
+                    <option value="backend">Backend Geliştirme</option>
+                    <option value="ui_ux">UI/UX Tasarım</option>
+                    <option value="devops">DevOps &amp; Cloud</option>
+                </select>
+            </flex>
+
+            <!-- 3. Radio Buttons -->
+            <flex direction="column" gap="4">
+                <component type="text" class="text-xs font-bold text-slate-700">Deneyim Seviyesi (Radio):</component>
+                <flex direction="row" gap="16" align="center">
+                    <label class="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
+                        <component type="radio" name="level" value="junior" bind="data.form_level" />
+                        <span>Junior</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
+                        <component type="radio" name="level" value="mid" bind="data.form_level" />
+                        <span>Mid-Level</span>
+                    </label>
+                    <label class="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer">
+                        <component type="radio" name="level" value="senior" bind="data.form_level" />
+                        <span>Senior</span>
+                    </label>
+                </flex>
+            </flex>
+
+            <!-- 4. Range Input (Slider) & Number Input -->
+            <grid cols="2" gap="12">
+                <flex direction="column" gap="4">
+                    <component type="text" class="text-xs font-bold text-slate-700">Maaş Beklentisi (Range: <strong bind="data.form_salary">{data.form_salary}</strong>k ₺):</component>
+                    <component type="range_input" bind="data.form_salary" min="30" max="200" step="5" class="w-full accent-blue-600 cursor-pointer" />
+                </flex>
+                <flex direction="column" gap="4">
+                    <component type="text" class="text-xs font-bold text-slate-700">Haftalık Çalışma Saati (Number):</component>
+                    <component type="number_input" bind="data.form_hours" min="10" max="60" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                </flex>
+            </grid>
+
+            <!-- Canlı Form State Özeti -->
+            <flex direction="column" gap="4" class="p-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-600 font-mono">
+                <component type="text" class="font-bold text-slate-800">📊 Canlı Form Durumu (Live State):</component>
+                <flex direction="row" gap="4">
+                    <span>Uzmanlık:</span>
+                    <strong bind="data.form_category" class="text-blue-600 font-bold">{data.form_category}</strong>
+                </flex>
+                <flex direction="row" gap="4">
+                    <span>Seviye:</span>
+                    <strong bind="data.form_level" class="text-purple-600 font-bold">{data.form_level}</strong>
+                </flex>
+                <flex direction="row" gap="4">
+                    <span>Maaş:</span>
+                    <strong bind="data.form_salary" class="text-emerald-600 font-bold">{data.form_salary}k ₺</strong>
+                    <span>| Saat:</span>
+                    <strong bind="data.form_hours" class="text-indigo-600 font-bold">{data.form_hours} saat/hafta</strong>
+                </flex>
+                <flex direction="row" gap="4">
+                    <span>Biyografi:</span>
+                    <em bind="data.form_bio" class="text-slate-700 not-italic font-medium">{data.form_bio}</em>
+                </flex>
+            </flex>
+        </form>
+    </collapse>
+</component_def>

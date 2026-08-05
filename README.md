@@ -126,6 +126,23 @@ XUI Engine, React.js'e kıyasla sıfır karmaşıklık, derlemesiz çalışma ve
 XUIEngine.mount(appXml, "#app");
 ```
 
+### 3. Ref (`ref="..."`) ve Doğrudan DOM Erişimi
+
+Herhangi bir elemana `ref="myRef"` vererek `engine.refs.myRef` ile doğrudan HTML DOM nesnesine erişebilir veya XML içerisinden `<on_click action="FOCUS" target="myRef" />` kullanabilirsiniz:
+
+```xml
+<component type="text_input" ref="nameInput" placeholder="Adınızı girin..." />
+<component type="button">
+    <label>Odaklan</label>
+    <on_click action="FOCUS" target="nameInput" />
+</component>
+```
+
+```javascript
+const engine = await XUIEngine.mount(appXml, "#app");
+engine.refs.nameInput.focus(); // HTMLInputElement nesnesi
+```
+
 ---
 
 ## 📖 Geniş Dokümantasyon

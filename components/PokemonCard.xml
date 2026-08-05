@@ -1,7 +1,7 @@
 <component_def name="pokemon-card">
     <flex direction="column" align="center" gap="4" class="p-3 bg-slate-50/50 border border-slate-100 rounded-xl hover:border-blue-500/20 hover:bg-blue-50/10 hover:shadow-md transition-all">
-        <component type="image" src="{props.image}" alt="{props.name}" width="72" height="72" />
-        <component type="text" class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">#{props.id}</component>
-        <component type="text" class="text-xs font-black text-slate-700 capitalize -mt-1">{props.name}</component>
+        <img src="{props.image}" alt="{props.name}" width="72" height="72" />
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">#{props.id}</span>
+        <span class="text-xs font-black text-slate-700 capitalize -mt-1">{props.name}</span>
     </flex>
 </component_def>
