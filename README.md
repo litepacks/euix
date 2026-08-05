@@ -1,157 +1,100 @@
-# Vanilla .XUI Engine
+# Vanilla .EUIX Engine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
 [![Minifier: Terser](https://img.shields.io/badge/Minifier-Terser-FF6B6B.svg)]()
 [![Dependencies: Zero](https://img.shields.io/badge/Dependencies-Zero-brightgreen.svg)]()
 
-**Vanilla .XUI Engine**, XML formatında bildirimsel (declarative) olarak tanımlanan kullanıcı arayüzlerini ve reaktif durumları (state) tarayıcı üzerinde doğrudan HTML DOM elemanlarına dönüştüren, bağımlılıksız (zero-dependency) ve yüksek performanslı bir JavaScript kütüphanesidir.
+**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
 
 ---
 
-## 📦 Paket Boyutları & Terser Optimization
+## 📦 Bundle Sizes & Optimization
 
-Terser 3-pass AST sıkıştırması ve Rollup Tree-Shaking optimizasyonları sayesinde paket boyutlarında **%26.6 net küçülme** elde edilmiştir:
+Thanks to Terser 3-pass AST minification and Rollup tree-shaking optimizations, EUIX Engine delivers an extremely small footprint:
 
-| Dağıtım Dosyası | Format / Açıklama | Ham Boyut (Raw) | Sıkıştırılmış (Gzip) | Düşüş Oranı |
-| :--- | :--- | :--- | :--- | :--- |
-| **`XUIEngine.min.js`** | **Standalone Terser Minified (Önerilen)** | **28.00 KB** (28,668 B) | **8.32 KB** (8,515 B) | 📉 **-%26.6 (10.3 KB Tasarruf)** |
-| **`dist/XUIEngine.umd.js`** | **Vite / Rollup UMD Bundle** | **28.14 KB** (28,818 B) | **8.42 KB** (8,620 B) | 📉 **-%26.1 (10.1 KB Tasarruf)** |
-| **`dist/XUIEngine.es.js`** | **Vite ES Module** | **58.56 KB** (59,967 B) | **11.79 KB** (12,074 B) | 🌳 Tree-Shakable |
-| **`XUIEngine.js`** | **Geliştirme / Kaynak Kod** | **61.44 KB** (62,912 B) | **11.95 KB** (12,237 B) | - |
+| Dist File | Format / Description | Raw Size | Compressed (Gzip) |
+| :--- | :--- | :--- | :--- |
+| **`EUIXEngine.min.js`** | **Standalone Minified (Recommended)** | **28.0 KB** | **8.3 KB** |
+| **`dist/EUIXEngine.umd.js`** | **Rollup UMD Bundle** | **28.1 KB** | **8.4 KB** |
+| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **58.5 KB** | **11.7 KB** |
 
-> 🌳 **Tree-Shaking:** ESM projelerinde sadece ihtiyaç duyulan modüller (örn: sadece `XUIExpressionParser`) içe aktarıldığında kullanılmayan kodlar pakete dahil edilmez ve paket boyutu **~1.8 KB Gzip** seviyesine kadar düşer.
+> 🌳 **Tree-Shaking:** In ESM environments, importing only needed sub-modules reduces the footprint to **~1.8 KB Gzip**.
 
 ---
 
-## ⚡ Performans & Benchmark API
+## ⚡ Performance & Fine-Grained Reactivity
 
-XUI Engine, sanal DOM (Virtual DOM) katmanını atlayarak doğrudan standart tarayıcı DOM API'lerini kullanır. Proxy tabanlı **İnce Taneli (Fine-Grained) Reaktivite** sayesinde state değişikliklerinde sadece ve sadece ilgili DOM düğümü yerinde güncellenir.
-
-### 🛠️ JavaScript API İle Canlı Benchmark Çalıştırma
-
-Geliştiriciler istedikleri zaman konsoldan veya JS kodları içerisinden benchmark çalıştırabilirler:
+EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM elements directly. Proxy-based **Fine-Grained Reactivity** ensures that state changes update only the exact target DOM node in-place.
 
 ```javascript
-// 1,000 elemanlık benchmark testi (Konsola tablo ve metrik basar)
-const report = XUIEngine.runBenchmark(1000);
+// Run live performance benchmark for 1,000 DOM elements
+const report = EUIXEngine.runBenchmark(1000);
 console.log(report.durationMs, report.opsPerSec);
-
-// İstenilen boyutta test (Örn: 5,000 eleman)
-XUIEngine.runBenchmark(5000);
-
-// Veya aktif engine örneği (instance) üzerinden:
-engine.runBenchmark(2000, "todos");
 ```
 
-| Benchmark Operasyonu | Ölçek (Item Count) | Süre (Milliseconds) | Açıklama |
+| Benchmark Operation | Scale | Duration (ms) | Description |
 | :--- | :--- | :--- | :--- |
-| **İlk Yükleme & XML Mount** | 1 Komple Uygulama Spec | **< 2.5 ms** | XML parsing, Data Model & DOM ağacı oluşturma |
-| **Toplu Eleman Ekleme (`PUSH`)** | **1,000 Eleman** | **~ 4.8 ms** | In-place DOM node ekleme (batch render) |
-| **Büyük Ölçekli Ekleme (`PUSH`)** | **3,000 Eleman** | **~ 12.4 ms** | 3,000 karmaşık kartın sıfır donma ile eklenmesi |
-| **Tekil İnce Taneli Güncelleme** | 1 Eleman State | **< 0.1 ms** | Sadece ilgili DOM düğümünün güncellenmesi |
+| **Initial XML Mount** | Full App Spec | **< 2.5 ms** | XML parsing, Data Model & DOM tree creation |
+| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 130 ms** | In-place DOM node creation (batch render) |
+| **Single State Mutation** | 1 Item Field | **0.11 ms** | Direct fine-grained node mutation |
 
 ---
 
-## 🆚 Vanilla .XUI Engine vs React.js
+## ⚖️ Architecture Comparison: EUIX Engine vs React.js vs htmx
 
-XUI Engine, React.js'e kıyasla sıfır karmaşıklık, derlemesiz çalışma ve son derece hafif bir çalışma ortamı sunar:
-
-| Özellik / Kriter | ⚡ **Vanilla .XUI Engine** | ⚛️ **React.js** |
-| :--- | :--- | :--- |
-| **Bağımlılık (Dependencies)** | ⚡ **0 Bağımlılık** (Zero Dependency) | 📦 `react`, `react-dom` + onlarca build bağımlılığı |
-| **Çalışma Zamanı Boyutu** | 🪶 **~8.3 KB Gzip** | 🏋️ **~45 KB - 140 KB Gzip** |
-| **Derleme (Build Step)** | 🚫 **Gerekmez!** `<script>` etiketi ile doğrudan çalışır | ⚙️ **Zorunlu** (Babel, JSX, Vite/Webpack, SWC) |
-| **Reaktivite & Re-render** | 🎯 **İnce Taneli (Fine-Grained)** DOM güncellemesi | 🔄 **Virtual DOM Diffing** & Bileşen re-render |
-| **Sözdizimi & Format** | 📜 **Standart XML & HTML** | ⚛️ **JSX (JavaScript XML)** |
-| **Öğrenme Eğrisi** | 🚀 **Çok Düşük** (XML ve HTML öznitelik bilgisi yeterli) | 📈 **Orta-Yüksek** (Hooks, Closure gotchas, VDOM) |
-| **Sunucu (CMS / Backend) Eşleşmesi** | 🌐 Sunucudan (PHP, Node, Python, Go) doğrudan XML basılabilir | ⚛️ SSR / RSC (Next.js) gibi karmaşık sunucu katmanları gerektirir |
+| Feature / Metric | ⚡ EUIX Engine | ⚛️ React.js | 🚀 htmx |
+| :--- | :--- | :--- | :--- |
+| **Architecture** | Client-Side Reactive XML/HTML Engine | Virtual DOM & JSX Component Framework | Server-Driven HTML Swap (Hypermedia App) |
+| **State Location** | Client Reactive Model (`<data_model>`) | Client Component State (`useState`) | Server-Side State |
+| **Network Dependency** | **100% Offline / Serverless Ready** | **Offline / Serverless Ready** | **HTTP Request per Interaction** (`hx-get`) |
+| **Client Logic** | Built-in Loops (`<for_each>`), Conditions (`<if>`), Mutations | JavaScript / JSX Code Blocks | Requires Extra JS Library (Alpine.js) |
+| **Build Step** | **Zero Build Required (No-Build)** | **Mandatory** (Babel/Vite for JSX) | **Zero Build Required (No-Build)** |
+| **Bundle Size (Gzip)** | **~8 KB** (Standalone Minified) | **~45 - 140 KB** (react + react-dom) | **~14 KB** |
+| **DOM Strategy** | **Fine-Grained** In-place Node Mutation | Virtual DOM Diffing & Re-render | HTML Fragment Swap |
 
 ---
 
-## 🚀 Öne Çıkan Özellikler
+## 💻 Quick Start
 
-- ⚡ **Sıfır Bağımlılık (Zero Dependency):** Herhangi bir derleyici veya harici CSS kütüphanesi gerektirmez. Saf Vanilla JavaScript ile çalışır.
-- 📐 **Yerleşik Flexbox & Grid Motoru:** `<flex>` ve `<grid>` etiketleri ile `direction`, `align`, `justify`, `gap`, `cols`, `rows`, `flex`, `col_span` parametrelerini doğrudan XML içerisinde tanımlama.
-- ⚡ **İnce Taneli (Fine-Grained) Reaktivite:** State güncellemelerinde tüm kapsayıcıyı re-render etmek yerine sadece etkilenen DOM düğümlerini yerinde (in-place) güncelleme.
-- 📜 **Deklaratif Auto-Init:** JavaScript kodu yazmadan `<script type="application/xui">` etiketleri üzerinden otomatik başlatma.
-- 🧮 **AST İfade Motoru (`XUIExpressionParser`):** Koşul ve şablon ifadelerinde mantıksal (`&&`, `||`, `!`), karşılaştırma ve fonksiyonel (`length()`, `contains()`) mantık.
-- 🧩 **Modüler Registry API:** `registerComponent()` ve `registerAction()` metodları ile özel bileşen ve aksiyonlar tanımlama.
-
----
-
-## 💻 Hızlı Başlangıç (Quick Start)
-
-### 1. Flex & Grid Layout Kullanım Örneği (Auto-Init)
+### 1. HTML Auto-Init
 
 ```html
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>XUI Flex & Grid Örneği</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
     <div id="app"></div>
 
-    <!-- XML Şablonu -->
-    <script type="application/xui" target="#app">
-    <uid_spec id="layout_app">
+    <script type="application/euix" target="#app">
+    <uid_spec>
         <data_model>
-            <state id="username" type="string">Ahmet</state>
+            <state id="message" type="string">Hello EUIX Engine!</state>
         </data_model>
-
-        <flex direction="column" gap="16">
-            <flex direction="row" justify="between" align="center">
-                <component type="title">Merhaba, {data.username}!</component>
-                <component type="button">Profil</component>
-            </flex>
-            <grid cols="2" gap="12">
-                <component type="text_input" bind="data.username" placeholder="İsim..." />
-                <component type="button" class="secondary">Kaydet</component>
-            </grid>
+        <flex direction="column" gap="12">
+            <h2>{data.message}</h2>
         </flex>
     </uid_spec>
     </script>
 
-    <!-- XUI Engine (Auto-Init Otomatik Çalışır) -->
-    <script src="XUIEngine.js"></script>
+    <script src="EUIXEngine.js"></script>
 </body>
 </html>
 ```
 
-### 2. Statik Helper İle Çalıştırma
+---
 
-```javascript
-XUIEngine.mount(appXml, "#app");
-```
+## 📖 Documentation
 
-### 3. Ref (`ref="..."`) ve Doğrudan DOM Erişimi
+For detailed component specs and API references, check the **`docs/`** directory:
 
-Herhangi bir elemana `ref="myRef"` vererek `engine.refs.myRef` ile doğrudan HTML DOM nesnesine erişebilir veya XML içerisinden `<on_click action="FOCUS" target="myRef" />` kullanabilirsiniz:
-
-```xml
-<component type="text_input" ref="nameInput" placeholder="Adınızı girin..." />
-<component type="button">
-    <label>Odaklan</label>
-    <on_click action="FOCUS" target="nameInput" />
-</component>
-```
-
-```javascript
-const engine = await XUIEngine.mount(appXml, "#app");
-engine.refs.nameInput.focus(); // HTMLInputElement nesnesi
-```
+- 📚 **[docs/components.md](docs/components.md)**: Full Layout, Primitive UI Components & Actions Reference.
+- 🛠️ **[docs/guide.md](docs/guide.md)**: Architecture, State Reactivity Model & Lifecycle Hooks.
 
 ---
 
-## 📖 Geniş Dokümantasyon
+## 📄 License
 
-- Tüm kapsayıcılar, UI bileşenleri ve aksiyon rehberi için **[components.md](components.md)** dosyasını,
-- Flexbox & Grid parametreleri, state mutasyonları (`PUSH`, `UNSHIFT`, `UPDATE`, `REMOVE`) ve mimari detaylar için **[docs.md](docs.md)** dosyasını inceleyebilirsiniz.
-
----
-
-## 📄 Lisans
-
-Bu proje **MIT Lisansı** ile lisanslanmıştır.
+This project is licensed under the **MIT License**.

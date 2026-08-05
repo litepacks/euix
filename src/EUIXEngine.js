@@ -1,8 +1,8 @@
 /**
- * XUIExpressionParser
- * Lightweight AST-based expression tokenizer, parser and evaluator for XUI Engine.
+ * EUIXExpressionParser
+ * Lightweight AST-based expression tokenizer, parser and evaluator for EUIX Engine.
  */
-class XUIExpressionParser {
+class EUIXExpressionParser {
     static tokenize(expr) {
         const tokens = [];
         let i = 0;
@@ -162,8 +162,10 @@ class XUIExpressionParser {
             case "Literal":
                 return ast.value;
 
-            case "Identifier":
-                return resolveValueFn(ast.name);
+            case "Identifier": {
+                const val = resolveValueFn(ast.name);
+                return val !== undefined ? val : ast.name;
+            }
 
             case "UnaryExpression": {
                 const val = this.evaluate(ast.argument, resolveValueFn);
@@ -229,7 +231,7 @@ class XUIExpressionParser {
     }
 }
 
-class XUIEngine {
+class EUIXEngine {
     constructor(containerSelector) {
         this.container = typeof containerSelector === "string" 
             ? document.querySelector(containerSelector) 
@@ -244,16 +246,46 @@ class XUIEngine {
         this._customActions = new Map();
         this._componentSpecs = new Map();
         this.refs = {};
-        if (!XUIEngine._globalComponentSpecs) {
-            XUIEngine._globalComponentSpecs = new Map();
+        this.onError = null;
+        if (!EUIXEngine._globalComponentSpecs) {
+            EUIXEngine._globalComponentSpecs = new Map();
         }
         this.ensureDefaultStyles();
     }
 
+    enableDevTools() {
+        if (typeof window !== "undefined") {
+            import('./EUIXDevTools.js').then(({ EUIXDevTools }) => {
+                const devtools = EUIXDevTools.init(this);
+                if (devtools) devtools.toggle(true);
+            }).catch(() => {});
+        }
+        return this;
+    }
+
+    static enableDevTools() {
+        if (EUIXEngine.instance) {
+            return EUIXEngine.instance.enableDevTools();
+        }
+        return null;
+    }
+
+    reportError(error, contextInfo = "") {
+        const msg = error instanceof Error ? error.message : String(error);
+        if (typeof console !== "undefined") {
+            console.warn(`[EUIXEngine Fallback] ${contextInfo ? contextInfo + ": " : ""}${msg}`, error);
+        }
+        if (typeof this.onError === "function") {
+            try {
+                this.onError(error, contextInfo);
+            } catch (_) {}
+        }
+    }
+
     ensureDefaultStyles() {
-        if (typeof document === "undefined" || document.getElementById("xui-default-styles")) return;
+        if (typeof document === "undefined" || document.getElementById("euix-default-styles")) return;
         const style = document.createElement("style");
-        style.id = "xui-default-styles";
+        style.id = "euix-default-styles";
         style.textContent = `
             .dialog-backdrop {
                 position: fixed !important;
@@ -268,7 +300,7 @@ class XUIEngine {
                 justify-content: center !important;
                 z-index: 9999 !important;
                 padding: 1rem !important;
-                animation: xui-fade-in 0.15s ease-out !important;
+                animation: euix-fade-in 0.15s ease-out !important;
             }
             .dialog-panel {
                 background: #ffffff !important;
@@ -278,7 +310,7 @@ class XUIEngine {
                 width: 100% !important;
                 max-width: 28rem !important;
                 overflow: hidden !important;
-                animation: xui-zoom-in 0.15s ease-out !important;
+                animation: euix-zoom-in 0.15s ease-out !important;
             }
             .dialog-header {
                 display: flex !important;
@@ -310,11 +342,11 @@ class XUIEngine {
             .dialog-body {
                 padding: 1.25rem !important;
             }
-            @keyframes xui-fade-in {
+            @keyframes euix-fade-in {
                 from { opacity: 0; }
                 to { opacity: 1; }
             }
-            @keyframes xui-zoom-in {
+            @keyframes euix-zoom-in {
                 from { opacity: 0; transform: scale(0.95); }
                 to { opacity: 1; transform: scale(1); }
             }
@@ -323,8 +355,8 @@ class XUIEngine {
     }
 
     static mount(xmlString, containerSelector = "#app") {
-        const engine = new XUIEngine(containerSelector);
-        XUIEngine.instance = engine;
+        const engine = new EUIXEngine(containerSelector);
+        EUIXEngine.instance = engine;
         engine.mount(xmlString);
         return engine;
     }
@@ -332,7 +364,7 @@ class XUIEngine {
     static async loadComponent(name, url) {
         try {
             if (typeof fetch === "undefined") {
-                console.error("[XUIEngine] fetch is not available in this environment.");
+                console.error("[EUIXEngine] fetch is not available in this environment.");
                 return null;
             }
             const res = await fetch(url);
@@ -347,13 +379,13 @@ class XUIEngine {
                 const impSrc = imp.getAttribute("src");
                 const impName = imp.getAttribute("name") || imp.getAttribute("as");
                 if (impSrc && impName) {
-                    await XUIEngine.loadComponent(impName, impSrc);
+                    await EUIXEngine.loadComponent(impName, impSrc);
                 }
             }
 
-            return XUIEngine.registerComponentSpec(name, doc);
+            return EUIXEngine.registerComponentSpec(name, doc);
         } catch (err) {
-            console.error(`[XUIEngine] Bileşen dosyadan yüklenemedi ('${name}' -> '${url}'):`, err);
+            console.error(`[EUIXEngine] Failed to load component from file ('${name}' -> '${url}'):`, err);
             return null;
         }
     }
@@ -369,7 +401,7 @@ class XUIEngine {
             nestedDefs.forEach(def => {
                 const defName = def.getAttribute("name") || def.getAttribute("id");
                 if (defName && defName.toLowerCase() !== (name || "").toLowerCase()) {
-                    XUIEngine.registerComponentSpec(defName, def);
+                    EUIXEngine.registerComponentSpec(defName, def);
                 }
             });
 
@@ -390,7 +422,7 @@ class XUIEngine {
             nestedDefs.forEach(def => {
                 const defName = def.getAttribute("name") || def.getAttribute("id");
                 if (defName && defName.toLowerCase() !== (name || "").toLowerCase() && def !== node) {
-                    XUIEngine.registerComponentSpec(defName, def);
+                    EUIXEngine.registerComponentSpec(defName, def);
                 }
             });
         } else {
@@ -399,78 +431,38 @@ class XUIEngine {
 
         const compName = (name || (node && node.getAttribute && node.getAttribute("name")) || (node && node.getAttribute && node.getAttribute("id")) || "").toLowerCase();
         if (compName && node) {
-            if (!XUIEngine._globalComponentSpecs) XUIEngine._globalComponentSpecs = new Map();
-            XUIEngine._globalComponentSpecs.set(compName, node);
+            if (!EUIXEngine._globalComponentSpecs) EUIXEngine._globalComponentSpecs = new Map();
+            EUIXEngine._globalComponentSpecs.set(compName, node);
         }
         return compName;
     }
 
     async loadComponentFile(name, url) {
-        const compName = await XUIEngine.loadComponent(name, url);
-        if (compName && XUIEngine._globalComponentSpecs.has(compName)) {
-            this._componentSpecs.set(compName, XUIEngine._globalComponentSpecs.get(compName));
+        const compName = await EUIXEngine.loadComponent(name, url);
+        if (compName && EUIXEngine._globalComponentSpecs.has(compName)) {
+            this._componentSpecs.set(compName, EUIXEngine._globalComponentSpecs.get(compName));
         }
         return compName;
     }
 
     registerComponentSpec(name, xmlStringOrNode) {
-        const compName = XUIEngine.registerComponentSpec(name, xmlStringOrNode);
-        if (compName && XUIEngine._globalComponentSpecs.has(compName)) {
-            this._componentSpecs.set(compName, XUIEngine._globalComponentSpecs.get(compName));
+        const compName = EUIXEngine.registerComponentSpec(name, xmlStringOrNode);
+        if (compName && EUIXEngine._globalComponentSpecs.has(compName)) {
+            this._componentSpecs.set(compName, EUIXEngine._globalComponentSpecs.get(compName));
         }
         return compName;
     }
 
     static autoInit() {
         if (typeof document === "undefined") return;
-        const scripts = document.querySelectorAll('script[type="application/xui"], script[type="text/xui"], script[data-xui-app], xui-app');
+        const scripts = document.querySelectorAll('script[type="application/euix"], script[type="text/euix"], script[data-euix-app], euix-app');
         scripts.forEach(script => {
             const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
-            const xml = script.tagName.toLowerCase() === "xui-app" ? script.innerHTML.trim() : script.textContent.trim();
+            const xml = (script.tagName.toLowerCase() === "euix-app" ) ? script.innerHTML.trim() : script.textContent.trim();
             if (xml) {
-                XUIEngine.mount(xml, targetSelector);
+                EUIXEngine.mount(xml, targetSelector);
             }
         });
-    }
-
-    runBenchmark(count = 1000, targetKey = "todos") {
-        const t0 = performance.now();
-        const items = [];
-        for (let i = 1; i <= count; i++) {
-            items.push({
-                id: `bench_${i}`,
-                text: `Benchmark Görevi ${i}`,
-                completed: i % 2 === 0 ? "true" : "false"
-            });
-        }
-
-        this.setState(targetKey, items);
-
-        const t1 = performance.now();
-        const durationMs = parseFloat((t1 - t0).toFixed(2));
-        const opsPerSec = Math.round((count / (durationMs || 1)) * 1000);
-
-        const report = {
-            count,
-            durationMs,
-            opsPerSec,
-            fineGrained: true,
-            message: `⚡ ${count.toLocaleString('tr-TR')} eleman ${durationMs} ms içerisinde DOM'a yerleştirildi (${opsPerSec.toLocaleString('tr-TR')} ops/sec).`
-        };
-
-        if (typeof console !== "undefined") {
-            console.log(`%c[XUI Engine Benchmark]`, "color: #2563eb; font-weight: bold;", report.message);
-            if (console.table) console.table([report]);
-        }
-        return report;
-    }
-
-    static runBenchmark(count = 1000, targetKey = "todos") {
-        if (XUIEngine.instance) {
-            return XUIEngine.instance.runBenchmark(count, targetKey);
-        }
-        console.warn("XUIEngine aktif bir örneği (instance) bulunamadı.");
-        return null;
     }
 
     getChild(node, tagName) {
@@ -594,6 +586,9 @@ class XUIEngine {
         if (!this._rawState) return;
 
         this._rawState[key] = value;
+        if (this._devtools && this._devtools.enabled && !silent) {
+            this._devtools.logAction("setState", { path: key, value });
+        }
         this.syncBindings(key, value, sourceEl);
     }
 
@@ -632,9 +627,20 @@ class XUIEngine {
                 return;
             }
 
+            if (kind === "multi_template") {
+                const template = el.dataset.euixMultiTemplate;
+                if (template) {
+                    el.textContent = template.replace(/\{data\.(\w+)\}/g, (_, key) => {
+                        const val = this.getState(key);
+                        return val === undefined || val === null ? "" : String(val);
+                    });
+                }
+                return;
+            }
+
             if (kind === "text") {
-                const htmlTemplate = el.dataset.xuiHtmlTemplate;
-                const textTemplate = el.dataset.xuiTextTemplate;
+                const htmlTemplate = el.dataset.euixHtmlTemplate || el.dataset.xuiHtmlTemplate;
+                const textTemplate = el.dataset.euixTextTemplate || el.dataset.xuiTextTemplate;
                 if (htmlTemplate) {
                     el.innerHTML = htmlTemplate.replace(/\{\s*value\s*\}/g, this.escapeHtml(text));
                 } else if (textTemplate) {
@@ -767,7 +773,16 @@ class XUIEngine {
 
         const parserError = this.xmlDoc.querySelector("parsererror");
         if (parserError) {
-            console.error("XML Parse Hatası:", parserError.textContent);
+            const errMsg = parserError.textContent.trim();
+            this.reportError(errMsg, "XML Parse Error");
+            if (this.container) {
+                this.container.innerHTML = `
+                    <div class="euix-mount-error" style="padding:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;color:#991b1b;font-family:sans-serif;">
+                        <h3 style="margin:0 0 8px 0;font-size:14px;font-weight:bold;">⚠️ EUIXEngine XML Parse Error</h3>
+                        <pre style="margin:0;font-size:11px;white-space:pre-wrap;">${this.escapeHtml(errMsg)}</pre>
+                    </div>
+                `;
+            }
             return this;
         }
 
@@ -850,7 +865,7 @@ class XUIEngine {
                         const m = String(value).match(new RegExp(pattern, flags));
                         value = m ? (m[1] ?? m[0]) : value;
                     } catch (e) {
-                        console.warn("[XUIEngine] Regex Match Hatası:", e);
+                        console.warn("[EUIXEngine] Regex Match Error:", e);
                     }
                 }
                 mapped[as] = value == null ? "" : String(value);
@@ -923,7 +938,7 @@ class XUIEngine {
                     if (Array.isArray(data)) {
                         data = this.mapResponseItems(data, itemMapNode);
                     }
-                    this._rawState[target] = data;
+                    this.setState(target, data);
                     if (errorPath) this.setState(errorPath, "", { silent: true });
                 });
             })
@@ -1015,7 +1030,7 @@ class XUIEngine {
 
         if (/[==|!=|>|<|&&|\|\||!|\(\)]/.test(expr)) {
             const cleanExpr = expr.replace(/\{([^}]+)\}/g, "$1");
-            return XUIExpressionParser.eval(cleanExpr, resolveValueFn);
+            return EUIXExpressionParser.eval(cleanExpr, resolveValueFn);
         }
 
         return Boolean(resolved);
@@ -1032,7 +1047,7 @@ class XUIEngine {
 
     renderConditional(xmlNode, context = {}) {
         const containerNode = document.createElement("div");
-        containerNode.className = "xui-if-branch";
+        containerNode.className = "euix-if-branch";
         containerNode.style.display = "contents";
 
         const branches = [];
@@ -1129,20 +1144,20 @@ class XUIEngine {
 
         const header = document.createElement("button");
         header.type = "button";
-        header.className = xmlNode.getAttribute("header_class") || "xui-collapse-header";
+        header.className = xmlNode.getAttribute("header_class") || "euix-collapse-header";
 
         const chevron = document.createElement("span");
-        chevron.className = "xui-collapse-chevron";
+        chevron.className = "euix-collapse-chevron";
 
         const label = document.createElement("span");
-        label.className = "xui-collapse-title";
+        label.className = "euix-collapse-title";
         label.textContent = title;
 
         header.appendChild(chevron);
         header.appendChild(label);
 
         const body = document.createElement("div");
-        body.className = xmlNode.getAttribute("body_class") || "xui-collapse-body";
+        body.className = xmlNode.getAttribute("body_class") || "euix-collapse-body";
 
         const renderBodyChildren = () => {
             body.innerHTML = "";
@@ -1155,7 +1170,7 @@ class XUIEngine {
 
         const updateCollapseState = (isOpen) => {
             open = isOpen;
-            root.className = ["xui-collapse", open ? "is-open" : "is-closed", extraClass].filter(Boolean).join(" ");
+            root.className = ["euix-collapse", open ? "is-open" : "is-closed", extraClass].filter(Boolean).join(" ");
             header.setAttribute("aria-expanded", open ? "true" : "false");
             chevron.textContent = open ? "▼" : "▶";
             if (open) {
@@ -1205,7 +1220,7 @@ class XUIEngine {
         };
 
         const containerNode = document.createElement("div");
-        containerNode.className = "xui-dialog-container";
+        containerNode.className = "euix-dialog-container";
         containerNode.style.display = "contents";
 
         const backdrop = document.createElement("div");
@@ -1319,6 +1334,11 @@ class XUIEngine {
             if (match) return match[1];
         }
 
+        if (xmlNode.textContent) {
+            const match = String(xmlNode.textContent || "").trim().match(/\{data\.(\w+)\}/);
+            if (match) return match[1];
+        }
+
         return "";
     }
 
@@ -1336,6 +1356,20 @@ class XUIEngine {
     }
 
     createHTMLElement(xmlNode, context = {}) {
+        if (!xmlNode) return null;
+        try {
+            return this._createHTMLElementInternal(xmlNode, context);
+        } catch (err) {
+            this.reportError(err, `Error rendering <${xmlNode.tagName || 'element'}>`);
+            const fallback = document.createElement("div");
+            fallback.className = "euix-error-fallback";
+            fallback.style.cssText = "padding:4px 8px;margin:2px 0;background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;color:#e11d48;font-size:11px;font-family:sans-serif;";
+            fallback.textContent = `⚠️ Component Error: <${xmlNode.tagName || 'unknown'}>`;
+            return fallback;
+        }
+    }
+
+    _createHTMLElementInternal(xmlNode, context = {}) {
         if (xmlNode.nodeType === Node.TEXT_NODE) {
             const txt = xmlNode.textContent.trim();
             return txt ? document.createTextNode(this.interpolate(txt, context)) : null;
@@ -1362,14 +1396,14 @@ class XUIEngine {
             if (customEl) return this.applyRef(customEl, xmlNode, context);
         }
 
-        if (this._componentSpecs.has(tagName) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(tagName))) {
-            const specNode = this._componentSpecs.get(tagName) || XUIEngine._globalComponentSpecs.get(tagName);
+        if (this._componentSpecs.has(tagName) || (EUIXEngine._globalComponentSpecs && EUIXEngine._globalComponentSpecs.has(tagName))) {
+            const specNode = this._componentSpecs.get(tagName) || EUIXEngine._globalComponentSpecs.get(tagName);
             const res = this.renderComponentSpec(specNode, xmlNode, context);
             return this.applyRef(res, xmlNode, context);
         }
 
-        if (typeAttr && (this._componentSpecs.has(typeAttr) || (XUIEngine._globalComponentSpecs && XUIEngine._globalComponentSpecs.has(typeAttr)))) {
-            const specNode = this._componentSpecs.get(typeAttr) || XUIEngine._globalComponentSpecs.get(typeAttr);
+        if (typeAttr && (this._componentSpecs.has(typeAttr) || (EUIXEngine._globalComponentSpecs && EUIXEngine._globalComponentSpecs.has(typeAttr)))) {
+            const specNode = this._componentSpecs.get(typeAttr) || EUIXEngine._globalComponentSpecs.get(typeAttr);
             const res = this.renderComponentSpec(specNode, xmlNode, context);
             return this.applyRef(res, xmlNode, context);
         }
@@ -1380,7 +1414,7 @@ class XUIEngine {
         if (isFlex || isGrid) {
             const el = document.createElement("div");
             el.style.display = isFlex ? "flex" : "grid";
-            el.className = [isFlex ? "xui-flex" : "xui-grid", xmlNode.getAttribute("class")].filter(Boolean).join(" ");
+            el.className = [isFlex ? "euix-flex" : "euix-grid", xmlNode.getAttribute("class")].filter(Boolean).join(" ");
             this.applyLayoutStyles(el, xmlNode, context);
             this.bindEvents(xmlNode, el, context);
 
@@ -1397,7 +1431,7 @@ class XUIEngine {
 
         if (tagName === "for_each") {
             const listContainer = document.createElement("div");
-            listContainer.className = "xui-list-container";
+            listContainer.className = "euix-list-container";
             listContainer.style.display = "contents";
 
             const itemsAttr = xmlNode.getAttribute("items") || "";
@@ -1449,10 +1483,6 @@ class XUIEngine {
 
             form.onsubmit = (e) => {
                 e.preventDefault();
-                const onSubmitNode = this.getChild(xmlNode, "on_submit");
-                if (onSubmitNode) {
-                    this.handleAction(onSubmitNode, context);
-                }
             };
 
             Array.from(xmlNode.childNodes).forEach(child => {
@@ -1777,14 +1807,34 @@ class XUIEngine {
             }
         });
 
-        const genericBindPath = this.resolveBindPath(xmlNode);
-        if (genericBindPath && !["input", "select", "textarea", "button", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
-            const rawContent = xmlNode.textContent.trim();
-            if (rawContent.includes("{value}")) {
-                div.dataset.xuiTextTemplate = rawContent;
+        const childElementNodes = Array.from(xmlNode.childNodes).filter(n =>
+            n.nodeType === Node.ELEMENT_NODE &&
+            !["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on"].includes(n.tagName.toLowerCase())
+        );
+
+        if (childElementNodes.length === 0 && !["input", "select", "textarea", "button", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
+            const rawContent = xmlNode.textContent;
+            const matches = Array.from(rawContent.matchAll(/\{data\.(\w+)\}/g));
+            if (matches.length > 0) {
+                div.dataset.euixMultiTemplate = rawContent;
+                const uniqueKeys = new Set(matches.map(m => m[1]));
+                uniqueKeys.forEach(key => {
+                    this.registerBinding(key, div, "multi_template");
+                    this.syncBindings(key, this.getState(key));
+                });
+            } else {
+                const genericBindPath = this.resolveBindPath(xmlNode);
+                if (genericBindPath) {
+                    const trimmed = rawContent.trim();
+                    if (trimmed.includes("{value}")) {
+                        div.dataset.euixTextTemplate = trimmed;
+                    } else if (trimmed.includes(`{data.${genericBindPath}}`)) {
+                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{data\\.${genericBindPath}\\}`, "g"), "{value}");
+                    }
+                    this.registerBinding(genericBindPath, div, "text");
+                    this.syncBindings(genericBindPath, this.getState(genericBindPath));
+                }
             }
-            this.registerBinding(genericBindPath, div, "text");
-            this.syncBindings(genericBindPath, this.getState(genericBindPath));
         }
 
         return this.applyRef(div, xmlNode, context);
@@ -1803,7 +1853,7 @@ class XUIEngine {
 
             if (tagName === "on_click") eventType = "click";
             else if (tagName === "on_change") eventType = "change";
-            else if (tagName === "on_submit") eventType = "submit";
+            else if (tagName === "on_submit") eventType = (el.tagName && el.tagName.toLowerCase() === "button") ? "click" : "submit";
             else if (tagName === "on_keyup") eventType = "keyup";
             else if (tagName === "on_keydown") eventType = "keydown";
             else if (tagName === "on_mouseenter") eventType = "mouseenter";
@@ -1917,7 +1967,26 @@ class XUIEngine {
     }
 
     handleAction(actionNode, context) {
+        if (!actionNode) return;
+        try {
+            this._handleActionInternal(actionNode, context);
+        } catch (err) {
+            const actName = actionNode.getAttribute ? actionNode.getAttribute("action") : "unknown";
+            this.reportError(err, `Action Execution Fallback (${actName})`);
+        }
+    }
+
+    _handleActionInternal(actionNode, context) {
         const actionType = actionNode.getAttribute("action");
+
+        if (this._devtools && this._devtools.enabled) {
+            const pathNode = this.getChild(actionNode, "path");
+            const opNode = this.getChild(actionNode, "operation");
+            this._devtools.logAction(actionType || actionNode.tagName, {
+                path: pathNode ? pathNode.textContent.trim() : "",
+                operation: opNode ? opNode.textContent.trim() : ""
+            });
+        }
 
         if (this._customActions.has(actionType)) {
             const handler = this._customActions.get(actionType);
@@ -1927,25 +1996,6 @@ class XUIEngine {
 
         if (actionType === "XHR") {
             this.handleXHR(actionNode, context);
-            return;
-        }
-
-        if (actionType === "BENCHMARK" || actionType === "RUN_BENCHMARK") {
-            const count = parseInt(actionNode.getAttribute("count") || "1000", 10);
-            const targetPath = this.parseBindPath(actionNode.getAttribute("target") || "data.todos");
-            const resultPath = this.parseBindPath(actionNode.getAttribute("result") || "data.benchmark_result");
-
-            const t0 = performance.now();
-            const items = [];
-            for (let i = 1; i <= count; i++) {
-                items.push({ id: `bench_${i}`, text: `Benchmark Görevi ${i}`, completed: i % 2 === 0 ? "true" : "false" });
-            }
-            this.setState(targetPath, items);
-            const t1 = performance.now();
-            const duration = (t1 - t0).toFixed(2);
-
-            const resultMsg = `⚡ ${count.toLocaleString('tr-TR')} eleman ${duration} ms içerisinde ince taneli (fine-grained) olarak DOM'a yerleştirildi.`;
-            if (resultPath) this.setState(resultPath, resultMsg);
             return;
         }
 
@@ -1959,7 +2009,15 @@ class XUIEngine {
             const path = this.parseBindPath(interpolatedPath);
 
             const rawValue = valueNode ? valueNode.textContent.trim() : "";
-            const nextValue = this.interpolate(rawValue, context);
+            let nextValue = this.interpolate(rawValue, context);
+            if (/[+\-*/]/.test(nextValue)) {
+                try {
+                    const evaluated = EUIXExpressionParser.eval(nextValue, (key) => this.getState(this.parseBindPath(key)));
+                    if (evaluated !== undefined && !isNaN(evaluated)) {
+                        nextValue = String(evaluated);
+                    }
+                } catch (_) {}
+            }
             this.setState(path, nextValue);
 
             const focusNode = this.getChild(actionNode, "focus");
@@ -1982,7 +2040,7 @@ class XUIEngine {
                 if (this.refs[resolved] && typeof this.refs[resolved].focus === "function") {
                     this.refs[resolved].focus();
                 } else {
-                    const el = document.querySelector(`[data-xui-ref="${resolved}"], #${resolved}`);
+                    const el = document.querySelector(`[data-euix-ref="${resolved}"], #${resolved}`);
                     if (el && typeof el.focus === "function") el.focus();
                 }
             }
@@ -2012,7 +2070,7 @@ class XUIEngine {
                 const rawText = valItem ? (valItem.getAttribute("text") || valItem.textContent.trim()) : "";
                 const textValue = this.interpolate(rawText, context);
 
-                if (!textValue.trim()) return;
+                if (!valItem && !textValue.trim()) return;
 
                 const newItem = { id: Date.now().toString() };
                 if (valItem) {
@@ -2059,7 +2117,7 @@ class XUIEngine {
 
             if (operation === "UPDATE") {
                 const whereNode = this.getChild(actionNode, "where");
-                const fieldsNode = this.getChild(actionNode, "fields");
+                const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item");
                 if (!fieldsNode) return;
 
                 const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
@@ -2126,7 +2184,7 @@ class XUIEngine {
             if (dom) this.container.appendChild(dom);
         }
 
-        const autofocusEl = this.container.querySelector("[data-xui-autofocus='true']");
+        const autofocusEl = this.container.querySelector("[data-euix-autofocus='true']");
         if (autofocusEl && typeof autofocusEl.focus === "function") {
             autofocusEl.focus();
         }
@@ -2134,16 +2192,15 @@ class XUIEngine {
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
-    window.XUIExpressionParser = XUIExpressionParser;
-    window.XUIEngine = XUIEngine;
-
+    window.EUIXExpressionParser = EUIXExpressionParser;
+    window.EUIXEngine = EUIXEngine;
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => XUIEngine.autoInit());
+        document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
     } else {
-        XUIEngine.autoInit();
+        EUIXEngine.autoInit();
     }
 }
 
 if (typeof module !== "undefined" && module.exports) {
-    module.exports = { XUIEngine, XUIExpressionParser, default: XUIEngine };
+    module.exports = { EUIXEngine, EUIXExpressionParser, default: EUIXEngine };
 }

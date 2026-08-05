@@ -1,20 +1,35 @@
 <component_def name="compare-section">
     <collapse bind="data.compare_open" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-3">
-        <summary>React.js vs XUI Engine Karşılaştırması</summary>
-        <grid cols="2" gap="8">
-            <flex direction="column" gap="4" class="p-3.5 bg-blue-50/50 border border-blue-100 rounded-xl text-xs">
-                <span class="font-black text-blue-700 text-sm">⚡ Vanilla .XUI Engine</span>
-                <span class="text-slate-600">• ~8 KB Gzip Paket Boyutu</span>
-                <span class="text-slate-600">• Sıfır Bağımlılık (0 Dependency)</span>
-                <span class="text-slate-600">• Derleyici Gerektirmez (No Build)</span>
+        <summary>Karşılaştırma: EUIX Engine vs React.js vs htmx</summary>
+        <grid cols="3" gap="8">
+            <!-- 1. EUIX Engine -->
+            <flex direction="column" gap="4" class="p-3 bg-blue-50/60 border border-blue-100 rounded-xl text-[11px]">
+                <span class="font-black text-blue-700 text-xs">⚡ EUIX Engine</span>
+                <span class="text-slate-600">• ~8 KB Gzip Boyutu</span>
+                <span class="text-slate-600">• İstemci Reaktif State (&lt;data_model&gt;)</span>
+                <span class="text-slate-600">• Sunucusuz / Offline Çalışır</span>
+                <span class="text-slate-600">• Derleyici İstemez (No Build)</span>
                 <span class="text-slate-600">• İnce Taneli (Fine-Grained) DOM</span>
             </flex>
-            <flex direction="column" gap="4" class="p-3.5 bg-slate-100/60 border border-slate-200 rounded-xl text-xs">
-                <span class="font-black text-slate-700 text-sm">⚛️ React.js</span>
+            
+            <!-- 2. React.js -->
+            <flex direction="column" gap="4" class="p-3 bg-slate-100/60 border border-slate-200 rounded-xl text-[11px]">
+                <span class="font-black text-slate-700 text-xs">⚛️ React.js</span>
                 <span class="text-slate-500">• ~45-140 KB Gzip Runtime</span>
-                <span class="text-slate-500">• react + react-dom + build araçları</span>
+                <span class="text-slate-500">• Virtual DOM &amp; Re-render</span>
                 <span class="text-slate-500">• JSX Derleyicisi Zorunlu (Babel/Vite)</span>
-                <span class="text-slate-500">• Virtual DOM &amp; Bileşen Re-render</span>
+                <span class="text-slate-500">• Karmaşık Bağımlılık Ağacı</span>
+                <span class="text-slate-500">• Yüksek Bellek Tüketimi</span>
+            </flex>
+
+            <!-- 3. htmx -->
+            <flex direction="column" gap="4" class="p-3 bg-amber-50/60 border border-amber-100 rounded-xl text-[11px]">
+                <span class="font-black text-amber-800 text-xs">🚀 htmx</span>
+                <span class="text-slate-600">• ~14 KB Gzip Boyutu</span>
+                <span class="text-slate-600">• Sunucu Odaklı HTML (HDA)</span>
+                <span class="text-slate-600">• Her Etkileşimde Sunucu HTTP İsteği</span>
+                <span class="text-slate-600">• İstemcide Reaktif State Yok</span>
+                <span class="text-slate-600">• Ek Kütüphane İster (Alpine.js)</span>
             </flex>
         </grid>
     </collapse>

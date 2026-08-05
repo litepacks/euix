@@ -1,41 +1,46 @@
 <component_def name="todo-section">
-    <flex direction="column" gap="16" class="w-full">
-        <flex direction="row" align="center" gap="8" class="mt-2">
-            <input type="text" bind="data.new_todo_input" placeholder="Yeni görev yazın..." class="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm" />
-            <button class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors shadow-lg shadow-blue-500/10 cursor-pointer">
-                Ekle
-                <on_click action="MUTATE_STATE">
-                    <path>data.todos</path>
-                    <operation>PUSH</operation>
-                    <value>
-                        <item text="{data.new_todo_input}" />
-                    </value>
-                </on_click>
+    <flex direction="column" gap="12">
+        <form class="flex flex-row gap-2">
+            <on_submit action="MUTATE_STATE">
+                <path>data.todos</path>
+                <operation>PUSH</operation>
+                <item text="{data.new_todo_input}" completed="false" />
+            </on_submit>
+            <input type="text" bind="data.new_todo_input" placeholder="Enter a new task..." autofocus="true" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors shadow-md shadow-blue-500/20 cursor-pointer">
+                Add Task
             </button>
-            <button class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-colors shadow-lg shadow-emerald-500/10 cursor-pointer">
-                Tümünü Tamamla
-                <on_click action="MUTATE_STATE">
-                    <path>data.todos</path>
-                    <operation>UPDATE</operation>
-                    <where field="completed" op="eq" equals="false" />
-                    <fields completed="true" />
-                </on_click>
-            </button>
-        </flex>
-        
-        <span class="text-xs text-slate-400 font-medium px-1 -mt-2" bind="data.new_todo_input">
-            <template>Canlı önizleme: <strong>{value}</strong></template>
-        </span>
+        </form>
 
-        <collapse bind="data.todos_open" title="Todo Listesi" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-2">
+        <flex direction="row" gap="8" align="center" justify="between" class="px-1">
+            <flex direction="row" gap="6">
+                <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
+                    + Quick Task
+                    <on_click action="MUTATE_STATE">
+                        <path>data.todos</path>
+                        <operation>PUSH</operation>
+                        <item text="Quick Task {data.todos.length + 1}" completed="false" />
+                    </on_click>
+                </button>
+                <button class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
+                    Clear All Tasks
+                    <on_click action="SET_STATE">
+                        <path>data.confirm_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                </button>
+            </flex>
+        </flex>
+
+        <collapse bind="data.todos_open" title="Todo List" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-2">
             <flex direction="column" gap="8">
                 <for_each items="{data.todos}" var="todo">
                     <flex direction="row" align="center" justify="between" gap="8" class="p-3 bg-white hover:bg-slate-50/50 border border-slate-100 rounded-lg transition-all shadow-sm">
                         <if condition="{data.editing_id} == {todo.id}">
-                            <input type="text" bind="data.edit_todo_input" placeholder="Görevi düzenle..." autofocus="true" class="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                            <input type="text" bind="data.edit_todo_input" placeholder="Edit task..." autofocus="true" class="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                             <flex direction="row" gap="6">
                                 <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-xs cursor-pointer">
-                                    Kaydet
+                                    Save
                                     <on_click action="MUTATE_STATE">
                                         <path>data.todos</path>
                                         <operation>UPDATE</operation>
@@ -44,7 +49,7 @@
                                     </on_click>
                                 </button>
                                 <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs cursor-pointer">
-                                    İptal
+                                    Cancel
                                     <on_click action="SET_STATE">
                                         <path>data.editing_id</path>
                                         <value></value>
@@ -65,7 +70,7 @@
                                 </if>
                                 <flex direction="row" gap="6">
                                     <button class="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
-                                        Düzenle
+                                        Edit
                                         <on_click action="SET_STATE">
                                             <path>data.editing_id</path>
                                             <value>{todo.id}</value>
@@ -77,7 +82,7 @@
                                         </on_click>
                                     </button>
                                     <button class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
-                                        Sil
+                                        Delete
                                         <on_click action="SET_STATE">
                                             <path>data.selected_todo_id</path>
                                             <value>{todo.id}</value>

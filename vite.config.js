@@ -8,9 +8,9 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, 'XUIEngine.js'),
-      name: 'XUIEngine',
-      fileName: (format) => `XUIEngine.${format}.js`,
+      entry: resolve(__dirname, 'src/EUIXEngine.js'),
+      name: 'EUIXEngine',
+      fileName: (format) => `EUIXEngine.${format}.js`,
       formats: ['es', 'umd']
     },
     minify: 'terser',

@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import XUIEnginePkg from '../XUIEngine.js';
+import EUIXEnginePkg from '../src/EUIXEngine.js';
 
-const XUIEngine = XUIEnginePkg.XUIEngine || XUIEnginePkg;
-const XUIExpressionParser = XUIEnginePkg.XUIExpressionParser;
+const EUIXEngine = EUIXEnginePkg.EUIXEngine || EUIXEnginePkg;
+const EUIXExpressionParser = EUIXEnginePkg.EUIXExpressionParser;
 
-describe('XUIEngine Unit Tests', () => {
+describe('EUIXEngine Unit Tests', () => {
     beforeEach(() => {
         document.body.innerHTML = '<div id="app"></div>';
     });
@@ -13,20 +13,18 @@ describe('XUIEngine Unit Tests', () => {
         const xml = `
         <uid_spec>
             <data_model>
-                <state id="title" type="string">Merhaba XUI</state>
+                <state id="title" type="string">Merhaba EUIX</state>
             </data_model>
-            <flex direction="column" gap="16">
-                <component type="title">{data.title}</component>
+            <flex direction="column">
+                <component type="text" class="title-el">{data.title}</component>
             </flex>
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
-        expect(engine).toBeDefined();
-
-        const titleEl = document.querySelector('h2');
+        const engine = await EUIXEngine.mount(xml, '#app');
+        const titleEl = document.querySelector('.title-el');
         expect(titleEl).not.toBeNull();
-        expect(titleEl.textContent).toBe('Merhaba XUI');
+        expect(titleEl.textContent).toBe('Merhaba EUIX');
     });
 
     it('should apply flexbox layout styles correctly', async () => {
@@ -38,8 +36,8 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        await XUIEngine.mount(xml, '#app');
-        const flexEl = document.querySelector('.xui-flex');
+        await EUIXEngine.mount(xml, '#app');
+        const flexEl = document.querySelector('.euix-flex');
 
         expect(flexEl).not.toBeNull();
         expect(flexEl.style.display).toBe('flex');
@@ -60,8 +58,8 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        await XUIEngine.mount(xml, '#app');
-        const gridEl = document.querySelector('.xui-grid');
+        await EUIXEngine.mount(xml, '#app');
+        const gridEl = document.querySelector('.euix-grid');
 
         expect(gridEl).not.toBeNull();
         expect(gridEl.style.display).toBe('grid');
@@ -81,7 +79,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
         const spanEl = document.querySelector('span');
         expect(spanEl).not.toBeNull();
         expect(spanEl.textContent).toBe('Ahmet');
@@ -107,7 +105,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
         let spans = document.querySelectorAll('span');
         expect(spans.length).toBe(2);
         expect(spans[0].textContent).toBe('Görev 1');
@@ -146,7 +144,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
         const btn = document.querySelector('button');
 
         expect(engine.getState('status')).toBe('idle');
@@ -174,7 +172,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        await XUIEngine.mount(xml, '#app');
+        await EUIXEngine.mount(xml, '#app');
         const titleSpans = document.querySelectorAll('.badge-title');
         const labelSpans = document.querySelectorAll('.badge-label');
 
@@ -204,7 +202,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        await XUIEngine.mount(xml, '#app');
+        await EUIXEngine.mount(xml, '#app');
         const titleEl = document.querySelector('h2');
         const subSpan = document.querySelector('.sub-text');
 
@@ -225,7 +223,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
         expect(engine.refs.userInput).toBeDefined();
         expect(engine.refs.userInput.tagName).toBe('INPUT');
 
@@ -255,7 +253,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
         let activeEl = document.querySelector('.active-text');
         expect(activeEl).not.toBeNull();
         expect(activeEl.textContent).toBe('Görev 1');
@@ -289,7 +287,7 @@ describe('XUIEngine Unit Tests', () => {
         </uid_spec>
         `;
 
-        const engine = await XUIEngine.mount(xml, '#app');
+        const engine = await EUIXEngine.mount(xml, '#app');
 
         const formEl = document.querySelector('form');
         const textareaEl = document.querySelector('textarea');
@@ -312,10 +310,201 @@ describe('XUIEngine Unit Tests', () => {
         expect(engine.getState('category')).toBe('backend');
     });
 
-    it('should evaluate complex expression conditions correctly using XUIExpressionParser', () => {
-        expect(XUIExpressionParser.eval('10 > 5', () => 0)).toBe(true);
-        expect(XUIExpressionParser.eval('"active" == "active" && 5 < 10', () => 0)).toBe(true);
-        expect(XUIExpressionParser.eval('length("hello") == 5', () => 0)).toBe(true);
-        expect(XUIExpressionParser.eval('contains("apple pie", "apple")', () => 0)).toBe(true);
+    it('should evaluate complex expression conditions correctly using EUIXExpressionParser', () => {
+        expect(EUIXExpressionParser.eval('10 > 5', () => 0)).toBe(true);
+        expect(EUIXExpressionParser.eval('"active" == "active" && 5 < 10', () => 0)).toBe(true);
+        expect(EUIXExpressionParser.eval('length("hello") == 5', () => 0)).toBe(true);
+        expect(EUIXExpressionParser.eval('contains("apple pie", "apple")', () => 0)).toBe(true);
+    });
+
+    it('should evaluate math expressions in SET_STATE (Counter math operations)', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="count" type="string">0</state>
+            </data_model>
+            <flex direction="column">
+                <button class="inc-btn">
+                    +1
+                    <on_click action="SET_STATE">
+                        <path>data.count</path>
+                        <value>{data.count} + 1</value>
+                    </on_click>
+                </button>
+                <button class="add5-btn">
+                    +5
+                    <on_click action="SET_STATE">
+                        <path>data.count</path>
+                        <value>{data.count} + 5</value>
+                    </on_click>
+                </button>
+                <span class="count-display">{data.count}</span>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await EUIXEngine.mount(xml, '#app');
+        const spanEl = document.querySelector('.count-display');
+        const incBtn = document.querySelector('.inc-btn');
+        const add5Btn = document.querySelector('.add5-btn');
+
+        expect(engine.getState('count')).toBe('0');
+        expect(spanEl.textContent).toBe('0');
+
+        incBtn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('count')).toBe('1');
+        expect(spanEl.textContent).toBe('1');
+
+        add5Btn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('count')).toBe('6');
+        expect(spanEl.textContent).toBe('6');
+    });
+
+    it('should perform MUTATE_STATE array operations (PUSH, UNSHIFT, UPDATE, REMOVE, CLEAR)', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="items" type="array">
+                    <item id="1" text="Item 1" />
+                    <item id="2" text="Item 2" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <button class="push-btn">
+                    <on_click action="MUTATE_STATE">
+                        <path>data.items</path>
+                        <operation>PUSH</operation>
+                        <item text="Item 3" />
+                    </on_click>
+                </button>
+                <button class="clear-btn">
+                    <on_click action="MUTATE_STATE">
+                        <path>data.items</path>
+                        <operation>CLEAR</operation>
+                    </on_click>
+                </button>
+                <for_each items="{data.items}" var="it">
+                    <component type="text" class="item-el">{it.text}</component>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('items').length).toBe(2);
+
+        const pushBtn = document.querySelector('.push-btn');
+        pushBtn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('items').length).toBe(3);
+
+        const clearBtn = document.querySelector('.clear-btn');
+        clearBtn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('items').length).toBe(0);
+        expect(document.querySelectorAll('.item-el').length).toBe(0);
+    });
+
+    it('should render modal dialog (<dialog>) and handle backdrop clicks', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="modal_open" type="string">false</state>
+            </data_model>
+            <flex direction="column">
+                <button class="open-btn">
+                    Open
+                    <on_click action="SET_STATE">
+                        <path>data.modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                </button>
+                <dialog bind="data.modal_open" title="Test Dialog">
+                    <span>Modal Content</span>
+                </dialog>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await EUIXEngine.mount(xml, '#app');
+        expect(document.querySelector('.dialog-backdrop')).toBeNull();
+
+        const openBtn = document.querySelector('.open-btn');
+        openBtn.dispatchEvent(new window.MouseEvent('click'));
+
+        const backdrop = document.querySelector('.dialog-backdrop');
+        expect(backdrop).not.toBeNull();
+
+        const closeBtn = document.querySelector('.dialog-close');
+        closeBtn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('modal_open')).toBe('false');
+        expect(document.querySelector('.dialog-backdrop')).toBeNull();
+    });
+
+    it('should render collapsible accordions (<collapse>) and toggle state on header click', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="section_open" type="string">true</state>
+            </data_model>
+            <flex direction="column">
+                <collapse bind="data.section_open" title="Collapsible Title">
+                    <span class="body-content">Collapsible Body Content</span>
+                </collapse>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = await EUIXEngine.mount(xml, '#app');
+        const collapseEl = document.querySelector('.euix-collapse');
+        expect(collapseEl).not.toBeNull();
+        expect(collapseEl.classList.contains('is-open')).toBe(true);
+        expect(document.querySelector('.body-content')).not.toBeNull();
+
+        const headerBtn = collapseEl.querySelector('button');
+        headerBtn.dispatchEvent(new window.MouseEvent('click'));
+
+        expect(engine.getState('section_open')).toBe('false');
+        expect(collapseEl.classList.contains('is-closed')).toBe(true);
+        expect(document.querySelector('.body-content')).toBeNull();
+    });
+
+    it('should render fallback error UI when XML parse error occurs without throwing unhandled exceptions', async () => {
+        const brokenXml = `<uid_spec><data_model><state id="foo">test</data_model></uid_spec>`;
+
+        let reportedError = false;
+        const engine = new EUIXEngine('#app');
+        engine.onError = () => { reportedError = true; };
+        engine.mount(brokenXml);
+
+        const mountErrorEl = document.querySelector('.euix-mount-error');
+        expect(mountErrorEl).not.toBeNull();
+        expect(mountErrorEl.textContent).toContain('XML Parse Error');
+        expect(reportedError).toBe(true);
+    });
+
+    it('should gracefully catch action execution errors using action fallback', async () => {
+        const xml = `
+        <uid_spec>
+            <flex direction="column">
+                <button class="broken-action-btn">
+                    Trigger Action
+                    <on_click action="CUSTOM_BROKEN_ACTION" />
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        let actionReported = false;
+        const engine = new EUIXEngine('#app');
+        engine.onError = () => { actionReported = true; };
+
+        engine.registerAction('CUSTOM_BROKEN_ACTION', () => {
+            throw new Error('Intentional Action Test Error');
+        });
+
+        engine.mount(xml);
+        const btn = document.querySelector('.broken-action-btn');
+        btn.dispatchEvent(new window.MouseEvent('click'));
+
+        expect(actionReported).toBe(true);
     });
 });

@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vanilla .XUI Engine - Modular Components</title>
+    <title>Vanilla .EUIX Engine - Modular Components</title>
     <!-- Tailwind CSS stable play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom collapse arrow rotations handled cleanly */
-        .xui-collapse.is-closed .xui-collapse-chevron::before { content: "▶"; }
-        .xui-collapse.is-open .xui-collapse-chevron::before { content: "▼"; }
+        .euix-collapse.is-closed .euix-collapse-chevron::before { content: "▶"; }
+        .euix-collapse.is-open .euix-collapse-chevron::before { content: "▼"; }
     </style>
 </head>
 <body class="bg-slate-50/70 min-h-screen py-12 px-4 flex flex-col items-center justify-start">
     <div id="app" class="w-full max-w-xl"></div>
 
-    <!-- XML Şablonu (Auto-Init) -->
-    <script type="application/xui" target="#app">
+    <!-- EUIX Şablonu (Auto-Init) -->
+    <script type="application/euix" target="#app">
     <uid_spec id="todo_app">
         <data_model>
             <state id="new_todo_input" type="string"></state>
             <state id="edit_todo_input" type="string"></state>
             <state id="editing_id" type="string"></state>
             <state id="todos" type="array">
-                <item id="1" text="Görev 1" completed="false" />
-                <item id="2" text="Görev 2" completed="false" />
-                <item id="3" text="Görev 3" completed="true" />
-                <item id="4" text="Görev 4" completed="false" />
-                <item id="5" text="Görev 5" completed="false" />
+                <item id="1" text="Task 1" completed="false" />
+                <item id="2" text="Task 2" completed="false" />
+                <item id="3" text="Task 3" completed="true" />
+                <item id="4" text="Task 4" completed="false" />
+                <item id="5" text="Task 5" completed="false" />
             </state>
             <state id="pokemons" type="array"></state>
             <state id="pokemon_loading" type="string">false</state>
@@ -38,9 +38,9 @@
             <state id="events_open" type="string">true</state>
             <state id="form_open" type="string">true</state>
             <state id="quick_todo_input" type="string"></state>
-            <state id="hover_status" type="string">Fareyi bu kutunun üzerine getirin...</state>
+            <state id="hover_status" type="string">Hover over this box...</state>
             <state id="help_open" type="string">false</state>
-            <state id="form_bio" type="string">Vanilla .XUI Engine geliştiricisiyim.</state>
+            <state id="form_bio" type="string">Vanilla .EUIX Engine developer.</state>
             <state id="form_category" type="string">frontend</state>
             <state id="form_level" type="string">senior</state>
             <state id="form_salary" type="string">85</state>
@@ -48,6 +48,12 @@
             <state id="confirm_modal_open" type="string">false</state>
             <state id="delete_modal_open" type="string">false</state>
             <state id="selected_todo_id" type="string"></state>
+            <state id="counter_value" type="string">0</state>
+            <state id="counter_open" type="string">true</state>
+            <state id="pokemon_open" type="string">true</state>
+            <state id="pokemon_loading" type="string">false</state>
+            <state id="pokemon_error" type="string"></state>
+            <state id="pokemons" type="array"></state>
         </data_model>
 
         <on_mount action="XHR">
@@ -67,6 +73,7 @@
         <imports>
             <import name="user-badge" src="components/UserBadge.xml" />
             <import name="app-header" src="components/AppHeader.xml" />
+            <import name="counter-section" src="components/CounterSection.xml" />
             <import name="todo-section" src="components/TodoSection.xml" />
             <import name="pokemon-section" src="components/PokemonSection.xml" />
             <import name="compare-section" src="components/CompareSection.xml" />
@@ -78,19 +85,21 @@
 
         <flex direction="column" gap="16" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
             <app-header />
+            <counter-section />
             <todo-section />
             <form-section />
             <pokemon-section />
             <compare-section />
             <events-section />
-            <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Tüm Görevleri Sil?" message="Tüm Todo görevlerini kalıcı olarak silmek istediğinize emin misiniz?" confirm_text="Evet, Tümünü Sil" cancel_text="Vazgeç" />
-            <confirm-modal bind="data.delete_modal_open" mode="remove" title="Görevi Sil?" message="Seçilen bu görevi listeden kaldırmak istediğinize emin misiniz?" confirm_text="Evet, Sil" cancel_text="Vazgeç" />
+            <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
+            <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
             <help-modal />
         </flex>
     </uid_spec>
     </script>
 
-    <!-- XUI Engine Script (Auto-Init otomatik tetiklenir) -->
-    <script src="XUIEngine.js"></script>
+    <!-- EUIX Engine & DevTools Script (Auto-Init & Inspector) -->
+    <script src="src/EUIXEngine.js"></script>
+    <script type="module" src="src/EUIXDevTools.js" data-euix-devtools></script>
 </body>
 </html>

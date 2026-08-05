@@ -10,7 +10,7 @@
                         <value>false</value>
                     </on_click>
                 </button>
-                <if condition="{props.mode} == remove">
+                <if condition="{props.mode} == 'remove'">
                     <button class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors shadow-md shadow-rose-500/20 cursor-pointer">
                         {props.confirm_text}
                         <on_click action="SET_STATE">

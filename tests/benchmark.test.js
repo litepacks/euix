@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import XUIEnginePkg from '../XUIEngine.js';
+import EUIXEnginePkg from '../src/EUIXEngine.js';
 
-const XUIEngine = XUIEnginePkg.XUIEngine || XUIEnginePkg;
+const EUIXEngine = EUIXEnginePkg.EUIXEngine || EUIXEnginePkg;
 
-describe('XUIEngine Vitest Performance & Benchmark Suite', () => {
+describe('EUIXEngine Vitest Performance & Benchmark Suite', () => {
     beforeEach(() => {
         document.body.innerHTML = '<div id="app"></div>';
     });
@@ -28,7 +28,7 @@ describe('XUIEngine Vitest Performance & Benchmark Suite', () => {
         `;
 
         const start = performance.now();
-        const engine = XUIEngine.mount(xml, '#app');
+        const engine = EUIXEngine.mount(xml, '#app');
         const duration = performance.now() - start;
 
         expect(engine).toBeDefined();
@@ -53,13 +53,16 @@ describe('XUIEngine Vitest Performance & Benchmark Suite', () => {
         </uid_spec>
         `;
 
-        const engine = XUIEngine.mount(xml, '#app');
-        const report = engine.runBenchmark(1000, 'todos');
+        const engine = EUIXEngine.mount(xml, '#app');
+        const items = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, text: `Task ${i}`, completed: 'false' }));
 
-        expect(report.count).toBe(1000);
-        expect(report.fineGrained).toBe(true);
+        const start = performance.now();
+        engine.setState('todos', items);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('todos').length).toBe(1000);
         expect(document.querySelectorAll('span').length).toBe(1000);
-        console.log(`[Vitest Bench] 1,000 Item Render Duration: ${report.durationMs} ms (${report.opsPerSec.toLocaleString()} ops/sec)`);
+        console.log(`[Vitest Bench] 1,000 Item Render Duration: ${duration.toFixed(2)} ms`);
     });
 
     it('should benchmark 3,000 Bulk Item DOM Mutation in Vitest', () => {
@@ -78,12 +81,16 @@ describe('XUIEngine Vitest Performance & Benchmark Suite', () => {
         </uid_spec>
         `;
 
-        const engine = XUIEngine.mount(xml, '#app');
-        const report = engine.runBenchmark(3000, 'todos');
+        const engine = EUIXEngine.mount(xml, '#app');
+        const items = Array.from({ length: 3000 }, (_, i) => ({ id: `${i}`, text: `Item ${i}` }));
 
-        expect(report.count).toBe(3000);
+        const start = performance.now();
+        engine.setState('todos', items);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('todos').length).toBe(3000);
         expect(document.querySelectorAll('span').length).toBe(3000);
-        console.log(`[Vitest Bench] 3,000 Item Render Duration: ${report.durationMs} ms (${report.opsPerSec.toLocaleString()} ops/sec)`);
+        console.log(`[Vitest Bench] 3,000 Item Render Duration: ${duration.toFixed(2)} ms`);
     });
 
     it('should benchmark single fine-grained item update in-place', () => {
@@ -98,7 +105,7 @@ describe('XUIEngine Vitest Performance & Benchmark Suite', () => {
         </uid_spec>
         `;
 
-        const engine = XUIEngine.mount(xml, '#app');
+        const engine = EUIXEngine.mount(xml, '#app');
         const span = document.querySelector('span');
 
         const start = performance.now();
