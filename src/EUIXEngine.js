@@ -53,7 +53,7 @@ class EUIXExpressionParser {
             }
 
             // Single-character operators & punctuation
-            if ([">", "<", "!", "+", "-", "*", "/", "(", ")", ","].includes(char)) {
+            if ([">", "<", "!", "+", "-", "*", "/", "(", ")", ",", "?", ":"].includes(char)) {
                 if (char === "(" || char === ")" || char === ",") {
                     tokens.push({ type: char, value: char });
                 } else {
@@ -150,7 +150,21 @@ class EUIXExpressionParser {
         function parseLogicalAnd() { return parseBinary(parseEquality, ["&&"]); }
         function parseLogicalOr() { return parseBinary(parseLogicalAnd, ["||"]); }
 
-        function parseExpression() { return parseLogicalOr(); }
+        function parseTernary() {
+            let test = parseLogicalOr();
+            if (peek() && peek().type === "OPERATOR" && peek().value === "?") {
+                consume();
+                let consequent = parseExpression();
+                if (peek() && peek().type === "OPERATOR" && peek().value === ":") {
+                    consume();
+                    let alternate = parseExpression();
+                    return { type: "ConditionalExpression", test, consequent, alternate };
+                }
+            }
+            return test;
+        }
+
+        function parseExpression() { return parseTernary(); }
 
         return parseExpression();
     }
@@ -161,6 +175,12 @@ class EUIXExpressionParser {
         switch (ast.type) {
             case "Literal":
                 return ast.value;
+
+            case "ConditionalExpression": {
+                const testVal = this.evaluate(ast.test, resolveValueFn);
+                const isTrue = testVal !== false && testVal !== "false" && testVal !== 0 && testVal !== null && testVal !== undefined && testVal !== "";
+                return isTrue ? this.evaluate(ast.consequent, resolveValueFn) : this.evaluate(ast.alternate, resolveValueFn);
+            }
 
             case "Identifier": {
                 const val = resolveValueFn(ast.name);
@@ -590,9 +610,16 @@ class EUIXEngine {
         const list = this._bindings.get(path) || [];
         const text = value === undefined || value === null ? "" : String(value);
 
-        list.forEach(({ el, kind, updateFn }) => {
-            if (updateFn) {
+        list.forEach((item) => {
+            const { el, kind, updateFn } = item;
+            if (typeof updateFn === "function") {
                 updateFn(value);
+                return;
+            }
+
+            if (kind === "attribute" && updateFn && typeof updateFn === "object") {
+                const { attrName, template } = updateFn;
+                this.updateAttributeBinding(el, attrName, template);
                 return;
             }
 
@@ -616,10 +643,7 @@ class EUIXEngine {
             if (kind === "multi_template") {
                 const template = el.dataset.euixMultiTemplate;
                 if (template) {
-                    el.textContent = template.replace(/\{(?:parent\.)?data\.(\w+)\}/g, (_, key) => {
-                        const val = this.getState(key);
-                        return val === undefined || val === null ? "" : String(val);
-                    });
+                    el.textContent = this.interpolate(template);
                 }
                 return;
             }
@@ -1138,16 +1162,37 @@ class EUIXEngine {
             return match;
         });
 
-        // 2. Resolve {data.key} or {parent.data.key}
-        result = result.replace(/\{(?:parent\.)?data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
-            let currentVal = this._rawState ? this._rawState[key] : undefined;
-            if (index !== undefined && Array.isArray(currentVal)) {
-                currentVal = currentVal[parseInt(index, 10)];
+        // 2. Resolve complex expressions or ternary inside {...}
+        result = result.replace(/\{([^{}]+)\}/g, (match, innerExpr) => {
+            const trimmed = innerExpr.trim();
+
+            if (/^(?:const|var|constant|variable|constants|vars)\./.test(trimmed)) {
+                return match;
             }
-            if (prop !== undefined && currentVal && typeof currentVal === "object") {
-                currentVal = currentVal[prop];
+
+            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes("data.")) {
+                try {
+                    const evaluated = EUIXExpressionParser.eval(trimmed, (name) => {
+                        const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
+                        let val = this.getState(this.parseBindPath(cleanKey));
+                        if (val === undefined && context[name] !== undefined) {
+                            val = context[name];
+                        }
+                        return val;
+                    });
+                    if (evaluated !== undefined && evaluated !== null) {
+                        return String(evaluated);
+                    }
+                } catch (_) {}
             }
-            return currentVal !== undefined && currentVal !== null ? currentVal : "";
+
+            if (/^(?:parent\.)?data\./.test(trimmed)) {
+                const cleanKey = trimmed.replace(/^(?:parent\.)?data\./, "");
+                const val = this.getState(this.parseBindPath(cleanKey));
+                return val !== undefined && val !== null ? String(val) : "";
+            }
+
+            return match;
         });
 
         // 3. Resolve {props.key} and {scope.key}
@@ -1523,9 +1568,54 @@ class EUIXEngine {
         });
     }
 
+    bindAttributeTemplates(el, xmlNode, context = {}) {
+        if (!el || !xmlNode || xmlNode.nodeType !== 1 || !xmlNode.attributes) return;
+
+        Array.from(xmlNode.attributes).forEach(attr => {
+            const attrName = attr.name;
+            const attrValue = attr.value;
+            if (!attrValue) return;
+
+            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
+            if (matches.length > 0) {
+                const uniqueKeys = new Set(matches.map(m => m[1]));
+                uniqueKeys.forEach(key => {
+                    this.registerBinding(key, el, "attribute", { attrName, template: attrValue });
+                });
+                this.updateAttributeBinding(el, attrName, attrValue, context);
+            }
+        });
+    }
+
+    updateAttributeBinding(el, attrName, template, context = {}) {
+        if (!el || !attrName || !template) return;
+        const newAttrVal = this.interpolate(template, context);
+
+        if (["disabled", "required", "readonly", "checked", "autofocus"].includes(attrName)) {
+            const isBoolTrue = this.isTruthy(newAttrVal) && newAttrVal !== "false" && newAttrVal !== "0";
+            if (isBoolTrue) {
+                el.setAttribute(attrName, "");
+                try { el[attrName] = true; } catch (_) {}
+            } else {
+                el.removeAttribute(attrName);
+                try { el[attrName] = false; } catch (_) {}
+            }
+            return;
+        }
+
+        if (attrName === "value" && ("value" in el)) {
+            el.value = newAttrVal;
+        } else if (attrName === "class") {
+            el.className = newAttrVal;
+        } else {
+            el.setAttribute(attrName, newAttrVal);
+        }
+    }
+
     applyRef(el, xmlNode, context = {}) {
         if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
         this.applyValidationAttributes(el, xmlNode, context);
+        this.bindAttributeTemplates(el, xmlNode, context);
         const refAttr = xmlNode.getAttribute("ref");
         if (refAttr) {
             const resolvedRef = this.interpolate(refAttr, context);
@@ -2009,9 +2099,9 @@ class EUIXEngine {
             !["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on"].includes(n.tagName.toLowerCase())
         );
 
-        if (childElementNodes.length === 0 && !["input", "select", "textarea", "button", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
+        if (childElementNodes.length === 0 && !["input", "select", "textarea", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
-            const matches = Array.from(rawContent.matchAll(/\{(?:parent\.)?data\.(\w+)\}/g));
+            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
             if (matches.length > 0) {
                 div.dataset.euixMultiTemplate = rawContent;
                 const uniqueKeys = new Set(matches.map(m => m[1]));
@@ -2261,7 +2351,19 @@ class EUIXEngine {
 
             const rawValue = valueNode ? valueNode.textContent.trim() : "";
             let nextValue = this.interpolate(rawValue, context);
-            if (/[+\-*/]/.test(nextValue)) {
+
+            if (rawValue.includes("?")) {
+                let exprStr = rawValue;
+                if (exprStr.startsWith("{") && exprStr.endsWith("}")) {
+                    exprStr = exprStr.slice(1, -1).trim();
+                }
+                try {
+                    const evaluated = EUIXExpressionParser.eval(exprStr, (key) => this.getState(this.parseBindPath(key)));
+                    if (evaluated !== undefined) {
+                        nextValue = String(evaluated);
+                    }
+                } catch (_) {}
+            } else if (/\d+\s*[\+\-\*\/]\s*\d+/.test(nextValue)) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(nextValue, (key) => this.getState(this.parseBindPath(key)));
                     if (evaluated !== undefined && !isNaN(evaluated)) {
@@ -2269,6 +2371,7 @@ class EUIXEngine {
                     }
                 } catch (_) {}
             }
+
             this.setState(path, nextValue);
 
             const focusNode = this.getChild(actionNode, "focus");

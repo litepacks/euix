@@ -71,6 +71,32 @@
             </flex>
         </form>
 
+        <!-- Dynamic Reactive Attributes Demo -->
+        <flex direction="column" gap="10" class="p-4 bg-sky-50/50 border border-sky-100 rounded-xl">
+            <span class="text-xs font-bold text-sky-950 uppercase tracking-wider">⚡ Dynamic Reactive Attributes &amp; Class Binding Demo</span>
+            <grid cols="2" gap="12">
+                <flex direction="column" gap="4">
+                    <label class="text-xs font-bold text-slate-700">Dynamic Placeholder &amp; Title</label>
+                    <input type="text" placeholder="{data.dyn_placeholder}" title="Dynamic Title: {data.dyn_placeholder}" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none" />
+                </flex>
+                <flex direction="column" gap="4">
+                    <label class="text-xs font-bold text-slate-700">Dynamic Class &amp; Disabled State</label>
+                    <flex direction="row" gap="8">
+                        <button disabled="{data.is_btn_disabled}" class="px-3 py-2 text-white rounded-lg text-xs font-bold transition-all cursor-pointer {data.is_btn_disabled == 'true' ? 'bg-slate-400 opacity-60 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-700 shadow-sm'}">
+                            {data.is_btn_disabled == 'true' ? '🔒 Button Disabled' : '⚡ Action Button Active'}
+                        </button>
+                        <button class="px-3 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold cursor-pointer">
+                            Toggle State ({data.is_btn_disabled})
+                            <on_click action="SET_STATE">
+                                <path>data.is_btn_disabled</path>
+                                <value>{data.is_btn_disabled == 'true' ? 'false' : 'true'}</value>
+                            </on_click>
+                        </button>
+                    </flex>
+                </flex>
+            </grid>
+        </flex>
+
         <flex direction="column" gap="6" class="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
             <span class="text-xs font-black text-indigo-900 uppercase tracking-wider">Live Form Summary</span>
             <flex direction="column" gap="4" class="text-xs text-indigo-800">

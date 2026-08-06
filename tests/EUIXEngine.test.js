@@ -972,4 +972,36 @@ describe('EUIXEngine Unit Tests', () => {
         subBtn.click();
         expect(engine.getState('submitted')).toBe('false');
     });
+
+    it('should dynamically update HTML attributes in real-time when state changes (disabled, placeholder, title, min, max)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="is_loading" type="string">true</state>
+                <state id="holder" type="string">Enter name...</state>
+                <state id="min_val" type="string">10</state>
+            </data_model>
+            <flex direction="column">
+                <input placeholder="{data.holder}" min="{data.min_val}" class="dyn-input" />
+                <button disabled="{data.is_loading}" title="Status: {data.is_loading}" class="dyn-btn">Action</button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const input = document.querySelector('.dyn-input');
+        const button = document.querySelector('.dyn-btn');
+
+        expect(input.getAttribute('placeholder')).toBe('Enter name...');
+        expect(input.getAttribute('min')).toBe('10');
+        expect(button.hasAttribute('disabled')).toBe(true);
+
+        engine.setState('is_loading', 'false');
+        engine.setState('holder', 'Type your username');
+        engine.setState('min_val', '25');
+
+        expect(input.getAttribute('placeholder')).toBe('Type your username');
+        expect(input.getAttribute('min')).toBe('25');
+        expect(button.hasAttribute('disabled')).toBe(false);
+    });
 });
