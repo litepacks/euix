@@ -729,11 +729,20 @@ class EUIXEngine {
         }
     }
 
+    static escapeRegExp(str) {
+        if (!str) return "";
+        return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    escapeRegExp(str) {
+        return EUIXEngine.escapeRegExp(str);
+    }
+
     parseBindPath(expr) {
         if (!expr) return "";
         return String(expr)
             .trim()
-            .replace(/^\{\s*data\.(\w+)\s*\}$/, "$1")
+            .replace(/^\{\s*data\.([a-zA-Z0-9_.]+)\s*\}$/, "$1")
             .replace(/^data\./, "")
             .replace(/^\{\s*|\s*\}$/g, "");
     }
@@ -2570,7 +2579,8 @@ class EUIXEngine {
                     if (trimmed.includes("{value}")) {
                         div.dataset.euixTextTemplate = trimmed;
                     } else if (trimmed.includes(`{data.${genericBindPath}}`)) {
-                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{data\\.${genericBindPath}\\}`, "g"), "{value}");
+                        const escapedPath = this.escapeRegExp(genericBindPath);
+                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{data\\.${escapedPath}\\}`, "g"), "{value}");
                     }
                     this.registerBinding(genericBindPath, div, "text");
                     this.syncBindings(genericBindPath, this.getState(genericBindPath));

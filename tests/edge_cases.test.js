@@ -147,4 +147,24 @@ describe('EUIXEngine Edge Cases & Hardening Test Suite', () => {
 
         localStorage.removeItem('euix_state_corrupted_key');
     });
+
+    it('Edge Case 6: EUIXEngine.escapeRegExp should safely escape special regex characters and handle nested path binding', () => {
+        expect(EUIXEngine.escapeRegExp('user.name[0]? (test)*+')).toBe('user\\.name\\[0\\]\\? \\(test\\)\\*\\+');
+        expect(EUIXEngine.escapeRegExp(null)).toBe('');
+
+        const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="user.name">Alice</state>
+                </data_model>
+                <flex direction="column">
+                    <span id="target">{data.user.name}</span>
+                </flex>
+            </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+        expect(container.querySelector('#target').textContent).toBe('Alice');
+    });
 });
