@@ -163,6 +163,35 @@ State is declared inside `<data_model>` using `<state>` nodes:
 </data_model>
 ```
 
+### Declarative & Programmatic External JSON Resource Loading (`src="..."`)
+EUIX Engine supports fetching initial `<data_model>` states, `<constants>` tokens, or individual `<state>` values directly from external JSON configuration files:
+
+#### Declarative XML:
+```xml
+<uid_spec>
+    <!-- Load design tokens from JSON file -->
+    <constants src="/tokens/theme-tokens.json" />
+
+    <!-- Load initial data model states from JSON file -->
+    <data_model src="/config/app-initial-state.json">
+        <!-- Local fallback states -->
+        <state id="local_counter">0</state>
+        <!-- Single state from JSON file -->
+        <state id="user_profile" src="/api/profile.json" />
+    </data_model>
+</uid_spec>
+```
+
+#### Programmatic JS API:
+```javascript
+// Programmatically fetch & merge data model or constants from JSON files
+await engine.loadDataModel('/config/app-initial-state.json');
+await engine.loadConstants('/tokens/theme-tokens.json');
+
+// Flicker-free async mount (awaits all external JSON resources before rendering)
+const engine = await EUIXEngine.mountAsync(xml, '#app');
+```
+
 ---
 
 ## 🛠️ EUIX DevTools Inspector
@@ -292,7 +321,7 @@ Below is a reference of how various EUIX Engine metadata & configuration tags be
 EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
 
 ```bash
-# Run Vitest Unit, Component, Contract & Persistence Tests (59 Tests)
+# Run Vitest Unit, Component, Contract, Persistence & External Resource Tests (83 Tests)
 npm run test
 
 # Run Playwright Real Browser E2E Tests (9 Tests)

@@ -296,6 +296,7 @@ class EUIXEngine {
         this._stateWatchers = new Map();
         this._globalStateWatchers = [];
         this._persistenceConfig = new Map();
+        this._pendingAsyncLoads = [];
         this._apiConfig = {
             baseUrl: "",
             credentials: undefined,
@@ -311,6 +312,61 @@ class EUIXEngine {
             EUIXEngine._globalComponentSpecs = new Map();
         }
         this._setupStorageListener();
+    }
+
+    async loadDataModel(urlOrObj) {
+        if (typeof urlOrObj === "string") {
+            try {
+                if (typeof fetch === "undefined") return null;
+                const res = await fetch(urlOrObj);
+                const json = await res.json();
+                if (typeof json === "object" && json !== null) {
+                    this.batch(() => {
+                        Object.entries(json).forEach(([k, v]) => this.setState(k, v));
+                    });
+                }
+                return json;
+            } catch (err) {
+                this.reportError(err, `Failed to load data model from '${urlOrObj}'`);
+                return null;
+            }
+        } else if (typeof urlOrObj === "object" && urlOrObj !== null) {
+            this.batch(() => {
+                Object.entries(urlOrObj).forEach(([k, v]) => this.setState(k, v));
+            });
+            return urlOrObj;
+        }
+    }
+
+    async loadConstants(urlOrObj) {
+        if (typeof urlOrObj === "string") {
+            try {
+                if (typeof fetch === "undefined") return null;
+                const res = await fetch(urlOrObj);
+                const json = await res.json();
+                if (typeof json === "object" && json !== null) {
+                    Object.entries(json).forEach(([k, v]) => this.registerConstant(k, String(v)));
+                }
+                return json;
+            } catch (err) {
+                this.reportError(err, `Failed to load constants from '${urlOrObj}'`);
+                return null;
+            }
+        } else if (typeof urlOrObj === "object" && urlOrObj !== null) {
+            Object.entries(urlOrObj).forEach(([k, v]) => this.registerConstant(k, String(v)));
+            return urlOrObj;
+        }
+    }
+
+    async preloadAsyncResources() {
+        if (this._mountPromise) {
+            await this._mountPromise;
+        }
+        if (this._pendingAsyncLoads && this._pendingAsyncLoads.length > 0) {
+            await Promise.all(this._pendingAsyncLoads);
+            this._pendingAsyncLoads = [];
+        }
+        return this;
     }
 
     configureApi(options = {}) {
@@ -478,6 +534,12 @@ class EUIXEngine {
         const engine = new EUIXEngine(containerSelector);
         EUIXEngine.instance = engine;
         engine.mount(xmlString);
+        return engine;
+    }
+
+    static async mountAsync(xmlString, containerSelector = "#app") {
+        const engine = EUIXEngine.mount(xmlString, containerSelector);
+        await engine.preloadAsyncResources();
         return engine;
     }
 
@@ -960,15 +1022,23 @@ class EUIXEngine {
             }
         });
 
+        this._pendingAsyncLoads = [];
+        this.initConstants();
+        this.initDataModel();
+
         const importNodes = Array.from(this.xmlDoc.querySelectorAll("import"));
         if (importNodes.length > 0 && typeof fetch !== "undefined") {
-            const promises = importNodes.map(imp => {
+            importNodes.forEach(imp => {
                 const src = imp.getAttribute("src");
                 const name = imp.getAttribute("name") || imp.getAttribute("as");
-                if (src && name) return this.loadComponentFile(name, src);
-                return Promise.resolve();
+                if (src && name) this._pendingAsyncLoads.push(this.loadComponentFile(name, src));
             });
-            Promise.all(promises).then(() => {
+        }
+
+        if (this._pendingAsyncLoads.length > 0) {
+            const pendingPromises = [...this._pendingAsyncLoads];
+            this._pendingAsyncLoads = [];
+            this._mountPromise = Promise.all(pendingPromises).then(() => {
                 this.initConstants();
                 this.initDataModel();
                 this.render();
@@ -977,8 +1047,6 @@ class EUIXEngine {
             return this;
         }
 
-        this.initConstants();
-        this.initDataModel();
         this.render();
         this.runMountActions();
         return this;
@@ -1312,10 +1380,33 @@ class EUIXEngine {
         if (!this.constants) this.constants = new Map();
         if (!this.xmlDoc) return;
 
+        const containers = Array.from(this.xmlDoc.querySelectorAll("constants, vars, variables"));
+        containers.forEach(container => {
+            const src = container.getAttribute("src") || container.getAttribute("url");
+            if (src && typeof fetch !== "undefined") {
+                const interpolatedSrc = this.interpolate(src);
+                const p = this.loadConstants(interpolatedSrc);
+                if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+            }
+        });
+
         const constsNodes = Array.from(this.xmlDoc.querySelectorAll("const, constant, var, variable"));
         constsNodes.forEach(node => {
             const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
-            if (id) {
+            const src = node.getAttribute("src") || node.getAttribute("url");
+            if (src && typeof fetch !== "undefined") {
+                const interpolatedSrc = this.interpolate(src);
+                const p = fetch(interpolatedSrc)
+                    .then(res => res.json())
+                    .then(json => {
+                        if (typeof json === "object" && json !== null) {
+                            const val = json[id] !== undefined ? json[id] : (json.value || json.text || JSON.stringify(json));
+                            this.registerConstant(id, String(val));
+                        }
+                    })
+                    .catch(err => this.reportError(err, `Failed to load external constant '${id}' from '${src}'`));
+                if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+            } else if (id) {
                 this.constants.set(id, node.textContent.trim());
             }
         });
@@ -1326,16 +1417,35 @@ class EUIXEngine {
 
         const collectStatesFromDoc = (doc) => {
             if (!doc) return;
-            const dataModelNode = this.getChild(doc.querySelector("uid_spec") || doc, "data_model");
+            const dataModelNode = this.getChild(doc.querySelector("uid_spec") || doc, "data_model") || doc.querySelector("data_model");
+            if (dataModelNode) {
+                const src = dataModelNode.getAttribute("src") || dataModelNode.getAttribute("url");
+                if (src && typeof fetch !== "undefined") {
+                    const interpolatedSrc = this.interpolate(src);
+                    const p = this.loadDataModel(interpolatedSrc);
+                    if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+                }
+            }
+
             const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : doc.querySelectorAll("data_model > state");
 
             stateNodes.forEach(node => {
                 const id = node.getAttribute("id");
                 if (!id) return;
                 const type = node.getAttribute("type");
+                const src = node.getAttribute("src") || node.getAttribute("url");
                 const persistAttr = node.getAttribute("persist") || node.getAttribute("storage");
 
-                if (type === "array") {
+                if (src && typeof fetch !== "undefined") {
+                    const interpolatedSrc = this.interpolate(src);
+                    const p = fetch(interpolatedSrc)
+                        .then(res => res.json())
+                        .then(json => {
+                            this.setState(id, json);
+                        })
+                        .catch(err => this.reportError(err, `Failed to load external state '${id}' from '${src}'`));
+                    if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+                } else if (type === "array") {
                     const items = this.getChildren(node, "item").map(item => {
                         const obj = {};
                         Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
