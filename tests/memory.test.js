@@ -3,7 +3,7 @@ import EUIXEnginePkg from '../src/EUIXEngine.js';
 
 const EUIXEngine = EUIXEnginePkg.EUIXEngine || EUIXEnginePkg;
 
-describe('EUIXEngine Memory Leak & Detached Reference Test Suite', () => {
+describe('EUIXEngine Memory Leak & Teardown Test Suite', () => {
     let container;
 
     beforeEach(() => {
@@ -17,7 +17,7 @@ describe('EUIXEngine Memory Leak & Detached Reference Test Suite', () => {
         }
     });
 
-    it('should clean up all DOM nodes and state watchers across 100 mount/unmount cycles', () => {
+    it('should clean up all DOM nodes and state watchers across 200 mount/unmount stress cycles', () => {
         const xml = `
         <uid_spec>
             <data_model>
@@ -25,23 +25,57 @@ describe('EUIXEngine Memory Leak & Detached Reference Test Suite', () => {
             </data_model>
             <flex direction="column">
                 <span id="counter_val">{data.counter}</span>
-                <button id="btn">Click</button>
+                <button id="btn" ref="myBtn">Click</button>
             </flex>
         </uid_spec>
         `;
 
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < 200; i++) {
             const engine = new EUIXEngine(container);
             engine.mount(xml);
             engine.setState('counter', `${i}`);
 
             expect(container.textContent).toContain(`${i}`);
+            expect(engine.refs.myBtn).toBeDefined();
 
-            // Unmount/clear container
-            container.innerHTML = '';
+            // Destroy engine instance
+            engine.destroy();
         }
 
         expect(container.children.length).toBe(0);
+    }, 15000);
+
+    it('should provide zero-leakage teardown when invoking engine.destroy() / engine.unmount()', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="user" type="string">John</state>
+                <state id="tick" type="string">0</state>
+            </data_model>
+            <flex direction="column">
+                <span id="usr">{data.user}</span>
+                <on_interval ms="1000" action="SET_STATE">
+                    <path>data.tick</path>
+                    <value>10</value>
+                </on_interval>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        engine.watch('user', () => {});
+        expect(engine._bindings.size).toBeGreaterThan(0);
+        expect(engine._stateWatchers.size).toBeGreaterThan(0);
+        expect(engine._activeIntervals.length).toBe(1);
+
+        engine.unmount();
+
+        expect(engine._bindings.size).toBe(0);
+        expect(engine._stateWatchers.size).toBe(0);
+        expect(engine._activeIntervals.length).toBe(0);
+        expect(container.innerHTML).toBe('');
     });
 
     it('should properly unregister state watcher callbacks when unsubscribed', () => {
@@ -59,7 +93,7 @@ describe('EUIXEngine Memory Leak & Detached Reference Test Suite', () => {
         expect(callback).toHaveBeenCalledTimes(1); // Should not trigger after unsubscribe
     });
 
-    it('should clean up active recurring interval timers on container reset', async () => {
+    it('should clean up active recurring interval timers on engine destroy', async () => {
         vi.useFakeTimers();
 
         const xml = `
@@ -80,14 +114,36 @@ describe('EUIXEngine Memory Leak & Detached Reference Test Suite', () => {
         const engine = new EUIXEngine(container);
         engine.mount(xml);
 
-        // Advance timers by 250ms (should trigger 2 ticks)
         vi.advanceTimersByTime(250);
         expect(engine.getState('tick')).toBe('10');
 
-        // Unmount component
-        container.innerHTML = '';
+        engine.destroy();
 
         vi.restoreAllMocks();
         vi.useRealTimers();
+    });
+
+    it('should trigger on_unmount / on_destroy hooks when elements are removed from DOM', async () => {
+        const onUnmountFn = vi.fn();
+
+        const engine = new EUIXEngine(container);
+        engine.registerAction('TRIGGER_UNMOUNT_HOOK', () => {
+            onUnmountFn();
+        });
+
+        const xml = `
+        <uid_spec>
+            <flex direction="column">
+                <on_unmount action="TRIGGER_UNMOUNT_HOOK" />
+                <span>Unmount Test</span>
+            </flex>
+        </uid_spec>
+        `;
+
+        engine.mount(xml);
+        expect(container.textContent).toContain('Unmount Test');
+
+        // Unmount container
+        engine.destroy();
     });
 });

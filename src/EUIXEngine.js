@@ -297,6 +297,7 @@ class EUIXEngine {
         this._globalStateWatchers = [];
         this._persistenceConfig = new Map();
         this._pendingAsyncLoads = [];
+        this._activeIntervals = [];
         this._apiConfig = {
             baseUrl: "",
             credentials: undefined,
@@ -365,6 +366,36 @@ class EUIXEngine {
         if (this._pendingAsyncLoads && this._pendingAsyncLoads.length > 0) {
             await Promise.all(this._pendingAsyncLoads);
             this._pendingAsyncLoads = [];
+        }
+        return this;
+    }
+
+    unmount() {
+        return this.destroy();
+    }
+
+    destroy() {
+        if (this._activeIntervals && this._activeIntervals.length > 0) {
+            this._activeIntervals.forEach(id => clearInterval(id));
+            this._activeIntervals = [];
+        }
+        if (this._bindings) {
+            this._bindings.clear();
+        }
+        if (this._stateWatchers) {
+            this._stateWatchers.clear();
+        }
+        if (this._globalStateWatchers) {
+            this._globalStateWatchers = [];
+        }
+        if (this.refs) {
+            this.refs = {};
+        }
+        if (this.container) {
+            this.container.innerHTML = "";
+        }
+        if (EUIXEngine.instance === this) {
+            EUIXEngine.instance = null;
         }
         return this;
     }
@@ -1124,6 +1155,7 @@ class EUIXEngine {
                     }
                     this.handleAction(node, context);
                 }, ms);
+                if (this._activeIntervals) this._activeIntervals.push(intervalId);
                 domEl.dataset.euixInterval = String(intervalId);
             }
         });
