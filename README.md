@@ -7,13 +7,14 @@
 
 ---
 
-## ❓ What is .EUIX Engine?
+## 📄 What is .EUIX Engine?
 
-**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance web framework designed for modern browsers. It processes declarative XML/HTML templates (`.EUIX` format), reactive data models (`<data_model>`), and event-driven actions (`<on_click>`, `<on_drop>`, `<on_mount>`) directly into fine-grained native browser DOM elements with **zero Virtual DOM overhead**.
+**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance web framework designed for modern browsers. It allows you to build full web applications using **Just XML** — handling **state management** (`<data_model>`), **REST API calls** (`<on_mount action="XHR">`), **variable & token management** (`<constants>`, `<vars>`), and **drag & drop** declaratively inside XML templates with **zero Virtual DOM overhead**.
 
 ### Why .EUIX?
+- **📄 Just XML (All-in-One Spec):** State management, REST API calls, design tokens, variables, and event listeners all defined declaratively in XML without JS boilerplate.
+- **🌳 Parent-Child Component Hierarchy:** Modular component architecture (`<component_def>`) with clean `<imports>`, `<import src="..." />` tags, and smooth parent-to-child prop & state sharing (`{props.key}`).
 - **⚡ No Virtual DOM Overhead:** Bypasses Virtual DOM diffing algorithms. State mutations update only the exact target DOM node in-place (<0.4ms latency).
-- **📝 Declarative XML Syntax:** Build full web applications using intuitive `<flex>`, `<grid>`, `<data_model>`, `<constants>`, `<if>`, `<for_each>`, and event action tags.
 - **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
 - **🗂️ Native Drag & Drop + Touch Support:** Declarative HTML5 & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`) with zero-lag floating drag previews (`#euix-drag-ghost`).
 
@@ -135,7 +136,10 @@ EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM ele
 - **🔀 Reactive List Mutations (`MUTATE_STATE` `PUSH`, `REMOVE`, `UPDATE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`):** High-performance array list mutations including item insertion, property updates, index deletion, item swapping (`SWAP`), and quick index reordering (`MOVE_UP`, `MOVE_DOWN`).
 - **🔄 SWR API Revalidation (`REVALIDATE_API`, `<revalidate>`):** Stale-While-Revalidate API data refetching triggered declaratively or programmatically (`revalidateApi()`).
 - **🎨 Design Tokens & Constants (`<constants>`, `<vars>`):** Define reusable CSS utility classes, design tokens, or API URLs at root or component level and reference them via `{const.key}` or `{var.key}` (supports external JSON files via `src="..."`).
-- **📡 Declarative & Component-Scoped API Client (`<api_config>`):** Configurable base URL, CORS credentials (`include`/`same-origin`), default headers, timeouts, and request/response interceptors with zero-leakage component-level scoping.
+- **📡 Declarative & Component-Scoped API Client (`<api_config>`):** Configurable base URL (`base_url="..."`), CORS credentials (`include`/`same-origin`), default headers, timeouts, and request/response interceptors with zero-leakage component-level scoping.
+  - **Base URL Resolution Rules:**
+    1. Action attribute `base_url` overrides component & global defaults.
+    2. Relative paths starting with `./` or `../` (e.g. `<url>./components/App.xml</url>`), or actions with `ignore_base_url="true"` / `base_url=""`, automatically bypass `api_config.base_url` to safely load local assets without domain prepending.
 - **📁 External JSON Resource Loading (`src="..."`):** Declaratively fetch initial `<data_model>` states, `<constants>` tokens, or individual `<state>` values directly from JSON files (`<data_model src="...">`, `<constants src="...">`, `loadDataModel()`, `loadConstants()`, `mountAsync()`).
 - **⏱️ Lifecycle Timers & Intervals (`<on_interval>`):** Declarative recurring timers with conditional evaluation (`if="..."`) and automatic unmount cleanup.
 - **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates) and component recursion depth guard (>20 depth) preventing browser freezes or crashes.

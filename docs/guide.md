@@ -288,6 +288,19 @@ When declared inside a `<component_def>`, `<api_config>` is **component-scoped**
     <flex direction="column">
         <on_interval ms="30000" action="XHR">
             <url>/simple/price?ids=bitcoin&amp;vs_currencies=usd</url>
+        </on_interval>
+    </flex>
+</component_def>
+```
+
+### 4. BaseURL Precedence & Local Resource Bypassing (`./` and `../`)
+
+When an XHR action is executed, EUIX Engine calculates `finalUrl` using strict precedence and local bypass rules:
+
+1. **Explicit Action `base_url` Override:** If `<on_click action="XHR" base_url="...">` is set on the action node, it takes top precedence over component and global configs.
+2. **Local Relative Path Bypass (`./` and `../`):** Any XHR `<url>` starting with `./` or `../` (e.g. `<url>./components/MySection.xml</url>`), or any action with `ignore_base_url="true"` or `base_url=""`, **automatically bypasses external `base_url` prepending**. This guarantees that local template, XML source, or asset fetches are served directly from the local host without being prepended by third-party API base URLs.
+3. **Absolute Protocol URLs (`http://` / `https://`):** Always bypass `base_url`.
+4. **Relative API Endpoints (`/data` or `users/list`):** Combine seamlessly with component `<api_config base_url="...">` or global `baseUrl`.
             <target>data.btc_price</target>
         </on_interval>
     </flex>

@@ -216,7 +216,9 @@ EUIX Engine supports native HTML5 and touch/pointer Drag & Drop with zero-lag cu
 ### `<api_config>` (API Client Configuration & Scoping)
 Configures relative BaseURL, default HTTP headers, credentials, and request timeouts.
 
-**Scoping:** When declared inside a `<component_def>`, it is strictly **component-scoped** and applies only to XHR actions executed within that component instance without leaking to sibling components.
+**Scoping & BaseURL Rules:**
+- **Component-Scoped Isolation:** When declared inside a `<component_def>`, `<api_config>` applies strictly to XHR actions executed within that component instance without leaking to sibling components.
+- **Local Path Bypass (`./` and `../`):** Any XHR `<url>` starting with `./` or `../` (e.g. `<url>./components/MySection.xml</url>`), or actions with `ignore_base_url="true"` / `base_url=""`, **automatically bypass external `base_url` prepending**.
 
 ```xml
 <component_def name="my-section">

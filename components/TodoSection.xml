@@ -2,7 +2,41 @@
     <constants>
         <const id="quick_btn">px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer</const>
     </constants>
-    <flex direction="column" gap="12">
+    <flex direction="column" gap="12" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+        <!-- Header Bar -->
+        <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-4">
+            <flex direction="row" align="center" gap="12">
+                <span class="text-3xl">📝</span>
+                <flex direction="column">
+                    <h2 class="font-extrabold text-slate-800 text-lg">Interactive Todo Manager</h2>
+                    <span class="text-xs text-slate-500">Task additions, inline editing, array mutations &amp; quick actions</span>
+                </flex>
+            </flex>
+            <flex direction="row" align="center" gap="8">
+                <span class="px-2.5 py-1 bg-blue-50 text-blue-700 font-extrabold text-xs rounded-lg border border-blue-200/60 hidden sm:inline-block">📄 105 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_title</path>
+                        <value>Interactive Todo Manager (components/TodoSection.xml)</value>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_lines</path>
+                        <value>105</value>
+                    </on_click>
+                    <on_click action="XHR">
+                        <method>GET</method>
+                        <url>./components/TodoSection.xml</url>
+                        <target>data.code_modal_content</target>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                    🔍 View XML Code
+                </button>
+            </flex>
+        </flex>
+
         <form class="flex flex-row gap-2">
             <on_submit action="MUTATE_STATE">
                 <path>data.todos</path>

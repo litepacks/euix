@@ -14,13 +14,29 @@
                 <value>{data.table_open === 'true' ? 'false' : 'true'}</value>
             </on_click>
             <flex direction="row" align="center" gap="8">
-                <span class="text-lg">📊</span>
-                <flex direction="column">
-                    <span class="text-sm font-bold text-slate-800">Dynamic Data Table &amp; Employee Roster</span>
-                    <span class="text-xs text-slate-500">Declarative data table with row addition and removal</span>
-                </flex>
+                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-extrabold text-xs rounded-lg border border-amber-200/60 hidden sm:inline-block">📄 99 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_title</path>
+                        <value>Data Table &amp; Roster (components/TableSection.xml)</value>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_lines</path>
+                        <value>99</value>
+                    </on_click>
+                    <on_click action="XHR">
+                        <method>GET</method>
+                        <url>./components/TableSection.xml</url>
+                        <target>data.code_modal_content</target>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                    🔍 View XML Code
+                </button>
+                <span class="text-slate-400 font-bold">{data.table_open === 'true' ? '▲' : '▼'}</span>
             </flex>
-            <span class="text-slate-400 font-bold">{data.table_open === 'true' ? '▲' : '▼'}</span>
         </flex>
 
         <if condition="{data.table_open} == 'true'">

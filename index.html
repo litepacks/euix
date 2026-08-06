@@ -16,8 +16,8 @@
     </style>
 </head>
 
-<body class="bg-slate-50/70 min-h-screen py-12 px-4 flex flex-col items-center justify-start">
-    <div id="app" class="w-full max-w-xl"></div>
+<body class="bg-slate-50/70 min-h-screen py-8 px-4 flex flex-col items-center justify-start">
+    <div id="app" class="w-full max-w-4xl"></div>
 
     <!-- EUIX Şablonu (Auto-Init) -->
     <script type="application/euix" target="#app">
@@ -75,6 +75,10 @@
             <state id="new_emp_name" type="string"></state>
             <state id="new_emp_role" type="string"></state>
             <state id="new_emp_dept" type="string"></state>
+            <state id="code_modal_open" type="string">false</state>
+            <state id="code_modal_title" type="string"></state>
+            <state id="code_modal_lines" type="string"></state>
+            <state id="code_modal_content" type="string"></state>
             <state id="employees" type="array">
                 <item name="Ahmet Yilmaz" role="Lead Architect" dept="Core Engine" status="Active" />
                 <item name="Zeynep Kaya" role="Senior Frontend Engineer" dept="UI/UX" status="Active" />
@@ -111,6 +115,7 @@
         </on_mount>
 
         <imports>
+            <import name="doc-portal-section" src="components/DocPortalSection.xml" />
             <import name="user-badge" src="components/UserBadge.xml" />
             <import name="app-header" src="components/AppHeader.xml" />
             <import name="counter-section" src="components/CounterSection.xml" />
@@ -130,10 +135,11 @@
             <import name="kanban-section" src="components/KanbanSection.xml" />
             <import name="ecommerce-section" src="components/EcommerceSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
+            <import name="code-viewer-modal" src="components/CodeViewerModal.xml" />
         </imports>
 
-        <flex direction="column" gap="16" class="{const.card_box}">
-            <app-header />
+        <flex direction="column" gap="20" class="w-full">
+            <doc-portal-section />
             <!-- External JSON Hydrated Banner Box -->
             <flex direction="row" align="center" justify="between" class="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl">
                 <flex direction="row" align="center" gap="12">
@@ -167,6 +173,7 @@
             <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
             <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
             <help-modal />
+            <code-viewer-modal />
         </flex>
     </uid_spec>
     </script>

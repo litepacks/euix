@@ -1343,12 +1343,16 @@ class EUIXEngine {
         }
 
         let finalUrl = rawUrl;
-        const effectiveBaseUrl = actionNode.getAttribute("base_url") 
-            || compApiConfig.baseUrl 
-            || this._apiConfig.baseUrl 
-            || "";
+        const explicitBaseUrl = actionNode.getAttribute("base_url");
+        const effectiveBaseUrl = (explicitBaseUrl !== null) ? explicitBaseUrl : (compApiConfig.baseUrl || this._apiConfig.baseUrl || "");
 
-        if (effectiveBaseUrl && !/^https?:\/\//i.test(rawUrl)) {
+        // Ignore base_url if ignore_base_url="true", if base_url is explicitly "", or if rawUrl starts with "./" or "../"
+        const ignoreBaseUrl = actionNode.getAttribute("ignore_base_url") === "true" 
+            || explicitBaseUrl === "" 
+            || rawUrl.startsWith("./") 
+            || rawUrl.startsWith("../");
+
+        if (effectiveBaseUrl && !ignoreBaseUrl && !/^https?:\/\//i.test(rawUrl)) {
             const base = effectiveBaseUrl.replace(/\/+$/, "");
             const relative = rawUrl.replace(/^\/+/, "");
             finalUrl = `${base}/${relative}`;
@@ -2223,6 +2227,9 @@ class EUIXEngine {
                                             const old = document.getElementById("euix-drag-ghost");
                                             if (old) old.remove();
 
+                                            const rect = el.getBoundingClientRect();
+                                            const cardWidth = rect.width || el.offsetWidth || 280;
+
                                             ghost = el.cloneNode(true);
                                             ghost.id = "euix-drag-ghost";
                                             ghost.style.position = "fixed";
@@ -2230,9 +2237,12 @@ class EUIXEngine {
                                             ghost.style.left = `${moveEvt.clientX - 20}px`;
                                             ghost.style.pointerEvents = "none";
                                             ghost.style.zIndex = "999999";
-                                            ghost.style.opacity = "0.9";
-                                            ghost.style.boxShadow = "0 10px 25px -5px rgba(0,0,0,0.25)";
-                                            ghost.style.width = `${el.offsetWidth}px`;
+                                            ghost.style.opacity = "0.95";
+                                            ghost.style.boxShadow = "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)";
+                                            ghost.style.width = `${cardWidth}px`;
+                                            ghost.style.minWidth = `${cardWidth}px`;
+                                            ghost.style.maxWidth = `${cardWidth}px`;
+                                            ghost.style.boxSizing = "border-box";
                                             ghost.style.transition = "none";
                                             ghost.style.transform = "none";
                                             document.body.appendChild(ghost);
