@@ -1135,6 +1135,8 @@ class EUIXEngine {
     }
 
     handleXHR(actionNode, context = {}) {
+        const compApiConfig = context._componentApiConfig || {};
+
         const methodNode = this.getChild(actionNode, "method");
         const method = (methodNode?.textContent || "GET").trim().toUpperCase();
         const urlNode = this.getChild(actionNode, "url");
@@ -1143,8 +1145,13 @@ class EUIXEngine {
 
         let rawUrl = this.interpolate(urlNode.textContent.trim(), context);
         let finalUrl = rawUrl;
-        if (this._apiConfig.baseUrl && !/^https?:\/\//i.test(rawUrl)) {
-            const base = this._apiConfig.baseUrl.replace(/\/+$/, "");
+        const effectiveBaseUrl = actionNode.getAttribute("base_url") 
+            || compApiConfig.baseUrl 
+            || this._apiConfig.baseUrl 
+            || "";
+
+        if (effectiveBaseUrl && !/^https?:\/\//i.test(rawUrl)) {
+            const base = effectiveBaseUrl.replace(/\/+$/, "");
             const relative = rawUrl.replace(/^\/+/, "");
             finalUrl = `${base}/${relative}`;
         }
@@ -1171,6 +1178,11 @@ class EUIXEngine {
                 headersObj[name] = this.interpolate(val, context);
             });
         }
+        if (compApiConfig.headers && compApiConfig.headers.size > 0) {
+            compApiConfig.headers.forEach((val, name) => {
+                headersObj[name] = this.interpolate(val, context);
+            });
+        }
 
         this.getChildren(actionNode, "header").forEach(header => {
             const name = header.getAttribute("name");
@@ -1178,7 +1190,7 @@ class EUIXEngine {
         });
 
         const body = bodyNode ? this.interpolate(bodyNode.textContent.trim(), context) : null;
-        const credentialsAttr = actionNode.getAttribute("credentials") || this._apiConfig.credentials;
+        const credentialsAttr = actionNode.getAttribute("credentials") || compApiConfig.credentials || this._apiConfig.credentials;
 
         const fetchOptions = {
             method,
@@ -1193,7 +1205,7 @@ class EUIXEngine {
         }
 
         let timeoutId = null;
-        const timeoutMs = parseInt(actionNode.getAttribute("timeout") || this._apiConfig.timeout || 0, 10);
+        const timeoutMs = parseInt(actionNode.getAttribute("timeout") || compApiConfig.timeout || this._apiConfig.timeout || 0, 10);
         if (timeoutMs > 0 && typeof AbortController !== "undefined") {
             const controller = new AbortController();
             fetchOptions.signal = controller.signal;
@@ -1233,6 +1245,9 @@ class EUIXEngine {
                     if (select) data = this.getJsonPath(data, select);
                     if (Array.isArray(data)) {
                         data = this.mapResponseItems(data, itemMapNode);
+                    } else if (typeof data === "number" || (typeof data === "string" && !isNaN(parseFloat(data)) && /^\d+(\.\d+)?$/.test(String(data).trim()))) {
+                        const num = parseFloat(data);
+                        data = Number.isInteger(num) ? String(num) : num.toFixed(2);
                     }
 
                     if (target) {
@@ -1993,9 +2008,15 @@ class EUIXEngine {
                     ? this._rawState[itemsKey]
                     : [];
 
-                list.forEach(item => {
+                list.forEach((item, idx) => {
+                    if (typeof item === "object" && item !== null) {
+                        try {
+                            item._index = idx;
+                            item.index = idx;
+                        } catch (_) {}
+                    }
                     Array.from(xmlNode.children).forEach(child => {
-                        const childContext = { ...context, [varName]: item, _parentStateKey: itemsKey };
+                        const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey };
                         const el = this.createHTMLElement(child, childContext);
                         if (el) {
                             this.applyItemChildStyles(el, child, context);
@@ -2518,6 +2539,25 @@ class EUIXEngine {
             return errEl;
         }
 
+        let componentApiConfig = context._componentApiConfig ? { ...context._componentApiConfig } : null;
+        const apiNode = this.getChild(specNode, "api_config") || specNode.querySelector("api_config, api_client, api");
+        if (apiNode) {
+            const baseUrl = apiNode.getAttribute("base_url") || apiNode.getAttribute("baseUrl") || apiNode.getAttribute("url") || "";
+            const credentials = apiNode.getAttribute("credentials") || undefined;
+            const timeout = parseInt(apiNode.getAttribute("timeout") || "0", 10) || 0;
+            const headers = new Map(componentApiConfig?.headers || []);
+            
+            const headersNode = this.getChild(apiNode, "headers");
+            if (headersNode) {
+                this.getChildren(headersNode, "header").forEach(h => {
+                    const name = h.getAttribute("name");
+                    if (name) headers.set(name, h.textContent.trim());
+                });
+            }
+
+            componentApiConfig = { baseUrl, credentials, timeout, headers };
+        }
+
         const childContext = {
             ...context,
             parent: context,
@@ -2525,6 +2565,7 @@ class EUIXEngine {
             props,
             ...props,
             _compDepth: compDepth,
+            _componentApiConfig: componentApiConfig,
             constants: {
                 ...(context.constants || {}),
                 ...compConstants
@@ -2693,19 +2734,19 @@ class EUIXEngine {
 
             if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
                 const valNode = this.getChild(actionNode, "value");
-                const valItem = valNode ? this.getChild(valNode, "item") : this.getChild(actionNode, "item");
+                const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
                 const rawText = valItem ? (valItem.getAttribute("text") || valItem.textContent.trim()) : "";
                 const textValue = this.interpolate(rawText, context);
 
                 if (!valItem && !textValue.trim()) return;
 
                 const newItem = { id: Date.now().toString() };
-                if (valItem) {
+                if (valItem && valItem.attributes) {
                     Array.from(valItem.attributes).forEach(attr => {
                         newItem[attr.name] = this.interpolate(attr.value, context);
                     });
                 }
-                if (!newItem.text) newItem.text = textValue;
+                if (!newItem.text && textValue) newItem.text = textValue;
                 if (newItem.completed === undefined) newItem.completed = "false";
 
                 this.batch(() => {
@@ -2723,23 +2764,39 @@ class EUIXEngine {
             }
 
             if (operation === "REMOVE") {
+                const indexNode = this.getChild(actionNode, "index");
                 const whereNode = this.getChild(actionNode, "where");
-                if (!whereNode) return;
+                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
 
-                const field = whereNode.getAttribute("field") || "id";
-                const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-                const matchValue = this.interpolate(rawMatch, context);
-                const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
-
-                this.batch(() => {
-                    const nextList = list.filter(item => String(item[field]) !== String(matchValue));
-                    this.setState(path, nextList);
-                    this.applyResets(actionNode);
-                    if (String(this._rawState.editing_id) === String(matchValue)) {
-                        if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
-                        if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                if (indexNode) {
+                    const rawIdx = indexNode.textContent.trim();
+                    const interpolatedIdx = this.interpolate(rawIdx, context);
+                    const idx = parseInt(interpolatedIdx, 10);
+                    if (!isNaN(idx) && idx >= 0 && idx < list.length) {
+                        list.splice(idx, 1);
+                        this.batch(() => {
+                            this.setState(path, list);
+                            this.applyResets(actionNode);
+                        });
+                        return;
                     }
-                });
+                }
+
+                if (whereNode) {
+                    const field = whereNode.getAttribute("field") || "id";
+                    const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                    const matchValue = this.interpolate(rawMatch, context);
+
+                    this.batch(() => {
+                        const nextList = list.filter(item => String(item[field]) !== String(matchValue));
+                        this.setState(path, nextList);
+                        this.applyResets(actionNode);
+                        if (String(this._rawState.editing_id) === String(matchValue)) {
+                            if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
+                            if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                        }
+                    });
+                }
             }
 
             if (operation === "UPDATE") {

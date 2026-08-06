@@ -243,4 +243,143 @@ describe('EUIXEngine API Client Suite (BaseURL, Default Headers, Credentials, In
         expect(onResponseSpy).toHaveBeenCalledTimes(1);
         expect(onResponseSpy.mock.calls[0][0].status).toBe(200);
     });
+
+    it('should support component-scoped <api_config> per component without cross-contamination', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Map([['content-type', 'application/json']]),
+            json: async () => ({ status: 'ok' })
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <component_def name="comp-a">
+                <api_config base_url="https://api-a.com" />
+                <flex>
+                    <button id="btn_a">
+                        <on_click action="XHR">
+                            <url>/endpoint-a</url>
+                            <target>data.res_a</target>
+                        </on_click>
+                    </button>
+                </flex>
+            </component_def>
+
+            <component_def name="comp-b">
+                <api_config base_url="https://api-b.com" />
+                <flex>
+                    <button id="btn_b">
+                        <on_click action="XHR">
+                            <url>/endpoint-b</url>
+                            <target>data.res_b</target>
+                        </on_click>
+                    </button>
+                </flex>
+            </component_def>
+
+            <data_model>
+                <state id="res_a"></state>
+                <state id="res_b"></state>
+            </data_model>
+
+            <flex direction="column">
+                <comp-a />
+                <comp-b />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        container.querySelector('#btn_a').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch.mock.calls[0][0]).toBe('https://api-a.com/endpoint-a');
+
+        container.querySelector('#btn_b').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch.mock.calls[1][0]).toBe('https://api-b.com/endpoint-b');
+    });
+
+    it('should allow component-level <api_config> to override global engine.configureApi()', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Map([['content-type', 'application/json']]),
+            json: async () => ({ status: 'ok' })
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <component_def name="scoped-comp">
+                <api_config base_url="https://component-api.com" />
+                <flex>
+                    <button id="scoped_btn">
+                        <on_click action="XHR">
+                            <url>/scoped-route</url>
+                            <target>data.res</target>
+                        </on_click>
+                    </button>
+                </flex>
+            </component_def>
+
+            <data_model><state id="res"></state></data_model>
+            <scoped-comp />
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.configureApi({ baseUrl: 'https://global-api.com' });
+        engine.mount(xml);
+
+        container.querySelector('#scoped_btn').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch.mock.calls[0][0]).toBe('https://component-api.com/scoped-route');
+    });
+
+    it('should test nested component <api_config> header inheritance and precedence', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Map([['content-type', 'application/json']]),
+            json: async () => ({ status: 'ok' })
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <component_def name="header-comp">
+                <api_config base_url="https://headers-api.com">
+                    <headers>
+                        <header name="X-Component-Header">ScopedValue</header>
+                    </headers>
+                </api_config>
+                <flex>
+                    <button id="header_btn">
+                        <on_click action="XHR">
+                            <url>/header-route</url>
+                            <target>data.res</target>
+                        </on_click>
+                    </button>
+                </flex>
+            </component_def>
+
+            <data_model><state id="res"></state></data_model>
+            <header-comp />
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        container.querySelector('#header_btn').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        const calledOptions = mockFetch.mock.calls[0][1];
+        expect(mockFetch.mock.calls[0][0]).toBe('https://headers-api.com/header-route');
+        expect(calledOptions.headers['X-Component-Header']).toBe('ScopedValue');
+    });
 });

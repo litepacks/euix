@@ -170,3 +170,21 @@ Fine-grained dynamic list rendering.
 - `SET_STATE`: Updates state value (`<path>`, `<value>`).
 - `MUTATE_STATE`: Performs array operations (`PUSH`, `UNSHIFT`, `UPDATE`, `REMOVE`, `CLEAR`).
 - `XHR`: Performs declarative async HTTP requests with loading/error handling.
+
+### `<api_config>` (API Client Configuration & Scoping)
+Configures relative BaseURL, default HTTP headers, credentials, and request timeouts.
+
+**Scoping:** When declared inside a `<component_def>`, it is strictly **component-scoped** and applies only to XHR actions executed within that component instance without leaking to sibling components.
+
+```xml
+<component_def name="my-section">
+    <api_config base_url="https://api.example.com" timeout="5000">
+        <headers>
+            <header name="Authorization">Bearer {data.token}</header>
+        </headers>
+    </api_config>
+    <flex direction="column">
+        <!-- Component UI & XHR Actions -->
+    </flex>
+</component_def>
+```

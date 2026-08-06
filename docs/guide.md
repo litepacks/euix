@@ -247,6 +247,44 @@ engine.setApiHeader('Authorization', 'Bearer new_secret_token');
 engine.removeApiHeader('Authorization');
 ```
 
+### 3. Component-Level Isolation & Scoping (`<api_config>`)
+`<api_config>` can be declared at the global level OR inside individual component definitions (`<component_def>`). 
+
+When declared inside a `<component_def>`, `<api_config>` is **component-scoped** and applies only to XHR actions executed within that specific component without leaking or overriding other components.
+
+```xml
+<component_def name="crypto-portfolio-section">
+    <!-- Component-scoped API Config (Isolated to crypto-portfolio-section) -->
+    <api_config base_url="https://api.coingecko.com/api/v3" timeout="8000" />
+    <flex direction="column">
+        <on_interval ms="30000" action="XHR">
+            <url>/simple/price?ids=bitcoin&amp;vs_currencies=usd</url>
+            <target>data.btc_price</target>
+        </on_interval>
+    </flex>
+</component_def>
+```
+
+#### Precedence & Resolution Order:
+When an `XHR` action is triggered, options are resolved in the following priority order:
+1. **Action Node Attributes** (`<on_click action="XHR" base_url="...">`) *(Highest Priority)*
+2. **Component-Scoped `<api_config>`** (Declared in parent `<component_def>`)
+3. **Global `<api_config>` / `engine.configureApi()`** *(Lowest Priority)*
+
+---
+
+## 🔒 Element & Component Isolation Matrix
+
+Below is a reference of how various EUIX Engine metadata & configuration tags behave regarding component scoping vs global state:
+
+| Tag / Feature | Scope Level | Leakage Risk | Scoping Behavior & Precedence |
+| :--- | :--- | :--- | :--- |
+| **`<api_config>`** | Component & Global | 🟢 **Zero Leakage** | Component-level `<api_config>` overrides global config for all XHR calls within that component tree. |
+| **`<constants>` / `<vars>`** | Component & Global | 🟢 **Zero Leakage** | Component design tokens inherit from parent components and override parent/global constants locally. |
+| **`<on_mount>`, `<on_interval>`, `<on_unmount>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
+| **`<state>` / `<data_model>`** | Global Reactive Store | 🟡 **Shared State** | States reside in the global reactive `_rawState`. Component props (`{props.key}`) allow passing isolated values. |
+| **`<persistence>`** | State ID Level | 🟢 **Zero Leakage** | Explicitly targets designated state keys for LocalStorage / SessionStorage persistence. |
+
 ---
 
 ## 🧪 Running Test Suites
