@@ -71,6 +71,15 @@
             <state id="counter_value" type="string">0</state>
             <state id="counter_open" type="string">true</state>
             <state id="state_log" type="string">No state changes yet...</state>
+            <state id="table_open" type="string">true</state>
+            <state id="new_emp_name" type="string"></state>
+            <state id="new_emp_role" type="string"></state>
+            <state id="new_emp_dept" type="string"></state>
+            <state id="employees" type="array">
+                <item name="Ahmet Yilmaz" role="Lead Architect" dept="Core Engine" status="Active" />
+                <item name="Zeynep Kaya" role="Senior Frontend Engineer" dept="UI/UX" status="Active" />
+                <item name="Can Demir" role="DevOps Lead" dept="Infrastructure" status="Active" />
+            </state>
         </data_model>
 
         <!-- Declarative State Change Hook Example -->
@@ -117,6 +126,7 @@
             <import name="api-client-section" src="components/ApiClientSection.xml" />
             <import name="countdown-section" src="components/CountdownSection.xml" />
             <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
+            <import name="table-section" src="components/TableSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
@@ -134,6 +144,7 @@
                 <span class="{const.status_badge}">{data.portal_status}</span>
             </flex>
             <crypto-portfolio-section />
+            <table-section />
             <counter-section />
             <countdown-section />
             <persistence-section />

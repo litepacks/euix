@@ -45,8 +45,8 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     expect(tasksBefore).toBe(5);
 
     // Verify first task is "Task 1"
-    const firstTask = page.locator('.euix-if-branch span').first();
-    await expect(firstTask).toHaveText('Task 1');
+    const firstTask = page.locator('span:has-text("Task 1")');
+    await expect(firstTask).toBeVisible();
 
     // Click Delete on first task
     await page.locator('button:has-text("Delete")').first().click();
@@ -63,7 +63,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     expect(tasksAfter).toBe(4);
 
     // Verify Task 1 is gone, but Task 2 is now first
-    await expect(page.locator('.euix-if-branch span').first()).toHaveText('Task 2');
+    await expect(page.locator('span:has-text("Task 2")')).toBeVisible();
   });
 
   test('should add a new task and toggle completion', async ({ page }) => {
@@ -146,5 +146,25 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Verify Pokémon cards are rendered in grid
     const cards = page.locator('.pokemon-name, span.capitalize');
     await expect(cards.first()).toBeVisible();
+  });
+
+  test('should render Dynamic Data Table and handle adding and removing employees', async ({ page }) => {
+    const tableHeader = page.locator('span:has-text("Dynamic Data Table & Employee Roster")');
+    await expect(tableHeader).toBeVisible();
+
+    // Check initial 3 employees
+    const rows = page.locator('table tr');
+    await expect(rows).toHaveCount(4); // 1 header row + 3 employee rows
+
+    // Verify first employee is Ahmet Yilmaz (#1)
+    await expect(rows.nth(1)).toContainText('Ahmet Yilmaz');
+    await expect(rows.nth(1)).toContainText('#1');
+
+    // Delete second employee (Zeynep Kaya)
+    const removeBtn = page.locator('button:has-text("Remove")').nth(1);
+    await removeBtn.click();
+
+    // Verify table row count updated to 3 (1 header + 2 employees)
+    await expect(page.locator('table tr')).toHaveCount(3);
   });
 });

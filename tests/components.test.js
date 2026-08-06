@@ -345,4 +345,40 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         expect(postBody).not.toBeNull();
         expect(postBody.textContent).toBe('Test Post Body Content');
     });
+
+    it('should render TableSection.xml data table and handle adding and removing employees', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="table_open" type="string">true</state>
+                <state id="new_emp_name" type="string"></state>
+                <state id="new_emp_role" type="string"></state>
+                <state id="new_emp_dept" type="string"></state>
+                <state id="employees" type="array">
+                    <item name="Alice Smith" role="Engineer" dept="Core" status="Active" />
+                    <item name="Bob Jones" role="Designer" dept="UI/UX" status="Active" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <table-section />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('employees').length).toBe(2);
+
+        const tableRows = Array.from(document.querySelectorAll('tr')).filter(tr => tr.textContent.includes('Alice Smith') || tr.textContent.includes('Bob Jones'));
+        expect(tableRows.length).toBe(2);
+        expect(tableRows[0].textContent).toContain('Alice Smith');
+        expect(tableRows[1].textContent).toContain('Bob Jones');
+
+        // Test removing an employee
+        const removeButtons = document.querySelectorAll('button');
+        const targetBtn = Array.from(removeButtons).find(b => b.textContent.includes('Remove'));
+        expect(targetBtn).toBeDefined();
+
+        targetBtn.dispatchEvent(new window.MouseEvent('click'));
+        expect(engine.getState('employees').length).toBe(1);
+    });
 });

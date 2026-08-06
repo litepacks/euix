@@ -1627,6 +1627,14 @@ class EUIXEngine {
                         if (val === undefined && context[name] !== undefined) {
                             val = context[name];
                         }
+                        if (val === undefined && name.includes(".")) {
+                            const parts = name.split(".");
+                            let curr = context[parts[0]];
+                            for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
+                                curr = curr[parts[i]];
+                            }
+                            if (curr !== undefined) val = curr;
+                        }
                         return val;
                     });
                     if (evaluated !== undefined && evaluated !== null) {
@@ -2872,12 +2880,12 @@ class EUIXEngine {
         if (actionType === "MUTATE_STATE") {
             const pathNode = this.getChild(actionNode, "path");
             const opNode = this.getChild(actionNode, "operation");
-            if (!pathNode || !opNode) return;
-
-            const rawPath = pathNode ? pathNode.textContent.trim() : "";
+            const rawPath = pathNode ? pathNode.textContent.trim() : (actionNode.getAttribute("path") || "");
             const interpolatedPath = this.interpolate(rawPath, context);
             const path = this.parseBindPath(interpolatedPath);
-            const operation = opNode.textContent.trim();
+            const operation = (opNode ? opNode.textContent.trim() : actionNode.getAttribute("operation") || "").toUpperCase();
+
+            if (!path || !operation) return;
 
             if (operation === "CLEAR" || operation === "EMPTY" || operation === "RESET") {
                 this.batch(() => {
