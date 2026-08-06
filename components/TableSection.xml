@@ -14,7 +14,7 @@
                 <value>{data.table_open === 'true' ? 'false' : 'true'}</value>
             </on_click>
             <flex direction="row" align="center" gap="8">
-                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-extrabold text-xs rounded-lg border border-amber-200/60 hidden sm:inline-block">📄 116 Lines XML</span>
+                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-extrabold text-xs rounded-lg border border-amber-200/60 hidden sm:inline-block">📄 115 Lines XML</span>
                 <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
@@ -22,7 +22,7 @@
                     </on_click>
                     <on_click action="SET_STATE">
                         <path>data.code_modal_lines</path>
-                        <value>116</value>
+                        <value>115</value>
                     </on_click>
                     <on_click action="XHR">
                         <method>GET</method>

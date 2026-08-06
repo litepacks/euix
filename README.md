@@ -25,12 +25,21 @@
 ### 1. Embedded HTML Script Spec (`type="application/euix"`):
 ```html
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <script src="dist/EUIXEngine.umd.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vanilla .EUIX Engine Quickstart</title>
+  <!-- Tailwind CSS & Modern Typography -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+  <script src="https://unpkg.com/euixjs@0.0.2/dist/EUIXEngine.umd.js"></script>
 </head>
-<body>
-  <div id="app"></div>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
+  <div id="app" class="w-full max-w-md"></div>
 
   <!-- Declarative EUIX Application Spec -->
   <script type="application/euix" target="#app">
@@ -43,10 +52,14 @@
           </state>
       </data_model>
 
-      <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl">
-          <h1 class="text-xl font-bold text-slate-800">Counter: {data.counter}</h1>
+      <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100">
+          <flex direction="row" align="center" justify="between">
+              <h1 class="text-xl font-extrabold text-slate-800 tracking-tight">Counter: {data.counter}</h1>
+              <span class="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold text-xs rounded-lg border border-blue-100">Declarative UI</span>
+          </flex>
+
           <flex direction="row" gap="8">
-              <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold cursor-pointer">
+              <button class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md shadow-blue-500/20">
                   <on_click action="SET_STATE">
                       <path>data.counter</path>
                       <value>{data.counter + 1}</value>
@@ -56,18 +69,20 @@
           </flex>
 
           <!-- List Rendering & Drag Drop -->
-          <for_each items="{data.tasks}" var="task">
-              <div draggable="true" data-id="{task.id}" class="p-3 bg-slate-50 rounded-lg flex justify-between">
-                  <span>{task.title}</span>
-                  <button class="text-rose-500 font-bold cursor-pointer">
-                      <on_click action="MUTATE_STATE" operation="REMOVE">
-                          <path>data.tasks</path>
-                          <index>{task._index}</index>
-                      </on_click>
-                      ✕
-                  </button>
-              </div>
-          </for_each>
+          <flex direction="column" gap="8" class="pt-2 border-t border-slate-100">
+              <for_each items="{data.tasks}" var="task">
+                  <div draggable="true" data-id="{task.id}" class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl flex items-center justify-between border border-slate-100 transition-colors">
+                      <span class="text-sm font-semibold text-slate-700">{task.title}</span>
+                      <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg font-bold cursor-pointer transition-colors">
+                          <on_click action="MUTATE_STATE" operation="REMOVE">
+                              <path>data.tasks</path>
+                              <index>{task._index}</index>
+                          </on_click>
+                          ✕
+                      </button>
+                  </div>
+              </for_each>
+          </flex>
       </flex>
   </uid_spec>
   </script>
@@ -77,7 +92,7 @@
 
 ### 2. Programmatic JavaScript API:
 ```javascript
-import EUIXEngine from './src/EUIXEngine.js';
+import EUIXEngine from 'euixjs';
 
 // Mount EUIX XML spec directly to a target container
 const engine = EUIXEngine.mount(xmlString, '#app');
@@ -98,9 +113,9 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **67.4 KB** | **18.7 KB** |
-| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **102.5 KB** | **21.4 KB** |
-| **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **14.1 KB** | **4.2 KB** |
+| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **84.3 KB** | **23.4 KB** |
+| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **133.4 KB** | **27.6 KB** |
+| **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **15.9 KB** | **4.4 KB** |
 
 ---
 

@@ -52,7 +52,7 @@
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-blue-400">18.7 KB</span>
+                    <span class="text-lg md:text-xl font-black text-blue-400">23.4 KB</span>
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Minified Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
