@@ -1,13 +1,21 @@
 {
-  "name": "euix",
-  "version": "1.0.0",
+  "name": "euixjs",
+  "version": "0.0.1",
   "description": "EUIX Engine - Ultra-lightweight declarative HTML & XML framework",
   "type": "module",
-  "main": "src/EUIXEngine.js",
+  "main": "dist/EUIXEngine.umd.js",
   "module": "dist/EUIXEngine.es.js",
+  "files": [
+    "dist",
+    "src",
+    "components",
+    "docs",
+    "README.md"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --config vite.devtools.config.js",
+    "prepublishOnly": "npm run build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:fast": "vitest run --exclude tests/benchmark.test.js --exclude tests/memory.test.js",
