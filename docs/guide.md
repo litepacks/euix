@@ -114,10 +114,10 @@ EUIX DevTools provides a live inspector overlay, State Tree drawer, and Action l
 
 ## 🧪 Testing & Verification
 
-EUIX Engine includes comprehensive unit, component, contract, benchmark, and browser E2E test suites:
+EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
 
 ```bash
-# Run Vitest Unit, Component, Benchmark & Contract Tests (48 Tests)
+# Run Vitest Unit, Component & Contract Tests (48 Tests)
 npm run test
 
 # Run Playwright Real Browser E2E Tests (9 Tests)
