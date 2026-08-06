@@ -127,15 +127,16 @@
             <import name="countdown-section" src="components/CountdownSection.xml" />
             <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
             <import name="table-section" src="components/TableSection.xml" />
+            <import name="kanban-section" src="components/KanbanSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
         <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <!-- External JSON Hydrated Banner Box -->
-            <flex direction="row" align="center" justify="between" class="{const.info_banner}">
-                <flex direction="row" align="center" gap="8">
-                    <span class="text-lg">📁</span>
+            <flex direction="row" align="center" justify="between" class="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl">
+                <flex direction="row" align="center" gap="12">
+                    <span class="text-2xl">⚡</span>
                     <flex direction="column">
                         <span class="text-xs font-bold text-indigo-950">{data.banner_message}</span>
                         <span class="text-[11px] text-indigo-600 font-medium">Server: {data.server_location} | Core Version: {data.system_version}</span>
@@ -143,6 +144,7 @@
                 </flex>
                 <span class="{const.status_badge}">{data.portal_status}</span>
             </flex>
+            <kanban-section />
             <crypto-portfolio-section />
             <table-section />
             <counter-section />

@@ -10,6 +10,7 @@
     "build": "vite build && vite build --config vite.devtools.config.js",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:fast": "vitest run --exclude tests/benchmark.test.js --exclude tests/memory.test.js",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "bench": "vitest bench"

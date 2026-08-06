@@ -2163,6 +2163,8 @@ class EUIXEngine {
                 el.id = this.interpolate(attrValue, context);
             }
 
+            const generalAttrs = ["draggable", "tabindex", "role", "title", "style", "src", "alt", "href", "target", "rel", "data-id", "data-key", "data-value"];
+
             if (validationAttrs.includes(attrName)) {
                 if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
                     const isBoolTrue = this.isTruthy(attrValue) || attrValue === "" || attrValue.toLowerCase() === attrName;
@@ -2172,6 +2174,70 @@ class EUIXEngine {
                     }
                 } else if (!attrValue.includes("data.")) {
                     el.setAttribute(attrName, this.interpolate(attrValue, context));
+                }
+            } else if (attrName.startsWith("data-") || attrName.startsWith("aria-") || generalAttrs.includes(attrName)) {
+                const interpolatedVal = this.interpolate(attrValue, context);
+                el.setAttribute(attrName, interpolatedVal);
+                if (attrName === "draggable") {
+                    try {
+                        const isDraggable = (interpolatedVal === "true");
+                        el.draggable = isDraggable;
+                        if (isDraggable) {
+                            el.style.userSelect = "none";
+                            el.style.webkitUserSelect = "none";
+                            el.style.webkitUserDrag = "element";
+
+                            el.addEventListener("pointerdown", (e) => {
+                                if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) return;
+                                const taskId = (context && context.task && context.task.id) ? context.task.id : (el.getAttribute("data-id") || el.id);
+                                if (taskId) {
+                                    this.setState("dragged_id", String(taskId));
+
+                                    let ghost = null;
+                                    const startX = e.clientX;
+                                    const startY = e.clientY;
+
+                                    const onMove = (moveEvt) => {
+                                        if (!ghost && (Math.abs(moveEvt.clientX - startX) > 3 || Math.abs(moveEvt.clientY - startY) > 3)) {
+                                            const old = document.getElementById("euix-drag-ghost");
+                                            if (old) old.remove();
+
+                                            ghost = el.cloneNode(true);
+                                            ghost.id = "euix-drag-ghost";
+                                            ghost.style.position = "fixed";
+                                            ghost.style.top = `${moveEvt.clientY - 20}px`;
+                                            ghost.style.left = `${moveEvt.clientX - 20}px`;
+                                            ghost.style.pointerEvents = "none";
+                                            ghost.style.zIndex = "999999";
+                                            ghost.style.opacity = "0.9";
+                                            ghost.style.boxShadow = "0 10px 25px -5px rgba(0,0,0,0.25)";
+                                            ghost.style.width = `${el.offsetWidth}px`;
+                                            ghost.style.transition = "none";
+                                            ghost.style.transform = "none";
+                                            document.body.appendChild(ghost);
+                                        } else if (ghost) {
+                                            ghost.style.left = `${moveEvt.clientX - 20}px`;
+                                            ghost.style.top = `${moveEvt.clientY - 20}px`;
+                                        }
+                                    };
+
+                                    const onUp = () => {
+                                        if (ghost) {
+                                            ghost.remove();
+                                            ghost = null;
+                                        }
+                                        window.removeEventListener("pointermove", onMove);
+                                        window.removeEventListener("pointerup", onUp);
+                                        window.removeEventListener("pointercancel", onUp);
+                                    };
+
+                                    window.addEventListener("pointermove", onMove, { passive: true });
+                                    window.addEventListener("pointerup", onUp, { once: true });
+                                    window.addEventListener("pointercancel", onUp, { once: true });
+                                }
+                            });
+                        }
+                    } catch (_) {}
                 }
             }
 
@@ -2625,6 +2691,9 @@ class EUIXEngine {
             } else {
                 try {
                     el = document.createElement(tagName);
+                    if (tagName === "form") {
+                        el.onsubmit = (e) => { e.preventDefault(); };
+                    }
                 } catch (_) {
                     el = document.createElement("div");
                 }
@@ -2685,6 +2754,7 @@ class EUIXEngine {
             this.applyLayoutStyles(div, xmlNode, context);
         }
 
+        this.applyNodeAttributes(div, xmlNode, context);
         this.bindEvents(xmlNode, div, context);
 
         Array.from(xmlNode.childNodes).forEach(child => {
@@ -2749,6 +2819,7 @@ class EUIXEngine {
             else if (tagName === "on_keydown") eventType = "keydown";
             else if (tagName === "on_mouseenter") eventType = "mouseenter";
             else if (tagName === "on_mouseleave") eventType = "mouseleave";
+            else if (tagName.startsWith("on_")) eventType = tagName.replace(/^on_/, "");
             else if (tagName === "event" || tagName === "on") {
                 eventType = (child.getAttribute("type") || child.getAttribute("name") || child.getAttribute("event") || "click").toLowerCase();
             }
@@ -2759,8 +2830,61 @@ class EUIXEngine {
             }
         });
 
+        if (eventMap.has("drop")) {
+            if (!eventMap.has("dragover")) {
+                el.addEventListener("dragover", (e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer) {
+                        try { e.dataTransfer.dropEffect = "move"; } catch (_) {}
+                    }
+                });
+            }
+            el.addEventListener("pointerup", (e) => {
+                const draggedId = this.getState("dragged_id");
+                if (draggedId) {
+                    const dropHandlers = eventMap.get("drop") || [];
+                    dropHandlers.forEach(node => {
+                        this.handleAction(node, context);
+                    });
+                    this.setState("dragged_id", "");
+                }
+            });
+        }
+
         eventMap.forEach((handlerNodes, eventType) => {
             el.addEventListener(eventType, (e) => {
+                if (["dragover", "dragenter", "drop"].includes(eventType)) {
+                    e.preventDefault();
+                    if (e.dataTransfer) {
+                        try { e.dataTransfer.dropEffect = "move"; } catch (_) {}
+                    }
+                }
+                if (eventType === "dragstart") {
+                    const dragEl = (e.target && typeof e.target.closest === "function") ? (e.target.closest('[draggable="true"]') || el) : el;
+                    const dragVal = (context && context.task && context.task.id) 
+                        ? context.task.id 
+                        : (dragEl ? (dragEl.getAttribute("data-id") || dragEl.id) : "");
+                    if (dragVal) {
+                        this.setState("dragged_id", String(dragVal));
+                    }
+                    if (e.dataTransfer) {
+                        try {
+                            e.dataTransfer.setData("text/plain", String(dragVal || "task"));
+                            e.dataTransfer.effectAllowed = "move";
+                            if (dragEl && typeof e.dataTransfer.setDragImage === "function") {
+                                e.dataTransfer.setDragImage(dragEl, 20, 20);
+                            }
+                        } catch (_) {}
+                    }
+                }
+                if (eventType === "drop" && e.dataTransfer) {
+                    try {
+                        const droppedId = e.dataTransfer.getData("text/plain");
+                        if (droppedId && droppedId !== "task") {
+                            this.setState("dragged_id", droppedId);
+                        }
+                    } catch (_) {}
+                }
                 if (eventType === "submit") {
                     e.preventDefault();
                     const formEl = el.tagName === "FORM" ? el : el.closest("form");
@@ -3057,19 +3181,30 @@ class EUIXEngine {
                 const rawText = valItem ? (valItem.getAttribute("text") || valItem.textContent.trim()) : "";
                 const textValue = this.interpolate(rawText, context);
 
-                if (!valItem && !textValue.trim()) return;
-
-                const newItem = { id: Date.now().toString() };
+                const newItem = { id: `task-${Date.now()}` };
                 if (valItem && valItem.attributes) {
                     Array.from(valItem.attributes).forEach(attr => {
-                        newItem[attr.name] = this.interpolate(attr.value, context);
+                        const interpolatedVal = this.interpolate(attr.value, context);
+                        if (interpolatedVal && !interpolatedVal.includes("undefined")) {
+                            newItem[attr.name] = interpolatedVal;
+                        }
                     });
                 }
                 if (!newItem.text && textValue) newItem.text = textValue;
-                if (newItem.completed === undefined) newItem.completed = "false";
+                if (!newItem.title && textValue) newItem.title = textValue;
+                
+                const titleVal = newItem.title || newItem.text || "";
+                if (!String(titleVal).trim()) return;
+
+                if (!newItem.status || !["todo", "in_progress", "done"].includes(newItem.status)) {
+                    const selCol = this.getState("new_kanban_col");
+                    newItem.status = (selCol && ["todo", "in_progress", "done"].includes(selCol)) ? selCol : "todo";
+                }
+                if (!newItem.category) newItem.category = "General";
+                if (newItem.completed === undefined && !newItem.status) newItem.completed = "false";
 
                 this.batch(() => {
-                    const currentList = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
+                    const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
                     if (operation === "UNSHIFT" || operation === "PREPEND") {
                         this.setState(path, [newItem, ...currentList]);
                     } else {
@@ -3120,7 +3255,7 @@ class EUIXEngine {
 
             if (operation === "UPDATE") {
                 const whereNode = this.getChild(actionNode, "where");
-                const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item");
+                const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || this.getChild(actionNode, "value") || actionNode;
                 if (!fieldsNode) return;
 
                 const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];

@@ -381,4 +381,62 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         targetBtn.dispatchEvent(new window.MouseEvent('click'));
         expect(engine.getState('employees').length).toBe(1);
     });
+
+    it('should render KanbanSection.xml drag and drop board and handle dragstart/drop events', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="dragged_id"></state>
+                <state id="new_kanban_title"></state>
+                <state id="new_kanban_col">todo</state>
+                <state id="kanban_tasks" type="array">
+                    <item id="task-1" title="Design EUIX Spec" category="Design" status="todo" />
+                    <item id="task-2" title="Implement Drag Handlers" category="Core" status="in_progress" />
+                </state>
+            </data_model>
+            <flex direction="column">
+                <kanban-section />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('kanban_tasks').length).toBe(4);
+
+        // Check task cards rendered in appropriate columns
+        const cards = document.querySelectorAll('[draggable="true"]');
+        expect(cards.length).toBe(4);
+        expect(cards[0].textContent).toContain('Design EUIX Component Spec');
+        expect(cards[1].textContent).toContain('Write Playwright E2E Test Suite');
+
+        // Simulate dragstart on task-1 card
+        cards[0].dispatchEvent(new window.Event('dragstart'));
+        expect(engine.getState('dragged_id')).toBe('task-1');
+
+        // Simulate drop onto In Progress column
+        const inProgressCol = document.querySelector('.bg-amber-50\\/40');
+        expect(inProgressCol).not.toBeNull();
+
+        inProgressCol.dispatchEvent(new window.Event('drop'));
+
+        // Task 1 should now have status = "in_progress"
+        const updatedTasks = engine.getState('kanban_tasks');
+        const task1 = updatedTasks.find(t => t.id === 'task-1');
+        expect(task1.status).toBe('in_progress');
+
+        // Test adding a new task via form input
+        engine.setState('new_kanban_title', 'New Integration Test Task');
+        engine.setState('new_kanban_col', 'todo');
+
+        const addBtn = document.querySelector('button[type="button"].bg-purple-600');
+        expect(addBtn).not.toBeNull();
+
+        addBtn.dispatchEvent(new window.MouseEvent('click'));
+
+        const finalTasks = engine.getState('kanban_tasks');
+        expect(finalTasks.length).toBe(5);
+        const newTask = finalTasks.find(t => t.title === 'New Integration Test Task');
+        expect(newTask).toBeDefined();
+        expect(newTask.status).toBe('todo');
+    });
 });
