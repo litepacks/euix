@@ -800,4 +800,55 @@ describe('EUIXEngine Unit Tests', () => {
         expect(recursionReported).toBe(true);
         expect(document.querySelector('.euix-recursion-error')).not.toBeNull();
     });
+
+    it('should trigger <on_change watch="..."> lifecycle hook when watched state changes', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="input_val" type="string">hello</state>
+                <state id="log_msg" type="string">initial</state>
+            </data_model>
+            <flex direction="column">
+                <span class="target-span">
+                    {data.log_msg}
+                    <on_change watch="data.input_val" action="SET_STATE">
+                        <path>data.log_msg</path>
+                        <value>Input Changed!</value>
+                    </on_change>
+                </span>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('log_msg')).toBe('initial');
+
+        engine.setState('input_val', 'new value');
+        expect(engine.getState('log_msg')).toBe('Input Changed!');
+    });
+
+    it('should trigger <on_interval ms="..."> lifecycle recurring timer hook', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="ticks" type="string">0</state>
+            </data_model>
+            <flex direction="column">
+                <span class="tick-box">
+                    {data.ticks}
+                    <on_interval ms="50" action="SET_STATE">
+                        <path>data.ticks</path>
+                        <value>1</value>
+                    </on_interval>
+                </span>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('ticks')).toBe('0');
+
+        await new Promise(resolve => setTimeout(resolve, 120));
+        expect(engine.getState('ticks')).toBe('1');
+    });
 });

@@ -773,6 +773,74 @@ class EUIXEngine {
         });
     }
 
+    processLifecycleHooks(xmlNode, domEl, context = {}) {
+        if (!xmlNode || !domEl || domEl.nodeType !== Node.ELEMENT_NODE) return;
+
+        // 1. <on_mount>
+        const onMountNodes = this.getChildren(xmlNode, "on_mount");
+        onMountNodes.forEach(node => {
+            this.handleAction(node, context);
+        });
+
+        // 2. <on_change watch="..."> / <on_update watch="...">
+        const onChangeNodes = [...this.getChildren(xmlNode, "on_change"), ...this.getChildren(xmlNode, "on_update")];
+        onChangeNodes.forEach(node => {
+            const rawWatch = node.getAttribute("watch") || node.getAttribute("path") || node.getAttribute("bind");
+            const watchPath = rawWatch ? this.parseBindPath(rawWatch) : null;
+            if (watchPath) {
+                this.registerBinding(watchPath, domEl, "lifecycle_on_change", () => {
+                    this.handleAction(node, context);
+                });
+            }
+        });
+
+        // 3. <on_interval ms="5000"> / <on_timer ms="1000">
+        const onIntervalNodes = [...this.getChildren(xmlNode, "on_interval"), ...this.getChildren(xmlNode, "on_timer")];
+        onIntervalNodes.forEach(node => {
+            const ms = parseInt(node.getAttribute("ms") || node.getAttribute("delay") || "5000", 10);
+            if (ms > 0) {
+                const intervalId = setInterval(() => {
+                    if (typeof document !== "undefined" && !document.body.contains(domEl)) {
+                        clearInterval(intervalId);
+                        return;
+                    }
+                    this.handleAction(node, context);
+                }, ms);
+                domEl.dataset.euixInterval = String(intervalId);
+            }
+        });
+
+        // 4. <on_visible> (IntersectionObserver)
+        const onVisibleNodes = this.getChildren(xmlNode, "on_visible");
+        if (onVisibleNodes.length && typeof IntersectionObserver !== "undefined") {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        onVisibleNodes.forEach(node => this.handleAction(node, context));
+                        if (onVisibleNodes.every(n => n.getAttribute("once") !== "false")) {
+                            observer.unobserve(domEl);
+                        }
+                    }
+                });
+            });
+            observer.observe(domEl);
+        }
+
+        // 5. <on_unmount> / <on_destroy>
+        const onUnmountNodes = [...this.getChildren(xmlNode, "on_unmount"), ...this.getChildren(xmlNode, "on_destroy")];
+        if (onUnmountNodes.length && typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+            let fired = false;
+            const observer = new MutationObserver(() => {
+                if (!fired && !document.body.contains(domEl)) {
+                    fired = true;
+                    observer.disconnect();
+                    onUnmountNodes.forEach(node => this.handleAction(node, context));
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
     getJsonPath(obj, path) {
         if (!path) return obj;
         return String(path).split(".").reduce((acc, key) => {
@@ -1392,7 +1460,11 @@ class EUIXEngine {
     createHTMLElement(xmlNode, context = {}) {
         if (!xmlNode) return null;
         try {
-            return this._createHTMLElementInternal(xmlNode, context);
+            const el = this._createHTMLElementInternal(xmlNode, context);
+            if (el && el.nodeType === Node.ELEMENT_NODE) {
+                this.processLifecycleHooks(xmlNode, el, context);
+            }
+            return el;
         } catch (err) {
             this.reportError(err, `Error rendering <${xmlNode.tagName || 'element'}>`);
             const fallback = document.createElement("div");
@@ -2003,6 +2075,10 @@ class EUIXEngine {
             specNode;
 
         const rendered = this.createHTMLElement(templateNode, childContext);
+        if (rendered && rendered.nodeType === Node.ELEMENT_NODE) {
+            this.processLifecycleHooks(specNode, rendered, childContext);
+        }
+
         if (rendered && usageNode.getAttribute("class")) {
             const extraClass = usageNode.getAttribute("class");
             rendered.className = [rendered.className, extraClass].filter(Boolean).join(" ");

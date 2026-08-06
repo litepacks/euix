@@ -1,6 +1,6 @@
 # EUIX Engine - Architecture & Developer Guide (`docs/guide.md`)
 
-Welcome to the **EUIX Engine** developer guide. This guide explains core architectural principles, state reactivity, design token constants, DevTools inspection, and testing practices.
+Welcome to the **EUIX Engine** developer guide. This guide explains core architectural principles, state reactivity, design token constants, declarative lifecycle hooks, DevTools inspection, and testing practices.
 
 ---
 
@@ -11,6 +11,60 @@ Welcome to the **EUIX Engine** developer guide. This guide explains core archite
 3. **Fine-Grained In-Place Reactivity:** Uses Proxy-based state observers to update only affected DOM nodes without Virtual DOM diffing overhead.
 4. **Declarative Component Model:** HTML/XML templates with custom component imports (`<import src="..." />`) and definitions (`<component_def>`).
 5. **Design Tokens & Constants (`<constants>` / `<vars>`):** Scoped and inherited CSS class and variable tokens.
+6. **Declarative Lifecycle Hooks:** Full suite of hooks including `<on_mount>`, `<on_unmount>`, `<on_change>`, `<on_interval>`, and `<on_visible>`.
+
+---
+
+## ⚓ Declarative Lifecycle Hooks Reference
+
+EUIX Engine provides declarative XML tags for managing element & component lifecycles:
+
+### 1. `<on_mount>`
+Executes actions immediately when the component or element is mounted into the DOM:
+```xml
+<on_mount action="XHR">
+    <method>GET</method>
+    <url>https://pokeapi.co/api/v2/pokemon?limit=12</url>
+    <target>data.pokemons</target>
+</on_mount>
+```
+
+### 2. `<on_unmount>` / `<on_destroy>`
+Executes cleanup actions automatically when the DOM element is removed from the document:
+```xml
+<on_unmount action="SET_STATE">
+    <path>data.active_tab</path>
+    <value>default</value>
+</on_unmount>
+```
+
+### 3. `<on_change watch="data.key">` / `<on_update watch="...">`
+Executes side-effect actions whenever the watched state value changes:
+```xml
+<on_change watch="data.search_query" action="XHR">
+    <url>https://api.example.com/search?q={data.search_query}</url>
+    <target>data.search_results</target>
+</on_change>
+```
+
+### 4. `<on_interval ms="5000">` / `<on_timer ms="...">`
+Executes recurring actions on a timer interval (automatically cleared on unmount):
+```xml
+<on_interval ms="10000" action="XHR">
+    <method>GET</method>
+    <url>https://api.example.com/status</url>
+    <target>data.server_status</target>
+</on_interval>
+```
+
+### 5. `<on_visible>` (Lazy Viewport Intersection)
+Executes actions when the element enters the browser viewport via `IntersectionObserver`:
+```xml
+<on_visible action="XHR">
+    <url>https://jsonplaceholder.typicode.com/posts?_limit=10</url>
+    <target>data.posts</target>
+</on_visible>
+```
 
 ---
 
@@ -29,11 +83,6 @@ EUIX Engine supports defining design tokens and reusable CSS class sets using `<
     <var id="api_base">https://pokeapi.co/api/v2</var>
 </vars>
 ```
-
-### Template & Class Usage:
-- `class="{const.card_box}"`
-- `<span class="{const.badge_blue}">Active Token</span>`
-- `<url>{var.api_base}/pokemon?limit=12</url>`
 
 ---
 
@@ -61,37 +110,16 @@ EUIX DevTools provides a live inspector overlay, State Tree drawer, and Action l
 - **Action Log Stream:** Streams every `SET_STATE`, `MUTATE_STATE`, and `XHR` execution.
 - **Console API:** Access `window.$state` and `window.$engine` directly in browser dev tools.
 
-```javascript
-// Programmatic DevTools Activation
-engine.enableDevTools();
-```
-
 ---
 
 ## 🧪 Testing & Verification
 
-EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
+EUIX Engine includes comprehensive unit, component, contract, benchmark, and browser E2E test suites:
 
 ```bash
-# Run Vitest Unit, Component, Benchmark & Contract Tests (38 Tests)
+# Run Vitest Unit, Component, Benchmark & Contract Tests (48 Tests)
 npm run test
 
-# Run Playwright Real Browser E2E Tests (7 Tests)
+# Run Playwright Real Browser E2E Tests (9 Tests)
 npm run test:e2e
 ```
-
----
-
-## ⚡ Performance Benchmarks
-
-```javascript
-// Run live performance benchmark
-const report = EUIXEngine.runBenchmark(1000);
-console.log(report.durationMs, report.opsPerSec);
-```
-
-| Scale | Duration (ms) | Ops/sec |
-| :--- | :--- | :--- |
-| **1,000 Bulk Render** | ~ 170 ms | ~ 7,600 ops/sec |
-| **3,000 Bulk Render** | ~ 300 ms | ~ 12,500 ops/sec |
-| **In-place Single State Update** | **0.12 ms** | Instant |
