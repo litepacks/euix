@@ -1948,6 +1948,7 @@ class EUIXEngine {
             el.style.display = isFlex ? "flex" : "grid";
             el.className = [isFlex ? "euix-flex" : "euix-grid", this.interpolate(xmlNode.getAttribute("class") || "", context)].filter(Boolean).join(" ");
             this.applyLayoutStyles(el, xmlNode, context);
+            this.applyNodeAttributes(el, xmlNode, context);
             this.bindEvents(xmlNode, el, context);
 
             Array.from(xmlNode.childNodes).forEach(child => {
