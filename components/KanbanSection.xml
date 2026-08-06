@@ -73,15 +73,36 @@
                                 <path>data.dragged_id</path>
                                 <value>{task.id}</value>
                             </on_dragstart>
+                            <on_drop action="MUTATE_STATE" operation="SWAP">
+                                <path>data.kanban_tasks</path>
+                                <where equals="{data.dragged_id}" />
+                                <target_where equals="{task.id}" />
+                            </on_drop>
                             <flex direction="row" align="center" justify="between">
                                 <span class="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold rounded text-[10px]">{task.category}</span>
-                                <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer">
-                                    <on_click action="MUTATE_STATE" operation="REMOVE">
-                                        <path>data.kanban_tasks</path>
-                                        <index>{task._index}</index>
-                                    </on_click>
-                                    ✕
-                                </button>
+                                <flex direction="row" align="center" gap="4">
+                                    <button type="button" class="text-slate-400 hover:text-purple-600 text-xs font-bold cursor-pointer px-1" title="Move Up">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_UP">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▲
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-purple-600 text-xs font-bold cursor-pointer px-1" title="Move Down">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_DOWN">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▼
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer pl-1" title="Delete Task">
+                                        <on_click action="MUTATE_STATE" operation="REMOVE">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ✕
+                                    </button>
+                                </flex>
                             </flex>
                             <span class="text-xs font-bold text-slate-800">{task.title}</span>
                             <flex direction="row" align="center" justify="end" gap="4" class="pt-1 border-t border-slate-100">
@@ -119,15 +140,36 @@
                                 <path>data.dragged_id</path>
                                 <value>{task.id}</value>
                             </on_dragstart>
+                            <on_drop action="MUTATE_STATE" operation="SWAP">
+                                <path>data.kanban_tasks</path>
+                                <where equals="{data.dragged_id}" />
+                                <target_where equals="{task.id}" />
+                            </on_drop>
                             <flex direction="row" align="center" justify="between">
                                 <span class="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded text-[10px]">{task.category}</span>
-                                <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer">
-                                    <on_click action="MUTATE_STATE" operation="REMOVE">
-                                        <path>data.kanban_tasks</path>
-                                        <index>{task._index}</index>
-                                    </on_click>
-                                    ✕
-                                </button>
+                                <flex direction="row" align="center" gap="4">
+                                    <button type="button" class="text-slate-400 hover:text-amber-600 text-xs font-bold cursor-pointer px-1" title="Move Up">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_UP">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▲
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-amber-600 text-xs font-bold cursor-pointer px-1" title="Move Down">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_DOWN">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▼
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer pl-1" title="Delete Task">
+                                        <on_click action="MUTATE_STATE" operation="REMOVE">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ✕
+                                    </button>
+                                </flex>
                             </flex>
                             <span class="text-xs font-bold text-slate-800">{task.title}</span>
                             <flex direction="row" align="center" justify="between" gap="4" class="pt-1 border-t border-slate-100">
@@ -173,17 +215,38 @@
                                 <path>data.dragged_id</path>
                                 <value>{task.id}</value>
                             </on_dragstart>
+                            <on_drop action="MUTATE_STATE" operation="SWAP">
+                                <path>data.kanban_tasks</path>
+                                <where equals="{data.dragged_id}" />
+                                <target_where equals="{task.id}" />
+                            </on_drop>
                             <flex direction="row" align="center" justify="between">
                                 <span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded text-[10px]">{task.category}</span>
-                                <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer">
-                                    <on_click action="MUTATE_STATE" operation="REMOVE">
-                                        <path>data.kanban_tasks</path>
-                                        <index>{task._index}</index>
-                                    </on_click>
-                                    ✕
-                                </button>
+                                <flex direction="row" align="center" gap="4">
+                                    <button type="button" class="text-slate-400 hover:text-emerald-600 text-xs font-bold cursor-pointer px-1" title="Move Up">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_UP">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▲
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-emerald-600 text-xs font-bold cursor-pointer px-1" title="Move Down">
+                                        <on_click action="MUTATE_STATE" operation="MOVE_DOWN">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ▼
+                                    </button>
+                                    <button type="button" class="text-slate-400 hover:text-rose-600 text-xs font-bold cursor-pointer pl-1" title="Delete Task">
+                                        <on_click action="MUTATE_STATE" operation="REMOVE">
+                                            <path>data.kanban_tasks</path>
+                                            <index>{task._index}</index>
+                                        </on_click>
+                                        ✕
+                                    </button>
+                                </flex>
                             </flex>
-                            <span class="text-xs font-bold text-slate-800 line-through text-slate-500">{task.title}</span>
+                            <span class="text-xs font-bold text-slate-800">{task.title}</span>
                             <flex direction="row" align="center" justify="start" gap="4" class="pt-1 border-t border-slate-100">
                                 <button type="button" class="px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded text-[10px] cursor-pointer transition-colors">
                                     <on_click action="MUTATE_STATE" operation="UPDATE">

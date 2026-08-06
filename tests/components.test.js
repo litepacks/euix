@@ -438,5 +438,16 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         const newTask = finalTasks.find(t => t.title === 'New Integration Test Task');
         expect(newTask).toBeDefined();
         expect(newTask.status).toBe('todo');
+
+        // Test MOVE_DOWN reordering
+        const initialTasks = engine.getState('kanban_tasks');
+        const initialZeroId = initialTasks[0].id;
+
+        const parser = new window.DOMParser();
+        const actionNode = parser.parseFromString('<on_click action="MUTATE_STATE" operation="MOVE_DOWN"><path>data.kanban_tasks</path><index>0</index></on_click>', 'text/xml').documentElement;
+        engine.handleAction(actionNode, {});
+
+        const reorderedTasks = engine.getState('kanban_tasks');
+        expect(reorderedTasks[1].id).toBe(initialZeroId);
     });
 });

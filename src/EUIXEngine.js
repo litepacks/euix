@@ -3253,6 +3253,71 @@ class EUIXEngine {
                 }
             }
 
+            if (operation === "MOVE_UP" || operation === "MOVE_DOWN") {
+                const indexNode = this.getChild(actionNode, "index");
+                const whereNode = this.getChild(actionNode, "where");
+                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+
+                let targetIdx = -1;
+                if (indexNode) {
+                    targetIdx = parseInt(this.interpolate(indexNode.textContent.trim(), context), 10);
+                } else if (whereNode) {
+                    const field = whereNode.getAttribute("field") || "id";
+                    const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                    const expected = this.interpolate(rawMatch, context);
+                    targetIdx = list.findIndex(item => String(item[field]) === String(expected));
+                }
+
+                if (targetIdx !== -1) {
+                    const swapIdx = operation === "MOVE_UP" ? targetIdx - 1 : targetIdx + 1;
+                    if (swapIdx >= 0 && swapIdx < list.length) {
+                        const temp = list[targetIdx];
+                        list[targetIdx] = list[swapIdx];
+                        list[swapIdx] = temp;
+                        this.batch(() => {
+                            this.setState(path, list);
+                            this.applyResets(actionNode);
+                        });
+                    }
+                }
+            }
+
+            if (operation === "SWAP") {
+                const whereNode = this.getChild(actionNode, "where");
+                const targetWhereNode = this.getChild(actionNode, "target_where") || this.getChild(actionNode, "target");
+                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+
+                if (whereNode && targetWhereNode) {
+                    const field1 = whereNode.getAttribute("field") || "id";
+                    const rawMatch1 = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                    const id1 = this.interpolate(rawMatch1, context);
+
+                    const field2 = targetWhereNode.getAttribute("field") || "id";
+                    const rawMatch2 = targetWhereNode.getAttribute("equals") || targetWhereNode.textContent.trim();
+                    const id2 = this.interpolate(rawMatch2, context);
+
+                    const idx1 = list.findIndex(item => String(item[field1]) === String(id1));
+                    const idx2 = list.findIndex(item => String(item[field2]) === String(id2));
+
+                    if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
+                        const temp = list[idx1];
+                        list[idx1] = list[idx2];
+                        list[idx2] = temp;
+
+                        if (list[idx1].status && list[idx2].status) {
+                            const tempStatus = list[idx1].status;
+                            list[idx1].status = list[idx2].status;
+                            list[idx2].status = tempStatus;
+                        }
+
+                        this.batch(() => {
+                            this.setState(path, list);
+                            this.applyResets(actionNode);
+                        });
+                    }
+                }
+            }
+
             if (operation === "UPDATE") {
                 const whereNode = this.getChild(actionNode, "where");
                 const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || this.getChild(actionNode, "value") || actionNode;
