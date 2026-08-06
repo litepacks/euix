@@ -9,7 +9,7 @@
                 <operation>PUSH</operation>
                 <item text="{data.new_todo_input}" completed="false" />
             </on_submit>
-            <input type="text" bind="data.new_todo_input" placeholder="Enter a new task..." autofocus="true" class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input type="text" bind="data.new_todo_input" placeholder="Enter a new task..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
             <button type="submit" class="{const.btn_primary}">
                 Add Task
             </button>

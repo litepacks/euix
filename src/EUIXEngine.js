@@ -304,8 +304,12 @@ class EUIXEngine {
             headers: new Map(),
             timeout: 0,
             onRequest: null,
-            onResponse: null
+            onResponse: null,
+            revalidateFocus: false,
+            revalidateOnline: false
         };
+        this._registeredXhrs = new Set();
+        this._xhrCache = new Map();
         if (!EUIXEngine._globalConstants) {
             EUIXEngine._globalConstants = new Map();
         }
@@ -313,6 +317,53 @@ class EUIXEngine {
             EUIXEngine._globalComponentSpecs = new Map();
         }
         this._setupStorageListener();
+        this._initRevalidationListeners();
+    }
+
+    _initRevalidationListeners() {
+        if (typeof window === "undefined" || this._revalidationBound) return;
+        this._revalidationBound = true;
+
+        const onRevalidateEvent = (evtType) => {
+            if (!this._registeredXhrs || this._registeredXhrs.size === 0) return;
+            this._registeredXhrs.forEach(item => {
+                const shouldFocus = evtType === "focus" && (item.revalidateFocus || this._apiConfig.revalidateFocus);
+                const shouldOnline = evtType === "online" && (item.revalidateOnline || this._apiConfig.revalidateOnline);
+
+                if ((item.method === "GET" || item.method === "HEAD") && (shouldFocus || shouldOnline)) {
+                    if (this._xhrCache && item.url) {
+                        this._xhrCache.delete(item.url);
+                    }
+                    this.handleXHR(item.actionNode, item.context);
+                }
+            });
+        };
+
+        window.addEventListener("focus", () => onRevalidateEvent("focus"));
+        window.addEventListener("online", () => onRevalidateEvent("online"));
+    }
+
+    revalidateApi(tagOrUrl = "") {
+        const filter = String(tagOrUrl).trim();
+        if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
+
+        const targets = [];
+        this._registeredXhrs.forEach(item => {
+            if (!filter) {
+                if (item.method === "GET" || item.method === "HEAD") targets.push(item);
+            } else if (item.tag === filter || (item.url && item.url.includes(filter))) {
+                targets.push(item);
+            }
+        });
+
+        targets.forEach(item => {
+            if (this._xhrCache && item.url) {
+                this._xhrCache.delete(item.url);
+            }
+            this.handleXHR(item.actionNode, item.context);
+        });
+
+        return this;
     }
 
     async loadDataModel(urlOrObj) {
@@ -532,19 +583,19 @@ class EUIXEngine {
         }
     }
 
-    enableDevTools() {
+    enableDevTools(autoOpen = false) {
         if (typeof window !== "undefined") {
             import('./EUIXDevTools.js').then(({ EUIXDevTools }) => {
                 const devtools = EUIXDevTools.init(this);
-                if (devtools) devtools.toggle(true);
+                if (devtools && autoOpen) devtools.toggle(true);
             }).catch(() => {});
         }
         return this;
     }
 
-    static enableDevTools() {
+    static enableDevTools(autoOpen = false) {
         if (EUIXEngine.instance) {
-            return EUIXEngine.instance.enableDevTools();
+            return EUIXEngine.instance.enableDevTools(autoOpen);
         }
         return null;
     }
@@ -675,7 +726,7 @@ class EUIXEngine {
             if (xml) {
                 const engine = EUIXEngine.mount(xml, targetSelector);
                 if (engine) {
-                    engine.enableDevTools();
+                    engine.enableDevTools(false);
                 }
             }
         });
@@ -1301,6 +1352,54 @@ class EUIXEngine {
         const targetOpNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "target_op");
         const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : "SET";
 
+        const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim() || compApiConfig.tag || "";
+        const revalidateFocus = actionNode.getAttribute("revalidate_focus") === "true" || compApiConfig.revalidateFocus === true;
+        const revalidateOnline = actionNode.getAttribute("revalidate_online") === "true" || compApiConfig.revalidateOnline === true;
+        const cacheTtlMs = parseInt(actionNode.getAttribute("cache_ttl") || actionNode.getAttribute("cache") || compApiConfig.cacheTtl || 0, 10);
+
+        if (!this._registeredXhrs) this._registeredXhrs = new Set();
+        let existingEntry = null;
+        for (const entry of this._registeredXhrs) {
+            if (entry.actionNode === actionNode) {
+                existingEntry = entry;
+                break;
+            }
+        }
+        if (!existingEntry) {
+            existingEntry = {
+                actionNode,
+                context,
+                method,
+                url: finalUrl,
+                tag: tagAttr,
+                revalidateFocus,
+                revalidateOnline
+            };
+            this._registeredXhrs.add(existingEntry);
+        } else {
+            existingEntry.url = finalUrl;
+            existingEntry.context = context;
+        }
+
+        // Stale-While-Revalidate Caching Check
+        if (cacheTtlMs > 0 && (method === "GET" || method === "HEAD")) {
+            if (!this._xhrCache) this._xhrCache = new Map();
+            const cached = this._xhrCache.get(finalUrl);
+            const now = Date.now();
+            if (cached && (now - cached.timestamp < cacheTtlMs)) {
+                this.batch(() => {
+                    if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                    let data = cached.data;
+                    if (select) data = this.getJsonPath(data, select);
+                    if (Array.isArray(data)) {
+                        data = this.mapResponseItems(data, itemMapNode);
+                    }
+                    if (target) this.setState(target, data, { operation: targetOp });
+                });
+                return;
+            }
+        }
+
         if (loadingPath) this.setState(loadingPath, "true");
         if (errorPath) this.setState(errorPath, "", { silent: true });
 
@@ -1430,8 +1529,20 @@ class EUIXEngine {
                         }
                     }
 
+                    if (cacheTtlMs > 0 && (method === "GET" || method === "HEAD")) {
+                        if (!this._xhrCache) this._xhrCache = new Map();
+                        this._xhrCache.set(finalUrl, { data, timestamp: Date.now() });
+                    }
+
                     this.applyResets(actionNode);
                     if (errorPath) this.setState(errorPath, "", { silent: true });
+
+                    const revalidateNode = this.getChild(actionNode, "revalidate") || this.getChild(actionNode, "revalidate_tag");
+                    const revalidateTag = revalidateNode ? revalidateNode.textContent.trim() : (actionNode.getAttribute("revalidate") || actionNode.getAttribute("revalidate_tag") || "");
+
+                    if (revalidateTag) {
+                        this.revalidateApi(revalidateTag);
+                    }
                 });
             })
             .catch((err) => {
@@ -2850,6 +2961,13 @@ class EUIXEngine {
 
         if (actionType === "XHR") {
             this.handleXHR(actionNode, context);
+            return;
+        }
+
+        if (actionType === "REVALIDATE_API" || actionType === "REVALIDATE") {
+            const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url");
+            const tag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "");
+            this.revalidateApi(tag);
             return;
         }
 

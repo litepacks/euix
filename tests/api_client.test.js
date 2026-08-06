@@ -454,4 +454,107 @@ describe('EUIXEngine API Client Suite (BaseURL, Default Headers, Credentials, In
 
         meta.remove();
     });
+
+    it('should support programmatic engine.revalidateApi(tag) and declarative <on_click action="REVALIDATE_API" tag="...">', async () => {
+        let callCount = 0;
+        const mockFetch = vi.fn().mockImplementation(async () => {
+            callCount++;
+            return {
+                ok: true,
+                status: 200,
+                headers: new Map([['content-type', 'application/json']]),
+                json: async () => ({ count: callCount })
+            };
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="posts"></state>
+            </data_model>
+            <flex>
+                <button id="fetch_posts">
+                    <on_click action="XHR" tag="posts">
+                        <url>https://api.example.com/posts</url>
+                        <target>data.posts</target>
+                    </on_click>
+                </button>
+
+                <button id="refresh_btn">
+                    <on_click action="REVALIDATE_API" tag="posts" />
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        // Initial fetch
+        container.querySelector('#fetch_posts').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // Declarative Revalidate Action Click
+        container.querySelector('#refresh_btn').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+
+        // Programmatic Revalidate API Call
+        engine.revalidateApi('posts');
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should automatically revalidate tagged query after mutation POST action with <revalidate_tag>', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Map([['content-type', 'application/json']]),
+            json: async () => ({ status: 'success' })
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="list"></state>
+                <state id="res"></state>
+            </data_model>
+            <flex>
+                <button id="load_list">
+                    <on_click action="XHR" tag="items">
+                        <url>/api/items</url>
+                        <target>data.list</target>
+                    </on_click>
+                </button>
+
+                <button id="add_item">
+                    <on_click action="XHR">
+                        <method>POST</method>
+                        <url>/api/items</url>
+                        <target>data.res</target>
+                        <revalidate>items</revalidate>
+                    </on_click>
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        // 1. Initial list load
+        container.querySelector('#load_list').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        // 2. Perform mutation which specifies <revalidate>items</revalidate>
+        container.querySelector('#add_item').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Should trigger POST + automatic refetch of /api/items
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
 });

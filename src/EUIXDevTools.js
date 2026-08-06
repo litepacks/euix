@@ -457,8 +457,10 @@ if (typeof document !== "undefined") {
     const autoInitDevTools = () => {
         const script = document.querySelector("script[data-euix-devtools]");
         if (script && window.EUIXEngine && window.EUIXEngine.instance) {
+            const devAttr = script.getAttribute("data-euix-devtools");
+            const autoOpen = devAttr === "open" || devAttr === "true";
             const devtools = EUIXDevTools.init(window.EUIXEngine.instance);
-            if (devtools) devtools.toggle(true);
+            if (devtools && autoOpen) devtools.toggle(true);
         }
     };
 

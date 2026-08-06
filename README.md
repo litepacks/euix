@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-97%2F97%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-99%2F99%20Passed-brightgreen.svg)]()
 [![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-14%2F14%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.

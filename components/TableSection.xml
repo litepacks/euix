@@ -26,11 +26,11 @@
         <if condition="{data.table_open} == 'true'">
             <flex direction="column" gap="14" class="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
                 <!-- Add New User Form Bar -->
-                <flex direction="row" align="center" gap="8" class="w-full">
-                    <input type="text" placeholder="Employee Name" bind="data.new_emp_name" class="flex-1 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <input type="text" placeholder="Role (e.g. Architect)" bind="data.new_emp_role" class="w-36 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <input type="text" placeholder="Dept (e.g. R&amp;D)" bind="data.new_emp_dept" class="w-28 px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <button class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer whitespace-nowrap">
+                <flex direction="row" align="center" gap="8" wrap="true" class="w-full">
+                    <input type="text" placeholder="Employee Name" bind="data.new_emp_name" class="flex-1 min-w-[140px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <input type="text" placeholder="Role (e.g. Architect)" bind="data.new_emp_role" class="flex-1 min-w-[120px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <input type="text" placeholder="Dept (e.g. R&amp;D)" bind="data.new_emp_dept" class="flex-1 min-w-[100px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <button class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0">
                         <on_click action="MUTATE_STATE" operation="PUSH">
                             <path>data.employees</path>
                             <value name="{data.new_emp_name}" role="{data.new_emp_role}" dept="{data.new_emp_dept}" status="Active" />
