@@ -30,7 +30,7 @@
         </item_map>
     </on_mount>
 
-    <flex direction="column" gap="16" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+    <flex direction="column" gap="16" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
         <!-- Header & Action Controls -->
         <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-4">
             <flex direction="row" align="center" gap="12">
@@ -41,7 +41,7 @@
                 </flex>
             </flex>
             <flex direction="row" align="center" gap="8">
-                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-lg border border-indigo-200/60 hidden sm:inline-block">📄 180 Lines XML</span>
+                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-lg border border-indigo-200/60 hidden sm:inline-block">📄 179 Lines XML</span>
                 <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
@@ -49,7 +49,7 @@
                     </on_click>
                     <on_click action="SET_STATE">
                         <path>data.code_modal_lines</path>
-                        <value>180</value>
+                        <value>179</value>
                     </on_click>
                     <on_click action="XHR">
                         <method>GET</method>

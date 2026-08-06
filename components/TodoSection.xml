@@ -2,7 +2,7 @@
     <constants>
         <const id="quick_btn">px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer</const>
     </constants>
-    <flex direction="column" gap="12" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+    <flex direction="column" gap="12" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
         <!-- Header Bar -->
         <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-4">
             <flex direction="row" align="center" gap="12">

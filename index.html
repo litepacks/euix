@@ -16,19 +16,19 @@
     </style>
 </head>
 
-<body class="bg-slate-50/70 min-h-screen py-8 px-4 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
-    <div id="app" class="w-full max-w-4xl min-w-0 overflow-hidden"></div>
+<body class="bg-slate-50/70 min-h-screen py-3 px-2 sm:py-6 sm:px-4 md:px-6 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
+    <div id="app" class="w-full max-w-6xl xl:max-w-7xl min-w-0 overflow-hidden"></div>
 
     <!-- EUIX Şablonu (Auto-Init) -->
     <script type="application/euix" target="#app">
     <uid_spec id="todo_app">
-        <constants src="data/app-tokens.json">
+        <constants src="./public/data/app-tokens.json">
             <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100</const>
             <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer</const>
             <const id="badge_blue">px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg text-xs</const>
         </constants>
 
-        <data_model src="data/app-config.json">
+        <data_model src="./public/data/app-config.json">
             <state id="new_todo_input" type="string"></state>
             <state id="edit_todo_input" type="string"></state>
             <state id="editing_id" type="string"></state>
