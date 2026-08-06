@@ -179,10 +179,10 @@
     </script>
 
     <!-- EUIX Engine & DevTools Script (Auto-Init & Inspector) -->
-    <script type="module" src="/src/EUIXEngine.js"></script>
+    <script type="module" src="./src/EUIXEngine.js"></script>
     <script type="module">
-        import { EUIXEngine } from '/src/EUIXEngine.js';
-        import { EUIXDevTools } from '/src/EUIXDevTools.js';
+        import { EUIXEngine } from './src/EUIXEngine.js';
+        import { EUIXDevTools } from './src/EUIXDevTools.js';
 
         document.addEventListener('DOMContentLoaded', () => {
             if (window.EUIXEngine && window.EUIXEngine.instance) {
