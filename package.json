@@ -1,6 +1,6 @@
 {
   "name": "euixjs",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "EUIX Engine - Ultra-lightweight declarative HTML & XML framework",
   "type": "module",
   "main": "dist/EUIXEngine.umd.js",
@@ -32,6 +32,14 @@
     "vanilla-js",
     "fine-grained-reactivity"
   ],
+  "homepage": "https://litepacks.github.io/euix/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/litepacks/euix.git"
+  },
+  "bugs": {
+    "url": "https://github.com/litepacks/euix/issues"
+  },
   "author": "",
   "license": "MIT",
   "devDependencies": {
