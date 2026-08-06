@@ -1542,39 +1542,27 @@ class EUIXEngine {
         return "";
     }
 
-    applyValidationAttributes(el, xmlNode, context = {}) {
-        if (!el || !xmlNode || xmlNode.nodeType !== 1 || !el.setAttribute) return;
-
-        const validationAttrs = [
-            "required", "pattern", "minlength", "maxlength",
-            "min", "max", "step", "title", "autocomplete",
-            "disabled", "readonly", "autofocus"
-        ];
-
-        validationAttrs.forEach(attr => {
-            const val = xmlNode.getAttribute(attr);
-            if (val !== null && val !== undefined) {
-                if (["required", "disabled", "readonly", "autofocus"].includes(attr)) {
-                    const isBoolTrue = this.isTruthy(val) || val === "" || val.toLowerCase() === attr;
-                    if (isBoolTrue) {
-                        el.setAttribute(attr, "");
-                        try { el[attr] = true; } catch (_) {}
-                    }
-                } else {
-                    const interpolated = this.interpolate(val, context);
-                    el.setAttribute(attr, interpolated);
-                }
-            }
-        });
-    }
-
-    bindAttributeTemplates(el, xmlNode, context = {}) {
+    applyNodeAttributes(el, xmlNode, context = {}) {
         if (!el || !xmlNode || xmlNode.nodeType !== 1 || !xmlNode.attributes) return;
+
+        const validationAttrs = ["required", "pattern", "minlength", "maxlength", "min", "max", "step", "title", "autocomplete", "disabled", "readonly", "autofocus"];
 
         Array.from(xmlNode.attributes).forEach(attr => {
             const attrName = attr.name;
             const attrValue = attr.value;
             if (!attrValue) return;
+
+            if (validationAttrs.includes(attrName)) {
+                if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
+                    const isBoolTrue = this.isTruthy(attrValue) || attrValue === "" || attrValue.toLowerCase() === attrName;
+                    if (isBoolTrue) {
+                        el.setAttribute(attrName, "");
+                        try { el[attrName] = true; } catch (_) {}
+                    }
+                } else if (!attrValue.includes("data.")) {
+                    el.setAttribute(attrName, this.interpolate(attrValue, context));
+                }
+            }
 
             const matches = Array.from(attrValue.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
             if (matches.length > 0) {
@@ -1614,8 +1602,7 @@ class EUIXEngine {
 
     applyRef(el, xmlNode, context = {}) {
         if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
-        this.applyValidationAttributes(el, xmlNode, context);
-        this.bindAttributeTemplates(el, xmlNode, context);
+        this.applyNodeAttributes(el, xmlNode, context);
         const refAttr = xmlNode.getAttribute("ref");
         if (refAttr) {
             const resolvedRef = this.interpolate(refAttr, context);
