@@ -7,7 +7,7 @@ export default defineConfig({
     open: true
   },
   build: {
-    target: ['es2015', 'chrome64', 'firefox60', 'safari12', 'edge79'],
+    target: ['es2022', 'chrome100', 'firefox100', 'safari15', 'edge100'],
     lib: {
       entry: resolve(__dirname, 'src/EUIXEngine.js'),
       name: 'EUIXEngine',
