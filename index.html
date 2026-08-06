@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,11 +9,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
         body {
             font-family: 'Inter', sans-serif;
         }
     </style>
 </head>
+
 <body class="bg-slate-50/70 min-h-screen py-12 px-4 flex flex-col items-center justify-start">
     <div id="app" class="w-full max-w-xl"></div>
 
@@ -62,7 +65,14 @@
             <state id="selected_todo_id" type="string"></state>
             <state id="counter_value" type="string">0</state>
             <state id="counter_open" type="string">true</state>
+            <state id="state_log" type="string">No state changes yet...</state>
         </data_model>
+
+        <!-- Declarative State Change Hook Example -->
+        <on_state_change watch="data.counter_value" action="SET_STATE">
+            <path>data.state_log</path>
+            <value>State Watcher: Counter updated to {data.counter_value}</value>
+        </on_state_change>
 
         <on_mount action="XHR">
             <method>GET</method>
@@ -103,6 +113,11 @@
         <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <counter-section />
+            <!-- State Watcher Live Banner Box -->
+            <flex direction="row" align="center" gap="8" class="p-3 bg-amber-50 border border-amber-200/60 rounded-xl text-amber-800 text-xs font-semibold">
+                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                <span>{data.state_log}</span>
+            </flex>
             <todo-section />
             <posts-crud-section />
             <pokemon-section />
@@ -120,12 +135,19 @@
     <script type="module">
         import { EUIXEngine } from '/src/EUIXEngine.js';
         import { EUIXDevTools } from '/src/EUIXDevTools.js';
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             if (window.EUIXEngine && window.EUIXEngine.instance) {
-                EUIXDevTools.init(window.EUIXEngine.instance);
+                const engine = window.EUIXEngine.instance;
+                EUIXDevTools.init(engine);
+
+                // JS Programmatic State Watcher Example
+                engine.watch('counter_value', (newValue, oldValue) => {
+                    console.log(`[JS State Watcher] counter_value updated: ${oldValue} -> ${newValue}`);
+                });
             }
         });
     </script>
 </body>
+
 </html>

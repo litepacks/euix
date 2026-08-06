@@ -38,13 +38,31 @@ Executes cleanup actions automatically when the DOM element is removed from the 
 </on_unmount>
 ```
 
-### 3. `<on_change watch="data.key">` / `<on_update watch="...">`
-Executes side-effect actions whenever the watched state value changes:
+### 3. `<on_state_change watch="data.key">` / `<on_change watch="...">`
+Executes side-effect actions whenever the watched state value changes (declaratively in XML or programmatically in JS):
+
+**Declarative XML:**
 ```xml
-<on_change watch="data.search_query" action="XHR">
+<on_state_change watch="data.search_query" action="XHR">
     <url>https://api.example.com/search?q={data.search_query}</url>
     <target>data.search_results</target>
-</on_change>
+</on_state_change>
+```
+
+**Programmatic JS API:**
+```javascript
+// Watch a specific state key with (newValue, oldValue)
+const unwatch = engine.watch('search_query', (newValue, oldValue) => {
+    console.log(`Query changed from "${oldValue}" to "${newValue}"`);
+});
+
+// Watch ALL state changes globally
+const unwatchGlobal = engine.onStateChange((key, newValue, oldValue) => {
+    console.log(`State "${key}" mutated:`, newValue);
+});
+
+// Stop watching anytime
+unwatch();
 ```
 
 ### 4. `<on_interval ms="5000">` / `<on_timer ms="...">`

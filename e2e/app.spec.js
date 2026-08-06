@@ -11,7 +11,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   });
 
   test('should interact with Counter Section math operations (+1, +5, -1, -5, Reset)', async ({ page }) => {
-    const counterSpan = page.locator('.font-mono');
+    const counterSpan = page.locator('.text-4xl.font-mono');
     await expect(counterSpan).toHaveText('0');
 
     // Click +1

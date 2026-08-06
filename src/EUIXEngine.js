@@ -248,11 +248,46 @@ class EUIXEngine {
         this.refs = {};
         this.onError = null;
         this.constants = new Map();
+        this._stateWatchers = new Map();
+        this._globalStateWatchers = [];
         if (!EUIXEngine._globalConstants) {
             EUIXEngine._globalConstants = new Map();
         }
         if (!EUIXEngine._globalComponentSpecs) {
             EUIXEngine._globalComponentSpecs = new Map();
+        }
+    }
+
+    watch(key, callback) {
+        if (!key || typeof callback !== "function") return () => {};
+        const parsedKey = this.parseBindPath(key);
+        if (!this._stateWatchers.has(parsedKey)) this._stateWatchers.set(parsedKey, []);
+        this._stateWatchers.get(parsedKey).push(callback);
+        return () => {
+            const list = this._stateWatchers.get(parsedKey) || [];
+            this._stateWatchers.set(parsedKey, list.filter(cb => cb !== callback));
+        };
+    }
+
+    onStateChange(callback) {
+        if (typeof callback !== "function") return () => {};
+        this._globalStateWatchers.push(callback);
+        return () => {
+            this._globalStateWatchers = this._globalStateWatchers.filter(cb => cb !== callback);
+        };
+    }
+
+    triggerStateWatchers(key, newValue, oldValue) {
+        if (this._globalStateWatchers && this._globalStateWatchers.length) {
+            this._globalStateWatchers.forEach(cb => {
+                try { cb(key, newValue, oldValue); } catch (err) { this.reportError(err, `onStateChange watcher error on "${key}"`); }
+            });
+        }
+        if (this._stateWatchers && this._stateWatchers.has(key)) {
+            const list = this._stateWatchers.get(key) || [];
+            list.forEach(cb => {
+                try { cb(newValue, oldValue, key); } catch (err) { this.reportError(err, `watch listener error on "${key}"`); }
+            });
         }
     }
 
@@ -529,11 +564,15 @@ class EUIXEngine {
         }
 
         try {
+            const oldValue = this._rawState[key];
             this._rawState[key] = value;
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
             }
             this.syncBindings(key, value, sourceEl);
+            if (!silent) {
+                this.triggerStateWatchers(key, value, oldValue);
+            }
         } finally {
             this._updateDepth = Math.max(0, (this._updateDepth || 1) - 1);
         }
@@ -768,9 +807,14 @@ class EUIXEngine {
     runMountActions() {
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec");
         if (!root) return;
-        this.getChildren(root, "on_mount").forEach(node => {
-            this.handleAction(node, {});
-        });
+        const rootDom = this.container ? (this.container.firstElementChild || this.container) : null;
+        if (rootDom) {
+            this.processLifecycleHooks(root, rootDom, {});
+        } else {
+            this.getChildren(root, "on_mount").forEach(node => {
+                this.handleAction(node, {});
+            });
+        }
     }
 
     processLifecycleHooks(xmlNode, domEl, context = {}) {
@@ -782,14 +826,23 @@ class EUIXEngine {
             this.handleAction(node, context);
         });
 
-        // 2. <on_change watch="..."> / <on_update watch="...">
-        const onChangeNodes = [...this.getChildren(xmlNode, "on_change"), ...this.getChildren(xmlNode, "on_update")];
+        // 2. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
+        const onChangeNodes = [
+            ...this.getChildren(xmlNode, "on_state_change"),
+            ...this.getChildren(xmlNode, "on_change"),
+            ...this.getChildren(xmlNode, "on_update"),
+            ...this.getChildren(xmlNode, "watch")
+        ];
         onChangeNodes.forEach(node => {
             const rawWatch = node.getAttribute("watch") || node.getAttribute("path") || node.getAttribute("bind");
             const watchPath = rawWatch ? this.parseBindPath(rawWatch) : null;
             if (watchPath) {
-                this.registerBinding(watchPath, domEl, "lifecycle_on_change", () => {
-                    this.handleAction(node, context);
+                const unwatch = this.watch(watchPath, (newValue, oldValue) => {
+                    if (typeof document !== "undefined" && !document.body.contains(domEl)) {
+                        unwatch();
+                        return;
+                    }
+                    this.handleAction(node, { ...context, newValue, oldValue });
                 });
             }
         });

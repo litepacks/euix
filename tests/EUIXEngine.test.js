@@ -844,11 +844,47 @@ describe('EUIXEngine Unit Tests', () => {
             </flex>
         </uid_spec>
         `;
-
         const engine = EUIXEngine.mount(xml, '#app');
         expect(engine.getState('ticks')).toBe('0');
 
         await new Promise(resolve => setTimeout(resolve, 120));
         expect(engine.getState('ticks')).toBe('1');
+    });
+
+    it('should support programmatic engine.watch(path, fn) and engine.onStateChange(fn)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="user" type="string">Guest</state>
+            </data_model>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        let watchCalls = 0;
+        let globalCalls = 0;
+
+        const unwatch = engine.watch('user', (newVal, oldVal) => {
+            watchCalls++;
+            expect(newVal).toBe('Admin');
+            expect(oldVal).toBe('Guest');
+        });
+
+        const unwatchGlobal = engine.onStateChange((key, newVal, oldVal) => {
+            globalCalls++;
+            expect(key).toBe('user');
+            expect(newVal).toBe('Admin');
+        });
+
+        engine.setState('user', 'Admin');
+        expect(watchCalls).toBe(1);
+        expect(globalCalls).toBe(1);
+
+        unwatch();
+        unwatchGlobal();
+
+        engine.setState('user', 'Developer');
+        expect(watchCalls).toBe(1);
+        expect(globalCalls).toBe(1);
     });
 });
