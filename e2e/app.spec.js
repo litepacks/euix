@@ -32,7 +32,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
 
     // Click Reset
     await page.locator('button:has-text("+")').first().click();
-    await page.locator('button:has-text("Reset")').click();
+    await page.locator('button:has-text("Reset (0)")').click();
     await expect(counterSpan).toHaveText('0');
   });
 
@@ -80,7 +80,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const textarea = page.locator('textarea[placeholder*="biography"]');
     await textarea.fill('Playwright Engineer Bio');
 
-    const summary = page.locator('.bg-indigo-50\\/50');
+    const summary = page.locator('.bg-indigo-50\\/50').last();
     await expect(summary).toContainText('Playwright Engineer Bio');
   });
 
