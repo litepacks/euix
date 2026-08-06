@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-53%2F53%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-75%2F75%20Passed-brightgreen.svg)]()
 [![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-9%2F9%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
@@ -15,7 +15,8 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified Modern Evergreen Build)** | **62.0 KB** | **17.0 KB** |
+| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **67.0 KB** | **18.6 KB** |
+| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **102.0 KB** | **21.3 KB** |
 | **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **13.2 KB** | **3.9 KB** |
 
 ---
@@ -35,10 +36,11 @@ EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM ele
 ## ✨ Key Features & Capability Matrix
 
 - **🎨 Design Tokens & Constants (`<constants>`, `<vars>`):** Define reusable CSS utility classes, design tokens, or API URLs at root or component level and reference them via `{const.key}` or `{var.key}`.
+- **📡 Declarative API Client (`<api_config>`):** Configurable base URL, CORS credentials (`include`/`same-origin`), default headers, timeouts, and request/response interceptors.
+- **⏱️ Lifecycle Timers & Intervals (`<on_interval>`):** Declarative recurring timers with conditional evaluation (`if="..."`) and automatic unmount cleanup.
 - **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates) and component recursion depth guard (>20 depth) preventing browser freezes or crashes.
 - **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
-- **🌐 Declarative Async XHR (`XHR`):** Fetch remote REST APIs (e.g. JSONPlaceholder, PokéAPI) declaratively with automatic loading/error state management and `POST`, `PUT`, `DELETE` operations.
-- **🛡️ Contract & E2E Test Suite:** Fully verified with 46 Vitest unit/component/contract/benchmark tests and 9 Playwright E2E browser tests.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 75 Vitest unit/component/contract/benchmark tests and 9 Playwright E2E browser tests.
 
 ---
 
