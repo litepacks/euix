@@ -616,7 +616,7 @@ class EUIXEngine {
             if (kind === "multi_template") {
                 const template = el.dataset.euixMultiTemplate;
                 if (template) {
-                    el.textContent = template.replace(/\{data\.(\w+)\}/g, (_, key) => {
+                    el.textContent = template.replace(/\{(?:parent\.)?data\.(\w+)\}/g, (_, key) => {
                         const val = this.getState(key);
                         return val === undefined || val === null ? "" : String(val);
                     });
@@ -1138,8 +1138,8 @@ class EUIXEngine {
             return match;
         });
 
-        // 2. Resolve {data.key}
-        result = result.replace(/\{data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
+        // 2. Resolve {data.key} or {parent.data.key}
+        result = result.replace(/\{(?:parent\.)?data\.(\w+)(?:\[(\d+)\])?(?:\.(\w+))?\}/g, (match, key, index, prop) => {
             let currentVal = this._rawState ? this._rawState[key] : undefined;
             if (index !== undefined && Array.isArray(currentVal)) {
                 currentVal = currentVal[parseInt(index, 10)];
@@ -1984,7 +1984,7 @@ class EUIXEngine {
 
         if (childElementNodes.length === 0 && !["input", "select", "textarea", "button", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
-            const matches = Array.from(rawContent.matchAll(/\{data\.(\w+)\}/g));
+            const matches = Array.from(rawContent.matchAll(/\{(?:parent\.)?data\.(\w+)\}/g));
             if (matches.length > 0) {
                 div.dataset.euixMultiTemplate = rawContent;
                 const uniqueKeys = new Set(matches.map(m => m[1]));
@@ -2108,6 +2108,8 @@ class EUIXEngine {
 
         const childContext = {
             ...context,
+            parent: context,
+            $parent: context,
             props,
             ...props,
             _compDepth: compDepth,

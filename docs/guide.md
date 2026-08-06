@@ -104,6 +104,27 @@ EUIX Engine supports defining design tokens and reusable CSS class sets using `<
 
 ---
 
+## 🔗 Parent State Access & Reactive Props
+
+Child components in EUIX Engine have fine-grained reactive access to parent states and props passed from parent components:
+
+1. **Passing State as Props:**
+   `<my-card count="{data.counter_value}" />`
+   When `data.counter_value` updates in the parent component, `{props.count}` in the child component automatically updates in-place.
+
+2. **Direct Parent State Access:**
+   Child component templates can directly read reactive parent states via `{parent.data.counter_value}` or `{data.counter_value}`:
+   ```xml
+   <component_def name="state-bridge-badge">
+       <flex direction="row" align="center" justify="between">
+           <span>Prop Value: {props.count}</span>
+           <span>Direct Parent State: {parent.data.counter_value}</span>
+       </flex>
+   </component_def>
+   ```
+
+---
+
 ## 📊 State Management (`<data_model>`)
 
 State is declared inside `<data_model>` using `<state>` nodes:

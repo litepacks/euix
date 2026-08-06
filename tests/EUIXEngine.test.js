@@ -887,4 +887,37 @@ describe('EUIXEngine Unit Tests', () => {
         expect(watchCalls).toBe(1);
         expect(globalCalls).toBe(1);
     });
+
+    it('should support passing state as props to child components and reactive updates', () => {
+        EUIXEngine.registerComponentSpec('prop-card', `
+            <component_def name="prop-card">
+                <flex direction="column" class="prop-card">
+                    <span class="child-text">{data.global_count}</span>
+                    <span class="parent-access">{parent.data.global_count}</span>
+                </flex>
+            </component_def>
+        `);
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="global_count" type="string">10</state>
+            </data_model>
+            <flex direction="column">
+                <prop-card count="{data.global_count}" />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const childText = document.querySelector('.child-text');
+        const parentAccess = document.querySelector('.parent-access');
+
+        expect(childText.textContent).toBe('10');
+        expect(parentAccess.textContent).toBe('10');
+
+        engine.setState('global_count', '42');
+        expect(childText.textContent).toBe('42');
+        expect(parentAccess.textContent).toBe('42');
+    });
 });

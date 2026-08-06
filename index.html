@@ -100,6 +100,7 @@
             <import name="user-badge" src="components/UserBadge.xml" />
             <import name="app-header" src="components/AppHeader.xml" />
             <import name="counter-section" src="components/CounterSection.xml" />
+            <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
             <import name="todo-section" src="components/TodoSection.xml" />
             <import name="pokemon-card" src="components/PokemonCard.xml" />
             <import name="pokemon-section" src="components/PokemonSection.xml" />
@@ -113,6 +114,7 @@
         <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <counter-section />
+            <state-bridge-badge count="{data.counter_value}" />
             <!-- State Watcher Live Banner Box -->
             <flex direction="row" align="center" gap="8" class="p-3 bg-amber-50 border border-amber-200/60 rounded-xl text-amber-800 text-xs font-semibold">
                 <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
