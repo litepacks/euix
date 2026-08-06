@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-46%2F46%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-53%2F53%20Passed-brightgreen.svg)]()
 [![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-9%2F9%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
@@ -15,9 +15,9 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **57.5 KB** | **15.5 KB** |
-| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **93.0 KB** | **17.5 KB** |
-| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **14.4 KB** | **3.8 KB** |
+| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **65.6 KB** | **17.8 KB** |
+| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **106.2 KB** | **20.1 KB** |
+| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **16.9 KB** | **4.4 KB** |
 
 ---
 
