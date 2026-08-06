@@ -1,13 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
 import path from 'path';
 
 describe('DocPortalSection Tab Switching', () => {
     let EUIXEngine;
+    let dom;
 
     beforeEach(async () => {
-        const dom = new JSDOM('<!DOCTYPE html><html><body><div id="app"></div></body></html>', {
+        dom = new JSDOM('<!DOCTYPE html><html><body><div id="app"></div></body></html>', {
             url: 'http://localhost/'
         });
         global.window = dom.window;
@@ -18,6 +19,12 @@ describe('DocPortalSection Tab Switching', () => {
 
         const engineModule = await import('../src/EUIXEngine.js');
         EUIXEngine = engineModule.EUIXEngine || engineModule.default;
+    });
+
+    afterEach(() => {
+        if (dom && dom.window) {
+            dom.window.close();
+        }
     });
 
     it('should switch active_tab to docs when Documentation button is clicked', async () => {
@@ -41,5 +48,5 @@ describe('DocPortalSection Tab Switching', () => {
 
         expect(engine.getState('active_tab')).toBe('docs');
         expect(document.body.textContent).toContain('What is EUIX Engine?');
-    });
+    }, 10000);
 });

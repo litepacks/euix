@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:fast": "vitest run --exclude tests/benchmark.test.js --exclude tests/memory.test.js",
+    "test:parallel": "vitest run --fileParallelism=true --maxConcurrency=10 --exclude tests/benchmark.test.js --exclude tests/memory.test.js",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "bench": "vitest bench"

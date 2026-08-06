@@ -164,23 +164,17 @@
                             <span class="text-[10px] text-indigo-400 font-bold">Declarative XML</span>
                         </flex>
 
-                        <pre class="overflow-x-auto max-w-full whitespace-pre-wrap break-all leading-relaxed text-indigo-200 py-2"><code class="language-xml"><on_mount action="RUN_SCRIPT">
-const hl = () => {
-  if (!window.hljs || !$el) return false;
-  delete $el.dataset.highlighted;
-  window.hljs.highlightElement($el);
-  return true;
-};
-if (!hl()) {
-  let t = setInterval(() => { if (hl()) clearInterval(t); }, 50);
-}
-</on_mount>
-<on_state_change watch="data.counter_value" action="RUN_SCRIPT">
+                        <pre class="overflow-x-auto max-w-full whitespace-pre-wrap break-all leading-relaxed text-indigo-200 py-2"><code class="language-xml">&lt;on_mount action="RUN_SCRIPT"&gt;
+  if (window.hljs &amp;&amp; $el) {
+    window.hljs.highlightElement($el);
+  }
+&lt;/on_mount&gt;
+&lt;on_state_change watch="data.counter_value" action="RUN_SCRIPT"&gt;
 if (window.hljs &amp;&amp; $el) {
   delete $el.dataset.highlighted;
   window.hljs.highlightElement($el);
 }
-</on_state_change>&lt;component_def name="interactive-counter"&gt;
+&lt;/on_state_change&gt;&lt;component_def name="interactive-counter"&gt;
   &lt;data_model&gt;
     &lt;state id="counter_value"&gt;{data.counter_value}&lt;/state&gt;
   &lt;/data_model&gt;
@@ -440,7 +434,8 @@ if (window.hljs &amp;&amp; $el) {
                 <flex direction="column" gap="12" class="col-span-2 p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm min-w-0 max-w-full overflow-hidden">
                     <on_mount action="RUN_SCRIPT">
                         const hl = () => {
-                            if (!window.hljs || !$el) return false;
+                            if (typeof window === "undefined" || typeof document === "undefined" || !$el) return true;
+                            if (!window.hljs) return false;
                             $el.querySelectorAll('pre code').forEach((b) => {
                                 delete b.dataset.highlighted;
                                 window.hljs.highlightElement(b);
@@ -448,8 +443,11 @@ if (window.hljs &amp;&amp; $el) {
                             return true;
                         };
                         if (!hl()) {
-                            let tries = 0;
-                            const t = setInterval(() => { tries++; if (hl() || tries > 40) clearInterval(t); }, 50);
+                            var _hl_attempts = 0;
+                            var _hl_timer = setInterval(function() {
+                                _hl_attempts = _hl_attempts + 1;
+                                if (hl() || _hl_attempts &gt; 40) clearInterval(_hl_timer);
+                            }, 50);
                         }
                     </on_mount>
 

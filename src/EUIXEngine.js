@@ -350,9 +350,10 @@ class EUIXEngine {
 
         const targets = [];
         this._registeredXhrs.forEach(item => {
+            const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
             if (!filter) {
-                if (item.method === "GET" || item.method === "HEAD") targets.push(item);
-            } else if (item.tag === filter || (item.url && item.url.includes(filter))) {
+                if (isGetOrHead) targets.push(item);
+            } else if (isGetOrHead && (item.tag === filter || (item.url && item.url.includes(filter)))) {
                 targets.push(item);
             }
         });
@@ -3197,7 +3198,10 @@ class EUIXEngine {
         if (isScriptAction) {
             const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
             if (!code) return;
-            const interpolatedCode = this.interpolate(code, context);
+            const interpolatedCode = code.replace(/\{(?:data|props|state|constants|vars)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
+                const val = this.getValueFromPath(p1, context);
+                return val !== undefined ? JSON.stringify(val) : match;
+            });
             const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
             try {
                 const fn = new Function("$el", "$data", "$engine", "$evt", interpolatedCode);

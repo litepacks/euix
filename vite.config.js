@@ -44,6 +44,26 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**']
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+    fileParallelism: true,
+    maxConcurrency: 10,
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: false,
+        isolate: true
+      }
+    },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/EUIXEngine.js'],
+      thresholds: {
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100
+      }
+    }
   }
 });
