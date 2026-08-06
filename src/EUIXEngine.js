@@ -273,7 +273,8 @@ const METADATA_AND_EVENT_TAGS = new Set([
     "event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", 
     "on_mouseenter", "on_mouseleave", "on_interval", "on_timer", "on_mount", 
     "on_state_change", "on_visible", "on_update", "watch", "api_config", "api", 
-    "persistence", "data_model", "imports", "constants", "vars", "variables"
+    "persistence", "data_model", "imports", "constants", "vars", "variables",
+    "use_script", "script_loader", "load_script", "use_style", "style_loader", "load_style"
 ]);
 
 class EUIXEngine {
@@ -1181,11 +1182,12 @@ class EUIXEngine {
 
     processLifecycleHooks(xmlNode, domEl, context = {}) {
         if (!xmlNode || !domEl || domEl.nodeType !== Node.ELEMENT_NODE) return;
+        const contextWithEl = { ...context, _targetEl: domEl };
 
         // 1. <on_mount>
         const onMountNodes = this.getChildren(xmlNode, "on_mount");
         onMountNodes.forEach(node => {
-            this.handleAction(node, context);
+            this.handleAction(node, contextWithEl);
         });
 
         // 2. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
@@ -1204,7 +1206,7 @@ class EUIXEngine {
                         unwatch();
                         return;
                     }
-                    this.handleAction(node, { ...context, newValue, oldValue });
+                    this.handleAction(node, { ...contextWithEl, newValue, oldValue });
                 });
             }
         });
@@ -1709,6 +1711,18 @@ class EUIXEngine {
                     if (name) this.setApiHeader(name, val);
                 });
             }
+
+            const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
+            useScriptNodes.forEach(node => {
+                const src = node.getAttribute("src") || node.getAttribute("url");
+                if (src) this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+            });
+
+            const useStyleNodes = Array.from(doc.querySelectorAll("use_style, style_loader, load_style"));
+            useStyleNodes.forEach(node => {
+                const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+                if (href) this.loadStyle(href);
+            });
         };
 
         if (EUIXEngine._globalComponentSpecs) {
@@ -1754,6 +1768,54 @@ class EUIXEngine {
                 return true;
             }
         });
+
+        this._proxyState = this.state;
+        return this.state;
+    }
+
+    loadScript(src, options = {}) {
+        if (typeof document === 'undefined' || !src) return Promise.resolve();
+        const cleanUrl = this.interpolate(src, options.context || {});
+        if (!cleanUrl) return Promise.resolve();
+
+        const existing = document.querySelector(`script[src="${cleanUrl}"]`);
+        if (existing) {
+            if (existing.getAttribute('data-loaded') === 'true') {
+                return Promise.resolve();
+            }
+            return new Promise((resolve, reject) => {
+                existing.addEventListener('load', resolve);
+                existing.addEventListener('error', reject);
+            });
+        }
+
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = cleanUrl;
+            script.async = options.async !== false;
+            if (options.defer) script.defer = true;
+            if (options.id) script.id = options.id;
+            script.onload = () => {
+                script.setAttribute('data-loaded', 'true');
+                resolve();
+            };
+            script.onerror = (err) => reject(err);
+            document.head.appendChild(script);
+        });
+    }
+
+    loadStyle(href, options = {}) {
+        if (typeof document === 'undefined' || !href) return;
+        const cleanUrl = this.interpolate(href, options.context || {});
+        if (!cleanUrl) return;
+
+        if (document.querySelector(`link[href="${cleanUrl}"]`)) return;
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = cleanUrl;
+        if (options.id) link.id = options.id;
+        document.head.appendChild(link);
     }
 
     interpolate(text, context = {}) {
@@ -2350,6 +2412,13 @@ class EUIXEngine {
 
         const tagName = xmlNode.tagName.toLowerCase();
         if (METADATA_AND_EVENT_TAGS.has(tagName) || tagName.startsWith("on_")) {
+            if (["use_script", "script_loader", "load_script"].includes(tagName)) {
+                const src = xmlNode.getAttribute("src") || xmlNode.getAttribute("url");
+                if (src) this.loadScript(src, { async: xmlNode.getAttribute("async") !== "false" });
+            } else if (["use_style", "style_loader", "load_style"].includes(tagName)) {
+                const href = xmlNode.getAttribute("src") || xmlNode.getAttribute("href") || xmlNode.getAttribute("url");
+                if (href) this.loadStyle(href);
+            }
             return null;
         }
 
@@ -2942,18 +3011,20 @@ class EUIXEngine {
                     }
                 }
 
+                const eventContext = { ...context, _targetEl: el, _evt: e };
+
                 for (const node of handlerNodes) {
                     const targetKey = node.getAttribute("key") || node.getAttribute("code");
                     if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
                         continue;
                     }
 
-                    if (!this.confirmAction(node, context)) continue;
+                    if (!this.confirmAction(node, eventContext)) continue;
 
                     if (node.getAttribute("action")) {
                         const actType = node.getAttribute("action");
-                        if (actType === "XHR") this.handleXHR(node, context);
-                        else this.batch(() => this.handleAction(node, context));
+                        if (actType === "XHR") this.handleXHR(node, eventContext);
+                        else this.batch(() => this.handleAction(node, eventContext));
                     }
 
                     const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
@@ -2967,10 +3038,10 @@ class EUIXEngine {
 
                         if (syncActions.length) {
                             this.batch(() => {
-                                syncActions.forEach(act => this.handleAction(act, context));
+                                syncActions.forEach(act => this.handleAction(act, eventContext));
                             });
                         }
-                        xhrActions.forEach(act => this.handleXHR(act, context));
+                        xhrActions.forEach(act => this.handleXHR(act, eventContext));
                     }
                 }
             });
@@ -3119,6 +3190,24 @@ class EUIXEngine {
             return;
         }
 
+        const actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
+        const tagNameLower = actionNode.tagName ? actionNode.tagName.toLowerCase() : "";
+        const isScriptAction = actionAttr === "RUN_SCRIPT" || actionAttr === "EVAL_JS" || actionAttr === "EXEC_JS" || tagNameLower === "run_script" || tagNameLower === "script";
+
+        if (isScriptAction) {
+            const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
+            if (!code) return;
+            const interpolatedCode = this.interpolate(code, context);
+            const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
+            try {
+                const fn = new Function("$el", "$data", "$engine", "$evt", interpolatedCode);
+                fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null);
+            } catch (err) {
+                this.reportError(err, "Action Execution (RUN_SCRIPT)");
+            }
+            return;
+        }
+
         if (actionType === "REVALIDATE_API" || actionType === "REVALIDATE") {
             const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url");
             const tag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "");
@@ -3146,8 +3235,9 @@ class EUIXEngine {
             };
 
             const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+            const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
 
-            if (rawValue.includes("?") || /[\+\-\*\/]/.test(rawValue)) {
+            if (hasBraces && (rawValue.includes("?") || /[\+\-\*\/]/.test(cleanExpr))) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
                     if (evaluated !== undefined && typeof evaluated === "number" && !isNaN(evaluated)) {
@@ -3156,7 +3246,7 @@ class EUIXEngine {
                 } catch (_) {}
             }
 
-            if (!nextValue) {
+            if (nextValue === "") {
                 nextValue = this.interpolate(rawValue, context);
             }
 

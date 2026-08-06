@@ -104,6 +104,50 @@ EUIX Engine supports defining design tokens and reusable CSS class sets using `<
 
 ---
 
+## 📜 Declarative External Scripts & Inline Scripting (`<use_script>`, `<use_style>`, `RUN_SCRIPT`)
+
+EUIX Engine supports declaratively loading external JavaScript libraries (e.g. Highlight.js, Canvas-Confetti, Chart.js) and CSS stylesheets directly inside XML templates without writing manual script loader boilerplate.
+
+Custom JavaScript snippets can be executed safely inside lifecycle hooks or event handlers using `action="RUN_SCRIPT"` (backed by a `new Function()` sandbox, avoiding `eval()`):
+
+```xml
+<uid_spec>
+    <!-- Declarative External JS & CSS Loaders -->
+    <use_script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" />
+    <use_style src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+    <use_script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" />
+
+    <flex direction="column" gap="16">
+        <!-- Highlight.js Syntax Highlighting on Mount or State Change -->
+        <pre class="bg-slate-900 p-4 rounded-xl">
+            <code class="language-javascript">
+                <on_mount action="RUN_SCRIPT">
+                    if (window.hljs) window.hljs.highlightElement($el);
+                </on_mount>
+                const engine = new EUIXEngine("#app");
+                engine.mount(xmlSpec);
+            </code>
+        </pre>
+
+        <!-- Canvas Confetti Explosion on Button Click -->
+        <button class="px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl">
+            <on_click action="RUN_SCRIPT">
+                if (window.confetti) confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+            </on_click>
+            🎉 Celebrate &amp; Complete Order
+        </button>
+    </flex>
+</uid_spec>
+```
+
+#### Injected Script Scope Variables:
+- **`$el`**: Target DOM element executing the script.
+- **`$data`**: Fine-grained reactive EUIX state Proxy object.
+- **`$engine`**: The active EUIXEngine instance.
+- **`$evt`**: Triggering DOM Event object (if executed from an event handler).
+
+---
+
 ## 🔗 Parent State Access & Reactive Props
 
 Child components in EUIX Engine have fine-grained reactive access to parent states and props passed from parent components:

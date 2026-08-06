@@ -118,4 +118,114 @@ describe('EUIXEngine External JSON Resources (data_model src, constants src, loa
         const engine = await EUIXEngine.mountAsync(xml, container);
         expect(engine.getState('profile').username).toBe('dev_user');
     });
+
+    it('should declaratively load external scripts and styles via <use_script> and <use_style>', () => {
+        const xml = `
+        <uid_spec>
+            <use_script src="https://cdnjs.cloudflare.com/libs/highlight.js/11.9.0/highlight.min.js" />
+            <use_style src="https://cdnjs.cloudflare.com/libs/highlight.js/11.9.0/styles/github.css" />
+            <flex><span id="txt">Hello World</span></flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        const loadedScript = document.querySelector('script[src*="highlight.min.js"]');
+        const loadedStyle = document.querySelector('link[href*="github.css"]');
+
+        expect(loadedScript).not.toBeNull();
+        expect(loadedStyle).not.toBeNull();
+    });
+
+    it('should execute custom inline JS snippets using action="RUN_SCRIPT" / action="EVAL_JS"', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="eval_result">initial</state>
+            </data_model>
+            <flex>
+                <button id="run_btn">
+                    <on_click action="RUN_SCRIPT">
+                        $data.eval_result = "Script Executed!";
+                    </on_click>
+                    Run Code
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        const btn = container.querySelector('#run_btn');
+        btn.click();
+
+        expect(engine.getState('eval_result')).toBe('Script Executed!');
+    });
+
+    it('should inject $el, $data, $engine, and $evt into RUN_SCRIPT execution scope', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="target_tag"></state>
+                <state id="event_type"></state>
+                <state id="engine_working">false</state>
+            </data_model>
+            <flex>
+                <button id="scope_btn" class="my-test-btn">
+                    <on_click action="RUN_SCRIPT">
+                        $data.target_tag = $el ? $el.tagName.toLowerCase() : "";
+                        $data.event_type = $evt ? $evt.type : "";
+                        $data.engine_working = String(Boolean($engine &amp;&amp; $engine.getState));
+                    </on_click>
+                    Inspect Scope
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        const btn = container.querySelector('#scope_btn');
+        btn.click();
+
+        expect(engine.getState('target_tag')).toBe('button');
+        expect(engine.getState('event_type')).toBe('click');
+        expect(engine.getState('engine_working')).toBe('true');
+    });
+
+    it('should trigger <on_mount action="RUN_SCRIPT"> and <on_state_change action="RUN_SCRIPT"> on element render and state update', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="mount_flag">no</state>
+                <state id="change_count">0</state>
+                <state id="trigger_var">a</state>
+            </data_model>
+            <flex>
+                <div id="target_box">
+                    <on_mount action="RUN_SCRIPT">
+                        $data.mount_flag = "mounted";
+                    </on_mount>
+                    <on_state_change watch="data.trigger_var" action="RUN_SCRIPT">
+                        $data.change_count = Number($data.change_count) + 1;
+                    </on_state_change>
+                </div>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        expect(engine.getState('mount_flag')).toBe('mounted');
+
+        engine.setState('trigger_var', 'b');
+        expect(engine.getState('change_count')).toBe(1);
+
+        engine.setState('trigger_var', 'c');
+        expect(engine.getState('change_count')).toBe(2);
+    });
 });

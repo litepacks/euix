@@ -1,4 +1,7 @@
 <component_def name="ecommerce-section">
+    <!-- Declarative External JS Script Loader (Canvas Confetti) -->
+    <use_script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" />
+
     <data_model>
         <state id="ecommerce_products" type="array"></state>
         <state id="ecommerce_loading" type="string">false</state>
@@ -38,7 +41,7 @@
                 </flex>
             </flex>
             <flex direction="row" align="center" gap="8">
-                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-lg border border-indigo-200/60 hidden sm:inline-block">📄 145 Lines XML</span>
+                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-lg border border-indigo-200/60 hidden sm:inline-block">📄 180 Lines XML</span>
                 <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
@@ -46,7 +49,7 @@
                     </on_click>
                     <on_click action="SET_STATE">
                         <path>data.code_modal_lines</path>
-                        <value>145</value>
+                        <value>180</value>
                     </on_click>
                     <on_click action="XHR">
                         <method>GET</method>
@@ -117,12 +120,23 @@
 
                 <flex direction="row" align="center" justify="between" class="pt-3 border-t border-blue-200/80">
                     <span class="text-xs font-extrabold text-blue-950">Cart Total Items: {data.cart_items.length}</span>
-                    <button type="button" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors">
-                        <on_click action="MUTATE_STATE" operation="CLEAR">
-                            <path>data.cart_items</path>
-                        </on_click>
-                        🧹 Clear Cart
-                    </button>
+                    <flex direction="row" align="center" gap="8">
+                        <button type="button" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors">
+                            <on_click action="MUTATE_STATE" operation="CLEAR">
+                                <path>data.cart_items</path>
+                            </on_click>
+                            🧹 Clear Cart
+                        </button>
+                        <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors shadow-sm">
+                            <on_click action="RUN_SCRIPT">
+                                if (window.confetti) window.confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+                            </on_click>
+                            <on_click action="MUTATE_STATE" operation="CLEAR">
+                                <path>data.cart_items</path>
+                            </on_click>
+                            🎉 Checkout &amp; Complete Order
+                        </button>
+                    </flex>
                 </flex>
             </if>
         </collapse>

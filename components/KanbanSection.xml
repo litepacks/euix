@@ -1,4 +1,7 @@
 <component_def name="kanban-section">
+    <!-- Declarative External JS Script Loader (Canvas Confetti) -->
+    <use_script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" />
+
     <data_model>
         <state id="dragged_id"></state>
         <state id="new_kanban_title"></state>
@@ -23,7 +26,13 @@
                 </flex>
             </flex>
             <flex direction="row" align="center" gap="8">
-                <span class="px-2.5 py-1 bg-purple-50 text-purple-700 font-extrabold text-xs rounded-lg border border-purple-200/60 hidden sm:inline-block">📄 266 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-lg text-xs cursor-pointer transition-all shadow-sm flex items-center gap-1">
+                    <on_click action="RUN_SCRIPT">
+                        if (window.confetti) window.confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+                    </on_click>
+                    🎉 Celebrate Sprint
+                </button>
+                <span class="px-2.5 py-1 bg-purple-50 text-purple-700 font-extrabold text-xs rounded-lg border border-purple-200/60 hidden sm:inline-block">📄 296 Lines XML</span>
                 <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
@@ -31,7 +40,7 @@
                     </on_click>
                     <on_click action="SET_STATE">
                         <path>data.code_modal_lines</path>
-                        <value>266</value>
+                        <value>296</value>
                     </on_click>
                     <on_click action="XHR">
                         <method>GET</method>

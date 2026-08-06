@@ -1,4 +1,8 @@
-<component_def id="code-viewer-modal">
+<component_def name="code-viewer-modal">
+    <!-- Declarative External JS & CSS Loaders for Highlight.js -->
+    <use_script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" />
+    <use_style src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+
     <flex direction="column">
         <if condition="{data.code_modal_open} == 'true'">
             <!-- Backdrop -->
@@ -27,14 +31,18 @@
                         </flex>
                     </flex>
 
-                    <!-- Code Content Area -->
-                    <div class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] bg-slate-950 font-mono text-xs text-indigo-200">
-                        <pre class="whitespace-pre-wrap break-words leading-relaxed select-all"><code>{data.code_modal_content}</code></pre>
+                    <!-- Code Content Area with Synced Line Numbers -->
+                    <div class="p-4 overflow-y-auto max-h-[calc(85vh-100px)] bg-[#282c34] font-mono text-xs text-slate-100 flex gap-4">
+                        <!-- Line Numbers Column -->
+                        <pre id="code_line_numbers" class="text-right text-slate-500 select-none border-r border-slate-700/50 pr-3 font-mono text-xs leading-relaxed shrink-0 min-w-[32px] whitespace-pre">1</pre>
+
+                        <!-- Code Pre/Code Area -->
+                        <pre class="whitespace-pre-wrap break-words leading-relaxed select-all w-full min-w-0"><code class="language-xml"><on_state_change watch="data.code_modal_content" action="RUN_SCRIPT">const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }</on_state_change><on_mount action="RUN_SCRIPT">const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }</on_mount>{data.code_modal_content}</code></pre>
                     </div>
 
                     <!-- Footer -->
                     <flex direction="row" align="center" justify="between" class="p-3 px-4 border-t border-slate-800 bg-slate-950/90 text-xs text-slate-400">
-                        <span>⚡ Vanilla .EUIX Engine — Zero JS Boilerplate</span>
+                        <span class="font-semibold text-indigo-300">⚡ This Page &amp; All Components are Built 100% with Vanilla .EUIX Engine</span>
                         <button type="button" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg cursor-pointer transition-colors">
                             <on_click action="SET_STATE">
                                 <path>data.code_modal_open</path>
