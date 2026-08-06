@@ -113,12 +113,14 @@
             <import name="events-section" src="components/EventsSection.xml" />
             <import name="form-section" src="components/FormSection.xml" />
             <import name="confirm-modal" src="components/ConfirmModal.xml" />
+            <import name="persistence-section" src="components/PersistenceSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
         <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <counter-section />
+            <persistence-section />
             <state-bridge-badge count="{data.counter_value}" />
             <!-- State Watcher Live Banner Box -->
             <flex direction="row" align="center" gap="8" class="p-3 bg-amber-50 border border-amber-200/60 rounded-xl text-amber-800 text-xs font-semibold">

@@ -176,12 +176,46 @@ EUIX DevTools provides a live inspector overlay, State Tree drawer, and Action l
 
 ---
 
-## 🧪 Testing & Verification
+## 💾 State Persistence (LocalStorage & SessionStorage)
+
+EUIX Engine supports automatic state persistence across page reloads and browser tabs using `localStorage` and `sessionStorage`.
+
+### 1. Declarative XML Persistence
+Mark any `<state>` element with `persist="local"` or `persist="session"`:
+
+```xml
+<uid_spec>
+    <persistence storage="local">
+        <persisted_key key="app_lang" storage_key="pref_lang" />
+    </persistence>
+
+    <data_model>
+        <state id="user_notes" persist="local">Persistent Notes</state>
+        <state id="session_token" persist="session">abc123token</state>
+    </data_model>
+</uid_spec>
+```
+
+### 2. Programmatic JS API
+```javascript
+// Register state key for LocalStorage or SessionStorage persistence
+engine.persist('user_theme', { storage: 'local', key: 'app_theme_v1' });
+
+// Clear persisted state from storage
+engine.clearPersistedState('user_theme');
+```
+
+### 3. Multi-Tab Synchronization
+Persisted `localStorage` state keys automatically sync across open browser tabs via native `window.onstorage` reactivity.
+
+---
+
+## 🧪 Running Test Suites
 
 EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
 
 ```bash
-# Run Vitest Unit, Component & Contract Tests (48 Tests)
+# Run Vitest Unit, Component, Contract & Persistence Tests (59 Tests)
 npm run test
 
 # Run Playwright Real Browser E2E Tests (9 Tests)

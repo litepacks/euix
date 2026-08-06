@@ -272,11 +272,84 @@ class EUIXEngine {
         this.constants = new Map();
         this._stateWatchers = new Map();
         this._globalStateWatchers = [];
+        this._persistenceConfig = new Map();
         if (!EUIXEngine._globalConstants) {
             EUIXEngine._globalConstants = new Map();
         }
         if (!EUIXEngine._globalComponentSpecs) {
             EUIXEngine._globalComponentSpecs = new Map();
+        }
+        this._setupStorageListener();
+    }
+
+    _setupStorageListener() {
+        if (typeof window === "undefined" || !window.addEventListener) return;
+        window.addEventListener("storage", (event) => {
+            if (!event.key || !this._rawState) return;
+            for (const [stateKey, config] of this._persistenceConfig.entries()) {
+                if (config.storage === "local" && config.storageKey === event.key) {
+                    try {
+                        const parsed = event.newValue !== null ? JSON.parse(event.newValue) : "";
+                        this.setState(stateKey, parsed, { silent: false });
+                    } catch (_) {
+                        this.setState(stateKey, event.newValue || "", { silent: false });
+                    }
+                }
+            }
+        });
+    }
+
+    persist(key, { storage = "local", key: customKey = null } = {}) {
+        if (!key) return this;
+        const parsedKey = this.parseBindPath(key);
+        const storageKey = customKey || `euix_state_${parsedKey}`;
+        this._persistenceConfig.set(parsedKey, { storage: String(storage).toLowerCase(), storageKey });
+
+        const store = String(storage).toLowerCase() === "session" 
+            ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
+            : (typeof localStorage !== "undefined" ? localStorage : null);
+
+        if (store && this._rawState) {
+            const existing = store.getItem(storageKey);
+            if (existing !== null) {
+                try {
+                    this._rawState[parsedKey] = JSON.parse(existing);
+                } catch (_) {
+                    this._rawState[parsedKey] = existing;
+                }
+                this.syncBindings(parsedKey, this._rawState[parsedKey]);
+            } else if (this._rawState[parsedKey] !== undefined) {
+                this._savePersistedState(parsedKey, this._rawState[parsedKey]);
+            }
+        }
+        return this;
+    }
+
+    clearPersistedState(key) {
+        if (!key) return this;
+        const parsedKey = this.parseBindPath(key);
+        const config = this._persistenceConfig.get(parsedKey);
+        if (config) {
+            const store = config.storage === "session" 
+                ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
+                : (typeof localStorage !== "undefined" ? localStorage : null);
+            if (store) store.removeItem(config.storageKey);
+        }
+        return this;
+    }
+
+    _savePersistedState(key, value) {
+        const config = this._persistenceConfig.get(key);
+        if (!config) return;
+        try {
+            const store = config.storage === "session" 
+                ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
+                : (typeof localStorage !== "undefined" ? localStorage : null);
+            if (!store) return;
+            const valToStore = JSON.stringify(value !== undefined ? value : "");
+            store.setItem(config.storageKey, valToStore);
+        } catch (err) {
+            this.reportError(err, `Error persisting state key "${key}"`);
         }
     }
 
@@ -459,13 +532,20 @@ class EUIXEngine {
     getChild(node, tagName) {
         if (!node) return null;
         const tag = tagName.toLowerCase();
-        return Array.from(node.children || []).find(c => c.tagName && c.tagName.toLowerCase() === tag) || null;
+        const list = (node.children && node.children.length > 0) 
+            ? Array.from(node.children) 
+            : Array.from(node.childNodes || []).filter(n => n.nodeType === 1);
+        return list.find(c => c.tagName && c.tagName.toLowerCase() === tag) || null;
     }
 
     getChildren(node, tagName) {
         if (!node) return [];
+        const list = (node.children && node.children.length > 0) 
+            ? Array.from(node.children) 
+            : Array.from(node.childNodes || []).filter(n => n.nodeType === 1);
+        if (!tagName) return list;
         const tag = tagName.toLowerCase();
-        return Array.from(node.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === tag);
+        return list.filter(c => c.tagName && c.tagName.toLowerCase() === tag);
     }
 
     registerComponent(type, handler) {
@@ -588,6 +668,7 @@ class EUIXEngine {
         try {
             const oldValue = this._rawState[key];
             this._rawState[key] = value;
+            this._savePersistedState(key, value);
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
             }
@@ -1111,30 +1192,92 @@ class EUIXEngine {
 
     initDataModel() {
         const rawState = {};
-        const dataModelNode = this.getChild(this.xmlDoc.querySelector("uid_spec") || this.xmlDoc, "data_model");
-        const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : this.xmlDoc.querySelectorAll("data_model > state");
 
-        stateNodes.forEach(node => {
-            const id = node.getAttribute("id");
-            const type = node.getAttribute("type");
+        const collectStatesFromDoc = (doc) => {
+            if (!doc) return;
+            const dataModelNode = this.getChild(doc.querySelector("uid_spec") || doc, "data_model");
+            const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : doc.querySelectorAll("data_model > state");
 
-            if (type === "array") {
-                const items = this.getChildren(node, "item").map(item => {
-                    const obj = {};
-                    Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
-                    return obj;
+            stateNodes.forEach(node => {
+                const id = node.getAttribute("id");
+                if (!id) return;
+                const type = node.getAttribute("type");
+                const persistAttr = node.getAttribute("persist") || node.getAttribute("storage");
+
+                if (type === "array") {
+                    const items = this.getChildren(node, "item").map(item => {
+                        const obj = {};
+                        Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
+                        return obj;
+                    });
+                    rawState[id] = items;
+                } else {
+                    rawState[id] = node.textContent.trim() || "";
+                }
+
+                if (persistAttr) {
+                    const customKey = node.getAttribute("storage_key") || node.getAttribute("key");
+                    this._persistenceConfig.set(id, {
+                        storage: String(persistAttr).toLowerCase(),
+                        storageKey: customKey || `euix_state_${id}`
+                    });
+                }
+            });
+
+            const persistenceNode = doc.querySelector("persistence");
+            if (persistenceNode) {
+                const defaultStorage = persistenceNode.getAttribute("storage") || "local";
+                const prefix = persistenceNode.getAttribute("prefix") || "";
+                const persistItems = Array.from(persistenceNode.querySelectorAll("persist, item, key, persisted_key"));
+                persistItems.forEach(item => {
+                    const key = item.getAttribute("key") || item.getAttribute("id") || item.textContent.trim();
+                    const itemStorage = item.getAttribute("storage") || defaultStorage;
+                    const customStorageKey = item.getAttribute("storage_key") || (prefix ? `${prefix}${key}` : null);
+                    if (key) {
+                        this._persistenceConfig.set(key, {
+                            storage: String(itemStorage).toLowerCase(),
+                            storageKey: customStorageKey || `euix_state_${key}`
+                        });
+                    }
                 });
-                rawState[id] = items;
-            } else {
-                rawState[id] = node.textContent.trim() || "";
             }
-        });
+        };
+
+        if (EUIXEngine._globalComponentSpecs) {
+            EUIXEngine._globalComponentSpecs.forEach(spec => collectStatesFromDoc(spec));
+        }
+        if (this._componentSpecs) {
+            this._componentSpecs.forEach(spec => collectStatesFromDoc(spec));
+        }
+
+        if (this.xmlDoc) {
+            collectStatesFromDoc(this.xmlDoc);
+        }
+
+        for (const [key, config] of this._persistenceConfig.entries()) {
+            const store = config.storage === "session"
+                ? (typeof sessionStorage !== "undefined" ? sessionStorage : null)
+                : (typeof localStorage !== "undefined" ? localStorage : null);
+            if (store) {
+                const storedVal = store.getItem(config.storageKey);
+                if (storedVal !== null) {
+                    try {
+                        rawState[key] = JSON.parse(storedVal);
+                    } catch (_) {
+                        rawState[key] = storedVal;
+                    }
+                } else if (rawState[key] !== undefined) {
+                    this._savePersistedState(key, rawState[key]);
+                }
+            }
+        }
 
         this._rawState = rawState;
         const self = this;
         this.state = new Proxy(rawState, {
             set(target, key, value) {
                 target[key] = value;
+                self._savePersistedState(key, value);
                 if (self._batching) {
                     self.syncBindings(key, value);
                     return true;
@@ -1553,6 +1696,10 @@ class EUIXEngine {
             const attrName = attr.name;
             const attrValue = attr.value;
             if (!attrValue) return;
+
+            if (attrName === "id") {
+                el.id = this.interpolate(attrValue, context);
+            }
 
             if (validationAttrs.includes(attrName)) {
                 if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
@@ -2350,13 +2497,26 @@ class EUIXEngine {
                         nextValue = String(evaluated);
                     }
                 } catch (_) {}
-            } else if (/\d+\s*[\+\-\*\/]\s*\d+/.test(nextValue)) {
+            } else if (/[\+\-\*\/]/.test(rawValue) || /\d+\s*[\+\-\*\/]\s*\d+/.test(nextValue)) {
+                const evalGetter = (key) => {
+                    const val = this.getState(this.parseBindPath(key));
+                    const num = Number(val);
+                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+                };
                 try {
-                    const evaluated = EUIXExpressionParser.eval(nextValue, (key) => this.getState(this.parseBindPath(key)));
+                    const cleanExpr = rawValue.replace(/^\{\s*|\s*\}$/g, "").trim();
+                    const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
                     if (evaluated !== undefined && !isNaN(evaluated)) {
                         nextValue = String(evaluated);
                     }
-                } catch (_) {}
+                } catch (_) {
+                    try {
+                        const evaluated = EUIXExpressionParser.eval(nextValue, evalGetter);
+                        if (evaluated !== undefined && !isNaN(evaluated)) {
+                            nextValue = String(evaluated);
+                        }
+                    } catch (e) {}
+                }
             }
 
             this.setState(path, nextValue);

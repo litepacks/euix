@@ -1,0 +1,59 @@
+<uid_spec id="persistence_section">
+    <persistence storage="local">
+        <persisted_key key="persistent_notes" storage_key="euix_notes_demo" />
+    </persistence>
+    
+    <data_model>
+        <state id="persistent_notes">This note persists across browser refresh!</state>
+        <state id="session_token" persist="session">active_session_abc123</state>
+        <state id="persisted_counter" persist="local">0</state>
+    </data_model>
+
+    <flex direction="column" gap="16" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+        <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-3">
+            <flex direction="row" align="center" gap="8">
+                <span class="text-xl">💾</span>
+                <flex direction="column">
+                    <h2 class="font-extrabold text-slate-800 text-base">State Persistence Demo (LocalStorage &amp; SessionStorage)</h2>
+                    <span class="text-xs text-slate-500">Auto-saves state changes to browser storage and restores them on page reload or multi-tab sync</span>
+                </flex>
+            </flex>
+            <span class="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-xs border border-emerald-200/60">
+                ⚡ Auto-Synced
+            </span>
+        </flex>
+
+        <flex direction="column" gap="12" class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <flex direction="row" align="center" justify="between">
+                <span class="text-xs font-bold text-slate-700">1. Persistent LocalStorage Counter</span>
+                <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-mono text-xs font-bold">
+                    Count: {data.persisted_counter}
+                </span>
+            </flex>
+            <flex direction="row" gap="8">
+                <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer">
+                    <on_click action="SET_STATE">
+                        <path>data.persisted_counter</path>
+                        <value>{data.persisted_counter} + 1</value>
+                    </on_click>
+                    ➕ Increment &amp; Persist
+                </button>
+                <button class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer">
+                    <on_click action="SET_STATE">
+                        <path>data.persisted_counter</path>
+                        <value>0</value>
+                    </on_click>
+                    🔄 Clear Storage
+                </button>
+            </flex>
+        </flex>
+
+        <flex direction="column" gap="8" class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <span class="text-xs font-bold text-slate-700">2. Persistent LocalStorage Notes (Type and Refresh Page)</span>
+            <input type="text_input" bind="data.persistent_notes" placeholder="Type persistent notes here..." class="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <span class="text-xs text-slate-500 font-mono bg-white p-2 rounded border border-slate-200">
+                Live State: {data.persistent_notes}
+            </span>
+        </flex>
+    </flex>
+</uid_spec>
