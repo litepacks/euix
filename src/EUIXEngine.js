@@ -125,9 +125,9 @@ class EUIXExpressionParser {
                 return { type: "Identifier", name: token.value };
             }
 
-            if (token.type === "OPERATOR" && (token.value === "!" || token.value === "-")) {
+            if (token.type === "OPERATOR" && token.value === "!") {
                 consume();
-                return { type: "UnaryExpression", operator: token.value, argument: parsePrimary() };
+                return { type: "UnaryExpression", operator: "!", argument: parseUnary() };
             }
 
             consume();
@@ -144,7 +144,16 @@ class EUIXExpressionParser {
             return left;
         }
 
-        function parseAdditive() { return parseBinary(parsePrimary, ["+", "-"]); }
+        function parseUnary() {
+            if (peek() && peek().type === "OPERATOR" && (peek().value === "!" || peek().value === "-")) {
+                const op = consume().value;
+                return { type: "UnaryExpression", operator: op, argument: parseUnary() };
+            }
+            return parsePrimary();
+        }
+
+        function parseMultiplicative() { return parseBinary(parseUnary, ["*", "/"]); }
+        function parseAdditive() { return parseBinary(parseMultiplicative, ["+", "-"]); }
         function parseRelational() { return parseBinary(parseAdditive, [">", "<", ">=", "<="]); }
         function parseEquality() { return parseBinary(parseRelational, ["==", "!="]); }
         function parseLogicalAnd() { return parseBinary(parseEquality, ["&&"]); }
@@ -175,6 +184,13 @@ class EUIXExpressionParser {
         switch (ast.type) {
             case "Literal":
                 return ast.value;
+
+            case "UnaryExpression": {
+                const arg = this.evaluate(ast.argument, resolveValueFn);
+                if (ast.operator === "-") return -Number(arg);
+                if (ast.operator === "!") return !arg;
+                return arg;
+            }
 
             case "ConditionalExpression": {
                 const testVal = this.evaluate(ast.test, resolveValueFn);
@@ -2325,7 +2341,7 @@ class EUIXEngine {
             return this.applyRef(el, xmlNode, context);
         }
 
-        const allowedTags = ["div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote"];
+        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote"];
         const elementTagName = allowedTags.includes(tagName) ? tagName : "div";
         const div = document.createElement(elementTagName);
         const xmlClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
