@@ -686,11 +686,25 @@ class EUIXEngine {
     }
 
     getState(key) {
-        return this._rawState ? this._rawState[key] : undefined;
+        if (!this._rawState) return undefined;
+        let val = this._rawState[key];
+        if (typeof val === "string" && /\d+\s*[><=?!+\-*/]/.test(val) && val.includes("?")) {
+            const num = parseFloat(val);
+            if (!isNaN(num)) return num;
+        }
+        return val;
     }
 
     setState(key, value, { silent = false, sourceEl = null } = {}) {
         if (!this._rawState) return;
+
+        // Auto-sanitize expression strings if passed to setState
+        if (typeof value === "string" && /\d+\s*[><=?!+\-*/]/.test(value) && value.includes("?")) {
+            const num = parseFloat(value);
+            if (!isNaN(num)) {
+                value = num;
+            }
+        }
 
         this._updateDepth = (this._updateDepth || 0) + 1;
         if (this._updateDepth > (this._maxUpdateDepth || 50)) {
@@ -2580,12 +2594,14 @@ class EUIXEngine {
             let nextValue = this.interpolate(rawValue, context);
 
             if (rawValue.includes("?")) {
-                let exprStr = rawValue;
-                if (exprStr.startsWith("{") && exprStr.endsWith("}")) {
-                    exprStr = exprStr.slice(1, -1).trim();
-                }
+                let exprStr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
                 try {
-                    const evaluated = EUIXExpressionParser.eval(exprStr, (key) => this.getState(this.parseBindPath(key)));
+                    const evalGetter = (key) => {
+                        const val = this.getState(this.parseBindPath(key));
+                        const num = parseFloat(val);
+                        return !isNaN(num) ? num : 0;
+                    };
+                    const evaluated = EUIXExpressionParser.eval(exprStr, evalGetter);
                     if (evaluated !== undefined) {
                         nextValue = String(evaluated);
                     }
@@ -2593,11 +2609,11 @@ class EUIXEngine {
             } else if (/[\+\-\*\/]/.test(rawValue) || /\d+\s*[\+\-\*\/]\s*\d+/.test(nextValue)) {
                 const evalGetter = (key) => {
                     const val = this.getState(this.parseBindPath(key));
-                    const num = Number(val);
-                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+                    const num = parseFloat(val);
+                    return !isNaN(num) ? num : 0;
                 };
                 try {
-                    const cleanExpr = rawValue.replace(/^\{\s*|\s*\}$/g, "").trim();
+                    const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
                     const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
                     if (evaluated !== undefined && !isNaN(evaluated)) {
                         nextValue = String(evaluated);

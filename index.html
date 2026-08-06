@@ -115,12 +115,14 @@
             <import name="confirm-modal" src="components/ConfirmModal.xml" />
             <import name="persistence-section" src="components/PersistenceSection.xml" />
             <import name="api-client-section" src="components/ApiClientSection.xml" />
+            <import name="countdown-section" src="components/CountdownSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
         </imports>
 
         <flex direction="column" gap="16" class="{const.card_box}">
             <app-header />
             <counter-section />
+            <countdown-section />
             <persistence-section />
             <api-client-section />
             <state-bridge-badge count="{data.counter_value}" />
