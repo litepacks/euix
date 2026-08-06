@@ -575,11 +575,14 @@ class EUIXEngine {
                 try { cb(key, newValue, oldValue); } catch (err) { this.reportError(err, `onStateChange watcher error on "${key}"`); }
             });
         }
-        if (this._stateWatchers && this._stateWatchers.has(key)) {
-            const list = this._stateWatchers.get(key) || [];
-            list.forEach(cb => {
-                try { cb(newValue, oldValue, key); } catch (err) { this.reportError(err, `watch listener error on "${key}"`); }
-            });
+        if (this._stateWatchers) {
+            for (const [wKey, list] of this._stateWatchers.entries()) {
+                if (wKey === key || wKey.startsWith(key + ".")) {
+                    list.forEach(cb => {
+                        try { cb(newValue, oldValue, key); } catch (err) { this.reportError(err, `watch listener error on "${wKey}"`); }
+                    });
+                }
+            }
         }
     }
 
@@ -864,6 +867,14 @@ class EUIXEngine {
     getState(key) {
         if (!this._rawState) return undefined;
         let val = this._rawState[key];
+        if (val === undefined && typeof key === "string" && key.includes(".")) {
+            const parts = key.split(".");
+            let curr = this._rawState[parts[0]];
+            for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
+                curr = curr[parts[i]];
+            }
+            if (curr !== undefined) val = curr;
+        }
         if (typeof val === "string" && /\d+\s*[><=?!+\-*/]/.test(val) && val.includes("?")) {
             const num = parseFloat(val);
             if (!isNaN(num)) return num;
@@ -1942,9 +1953,7 @@ class EUIXEngine {
 
         const summaryNode = this.getChild(xmlNode, "summary");
         const titleAttr = xmlNode.getAttribute("title") || "";
-        const title = summaryNode
-            ? this.interpolate(summaryNode.textContent.trim(), context)
-            : this.interpolate(titleAttr, context) || "Detay";
+        const titleTemplate = summaryNode ? summaryNode.textContent.trim() : titleAttr;
 
         const root = document.createElement("div");
         const extraClass = xmlNode.getAttribute("class") || "";
@@ -1958,7 +1967,19 @@ class EUIXEngine {
 
         const label = document.createElement("span");
         label.className = "euix-collapse-title";
-        label.textContent = title;
+
+        const updateTitle = () => {
+            label.textContent = this.interpolate(titleTemplate, context) || "Detay";
+        };
+        updateTitle();
+
+        const titlePlaceholders = (titleTemplate.match(/\{([^}]+)\}/g) || []).map(m => m.slice(1, -1).trim());
+        titlePlaceholders.forEach(expr => {
+            const cleanKey = expr.replace(/^(?:parent\.)?data\./, "").split('.')[0];
+            if (cleanKey) {
+                this.watch(cleanKey, updateTitle);
+            }
+        });
 
         header.appendChild(chevron);
         header.appendChild(label);
@@ -3175,6 +3196,34 @@ class EUIXEngine {
                 });
             }
 
+            if (operation === "INCREMENT" || operation === "DECREMENT") {
+                const idxNode = this.getChild(actionNode, "index");
+                const fieldNode = this.getChild(actionNode, "field");
+                const rawIdx = idxNode ? idxNode.textContent.trim() : (actionNode.getAttribute("index") || "");
+                const fieldName = fieldNode ? fieldNode.textContent.trim() : (actionNode.getAttribute("field") || "quantity");
+                const index = parseInt(this.interpolate(rawIdx, context), 10);
+
+                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+                if (!isNaN(index) && index >= 0 && index < currentList.length) {
+                    const item = { ...currentList[index] };
+                    let currVal = parseInt(item[fieldName] || 1, 10);
+                    if (operation === "INCREMENT") {
+                        currVal += 1;
+                        item[fieldName] = currVal;
+                        currentList[index] = item;
+                    } else {
+                        currVal -= 1;
+                        if (currVal <= 0) {
+                            currentList.splice(index, 1);
+                        } else {
+                            item[fieldName] = currVal;
+                            currentList[index] = item;
+                        }
+                    }
+                    this.setState(path, currentList);
+                }
+            }
+
             if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
                 const valNode = this.getChild(actionNode, "value");
                 const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
@@ -3192,9 +3241,27 @@ class EUIXEngine {
                 }
                 if (!newItem.text && textValue) newItem.text = textValue;
                 if (!newItem.title && textValue) newItem.title = textValue;
-                
+                if (!newItem.quantity) newItem.quantity = 1;
+
                 const titleVal = newItem.title || newItem.text || "";
                 if (!String(titleVal).trim()) return;
+
+                const whereNode = this.getChild(actionNode, "where");
+                const rawWhereEquals = whereNode ? whereNode.getAttribute("equals") : null;
+                const targetId = rawWhereEquals ? this.interpolate(rawWhereEquals, context) : newItem.id;
+
+                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+                const existingIdx = currentList.findIndex(it => String(it.id) === String(targetId));
+
+                if (existingIdx >= 0 && targetId) {
+                    const existing = { ...currentList[existingIdx] };
+                    const currentQty = parseInt(existing.quantity || 1, 10);
+                    existing.quantity = currentQty + 1;
+                    currentList[existingIdx] = existing;
+                    this.setState(path, currentList);
+                    this.applyResets(actionNode);
+                    return;
+                }
 
                 if (!newItem.status || !["todo", "in_progress", "done"].includes(newItem.status)) {
                     const selCol = this.getState("new_kanban_col");
