@@ -1264,7 +1264,22 @@ class EUIXEngine {
         const targetNode = this.getChild(actionNode, "target");
         if (!urlNode || !targetNode) return;
 
+        const loadingNode = this.getChild(actionNode, "loading");
+        const loadingPath = this.parseBindPath(loadingNode?.textContent || "");
+        const errorNode = this.getChild(actionNode, "error");
+        const errorPath = this.parseBindPath(errorNode?.textContent || "");
+
         let rawUrl = this.interpolate(urlNode.textContent.trim(), context);
+
+        // Security Guard: Block dangerous URL schemes (javascript:, vbscript:, data:)
+        if (/^(javascript|vbscript|data):/i.test(rawUrl.trim())) {
+            const err = new Error(`[EUIXEngine Security Guard] Blocked dangerous API URL scheme: ${rawUrl}`);
+            this.reportError(err, "XHR Security Guard");
+            if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+            if (errorPath) this.setState(errorPath, err.message);
+            return;
+        }
+
         let finalUrl = rawUrl;
         const effectiveBaseUrl = actionNode.getAttribute("base_url") 
             || compApiConfig.baseUrl 
@@ -1280,10 +1295,6 @@ class EUIXEngine {
         const target = this.parseBindPath(targetNode.textContent);
         const selectNode = this.getChild(actionNode, "select");
         const select = selectNode?.textContent.trim() || "";
-        const loadingNode = this.getChild(actionNode, "loading");
-        const loadingPath = this.parseBindPath(loadingNode?.textContent || "");
-        const errorNode = this.getChild(actionNode, "error");
-        const errorPath = this.parseBindPath(errorNode?.textContent || "");
         const itemMapNode = this.getChild(actionNode, "item_map");
         const bodyNode = this.getChild(actionNode, "body");
 
@@ -1310,8 +1321,26 @@ class EUIXEngine {
             if (name) headersObj[name] = this.interpolate(header.textContent.trim(), context);
         });
 
+        const hasHeader = (hName) => Object.keys(headersObj).some(k => k.toLowerCase() === hName.toLowerCase());
+
+        // Security: Auto-inject Anti-CSRF Token if meta tag is present
+        if (typeof document !== "undefined" && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+            const csrfMeta = document.querySelector('meta[name="csrf-token"], meta[name="xsrf-token"]');
+            if (csrfMeta && csrfMeta.getAttribute("content") && !hasHeader("X-CSRF-Token")) {
+                headersObj["X-CSRF-Token"] = csrfMeta.getAttribute("content");
+            }
+        }
+
         const body = bodyNode ? this.interpolate(bodyNode.textContent.trim(), context) : null;
         const credentialsAttr = actionNode.getAttribute("credentials") || compApiConfig.credentials || this._apiConfig.credentials;
+
+        // Security: Auto-set Content-Type for JSON payload bodies
+        if (["POST", "PUT", "PATCH"].includes(method) && body && typeof body === "string") {
+            const trimmedBody = body.trim();
+            if ((trimmedBody.startsWith("{") || trimmedBody.startsWith("[")) && !hasHeader("Content-Type")) {
+                headersObj["Content-Type"] = "application/json";
+            }
+        }
 
         const fetchOptions = {
             method,

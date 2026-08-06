@@ -382,4 +382,76 @@ describe('EUIXEngine API Client Suite (BaseURL, Default Headers, Credentials, In
         expect(mockFetch.mock.calls[0][0]).toBe('https://headers-api.com/header-route');
         expect(calledOptions.headers['X-Component-Header']).toBe('ScopedValue');
     });
+
+    it('should block dangerous API URL schemes (javascript:, vbscript:, data:)', async () => {
+        const mockFetch = vi.fn();
+        global.fetch = mockFetch;
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="res"></state>
+                <state id="err"></state>
+            </data_model>
+            <flex>
+                <button id="bad_url_btn">
+                    <on_click action="XHR">
+                        <url>javascript:alert(1)</url>
+                        <target>data.res</target>
+                        <error>data.err</error>
+                    </on_click>
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        container.querySelector('#bad_url_btn').click();
+        expect(mockFetch).not.toHaveBeenCalled();
+        expect(engine.getState('err')).toContain('Blocked dangerous API URL scheme');
+    });
+
+    it('should auto-inject Anti-CSRF token header when meta tag is present on mutating XHR requests', async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Map([['content-type', 'application/json']]),
+            json: async () => ({ status: 'created' })
+        });
+        global.fetch = mockFetch;
+
+        const meta = document.createElement('meta');
+        meta.name = 'csrf-token';
+        meta.content = 'test_csrf_token_abc123';
+        document.head.appendChild(meta);
+
+        const xml = `
+        <uid_spec>
+            <data_model><state id="res"></state></data_model>
+            <flex>
+                <button id="csrf_btn">
+                    <on_click action="XHR">
+                        <method>POST</method>
+                        <url>/api/create</url>
+                        <body name="test" />
+                        <target>data.res</target>
+                    </on_click>
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        container.querySelector('#csrf_btn').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        const calledOptions = mockFetch.mock.calls[0][1];
+        expect(calledOptions.headers['X-CSRF-Token']).toBe('test_csrf_token_abc123');
+
+        meta.remove();
+    });
 });
