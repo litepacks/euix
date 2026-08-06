@@ -19,10 +19,10 @@
         </flex>
 
         <flex direction="column" align="center" gap="12" class="bg-slate-50 p-6 rounded-xl border border-slate-100">
-            <!-- Declarative 1-second recurring interval hook -->
-            <on_interval ms="1000" action="SET_STATE">
+            <!-- Declarative 1-second recurring interval hook with condition -->
+            <on_interval ms="1000" if="{data.timer_seconds} &gt; 0" action="SET_STATE">
                 <path>data.timer_seconds</path>
-                <value>data.timer_seconds &gt; 0 ? data.timer_seconds - 1 : 0</value>
+                <value>{data.timer_seconds} - 1</value>
             </on_interval>
 
             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Remaining Time</span>

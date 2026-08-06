@@ -240,18 +240,25 @@ class EUIXExpressionParser {
     }
 
     static eval(exprString, resolveValueFn) {
-        if (!exprString || !exprString.trim()) return true;
+        if (!exprString || !exprString.trim()) return undefined;
         try {
             const tokens = this.tokenize(exprString);
             const ast = this.parse(tokens);
             return this.evaluate(ast, resolveValueFn);
         } catch (_) {
-            return Boolean(exprString);
+            return undefined;
         }
     }
 }
 
 const EVENT_TAGS = new Set(["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"]);
+
+const METADATA_AND_EVENT_TAGS = new Set([
+    "event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", 
+    "on_mouseenter", "on_mouseleave", "on_interval", "on_timer", "on_mount", 
+    "on_state_change", "on_visible", "on_update", "watch", "api_config", "api", 
+    "persistence", "data_model", "imports", "constants", "vars", "variables"
+]);
 
 class EUIXEngine {
     constructor(containerSelector) {
@@ -1014,6 +1021,11 @@ class EUIXEngine {
                         clearInterval(intervalId);
                         return;
                     }
+                    const condAttr = node.getAttribute("if") || node.getAttribute("when") || node.getAttribute("condition");
+                    if (condAttr) {
+                        const evalCond = this.evalCondition(condAttr, context);
+                        if (!evalCond) return;
+                    }
                     this.handleAction(node, context);
                 }, ms);
                 domEl.dataset.euixInterval = String(intervalId);
@@ -1482,7 +1494,8 @@ class EUIXEngine {
 
         if (/[==|!=|>|<|&&|\|\||!|\(\)]/.test(expr)) {
             const cleanExpr = expr.replace(/\{([^}]+)\}/g, "$1");
-            return EUIXExpressionParser.eval(cleanExpr, resolveValueFn);
+            const res = EUIXExpressionParser.eval(cleanExpr, resolveValueFn);
+            return res !== undefined ? Boolean(res) : Boolean(resolved);
         }
 
         return Boolean(resolved);
@@ -1897,7 +1910,7 @@ class EUIXEngine {
         if (xmlNode.nodeType !== Node.ELEMENT_NODE) return null;
 
         const tagName = xmlNode.tagName.toLowerCase();
-        if (EVENT_TAGS.has(tagName)) {
+        if (METADATA_AND_EVENT_TAGS.has(tagName) || tagName.startsWith("on_")) {
             return null;
         }
 
@@ -2591,41 +2604,28 @@ class EUIXEngine {
             const path = this.parseBindPath(interpolatedPath);
 
             const rawValue = valueNode ? valueNode.textContent.trim() : "";
-            let nextValue = this.interpolate(rawValue, context);
+            let nextValue = "";
 
-            if (rawValue.includes("?")) {
-                let exprStr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+            const evalGetter = (key) => {
+                const cleanKey = this.parseBindPath(key);
+                const val = this.getState(cleanKey);
+                const num = parseFloat(val);
+                return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+            };
+
+            const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+
+            if (rawValue.includes("?") || /[\+\-\*\/]/.test(rawValue)) {
                 try {
-                    const evalGetter = (key) => {
-                        const val = this.getState(this.parseBindPath(key));
-                        const num = parseFloat(val);
-                        return !isNaN(num) ? num : 0;
-                    };
-                    const evaluated = EUIXExpressionParser.eval(exprStr, evalGetter);
-                    if (evaluated !== undefined) {
+                    const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
+                    if (evaluated !== undefined && typeof evaluated === "number" && !isNaN(evaluated)) {
                         nextValue = String(evaluated);
                     }
                 } catch (_) {}
-            } else if (/[\+\-\*\/]/.test(rawValue) || /\d+\s*[\+\-\*\/]\s*\d+/.test(nextValue)) {
-                const evalGetter = (key) => {
-                    const val = this.getState(this.parseBindPath(key));
-                    const num = parseFloat(val);
-                    return !isNaN(num) ? num : 0;
-                };
-                try {
-                    const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
-                    const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
-                    if (evaluated !== undefined && !isNaN(evaluated)) {
-                        nextValue = String(evaluated);
-                    }
-                } catch (_) {
-                    try {
-                        const evaluated = EUIXExpressionParser.eval(nextValue, evalGetter);
-                        if (evaluated !== undefined && !isNaN(evaluated)) {
-                            nextValue = String(evaluated);
-                        }
-                    } catch (e) {}
-                }
+            }
+
+            if (!nextValue) {
+                nextValue = this.interpolate(rawValue, context);
             }
 
             this.setState(path, nextValue);
@@ -2802,6 +2802,8 @@ class EUIXEngine {
     }
 }
 
+EUIXEngine.EUIXExpressionParser = EUIXExpressionParser;
+
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
     window.EUIXEngine = EUIXEngine;
@@ -2815,3 +2817,6 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 if (typeof module !== "undefined" && module.exports) {
     module.exports = { EUIXEngine, EUIXExpressionParser, default: EUIXEngine };
 }
+
+export { EUIXEngine, EUIXExpressionParser };
+export default EUIXEngine;
