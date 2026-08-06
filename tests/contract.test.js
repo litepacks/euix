@@ -173,4 +173,111 @@ describe('EUIX Engine Public API & Contract Test Suite', () => {
             expect(onErrorSpy).toHaveBeenCalled();
         });
     });
+
+    describe('6. Component Scoping & API Client Contract', () => {
+        it('should uphold component-scoped <api_config> isolation and precedence contracts', async () => {
+            const originalFetch = global.fetch;
+            const mockFetch = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                headers: new Map([['content-type', 'application/json']]),
+                json: async () => ({ ok: true })
+            });
+            global.fetch = mockFetch;
+
+            const xml = `
+            <uid_spec>
+                <component_def name="service-a">
+                    <api_config base_url="https://contract-api-a.com" timeout="3000" />
+                    <flex>
+                        <button id="btn_contract_a">
+                            <on_click action="XHR">
+                                <url>/data</url>
+                                <target>data.res_a</target>
+                            </on_click>
+                        </button>
+                    </flex>
+                </component_def>
+
+                <component_def name="service-b">
+                    <api_config base_url="https://contract-api-b.com" timeout="5000" />
+                    <flex>
+                        <button id="btn_contract_b">
+                            <on_click action="XHR">
+                                <url>/data</url>
+                                <target>data.res_b</target>
+                            </on_click>
+                        </button>
+                    </flex>
+                </component_def>
+
+                <data_model>
+                    <state id="res_a"></state>
+                    <state id="res_b"></state>
+                </data_model>
+
+                <flex direction="column">
+                    <service-a />
+                    <service-b />
+                </flex>
+            </uid_spec>
+            `;
+
+            const engine = new EUIXEngine('#app');
+            engine.configureApi({ baseUrl: 'https://global-contract-api.com' });
+            engine.mount(xml);
+
+            document.querySelector('#btn_contract_a').click();
+            await new Promise(resolve => setTimeout(resolve, 50));
+            expect(mockFetch.mock.calls[0][0]).toBe('https://contract-api-a.com/data');
+
+            document.querySelector('#btn_contract_b').click();
+            await new Promise(resolve => setTimeout(resolve, 50));
+            expect(mockFetch.mock.calls[1][0]).toBe('https://contract-api-b.com/data');
+
+            global.fetch = originalFetch;
+        });
+
+        it('should uphold MUTATE_STATE REMOVE contract for both <index> and <where> tags', async () => {
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="items" type="array">
+                        <item id="101" title="Alpha" />
+                        <item id="102" title="Beta" />
+                        <item id="103" title="Gamma" />
+                    </state>
+                </data_model>
+                <flex direction="column">
+                    <span>List</span>
+                </flex>
+            </uid_spec>
+            `;
+
+            const engine = await EUIXEngine.mount(xml, '#app');
+            expect(engine.getState('items').length).toBe(3);
+
+            // Remove by index contract
+            engine.handleAction(createActionNode(`
+                <on_click action="MUTATE_STATE">
+                    <path>data.items</path>
+                    <operation>REMOVE</operation>
+                    <index>1</index>
+                </on_click>
+            `));
+            expect(engine.getState('items').length).toBe(2);
+            expect(engine.getState('items')[1].title).toBe('Gamma');
+
+            // Remove by where contract
+            engine.handleAction(createActionNode(`
+                <on_click action="MUTATE_STATE">
+                    <path>data.items</path>
+                    <operation>REMOVE</operation>
+                    <where field="title" equals="Gamma" />
+                </on_click>
+            `));
+            expect(engine.getState('items').length).toBe(1);
+            expect(engine.getState('items')[0].title).toBe('Alpha');
+        });
+    });
 });
