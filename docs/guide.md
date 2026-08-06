@@ -210,6 +210,45 @@ Persisted `localStorage` state keys automatically sync across open browser tabs 
 
 ---
 
+## 🌐 API Client Configuration (BaseURL, Headers & Credentials)
+
+EUIX Engine supports centralized API Client configuration for relative HTTP endpoints, common authorization headers, CORS credentials, request timeouts, and interceptors.
+
+### 1. Declarative XML `<api_config>`
+```xml
+<uid_spec>
+    <api_config base_url="https://api.example.com/v1" credentials="include" timeout="5000">
+        <headers>
+            <header name="Authorization">Bearer {data.user_token}</header>
+            <header name="X-App-Version">1.2.0</header>
+            <header name="Accept">application/json</header>
+        </headers>
+    </api_config>
+</uid_spec>
+```
+
+### 2. Programmatic JS API
+```javascript
+// Configure API Client options globally or on engine instance
+engine.configureApi({
+    baseUrl: 'https://api.example.com/v1',
+    credentials: 'include', // 'omit' | 'same-origin' | 'include'
+    headers: {
+        'Authorization': 'Bearer {data.user_token}',
+        'X-App-Client': 'EUIX-Engine'
+    },
+    timeout: 8000,
+    onRequest: ({ url, options }) => console.log('Sending XHR to:', url),
+    onResponse: (response) => console.log('Received Status:', response.status)
+});
+
+// Dynamic header management
+engine.setApiHeader('Authorization', 'Bearer new_secret_token');
+engine.removeApiHeader('Authorization');
+```
+
+---
+
 ## 🧪 Running Test Suites
 
 EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:

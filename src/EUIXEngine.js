@@ -273,6 +273,14 @@ class EUIXEngine {
         this._stateWatchers = new Map();
         this._globalStateWatchers = [];
         this._persistenceConfig = new Map();
+        this._apiConfig = {
+            baseUrl: "",
+            credentials: undefined,
+            headers: new Map(),
+            timeout: 0,
+            onRequest: null,
+            onResponse: null
+        };
         if (!EUIXEngine._globalConstants) {
             EUIXEngine._globalConstants = new Map();
         }
@@ -280,6 +288,34 @@ class EUIXEngine {
             EUIXEngine._globalComponentSpecs = new Map();
         }
         this._setupStorageListener();
+    }
+
+    configureApi(options = {}) {
+        if (!options || typeof options !== "object") return this;
+        if (options.baseUrl !== undefined) this._apiConfig.baseUrl = String(options.baseUrl).trim();
+        if (options.credentials !== undefined) this._apiConfig.credentials = options.credentials;
+        if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
+        if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
+        if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
+        
+        if (options.headers && typeof options.headers === "object") {
+            Object.entries(options.headers).forEach(([k, v]) => {
+                this.setApiHeader(k, v);
+            });
+        }
+        return this;
+    }
+
+    setApiHeader(name, value) {
+        if (!name) return this;
+        this._apiConfig.headers.set(String(name).trim(), String(value !== undefined ? value : "").trim());
+        return this;
+    }
+
+    removeApiHeader(name) {
+        if (!name) return this;
+        this._apiConfig.headers.delete(String(name).trim());
+        return this;
     }
 
     _setupStorageListener() {
@@ -1063,7 +1099,14 @@ class EUIXEngine {
         const targetNode = this.getChild(actionNode, "target");
         if (!urlNode || !targetNode) return;
 
-        const url = this.interpolate(urlNode.textContent.trim(), context);
+        let rawUrl = this.interpolate(urlNode.textContent.trim(), context);
+        let finalUrl = rawUrl;
+        if (this._apiConfig.baseUrl && !/^https?:\/\//i.test(rawUrl)) {
+            const base = this._apiConfig.baseUrl.replace(/\/+$/, "");
+            const relative = rawUrl.replace(/^\/+/, "");
+            finalUrl = `${base}/${relative}`;
+        }
+
         const target = this.parseBindPath(targetNode.textContent);
         const selectNode = this.getChild(actionNode, "select");
         const select = selectNode?.textContent.trim() || "";
@@ -1081,23 +1124,54 @@ class EUIXEngine {
         if (errorPath) this.setState(errorPath, "", { silent: true });
 
         const headersObj = {};
+        if (this._apiConfig.headers && this._apiConfig.headers.size > 0) {
+            this._apiConfig.headers.forEach((val, name) => {
+                headersObj[name] = this.interpolate(val, context);
+            });
+        }
+
         this.getChildren(actionNode, "header").forEach(header => {
             const name = header.getAttribute("name");
             if (name) headersObj[name] = this.interpolate(header.textContent.trim(), context);
         });
 
         const body = bodyNode ? this.interpolate(bodyNode.textContent.trim(), context) : null;
+        const credentialsAttr = actionNode.getAttribute("credentials") || this._apiConfig.credentials;
 
         const fetchOptions = {
             method,
             headers: headersObj
         };
+        if (credentialsAttr) {
+            fetchOptions.credentials = credentialsAttr;
+        }
+
         if (method !== "GET" && method !== "HEAD" && body !== null) {
             fetchOptions.body = body;
         }
 
-        fetch(url, fetchOptions)
+        let timeoutId = null;
+        const timeoutMs = parseInt(actionNode.getAttribute("timeout") || this._apiConfig.timeout || 0, 10);
+        if (timeoutMs > 0 && typeof AbortController !== "undefined") {
+            const controller = new AbortController();
+            fetchOptions.signal = controller.signal;
+            timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        }
+
+        if (typeof this._apiConfig.onRequest === "function") {
+            try {
+                this._apiConfig.onRequest({ url: finalUrl, options: fetchOptions });
+            } catch (_) {}
+        }
+
+        fetch(finalUrl, fetchOptions)
             .then(async (response) => {
+                if (timeoutId) clearTimeout(timeoutId);
+                if (typeof this._apiConfig.onResponse === "function") {
+                    try {
+                        this._apiConfig.onResponse(response);
+                    } catch (_) {}
+                }
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
@@ -1239,6 +1313,25 @@ class EUIXEngine {
                             storageKey: customStorageKey || `euix_state_${key}`
                         });
                     }
+                });
+            }
+
+            const apiConfigNode = doc.querySelector("api_config, api_client, api");
+            if (apiConfigNode) {
+                const baseUrl = apiConfigNode.getAttribute("base_url") || apiConfigNode.getAttribute("baseUrl") || apiConfigNode.getAttribute("url");
+                if (baseUrl) this._apiConfig.baseUrl = baseUrl.trim();
+
+                const credentials = apiConfigNode.getAttribute("credentials");
+                if (credentials) this._apiConfig.credentials = credentials.trim();
+
+                const timeout = apiConfigNode.getAttribute("timeout");
+                if (timeout) this._apiConfig.timeout = parseInt(timeout, 10) || 0;
+
+                const headerNodes = Array.from(apiConfigNode.querySelectorAll("headers > header, header"));
+                headerNodes.forEach(h => {
+                    const name = h.getAttribute("name") || h.getAttribute("key");
+                    const val = h.textContent.trim() || h.getAttribute("value") || "";
+                    if (name) this.setApiHeader(name, val);
                 });
             }
         };
