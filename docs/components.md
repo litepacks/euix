@@ -168,8 +168,50 @@ Fine-grained dynamic list rendering.
 
 ### Action Types:
 - `SET_STATE`: Updates state value (`<path>`, `<value>`).
-- `MUTATE_STATE`: Performs array operations (`PUSH`, `UNSHIFT`, `UPDATE`, `REMOVE`, `CLEAR`).
+- `MUTATE_STATE`: Performs array operations:
+  - `PUSH` / `UNSHIFT`: Inserts item to array.
+  - `UPDATE`: Updates item matching `<where>` query (`<where equals="..." />`).
+  - `REMOVE`: Removes item by `<index>` or `<where>` query.
+  - `SWAP`: Swaps positions and status between 2 items (`<where equals="..." />`, `<target_where equals="..." />`).
+  - `MOVE_UP` / `MOVE_DOWN`: Moves item index up or down in array.
+  - `CLEAR` / `RESET`: Empties array list.
 - `XHR`: Performs declarative async HTTP requests with loading/error handling.
+- `REVALIDATE_API`: Triggers SWR (Stale-While-Revalidate) background data refetching (`<revalidate target="data.key" />`).
+
+---
+
+### 🗂️ Drag & Drop Event Listeners (`<on_dragstart>`, `<on_drop>`)
+
+EUIX Engine supports native HTML5 and touch/pointer Drag & Drop with zero-lag custom floating preview (`#euix-drag-ghost`):
+
+```xml
+<for_each items="{data.kanban_tasks}" var="task">
+    <div draggable="true" data-id="{task.id}">
+        <on_dragstart action="SET_STATE">
+            <path>data.dragged_id</path>
+            <value>{task.id}</value>
+        </on_dragstart>
+        <on_drop action="MUTATE_STATE" operation="SWAP">
+            <path>data.kanban_tasks</path>
+            <where equals="{data.dragged_id}" />
+            <target_where equals="{task.id}" />
+        </on_drop>
+        <span>{task.title}</span>
+    </div>
+</for_each>
+
+<!-- Drop Target Column -->
+<flex direction="column">
+    <on_drop action="MUTATE_STATE" operation="UPDATE">
+        <path>data.kanban_tasks</path>
+        <where equals="{data.dragged_id}" />
+        <value status="in_progress" />
+    </on_drop>
+    <!-- Column Items -->
+</flex>
+```
+
+---
 
 ### `<api_config>` (API Client Configuration & Scoping)
 Configures relative BaseURL, default HTTP headers, credentials, and request timeouts.

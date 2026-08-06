@@ -2,10 +2,92 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-99%2F99%20Passed-brightgreen.svg)]()
-[![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-14%2F14%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-100%25%20Passed-brightgreen.svg)]()
+[![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-100%25%20Passed-brightgreen.svg)]()
 
-**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
+---
+
+## ❓ What is .EUIX Engine?
+
+**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance web framework designed for modern browsers. It processes declarative XML/HTML templates (`.EUIX` format), reactive data models (`<data_model>`), and event-driven actions (`<on_click>`, `<on_drop>`, `<on_mount>`) directly into fine-grained native browser DOM elements with **zero Virtual DOM overhead**.
+
+### Why .EUIX?
+- **⚡ No Virtual DOM Overhead:** Bypasses Virtual DOM diffing algorithms. State mutations update only the exact target DOM node in-place (<0.4ms latency).
+- **📝 Declarative XML Syntax:** Build full web applications using intuitive `<flex>`, `<grid>`, `<data_model>`, `<constants>`, `<if>`, `<for_each>`, and event action tags.
+- **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
+- **🗂️ Native Drag & Drop + Touch Support:** Declarative HTML5 & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`) with zero-lag floating drag previews (`#euix-drag-ghost`).
+
+---
+
+## 🚀 Usage Guide
+
+### 1. Embedded HTML Script Spec (`type="application/euix"`):
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="dist/EUIXEngine.umd.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Declarative EUIX Application Spec -->
+  <script type="application/euix" target="#app">
+  <uid_spec>
+      <data_model>
+          <state id="counter">0</state>
+          <state id="tasks" type="array">
+              <item id="1" title="Learn EUIX Engine" status="done" />
+              <item id="2" title="Build Drag & Drop App" status="todo" />
+          </state>
+      </data_model>
+
+      <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl">
+          <h1 class="text-xl font-bold text-slate-800">Counter: {data.counter}</h1>
+          <flex direction="row" gap="8">
+              <button class="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold cursor-pointer">
+                  <on_click action="SET_STATE">
+                      <path>data.counter</path>
+                      <value>{data.counter + 1}</value>
+                  </on_click>
+                  ➕ Increment
+              </button>
+          </flex>
+
+          <!-- List Rendering & Drag Drop -->
+          <for_each items="{data.tasks}" var="task">
+              <div draggable="true" data-id="{task.id}" class="p-3 bg-slate-50 rounded-lg flex justify-between">
+                  <span>{task.title}</span>
+                  <button class="text-rose-500 font-bold cursor-pointer">
+                      <on_click action="MUTATE_STATE" operation="REMOVE">
+                          <path>data.tasks</path>
+                          <index>{task._index}</index>
+                      </on_click>
+                      ✕
+                  </button>
+              </div>
+          </for_each>
+      </flex>
+  </uid_spec>
+  </script>
+</body>
+</html>
+```
+
+### 2. Programmatic JavaScript API:
+```javascript
+import EUIXEngine from './src/EUIXEngine.js';
+
+// Mount EUIX XML spec directly to a target container
+const engine = EUIXEngine.mount(xmlString, '#app');
+
+// Programmatically inspect or mutate reactive state
+console.log(engine.getState('counter'));
+engine.setState('counter', 10);
+
+// Programmatically revalidate API data or persist state
+await engine.revalidateApi('data.user_list');
+```
 
 ---
 
@@ -49,13 +131,16 @@ EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM ele
 
 ## ✨ Key Features & Capability Matrix
 
+- **🗂️ Native & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`):** Fine-grained HTML5 & Pointer Drag & Drop support with zero-lag custom floating drag preview (`#euix-drag-ghost`) and automatic `dragover` preventDefault handling.
+- **🔀 Reactive List Mutations (`MUTATE_STATE` `PUSH`, `REMOVE`, `UPDATE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`):** High-performance array list mutations including item insertion, property updates, index deletion, item swapping (`SWAP`), and quick index reordering (`MOVE_UP`, `MOVE_DOWN`).
+- **🔄 SWR API Revalidation (`REVALIDATE_API`, `<revalidate>`):** Stale-While-Revalidate API data refetching triggered declaratively or programmatically (`revalidateApi()`).
 - **🎨 Design Tokens & Constants (`<constants>`, `<vars>`):** Define reusable CSS utility classes, design tokens, or API URLs at root or component level and reference them via `{const.key}` or `{var.key}` (supports external JSON files via `src="..."`).
 - **📡 Declarative & Component-Scoped API Client (`<api_config>`):** Configurable base URL, CORS credentials (`include`/`same-origin`), default headers, timeouts, and request/response interceptors with zero-leakage component-level scoping.
 - **📁 External JSON Resource Loading (`src="..."`):** Declaratively fetch initial `<data_model>` states, `<constants>` tokens, or individual `<state>` values directly from JSON files (`<data_model src="...">`, `<constants src="...">`, `loadDataModel()`, `loadConstants()`, `mountAsync()`).
 - **⏱️ Lifecycle Timers & Intervals (`<on_interval>`):** Declarative recurring timers with conditional evaluation (`if="..."`) and automatic unmount cleanup.
 - **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates) and component recursion depth guard (>20 depth) preventing browser freezes or crashes.
 - **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
-- **🛡️ Contract & E2E Test Suite:** Fully verified with 83 Vitest unit/component/contract/benchmark tests and 9 Playwright E2E browser tests.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 10 Vitest unit/component/contract/benchmark test files (100% passing) and Playwright E2E browser tests.
 
 ---
 
