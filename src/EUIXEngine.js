@@ -800,6 +800,12 @@ class EUIXEngine {
             throw err;
         }
 
+        const markStart = `euix:setState:${key}:start`;
+        const markEnd = `euix:setState:${key}:end`;
+        if (typeof performance !== "undefined" && performance.mark) {
+            try { performance.mark(markStart); } catch (_) {}
+        }
+
         try {
             const oldValue = this._rawState[key];
             this._rawState[key] = value;
@@ -813,6 +819,12 @@ class EUIXEngine {
             }
         } finally {
             this._updateDepth = Math.max(0, (this._updateDepth || 1) - 1);
+            if (typeof performance !== "undefined" && performance.mark && performance.measure) {
+                try {
+                    performance.mark(markEnd);
+                    performance.measure(`⚡ EUIX setState (${key})`, markStart, markEnd);
+                } catch (_) {}
+            }
         }
     }
 

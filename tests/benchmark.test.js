@@ -3,7 +3,7 @@ import EUIXEnginePkg from '../src/EUIXEngine.js';
 
 const EUIXEngine = EUIXEnginePkg.EUIXEngine || EUIXEnginePkg;
 
-describe('EUIXEngine Vitest Performance & Benchmark Suite', () => {
+describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmark standard)', () => {
     beforeEach(() => {
         document.body.innerHTML = '<div id="app"></div>';
     });
@@ -93,6 +93,134 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite', () => {
         console.log(`[Vitest Bench] 3,000 Item Render Duration: ${duration.toFixed(2)} ms`);
     });
 
+    it('should benchmark Partial Update (updating every 10th row out of 1,000)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="rows" type="array"></state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.rows}" var="row">
+                    <flex direction="row">
+                        <component type="text">{row.label}</component>
+                    </flex>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const initialRows = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, label: `Row ${i}` }));
+        engine.setState('rows', initialRows);
+
+        const updatedRows = initialRows.map((row, idx) => {
+            if (idx % 10 === 0) {
+                return { ...row, label: `${row.label} !!!` };
+            }
+            return row;
+        });
+
+        const start = performance.now();
+        engine.setState('rows', updatedRows);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('rows')[10].label).toContain('!!!');
+        console.log(`[Vitest Bench] Partial Update (10th row of 1,000): ${duration.toFixed(2)} ms`);
+    });
+
+    it('should benchmark Swap 2 Rows out of 1,000 items', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="rows" type="array"></state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.rows}" var="row">
+                    <flex direction="row">
+                        <component type="text">{row.label}</component>
+                    </flex>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const rows = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, label: `Item ${i}` }));
+        engine.setState('rows', rows);
+
+        const swapped = [...rows];
+        const temp = swapped[1];
+        swapped[1] = swapped[998];
+        swapped[998] = temp;
+
+        const start = performance.now();
+        engine.setState('rows', swapped);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('rows')[1].label).toBe('Item 998');
+        expect(engine.getState('rows')[998].label).toBe('Item 1');
+        console.log(`[Vitest Bench] Swap 2 Rows in 1,000 items: ${duration.toFixed(2)} ms`);
+    });
+
+    it('should benchmark Append 1,000 Rows to an existing 1,000 items list', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="rows" type="array"></state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.rows}" var="row">
+                    <flex direction="row">
+                        <component type="text">{row.label}</component>
+                    </flex>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const initial = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, label: `Initial ${i}` }));
+        engine.setState('rows', initial);
+
+        const extra = Array.from({ length: 1000 }, (_, i) => ({ id: `${1000 + i}`, label: `Extra ${i}` }));
+
+        const start = performance.now();
+        engine.setState('rows', [...initial, ...extra]);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('rows').length).toBe(2000);
+        console.log(`[Vitest Bench] Append 1,000 Rows (Total 2,000): ${duration.toFixed(2)} ms`);
+    });
+
+    it('should benchmark Clear All 1,000 Rows', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="rows" type="array"></state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.rows}" var="row">
+                    <flex direction="row">
+                        <component type="text">{row.label}</component>
+                    </flex>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const rows = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, label: `Item ${i}` }));
+        engine.setState('rows', rows);
+
+        const start = performance.now();
+        engine.setState('rows', []);
+        const duration = performance.now() - start;
+
+        expect(engine.getState('rows').length).toBe(0);
+        expect(document.querySelectorAll('span').length).toBe(0);
+        console.log(`[Vitest Bench] Clear 1,000 Rows: ${duration.toFixed(2)} ms`);
+    });
+
     it('should benchmark single fine-grained item update in-place', () => {
         const xml = `
         <uid_spec>
@@ -115,5 +243,37 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite', () => {
         expect(span).not.toBeNull();
         expect(span.textContent).toBe('100');
         console.log(`[Vitest Bench] Fine-grained Single State Mutation: ${duration.toFixed(2)} ms`);
+    });
+
+    it('should benchmark Interaction Latency (button click to state & DOM mutation)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="val" type="string">0</state>
+            </data_model>
+            <flex direction="column">
+                <button id="inc_btn">
+                    <on_click action="SET_STATE">
+                        <path>data.val</path>
+                        <value>42</value>
+                    </on_click>
+                    Increment
+                </button>
+                <span id="target_span">{data.val}</span>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const btn = document.querySelector('#inc_btn');
+        const span = document.querySelector('#target_span');
+
+        const start = performance.now();
+        btn.dispatchEvent(new window.MouseEvent('click'));
+        const duration = performance.now() - start;
+
+        expect(span.textContent).toBe('42');
+        expect(duration).toBeLessThan(16); // Must fit within 16ms frame budget
+        console.log(`[Vitest Bench] Interaction Latency (Click -> DOM Mutation): ${duration.toFixed(2)} ms`);
     });
 });

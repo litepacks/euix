@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Build Tool: Vite](https://img.shields.io/badge/Build%20Tool-Vite-646CFF.svg)](https://vitejs.dev/)
-[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-83%2F83%20Passed-brightgreen.svg)]()
+[![Test Suite: Vitest](https://img.shields.io/badge/Vitest-91%2F91%20Passed-brightgreen.svg)]()
 [![E2E Suite: Playwright](https://img.shields.io/badge/Playwright-9%2F9%20Passed-brightgreen.svg)]()
 
 **Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance JavaScript framework that parses declarative XML/HTML templates and reactive state models directly into fine-grained native DOM elements in web browsers.
@@ -15,21 +15,26 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **67.0 KB** | **18.6 KB** |
-| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **102.0 KB** | **21.3 KB** |
-| **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **13.2 KB** | **3.9 KB** |
+| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **67.4 KB** | **18.7 KB** |
+| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **102.5 KB** | **21.4 KB** |
+| **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **14.1 KB** | **4.2 KB** |
 
 ---
 
-## ⚡ Performance & Fine-Grained Reactivity
+## ⚡ Performance Benchmark Matrix (`js-framework-benchmark`)
 
 EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM elements directly. Proxy-based **Fine-Grained Reactivity** ensures that state changes update only the exact target DOM node in-place.
 
 | Benchmark Operation | Scale | Duration (ms) | Description |
 | :--- | :--- | :--- | :--- |
 | **Initial XML Mount** | Full App Spec | **< 2.5 ms** | XML parsing, Data Model & DOM tree creation |
-| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 170 ms** | In-place DOM node creation (batch render) |
-| **Single State Mutation** | 1 Item Field | **0.12 ms** | Direct fine-grained node mutation |
+| **Clear All Rows** | **1,000 Items** | **5.3 ms** | Batch unmount and GC DOM removal |
+| **Single State Mutation** | 1 Item Field | **0.4 ms** | Direct fine-grained node mutation |
+| **Interaction Latency (INP)** | Button Click -> DOM | **4.0 ms** | Click event to DOM paint (<16ms 60fps budget) |
+| **Partial Row Update** | 1,000 Items (10th row) | **268 ms** | Selective re-render of matching items |
+| **Swap 2 Rows** | 1,000 Items | **833 ms** | Re-ordering 2 items in 1,000 item list |
+| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 890 ms** | In-place DOM node creation (batch render) |
+| **Append 1,000 Rows** | 1,000 -> 2,000 Items | **1,603 ms** | Append batch rendering |
 
 ---
 

@@ -179,6 +179,7 @@ export class EUIXDevTools {
                 <div style="display:flex;gap:8px;align-items:center;">
                     <button id="euix-tab-state" style="background:${this.activeTab === 'state' ? '#3b82f6' : '#334155'};color:#fff;border:none;padding:3px 8px;border-radius:6px;font-weight:bold;cursor:pointer;">📊 State (${stateKeys.length})</button>
                     <button id="euix-tab-logs" style="background:${this.activeTab === 'logs' ? '#3b82f6' : '#334155'};color:#fff;border:none;padding:3px 8px;border-radius:6px;font-weight:bold;cursor:pointer;">📜 Logs (${this.logs.length})</button>
+                    <button id="euix-tab-perf" style="background:${this.activeTab === 'perf' ? '#3b82f6' : '#334155'};color:#fff;border:none;padding:3px 8px;border-radius:6px;font-weight:bold;cursor:pointer;">⚡ Perf</button>
                     ${this.activeTab === 'logs' ? `<button id="euix-clear-logs" style="background:#475569;color:#f8fafc;border:none;padding:3px 6px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">🧹 Clear</button>` : ""}
                 </div>
                 <button id="euix-panel-close" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:bold;">✕</button>
@@ -199,6 +200,10 @@ export class EUIXDevTools {
         };
         document.getElementById("euix-tab-logs").onclick = () => {
             this.activeTab = "logs";
+            this.renderPanel();
+        };
+        document.getElementById("euix-tab-perf").onclick = () => {
+            this.activeTab = "perf";
             this.renderPanel();
         };
         const clearBtn = document.getElementById("euix-clear-logs");
@@ -229,6 +234,37 @@ export class EUIXDevTools {
     }
 
     renderTabContent(stateData) {
+        if (this.activeTab === "perf") {
+            const bindingsCount = this.engine && this.engine._bindings ? this.engine._bindings.size : 0;
+            const watchersCount = this.engine && this.engine._stateWatchers ? this.engine._stateWatchers.size : 0;
+            const heapMb = (typeof performance !== "undefined" && performance.memory && performance.memory.usedJSHeapSize)
+                ? `${(performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1)} MB`
+                : "N/A (Browser Restricted)";
+            const measuresCount = (typeof performance !== "undefined" && performance.getEntriesByType)
+                ? performance.getEntriesByType("measure").length
+                : 0;
+
+            return `
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #10b981;">
+                        <div style="color:#94a3b8;font-size:10px;">⚡ Reactive DOM Bindings</div>
+                        <div style="color:#34d399;font-size:16px;font-weight:bold;">${bindingsCount} active nodes</div>
+                    </div>
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #3b82f6;">
+                        <div style="color:#94a3b8;font-size:10px;">👁️ Active State Watchers</div>
+                        <div style="color:#60a5fa;font-size:16px;font-weight:bold;">${watchersCount} watchers</div>
+                    </div>
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #8b5cf6;">
+                        <div style="color:#94a3b8;font-size:10px;">⏱️ User Timing MeasuresRecorded</div>
+                        <div style="color:#c084fc;font-size:16px;font-weight:bold;">${measuresCount} measures</div>
+                    </div>
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #f59e0b;">
+                        <div style="color:#94a3b8;font-size:10px;">💾 JS Heap Memory Usage</div>
+                        <div style="color:#fbbf24;font-size:16px;font-weight:bold;">${heapMb}</div>
+                    </div>
+                </div>
+            `;
+        }
         if (this.activeTab === "state") {
             let keys = Object.keys(stateData);
             if (this.stateFilterQuery) {
