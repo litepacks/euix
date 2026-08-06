@@ -171,14 +171,23 @@ export class EUIXDevTools {
         const stateData = this.engine ? this.engine._rawState || {} : {};
         const stateKeys = Object.keys(stateData);
 
+        const contentEl = document.getElementById("euix-panel-content");
+        const prevScrollTop = contentEl ? contentEl.scrollTop : 0;
+
         this.panelEl.innerHTML = `
             <div style="background:#1e293b;padding:8px 12px;display:flex;align-items:center;justify-content:between;border-bottom:1px solid rgba(255,255,255,0.1);">
-                <div style="display:flex;gap:8px;">
+                <div style="display:flex;gap:8px;align-items:center;">
                     <button id="euix-tab-state" style="background:${this.activeTab === 'state' ? '#3b82f6' : '#334155'};color:#fff;border:none;padding:3px 8px;border-radius:6px;font-weight:bold;cursor:pointer;">📊 State (${stateKeys.length})</button>
                     <button id="euix-tab-logs" style="background:${this.activeTab === 'logs' ? '#3b82f6' : '#334155'};color:#fff;border:none;padding:3px 8px;border-radius:6px;font-weight:bold;cursor:pointer;">📜 Logs (${this.logs.length})</button>
+                    ${this.activeTab === 'logs' ? `<button id="euix-clear-logs" style="background:#475569;color:#f8fafc;border:none;padding:3px 6px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;">🧹 Clear</button>` : ""}
                 </div>
                 <button id="euix-panel-close" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:bold;">✕</button>
             </div>
+            ${this.activeTab === 'state' ? `
+            <div style="padding:6px 10px;background:#0f172a;border-bottom:1px solid rgba(255,255,255,0.05);">
+                <input id="euix-state-filter" type="text" placeholder="🔍 Search state key..." value="${this.stateFilterQuery || ''}" style="width:100%;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:4px 8px;border-radius:6px;font-size:11px;outline:none;" />
+            </div>
+            ` : ""}
             <div style="flex:1;overflow-y:auto;padding:10px;" id="euix-panel-content">
                 ${this.renderTabContent(stateData)}
             </div>
@@ -192,13 +201,41 @@ export class EUIXDevTools {
             this.activeTab = "logs";
             this.renderPanel();
         };
+        const clearBtn = document.getElementById("euix-clear-logs");
+        if (clearBtn) {
+            clearBtn.onclick = () => {
+                this.logs = [];
+                this.renderPanel();
+            };
+        }
+
+        const filterInput = document.getElementById("euix-state-filter");
+        if (filterInput) {
+            filterInput.oninput = (e) => {
+                this.stateFilterQuery = e.target.value;
+                const newContent = this.renderTabContent(stateData);
+                const updatedContentEl = document.getElementById("euix-panel-content");
+                if (updatedContentEl) updatedContentEl.innerHTML = newContent;
+            };
+        }
+
         document.getElementById("euix-panel-close").onclick = () => this.togglePanel(false);
+
+        // Restore scroll position to prevent jumping
+        const newContentEl = document.getElementById("euix-panel-content");
+        if (newContentEl && prevScrollTop > 0) {
+            newContentEl.scrollTop = prevScrollTop;
+        }
     }
 
     renderTabContent(stateData) {
         if (this.activeTab === "state") {
-            const keys = Object.keys(stateData);
-            if (keys.length === 0) return '<div style="color:#64748b;text-align:center;padding:20px;">No state variables found</div>';
+            let keys = Object.keys(stateData);
+            if (this.stateFilterQuery) {
+                const q = this.stateFilterQuery.toLowerCase();
+                keys = keys.filter(k => k.toLowerCase().includes(q));
+            }
+            if (keys.length === 0) return '<div style="color:#64748b;text-align:center;padding:20px;">No matching state variables</div>';
 
             return keys.map(key => {
                 const val = stateData[key];
@@ -285,13 +322,17 @@ export class EUIXDevTools {
             let stateKey = "";
             let bindKind = "";
             let refName = "";
+            let compName = "";
 
             let metaEl = target;
             while (metaEl && metaEl !== document.body) {
                 if (metaEl.dataset) {
+                    if (!compName && metaEl.dataset.xuiComponent) {
+                        compName = metaEl.dataset.xuiComponent;
+                    }
                     if (!stateKey && (metaEl.dataset.xuiKey || metaEl.dataset.xuiBind)) {
                         stateKey = metaEl.dataset.xuiKey || metaEl.dataset.xuiBind;
-                        bindKind = metaEl.dataset.xuiBind ? "state" : "conditional/key";
+                        bindKind = metaEl.dataset.xuiBind ? "state" : "key";
                     }
                     if (!refName && metaEl.dataset.xuiRef) {
                         refName = metaEl.dataset.xuiRef;
@@ -300,7 +341,7 @@ export class EUIXDevTools {
                 metaEl = metaEl.parentElement;
             }
 
-            this.inspectElement(boxEl, target, stateKey, bindKind, refName);
+            this.inspectElement(boxEl, target, stateKey, bindKind, refName, compName);
         });
 
         document.addEventListener("keydown", (e) => {
@@ -314,7 +355,7 @@ export class EUIXDevTools {
         });
     }
 
-    inspectElement(boxEl, targetEl, stateKey, bindKind, refName) {
+    inspectElement(boxEl, targetEl, stateKey, bindKind, refName, compName = "") {
         if (!boxEl) return;
 
         const rect = boxEl.getBoundingClientRect();
@@ -329,24 +370,32 @@ export class EUIXDevTools {
 
         const tagName = (targetEl || boxEl).tagName.toLowerCase();
 
+        let parsedKey = stateKey;
+        if (stateKey && this.engine && typeof this.engine.parseBindPath === "function") {
+            parsedKey = this.engine.parseBindPath(stateKey);
+        }
+
         let stateVal = "";
-        if (stateKey && this.engine) {
-            const val = this.engine.getState(stateKey);
-            stateVal = typeof val === "object" ? JSON.stringify(val) : String(val);
+        if (parsedKey && this.engine) {
+            const val = this.engine.getState(parsedKey);
+            if (val !== undefined && val !== null) {
+                stateVal = typeof val === "object" ? JSON.stringify(val) : String(val);
+            }
         }
 
         this.tooltipEl.innerHTML = `
-            <div style="font-weight:bold;color:#60a5fa;margin-bottom:2px;">&lt;${tagName}&gt; ${refName ? `ref="${refName}"` : ""}</div>
-            ${stateKey ? `<div style="color:#94a3b8;">🔑 Key: <strong style="color:#38bdf8;">${stateKey}</strong> (${bindKind || 'state'})</div>` : ""}
-            ${stateVal ? `<div style="color:#cbd5e1;margin-top:2px;">📦 Value: <span style="color:#facc15;">${this.escapeHtml(stateVal.slice(0, 80))}</span></div>` : ""}
+            ${compName ? `<div style="font-weight:bold;color:#c084fc;margin-bottom:2px;">🧩 Component: &lt;${this.escapeHtml(compName)}&gt;</div>` : ""}
+            <div style="font-weight:bold;color:#60a5fa;margin-bottom:2px;">&lt;${this.escapeHtml(tagName)}&gt; ${refName ? `ref="${this.escapeHtml(refName)}"` : ""}</div>
+            ${parsedKey ? `<div style="color:#94a3b8;">🔑 Key: <strong style="color:#38bdf8;">${this.escapeHtml(parsedKey)}</strong> (${bindKind || 'state'})</div>` : ""}
+            ${stateVal !== "" ? `<div style="color:#cbd5e1;margin-top:2px;">📦 Value: <span style="color:#facc15;">${this.escapeHtml(stateVal.slice(0, 100))}</span></div>` : ""}
         `;
 
-        let tooltipTop = rect.top + scrollY - 45;
+        let tooltipTop = rect.top + scrollY - 55;
         if (tooltipTop < scrollY + 10) tooltipTop = rect.bottom + scrollY + 10;
 
         let tooltipLeft = rect.left + scrollX;
-        if (tooltipLeft + 250 > window.innerWidth + scrollX) {
-            tooltipLeft = Math.max(10, window.innerWidth + scrollX - 260);
+        if (tooltipLeft + 280 > window.innerWidth + scrollX) {
+            tooltipLeft = Math.max(10, window.innerWidth + scrollX - 290);
         }
 
         this.tooltipEl.style.top = `${tooltipTop}px`;

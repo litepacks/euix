@@ -2131,6 +2131,7 @@ class EUIXEngine {
 
         const rendered = this.createHTMLElement(templateNode, childContext);
         if (rendered && rendered.nodeType === Node.ELEMENT_NODE) {
+            rendered.dataset.xuiComponent = compName;
             this.processLifecycleHooks(specNode, rendered, childContext);
         }
 
