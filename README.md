@@ -15,9 +15,10 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **Standalone Minified UMD Bundle** | **64.2 KB** | **17.7 KB** |
-| **`dist/EUIXEngine.es.js`** | **Vite ES Module** | **103.1 KB** | **20.0 KB** |
-| **`dist/EUIXDevTools.js`** | **EUIX DevTools Inspector** | **16.9 KB** | **4.3 KB** |
+| **`dist/EUIXEngine.umd.js`** | **Standalone Core Minified olsun  | **62.3 KB** | **17.5 KB** |
+| **`dist/EUIXEngine.es.js`** | **Standalone Core ES Module** | **103.1 KB** | **20.0 KB** |
+| **`dist/EUIXDevTools.umd.js`** | **Standalone DevTools Inspector UMD** | **13.2 KB** | **3.9 KB** |
+| **`dist/EUIXDevTools.es.js`** | **Standalone DevTools Inspector ES Module** | **16.9 KB** | **4.3 KB** |
 
 ---
 

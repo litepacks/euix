@@ -26,7 +26,10 @@ export default defineConfig({
         unsafe_proto: true
       },
       mangle: {
-        toplevel: true
+        toplevel: true,
+        properties: {
+          regex: /^_/
+        }
       },
       format: {
         comments: false

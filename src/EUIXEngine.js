@@ -251,6 +251,8 @@ class EUIXExpressionParser {
     }
 }
 
+const EVENT_TAGS = new Set(["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"]);
+
 class EUIXEngine {
     constructor(containerSelector) {
         this.container = typeof containerSelector === "string" 
@@ -1641,7 +1643,7 @@ class EUIXEngine {
         if (xmlNode.nodeType !== Node.ELEMENT_NODE) return null;
 
         const tagName = xmlNode.tagName.toLowerCase();
-        if (["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"].includes(tagName)) {
+        if (EVENT_TAGS.has(tagName)) {
             return null;
         }
 
@@ -2070,8 +2072,7 @@ class EUIXEngine {
         this.bindEvents(xmlNode, div, context);
 
         Array.from(xmlNode.childNodes).forEach(child => {
-            if (child.nodeType === Node.ELEMENT_NODE &&
-                ["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on"].includes(child.tagName.toLowerCase())) {
+            if (child.nodeType === Node.ELEMENT_NODE && EVENT_TAGS.has(child.tagName.toLowerCase())) {
                 return;
             }
             const childEl = this.createHTMLElement(child, context);
@@ -2082,8 +2083,7 @@ class EUIXEngine {
         });
 
         const childElementNodes = Array.from(xmlNode.childNodes).filter(n =>
-            n.nodeType === Node.ELEMENT_NODE &&
-            !["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on"].includes(n.tagName.toLowerCase())
+            n.nodeType === Node.ELEMENT_NODE && !EVENT_TAGS.has(n.tagName.toLowerCase())
         );
 
         if (childElementNodes.length === 0 && !["input", "select", "textarea", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
