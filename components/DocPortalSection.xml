@@ -6,6 +6,7 @@
     <data_model>
         <state id="active_tab" type="string">overview</state>
         <state id="active_doc_topic" type="string">getting_started</state>
+        <state id="counter_value" type="string">0</state>
         <state id="copied_status" type="string">Copy Spec</state>
         <state id="playground_code" type="string"><![CDATA[<uid_spec>
   <data_model>
@@ -47,8 +48,8 @@
             <!-- Metrics Pills Grid (2 cols on mobile, 4 on desktop) -->
             <grid cols="4" gap="12" class="w-full max-w-2xl pt-4 border-t border-indigo-500/20 grid grid-cols-2 sm:grid-cols-4">
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-emerald-400">&lt; 0.4 ms</span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">State Latency</span>
+                    <span class="text-lg md:text-xl font-black text-emerald-400">Zero Build</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
                     <span class="text-lg md:text-xl font-black text-blue-400">18.7 KB</span>
@@ -64,30 +65,33 @@
                 </flex>
             </grid>
 
+            <!-- Navigation Anchor -->
+            <div id="doc_section_anchor" class="pt-2"></div>
+
             <!-- Navigation Tabs Bar -->
-            <flex direction="row" align="center" justify="center" gap="8" class="pt-6 w-full flex-wrap">
-                <button type="button" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center gap-2">
+            <flex direction="row" align="center" justify="center" gap="8" class="pt-4 w-full flex-wrap justify-center">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center gap-2">
                     <on_click action="SET_STATE">
                         <path>data.active_tab</path>
                         <value>overview</value>
                     </on_click>
                     ✨ Overview &amp; Features
                 </button>
-                <button type="button" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
                     <on_click action="SET_STATE">
                         <path>data.active_tab</path>
                         <value>docs</value>
                     </on_click>
                     📖 Documentation
                 </button>
-                <button type="button" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
                     <on_click action="SET_STATE">
                         <path>data.active_tab</path>
                         <value>benchmarks</value>
                     </on_click>
                     ⚡ Benchmarks
                 </button>
-                <button type="button" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
                     <on_click action="SET_STATE">
                         <path>data.active_tab</path>
                         <value>demos</value>
@@ -99,14 +103,116 @@
 
         <!-- TAB 1: OVERVIEW & CAPABILITIES -->
         <if condition="{data.active_tab} == 'overview'">
-            <flex direction="column" gap="16" class="w-full">
-                <flex direction="row" align="center" justify="between">
-                    <h2 class="text-xl font-black text-slate-800">Framework Capability Matrix</h2>
+            <flex direction="column" gap="20" class="w-full">
+                <!-- Split Interactive Hero Section: Left Preview, Right XML Code -->
+                <flex class="w-full flex flex-col md:flex-row md:items-stretch gap-4 sm:gap-6">
+                    <!-- Left Column: Interactive Live Component Preview -->
+                    <flex direction="column" gap="12" class="w-full md:w-1/2 p-4 sm:p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl justify-between min-w-0 max-w-full">
+                        <flex direction="column" gap="8">
+                            <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
+                                <span class="text-xs font-black uppercase tracking-widest text-emerald-400">⚡ Live Interactive Component</span>
+                                <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] rounded-full border border-emerald-500/30">100% Reactive</span>
+                            </flex>
+                            <h3 class="text-lg sm:text-xl font-black text-white">What is EUIX Engine?</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                EUIX is a zero-build, ultra-fast XML frontend framework. Software engineers and LLMs build rich web apps using pure, declarative XML specs mapped directly to DOM elements and reactive state with zero virtual DOM overhead.
+                            </p>
+                        </flex>
+
+                        <!-- Live Mini App Box -->
+                        <flex direction="column" gap="12" class="p-4 sm:p-5 bg-slate-950 rounded-xl border border-slate-800 min-w-0 max-w-full">
+                            <flex direction="column" gap="10" class="w-full">
+                                <flex direction="row" align="center" justify="between" class="w-full">
+                                    <span class="text-xs font-bold text-slate-400">Live Component State:</span>
+                                    <span class="text-base font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20">{data.counter_value}</span>
+                                </flex>
+
+                                <!-- Number Input for Direct State Editing -->
+                                <flex direction="row" align="center" justify="between" class="w-full pt-2 border-t border-slate-800/80">
+                                    <span class="text-xs text-slate-400 font-bold">Direct Edit (Input):</span>
+                                    <input type="number" bind="data.counter_value" class="w-24 px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-indigo-500 text-indigo-300 rounded-lg text-center text-xs font-mono font-extrabold outline-none" />
+                                </flex>
+                            </flex>
+
+                            <flex direction="row" gap="8" class="w-full pt-1">
+                                <button type="button" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
+                                    <on_click action="MUTATE_STATE" operation="INCREMENT">
+                                        <path>data.counter_value</path>
+                                    </on_click>
+                                    ➕ Increment
+                                </button>
+                                <button type="button" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+                                    <on_click action="SET_STATE">
+                                        <path>data.counter_value</path>
+                                        <value>0</value>
+                                    </on_click>
+                                    ↺ Reset
+                                </button>
+                            </flex>
+                        </flex>
+                    </flex>
+
+                    <!-- Right Column: Code Editor View with Highlight.js -->
+                    <flex direction="column" gap="8" class="w-full md:w-1/2 p-4 sm:p-6 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-xl justify-between font-mono text-xs overflow-hidden min-w-0 max-w-full">
+                        <flex direction="row" align="center" justify="between" class="border-b border-slate-800 pb-3 flex-wrap gap-2">
+                            <flex direction="row" align="center" gap="8">
+                                <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                                <span class="text-xs font-bold text-slate-400 ml-2">counter-component.xml</span>
+                            </flex>
+                            <span class="text-[10px] text-indigo-400 font-bold">Declarative XML</span>
+                        </flex>
+
+                        <pre class="overflow-x-auto max-w-full whitespace-pre-wrap break-all leading-relaxed text-indigo-200 py-2"><code class="language-xml"><on_mount action="RUN_SCRIPT">
+const hl = () => {
+  if (!window.hljs || !$el) return false;
+  delete $el.dataset.highlighted;
+  window.hljs.highlightElement($el);
+  return true;
+};
+if (!hl()) {
+  let t = setInterval(() => { if (hl()) clearInterval(t); }, 50);
+}
+</on_mount>
+<on_state_change watch="data.counter_value" action="RUN_SCRIPT">
+if (window.hljs &amp;&amp; $el) {
+  delete $el.dataset.highlighted;
+  window.hljs.highlightElement($el);
+}
+</on_state_change>&lt;component_def name="interactive-counter"&gt;
+  &lt;data_model&gt;
+    &lt;state id="counter_value"&gt;{data.counter_value}&lt;/state&gt;
+  &lt;/data_model&gt;
+
+  &lt;flex direction="column" gap="12" class="p-5 bg-slate-950"&gt;
+    &lt;span&gt;State: {data.counter_value}&lt;/span&gt;
+
+    &lt;input type="number" bind="data.counter_value" /&gt;
+
+    &lt;button&gt;
+      &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
+        &lt;path&gt;data.counter_value&lt;/path&gt;
+      &lt;/on_click&gt;
+      Increment
+    &lt;/button&gt;
+  &lt;/flex&gt;
+&lt;/component_def&gt;</code></pre>
+
+                        <flex direction="row" align="center" justify="between" class="border-t border-slate-800 pt-3 text-[11px] text-slate-500">
+                            <span>UTF-8</span>
+                            <span>XML / Tailwind CSS</span>
+                        </flex>
+                    </flex>
+                </flex>
+
+                <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                    <h2 class="text-lg sm:text-xl font-black text-slate-800">Framework Capability Matrix</h2>
                     <span class="text-xs text-slate-500 font-medium">Fine-Grained Native DOM Reactivity</span>
                 </flex>
 
-                <grid cols="3" gap="16" class="w-full grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🤖</span>
                         <h3 class="font-extrabold text-slate-800 text-base">100% LLM &amp; AI Friendly</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -114,7 +220,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">📄</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Just XML (All-in-One Spec)</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -122,7 +228,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🌳</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Parent-Child Component Hierarchy</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -130,15 +236,15 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🚀</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Zero Virtual DOM Overhead</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
-                            No heavy VDOM diffing or reconciliation loops. Proxy-based fine-grained reactivity updates target browser DOM nodes directly in-place with &lt;0.4ms latency.
+                            No heavy VDOM diffing or reconciliation loops. Proxy-based fine-grained reactivity updates target browser DOM nodes directly in-place with zero latency.
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">📝</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Declarative XML Templates</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -146,7 +252,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🪝</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Declarative Hooks System</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -154,7 +260,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🗂️</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Native &amp; Pointer Drag &amp; Drop</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -162,7 +268,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">📡</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Component-Scoped API Client</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -170,7 +276,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🎨</span>
                         <h3 class="font-extrabold text-slate-800 text-base">Design Tokens &amp; Constants</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -178,7 +284,7 @@
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
                         <span class="text-3xl">🛠️</span>
                         <h3 class="font-extrabold text-slate-800 text-base">EUIX DevTools Inspector</h3>
                         <p class="text-xs text-slate-600 leading-relaxed">
@@ -191,8 +297,57 @@
 
         <!-- TAB 2: DOCUMENTATION REFERENCE -->
         <if condition="{data.active_tab} == 'docs'">
-            <grid cols="3" gap="16" class="w-full">
-                <!-- Sidebar Menu -->
+            <flex direction="column" gap="16" class="w-full">
+                <!-- Overview Intro Card -->
+                <flex direction="column" gap="12" class="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-4">
+                        <flex direction="column" gap="4">
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-400">⚡ Declarative Web Specs</span>
+                            <h2 class="text-xl md:text-2xl font-black text-white">What is EUIX Engine?</h2>
+                        </flex>
+                        <span class="px-3 py-1 bg-indigo-500/20 border border-indigo-400/30 rounded-full text-indigo-300 font-extrabold text-xs">100% Vanilla JS • Zero Build</span>
+                    </flex>
+
+                    <p class="text-xs md:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                        <strong>.EUIX Engine</strong> is a lightweight, zero-build, declarative XML frontend framework. It allows software engineers and AI agents to create fully interactive, state-driven, reactive web applications directly using clean XML tags mapped to browser DOM and Tailwind CSS without build pipelines or complex JS setup.
+                    </p>
+
+                    <!-- Quickstart Code Snippet -->
+                    <flex direction="column" gap="6" class="mt-2 p-4 bg-slate-950/80 rounded-xl border border-slate-800 font-mono text-xs">
+                        <flex direction="row" align="center" justify="between" class="text-slate-400 text-[11px] font-bold border-b border-slate-800 pb-2">
+                            <span>⚡ Quick Start: 30-Second Minimal HTML Example</span>
+                            <span class="text-indigo-400">index.html</span>
+                        </flex>
+                        <pre class="overflow-x-auto whitespace-pre-wrap break-words text-indigo-200"><code class="language-xml">&lt;!-- 1. Include Engine &amp; Mount Spec directly inside script tag --&gt;
+&lt;script src="https://cdn.jsdelivr.net/npm/euix@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;
+
+&lt;script type="application/euix" target="#app"&gt;
+  &lt;uid_spec&gt;
+    &lt;data_model&gt;
+      &lt;state id="message"&gt;Hello EUIX Engine!&lt;/state&gt;
+    &lt;/data_model&gt;
+
+    &lt;flex direction="column" gap="12" class="p-6 bg-slate-900 text-white rounded-2xl"&gt;
+      &lt;h1 class="text-xl font-bold"&gt;{data.message}&lt;/h1&gt;
+      &lt;button class="px-4 py-2 bg-indigo-600 rounded-lg"&gt;
+        &lt;on_click action="SET_STATE"&gt;
+          &lt;path&gt;data.message&lt;/path&gt;
+          &lt;value&gt;🚀 Reactively Updated!&lt;/value&gt;
+        &lt;/on_click&gt;
+        Click Me
+      &lt;/button&gt;
+    &lt;/flex&gt;
+  &lt;/uid_spec&gt;
+&lt;/script&gt;
+
+&lt;div id="app"&gt;&lt;/div&gt;</code></pre>
+                    </flex>
+                </flex>
+
+                <grid cols="3" gap="16" class="w-full">
+                    <!-- Sidebar Menu -->
                 <flex direction="column" gap="6" class="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm h-fit">
                     <span class="text-xs font-black text-slate-400 uppercase tracking-wider px-2 pb-2 border-b border-slate-100">Doc Topics</span>
                     <button type="button" class="w-full text-left px-3 py-2 rounded-lg font-bold text-xs cursor-pointer transition-colors border border-slate-100 hover:bg-slate-50">
@@ -626,7 +781,8 @@ engine.registerAction("TRACK_ANALYTICS", (actionNode, context) =&gt; {
                     </if>
                 </flex>
             </grid>
-        </if>
+        </flex>
+    </if>
 
         <!-- TAB 3: BENCHMARKS -->
         <if condition="{data.active_tab} == 'benchmarks'">

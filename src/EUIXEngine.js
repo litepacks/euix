@@ -3297,6 +3297,15 @@ class EUIXEngine {
             }
 
             if (operation === "INCREMENT" || operation === "DECREMENT") {
+                const rawVal = this.getState(path);
+                if (!Array.isArray(rawVal)) {
+                    let num = parseInt(rawVal ?? "0", 10);
+                    if (isNaN(num)) num = 0;
+                    num = operation === "INCREMENT" ? num + 1 : num - 1;
+                    this.setState(path, String(num));
+                    return;
+                }
+
                 const idxNode = this.getChild(actionNode, "index");
                 const fieldNode = this.getChild(actionNode, "field");
                 const rawIdx = idxNode ? idxNode.textContent.trim() : (actionNode.getAttribute("index") || "");

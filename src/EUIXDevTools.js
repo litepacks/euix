@@ -78,9 +78,12 @@ export class EUIXDevTools {
         this.panelEl.style.cssText = `
             position: fixed;
             bottom: 64px;
+            left: 16px;
             right: 16px;
             z-index: 999999;
-            width: 380px;
+            width: auto;
+            max-width: 380px;
+            margin-left: auto;
             max-height: 420px;
             background: #0f172a;
             color: #f8fafc;
@@ -101,8 +104,12 @@ export class EUIXDevTools {
         this.hudEl.style.cssText = `
             position: fixed;
             bottom: 16px;
+            left: 16px;
             right: 16px;
             z-index: 999999;
+            width: max-content;
+            max-width: calc(100vw - 32px);
+            margin-left: auto;
             background: #1e293b;
             color: #f8fafc;
             padding: 6px 12px;
@@ -116,6 +123,7 @@ export class EUIXDevTools {
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         `;
         this.hudEl.innerHTML = `
             <div id="euix-dev-toggle" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
