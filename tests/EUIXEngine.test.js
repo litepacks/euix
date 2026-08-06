@@ -920,4 +920,56 @@ describe('EUIXEngine Unit Tests', () => {
         expect(childText.textContent).toBe('42');
         expect(parentAccess.textContent).toBe('42');
     });
+
+    it('should pass through native HTML5 validation attributes (required, pattern, minlength)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="email" type="string"></state>
+            </data_model>
+            <form class="test-form">
+                <input bind="data.email" required="true" minlength="5" pattern=".*@.*" class="email-input" />
+            </form>
+        </uid_spec>
+        `;
+
+        EUIXEngine.mount(xml, '#app');
+        const input = document.querySelector('.email-input');
+
+        expect(input.hasAttribute('required')).toBe(true);
+        expect(input.getAttribute('minlength')).toBe('5');
+        expect(input.getAttribute('pattern')).toBe('.*@.*');
+    });
+
+    it('should abort form submission when native HTML5 form validation fails', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="val" type="string"></state>
+                <state id="submitted" type="string">false</state>
+            </data_model>
+            <form class="val-form">
+                <input bind="data.val" required="true" class="val-inp" />
+                <button type="submit" class="sub-btn">
+                    Submit
+                    <on_click action="SET_STATE">
+                        <path>data.submitted</path>
+                        <value>true</value>
+                    </on_click>
+                </button>
+            </form>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const subBtn = document.querySelector('.sub-btn');
+        const valInp = document.querySelector('.val-inp');
+
+        // Mock reportValidity if jsdom doesn't fully implement visual popup
+        valInp.reportValidity = () => false;
+        valInp.checkValidity = () => false;
+
+        subBtn.click();
+        expect(engine.getState('submitted')).toBe('false');
+    });
 });

@@ -125,6 +125,31 @@ Child components in EUIX Engine have fine-grained reactive access to parent stat
 
 ---
 
+## 📝 Native HTML5 Form Validation Support
+
+EUIX Engine supports native browser HTML5 form validations out of the box:
+
+1. **Validation Attribute Pass-Through:**
+   Attributes like `required`, `pattern`, `minlength`, `maxlength`, `min`, `max`, `step`, `title`, `disabled`, and `readonly` declared on `<input>`, `<textarea>`, or `<select>` are directly passed to the DOM element.
+
+2. **Automatic Submit Interception (`checkValidity` & `reportValidity`):**
+   When submitting a `<form>` or clicking a `<button type="submit">`, EUIX Engine automatically calls `form.checkValidity()`. If validation fails, the native browser popup (`reportValidity()`) triggers, and form submission actions (`<on_submit>` / `<on_click>`) are aborted.
+
+```xml
+<form class="space-y-3">
+    <input bind="data.user_email" type="email" required="true" pattern=".*@.*" class="border p-2 rounded invalid:border-rose-500" />
+    <button type="submit" class="btn-primary">
+        Submit
+        <on_click action="SET_STATE">
+            <path>data.form_submitted</path>
+            <value>true</value>
+        </on_click>
+    </button>
+</form>
+```
+
+---
+
 ## 📊 State Management (`<data_model>`)
 
 State is declared inside `<data_model>` using `<state>` nodes:

@@ -46,6 +46,31 @@
             </grid>
         </flex>
 
+        <!-- Native HTML5 Validated Form Demo -->
+        <form class="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex flex-col gap-3">
+            <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider">🛡️ Native HTML5 Validated Form</span>
+            <grid cols="2" gap="12">
+                <flex direction="column" gap="4">
+                    <label class="text-xs font-bold text-slate-700">Email Address (Required, Type: Email)</label>
+                    <input type="email" required="true" bind="data.form_email" placeholder="john@example.com" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none invalid:border-rose-500 invalid:text-rose-600" />
+                </flex>
+                <flex direction="column" gap="4">
+                    <label class="text-xs font-bold text-slate-700">Username (Required, Min 4 Chars)</label>
+                    <input type="text" required="true" minlength="4" bind="data.form_username" placeholder="john_doe" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none invalid:border-rose-500 invalid:text-rose-600" />
+                </flex>
+            </grid>
+            <flex direction="row" align="center" justify="between" class="pt-1">
+                <span class="text-xs font-semibold text-emerald-800">{data.form_status}</span>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer">
+                    Submit Validated Form
+                    <on_click action="SET_STATE">
+                        <path>data.form_status</path>
+                        <value>✅ Form Successfully Validated &amp; Submitted ({data.form_username})!</value>
+                    </on_click>
+                </button>
+            </flex>
+        </form>
+
         <flex direction="column" gap="6" class="p-4 bg-indigo-50/50 border border-indigo-100 rounded-xl">
             <span class="text-xs font-black text-indigo-900 uppercase tracking-wider">Live Form Summary</span>
             <flex direction="column" gap="4" class="text-xs text-indigo-800">

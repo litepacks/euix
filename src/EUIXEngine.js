@@ -1497,8 +1497,35 @@ class EUIXEngine {
         return "";
     }
 
+    applyValidationAttributes(el, xmlNode, context = {}) {
+        if (!el || !xmlNode || xmlNode.nodeType !== 1 || !el.setAttribute) return;
+
+        const validationAttrs = [
+            "required", "pattern", "minlength", "maxlength",
+            "min", "max", "step", "title", "autocomplete",
+            "disabled", "readonly", "autofocus"
+        ];
+
+        validationAttrs.forEach(attr => {
+            const val = xmlNode.getAttribute(attr);
+            if (val !== null && val !== undefined) {
+                if (["required", "disabled", "readonly", "autofocus"].includes(attr)) {
+                    const isBoolTrue = this.isTruthy(val) || val === "" || val.toLowerCase() === attr;
+                    if (isBoolTrue) {
+                        el.setAttribute(attr, "");
+                        try { el[attr] = true; } catch (_) {}
+                    }
+                } else {
+                    const interpolated = this.interpolate(val, context);
+                    el.setAttribute(attr, interpolated);
+                }
+            }
+        });
+    }
+
     applyRef(el, xmlNode, context = {}) {
         if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
+        this.applyValidationAttributes(el, xmlNode, context);
         const refAttr = xmlNode.getAttribute("ref");
         if (refAttr) {
             const resolvedRef = this.interpolate(refAttr, context);
@@ -2040,7 +2067,31 @@ class EUIXEngine {
 
         eventMap.forEach((handlerNodes, eventType) => {
             el.addEventListener(eventType, (e) => {
-                if (eventType === "submit") e.preventDefault();
+                if (eventType === "submit") {
+                    e.preventDefault();
+                    const formEl = el.tagName === "FORM" ? el : el.closest("form");
+                    if (formEl && typeof formEl.checkValidity === "function") {
+                        if (!formEl.checkValidity()) {
+                            if (typeof formEl.reportValidity === "function") {
+                                formEl.reportValidity();
+                            }
+                            return;
+                        }
+                    }
+                }
+
+                if (eventType === "click" && (el.type === "submit" || (el.tagName === "BUTTON" && el.closest("form")))) {
+                    const formEl = el.closest("form");
+                    if (formEl && typeof formEl.checkValidity === "function") {
+                        if (!formEl.checkValidity()) {
+                            if (typeof formEl.reportValidity === "function") {
+                                formEl.reportValidity();
+                            }
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+                }
 
                 for (const node of handlerNodes) {
                     const targetKey = node.getAttribute("key") || node.getAttribute("code");
