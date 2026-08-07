@@ -200,7 +200,9 @@ class EUIXExpressionParser {
 
             case "Identifier": {
                 const val = resolveValueFn(ast.name);
-                return val !== undefined ? val : ast.name;
+                if (val !== undefined) return val;
+                if (ast.name.startsWith("data.") || ast.name.startsWith("parent.data.")) return "";
+                return ast.name;
             }
 
             case "UnaryExpression": {
