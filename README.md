@@ -9,14 +9,14 @@
 
 ## 📄 What is .EUIX Engine?
 
-**Vanilla .EUIX Engine** is an ultra-lightweight, zero-dependency, high-performance web framework designed for modern browsers. It allows you to build full web applications using **Just XML** — handling **state management** (`<data_model>`), **REST API calls** (`<on_mount action="XHR">`), **variable & token management** (`<constants>`, `<vars>`), and **drag & drop** declaratively inside XML templates with **zero Virtual DOM overhead**.
+**EUIX Engine** is a declarative UI runtime based on structured XML designed for modern web applications. It allows you to build full reactive web interfaces using **Structured XML** — handling **components** (`<component_def>`), **state management** (`<data_model>`), **REST API integration** (`<on_mount action="XHR">`), **conditional rendering** (`<if>`), **loops** (`<for_each>`), and **direct DOM updates** declaratively inside XML specs with **zero external dependencies** and an **AI-friendly syntax**.
 
-### Why .EUIX?
-- **📄 Just XML (All-in-One Spec):** State management, REST API calls, design tokens, variables, and event listeners all defined declaratively in XML without JS boilerplate.
-- **🌳 Parent-Child Component Hierarchy:** Modular component architecture (`<component_def>`) with clean `<imports>`, `<import src="..." />` tags, and smooth parent-to-child prop & state sharing (`{props.key}`).
-- **⚡ No Virtual DOM Overhead:** Bypasses Virtual DOM diffing algorithms. State mutations update only the exact target DOM node in-place (<0.4ms latency).
+### Why EUIX?
+- **📄 Declarative XML Specs:** State management, REST API calls, design tokens, variables, and event listeners all defined declaratively in XML without JS boilerplate.
+- **🌳 Parent-Child Component Hierarchy:** Modular component architecture (`<component_def>`) with clean `<imports>`, `<import src="..." />` tags, and parent-to-child prop & state sharing (`{props.key}`).
+- **⚡ Direct DOM Updates:** State mutations directly update affected target DOM nodes without Virtual DOM reconciliation overhead.
 - **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
-- **🗂️ Native Drag & Drop + Touch Support:** Declarative HTML5 & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`) with zero-lag floating drag previews (`#euix-drag-ghost`).
+- **🤖 AI-Agent Friendly:** Structured XML specs allow LLMs and AI coding agents to deterministically parse, generate, and refactor UI code with zero syntactic ambiguity.
 
 ---
 
