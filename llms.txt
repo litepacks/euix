@@ -1,0 +1,14 @@
+# EUIX Engine (`euixjs`)
+
+> Ultra-lightweight, zero-dependency declarative XML/HTML framework with fine-grained state reactivity, SWR REST API fetching, component scoping, and standalone DevTools inspector.
+
+## Documentation & Guidelines
+
+- [AGENTS.md](.agents/AGENTS.md): Full architecture, declarative XML specification syntax, supported state data types (`string`, `number`, `boolean`, `array`, `object`), parent-child prop mechanics, slot projection, SWR API integration, lifecycle hooks, and XSS security best practices.
+- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~20.3 KB Gzip core UMD).
+
+## Core Modules & Specifications
+
+- [src/EUIXEngine.js](src/EUIXEngine.js): Core declarative XML engine, DOM compiler, reactive state store, SWR HTTP client, and async component registry.
+- [src/EUIXDevTools.js](src/EUIXDevTools.js): Standalone DevTools inspector submodule (`euixjs/devtools`).
+- [components/DocPortalSection.xml](components/DocPortalSection.xml): Interactive documentation portal component specification.
