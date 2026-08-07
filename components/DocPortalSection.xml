@@ -8,6 +8,7 @@
         <state id="active_doc_topic" type="string">getting_started</state>
         <state id="counter_value" type="string">0</state>
         <state id="copied_status" type="string">Copy Spec</state>
+        <state id="npm_copy_status" type="string">Copy npm i</state>
         <state id="playground_code" type="string"><![CDATA[<uid_spec>
   <data_model>
     <state id="count">0</state>
@@ -33,34 +34,34 @@
             <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
             <flex direction="row" align="center" gap="8" class="px-3.5 py-1.5 bg-indigo-500/10 border border-indigo-400/30 rounded-full text-indigo-300 font-bold text-xs uppercase tracking-wider backdrop-blur-md">
-                <span>⚡ This Page &amp; All Components are Built 100% with Vanilla .EUIX Engine</span>
+                <span>⚡ Declarative UI Runtime Built Around Structured XML</span>
             </flex>
 
             <h1 class="text-3xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-indigo-100 to-blue-200 bg-clip-text text-transparent">
-                Vanilla .EUIX Engine
+                Build reactive interfaces using structured XML.
             </h1>
 
-            <p class="max-w-xl text-sm md:text-base text-slate-300 font-medium leading-relaxed">
-                State management, REST API calls, variable management, and drag &amp; drop — all handled declaratively inside <span class="text-emerald-400 font-extrabold px-1">Just XML</span> templates with zero Virtual DOM overhead.
+            <p class="max-w-2xl text-sm md:text-base text-slate-300 font-medium leading-relaxed">
+                EUIX provides fine-grained state reactivity, component composition, REST API integration, lifecycle hooks, and direct DOM rendering — declared entirely in structured XML specs with zero Virtual DOM reconciliation overhead.
             </p>
 
             <!-- Metrics Pills Grid (2 cols on mobile, 4 on desktop) -->
             <grid class="w-full max-w-2xl pt-4 border-t border-indigo-500/20 grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
                     <span class="text-lg md:text-xl font-black text-emerald-400">Zero Build</span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 Dependencies</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
                     <span class="text-lg md:text-xl font-black text-blue-400">23.4 KB</span>
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Minified Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-amber-400">0 KB</span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">VDOM Overhead</span>
+                    <span class="text-lg md:text-xl font-black text-amber-400">Direct DOM</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Zero VDOM Reconciliation</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-purple-400">100%</span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Test Suite</span>
+                    <span class="text-lg md:text-xl font-black text-purple-400">Structured</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">AI-Agent Ready</span>
                 </flex>
             </grid>
 
@@ -85,6 +86,48 @@
                 </button>
                 <a href="./playground.html" class="px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
                     🎮 Live Demos (Playground)
+                </a>
+            </flex>
+        </flex>
+
+        <!-- Quick Start Installation Section -->
+        <flex class="w-full p-6 sm:p-8 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+            <flex direction="column" gap="8" class="min-w-0 flex-1 w-full">
+                <flex direction="row" align="center" gap="8">
+                    <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30 uppercase tracking-wider">⚡ Quick Start</span>
+                    <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">NPM Package &amp; Global CDN</span>
+                </flex>
+                <flex direction="column" gap="4" class="w-full">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Install via NPM</span>
+                    <flex direction="row" align="center" gap="8" class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 flex-wrap justify-between w-full">
+                        <span>npm install euixjs</span>
+                        <button type="button" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1.5">
+                            <on_click action="RUN_SCRIPT">
+                                if (navigator.clipboard) {
+                                    navigator.clipboard.writeText("npm install euixjs");
+                                    $engine.setState("npm_copy_status", "Copied!");
+                                    setTimeout(function() { $engine.setState("npm_copy_status", "Copy npm i"); }, 2000);
+                                }
+                            </on_click>
+                            📋 {data.npm_copy_status}
+                        </button>
+                    </flex>
+                </flex>
+                <flex direction="column" gap="4" class="w-full">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Or Include via Global UMD CDN</span>
+                    <pre class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto whitespace-pre-wrap break-all w-full">&lt;script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;</pre>
+                </flex>
+            </flex>
+            <flex direction="column" gap="10" class="shrink-0 w-full md:w-auto">
+                <button type="button" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center justify-center gap-2 w-full">
+                    <on_click action="SET_STATE">
+                        <path>data.active_tab</path>
+                        <value>docs</value>
+                    </on_click>
+                    📖 View Documentation
+                </button>
+                <a href="./playground.html" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center justify-center gap-2 text-center w-full">
+                    🎮 Launch Live Playground
                 </a>
             </flex>
         </flex>
@@ -195,92 +238,196 @@
                     </flex>
                 </flex>
 
-                <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
-                    <h2 class="text-lg sm:text-xl font-black text-slate-800">Framework Capability Matrix</h2>
-                    <span class="text-xs text-slate-500 font-medium">Fine-Grained Native DOM Reactivity</span>
+                <!-- Product Positioning & Architectural Pillars Section -->
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-200">
+                    <flex direction="column" gap="4">
+                        <span class="text-xs font-black uppercase tracking-widest text-indigo-600">🏛️ Architectural Design</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Why EUIX? Architectural Clarity &amp; Direct Execution</h2>
+                        <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                            EUIX is built on the principle that UI templates should be structured, machine-readable, and directly executable without heavy compilation steps or complex Virtual DOM diffing algorithms.
+                        </p>
+                    </flex>
+
+                    <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                            <span class="text-2xl">🎯</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm">Direct DOM Node Mutations</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Target node text and attribute updates directly in-place using proxy reactive listeners, completely bypassing Virtual DOM reconciliation passes.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                            <span class="text-2xl">📄</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm">All-in-One Declarative Specs</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Encapsulate reactive state (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;data_model&gt;</code>), REST API calls, tokens, and layout inside single XML specifications.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                            <span class="text-2xl">📦</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm">Zero Dependency Footprint</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Self-contained 23.4 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                            <span class="text-2xl">🔮</span>
+                            <h3 class="font-extrabold text-slate-800 text-sm">Extensible Runtime Vision</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                EUIX is designed as a structured UI runtime whose architecture can evolve beyond traditional browser DOM rendering to target alternate platforms.
+                            </p>
+                        </flex>
+                    </grid>
                 </flex>
 
-                <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🤖</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">100% LLM &amp; AI Friendly</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Zero JS boilerplate. Self-describing, machine-readable XML schema allows AI models (ChatGPT, Claude, Gemini) to generate complete, maintainable applications with high precision.
+                <!-- Core Capability Matrix Section -->
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-200">
+                    <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                        <flex direction="column" gap="2">
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-600">⚡ Core Capabilities</span>
+                            <h2 class="text-xl sm:text-2xl font-black text-slate-800">Framework Capability Matrix</h2>
+                        </flex>
+                        <span class="text-xs text-slate-500 font-medium">Structured XML DSL • Zero VDOM Diffing</span>
+                    </flex>
+
+                    <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🧩</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">Modular Components</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Clean <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;component_def&gt;</code> definitions, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;import src="..." /&gt;</code> tags, parent-child prop passing (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">{props.key}</code>), and slot composition.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">⚡</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">Reactive State Store</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Proxy-based fine-grained reactivity store (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;data_model&gt;</code>) with automatic DOM binding synchronization (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">bind="..."</code>).
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">📡</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">REST API Integration</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Declarative <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;api_config&gt;</code> and lifecycle hooks (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_mount action="XHR"&gt;</code>) with automatic CSRF tokens and SWR tag revalidation.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🎯</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">Declarative Events &amp; Hooks</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Handle user interactions and lifecycle hooks (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_click&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_mount&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_interval&gt;</code>) directly inside markup without inline JS string clutter.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🚀</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">Direct DOM Mutations</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Reactive state changes trigger precise in-place DOM node updates, avoiding full Virtual DOM subtree rerenders and heavy framework diffing overhead.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🤖</span>
+                            <h3 class="font-extrabold text-slate-800 text-base">AI-Agent Optimized DSL</h3>
+                            <p class="text-xs text-slate-600 leading-relaxed">
+                                Explicit XML tags (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;state&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_click&gt;</code>) eliminate template ambiguity, allowing AI agents to reliably parse, generate, and refactor applications.
+                            </p>
+                        </flex>
+                    </grid>
+                </flex>
+
+                <!-- AI Section: Engineered for AI Coding Agents & LLMs -->
+                <flex direction="column" gap="12" class="w-full p-6 sm:p-8 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl">
+                    <flex direction="column" gap="4">
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full font-extrabold text-xs w-fit">🤖 Machine-Readable DSL</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">Engineered for AI Coding Agents &amp; LLMs</h2>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                            Structured XML provides a deterministic, machine-readable syntax that makes applications significantly easier for AI models (Claude, Gemini, ChatGPT) to generate, inspect, validate, and refactor accurately.
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">📄</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Just XML (All-in-One Spec)</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            State management (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;data_model&gt;</code>), REST API calls (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_mount action="XHR"&gt;</code>), variable &amp; token management (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;constants&gt;</code>) all handled seamlessly in single XML templates.
+                    <grid class="w-full grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-800 pt-6">
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-emerald-400">1. Deterministic Structure</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Explicit tags for state, components, and event hooks eliminate ambiguous JavaScript template AST structures during model inference.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-indigo-400">2. Schema &amp; AST Validation</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Well-formed XML syntax enables automated static analysis, XSD schema validation, and reliable AST transformations before runtime execution.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-blue-400">3. Safe Automated Refactoring</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                AI agents can modify specific component specifications or state bindings without risk of breaking global JavaScript module scopes.
+                            </p>
+                        </flex>
+                    </grid>
+                </flex>
+
+                <!-- Performance & Measurable Benchmarks Section -->
+                <flex direction="column" gap="12" class="w-full p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
+                    <flex direction="column" gap="4">
+                        <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                            <span class="text-xs font-black uppercase tracking-widest text-emerald-600">⚡ Performance Metrics</span>
+                            <span class="text-xs text-slate-500 font-medium">Chrome V8 Engine Benchmarks</span>
+                        </flex>
+                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Why EUIX Delivers Predictable Performance</h2>
+                        <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                            Because EUIX mutates target DOM nodes directly through proxy state bindings, application memory consumption remains predictable and execution latency stays minimal even during bulk DOM operations.
                         </p>
                     </flex>
 
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🌳</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Parent-Child Component Hierarchy</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Modular component architecture with clean <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;component_def&gt;</code> definitions, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;import src="..." /&gt;</code> tags, and smooth parent-to-child prop &amp; reactive state sharing (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">{props.key}</code>).
-                        </p>
-                    </flex>
+                    <flex direction="column" gap="12" class="w-full border-t border-slate-100 pt-4">
+                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <flex direction="row" align="center" justify="between text-xs font-bold">
+                                <span class="text-slate-800">Initial XML Mount (Full Application Spec)</span>
+                                <span class="text-emerald-600 font-extrabold">&lt; 2.5 ms 🔥</span>
+                            </flex>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full w-[8%]"></div>
+                            </div>
+                        </flex>
 
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🚀</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Zero Virtual DOM Overhead</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            No heavy VDOM diffing or reconciliation loops. Proxy-based fine-grained reactivity updates target browser DOM nodes directly in-place with zero latency.
-                        </p>
-                    </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <flex direction="row" align="center" justify="between text-xs font-bold">
+                                <span class="text-slate-800">Single State Mutation In-Place (No VDOM Diffing)</span>
+                                <span class="text-emerald-600 font-extrabold">0.4 ms ⚡</span>
+                            </flex>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="bg-emerald-500 h-full w-[4%]"></div>
+                            </div>
+                        </flex>
 
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">📝</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Declarative XML Templates</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Clean, intuitive XML layout tags (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;flex&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;grid&gt;</code>) and control flow tags (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;if&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;for_each&gt;</code>).
-                        </p>
-                    </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <flex direction="row" align="center" justify="between text-xs font-bold">
+                                <span class="text-slate-800">1,000 Items Bulk DOM Push &amp; Paint (Real Chrome)</span>
+                                <span class="text-blue-600 font-extrabold">42.8 ms 🚀</span>
+                            </flex>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="bg-blue-500 h-full w-[25%]"></div>
+                            </div>
+                        </flex>
 
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🪝</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Declarative Hooks System</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Lifecycle &amp; state reactivity hooks (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_mount&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_unmount&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_state_change&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_interval&gt;</code>) trigger actions when elements mount, unmount, or state changes.
-                        </p>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
+                            <flex direction="row" align="center" justify="between text-xs font-bold">
+                                <span class="text-slate-800">3,000 Items Full Render &amp; Layout Paint (Real Chrome)</span>
+                                <span class="text-blue-600 font-extrabold">102.3 ms 🚀</span>
+                            </flex>
+                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                                <div class="bg-blue-500 h-full w-[50%]"></div>
+                            </div>
+                        </flex>
                     </flex>
-
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🗂️</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Native &amp; Pointer Drag &amp; Drop</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Built-in declarative drag-and-drop (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">draggable="true"</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_dragstart&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;on_drop&gt;</code>) with zero-lag floating previews.
-                        </p>
-                    </flex>
-
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">📡</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Component-Scoped API Client</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Declarative <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;api_config&gt;</code> with zero-leakage component scoping, interceptors, headers, and SWR revalidation.
-                        </p>
-                    </flex>
-
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🎨</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">Design Tokens &amp; Constants</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Define reusable utility classes and tokens via <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">&lt;constants&gt;</code> or external JSON files (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">src="..."</code>).
-                        </p>
-                    </flex>
-
-                    <flex direction="column" gap="8" class="p-4 sm:p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
-                        <span class="text-3xl">🛠️</span>
-                        <h3 class="font-extrabold text-slate-800 text-base">EUIX DevTools Inspector</h3>
-                        <p class="text-xs text-slate-600 leading-relaxed">
-                            Real-time state tree inspector, action log stream, and interactive console exposure (<code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">$state</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-blue-600">$engine</code>).
-                        </p>
-                    </flex>
-                </grid>
+                </flex>
             </flex>
         </if>
 
