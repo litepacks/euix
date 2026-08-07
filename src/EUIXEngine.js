@@ -592,10 +592,11 @@ class EUIXEngine {
 
     enableDevTools(autoOpen = false) {
         if (typeof window !== "undefined") {
-            import('./EUIXDevTools.js').then(({ EUIXDevTools }) => {
-                const devtools = EUIXDevTools.init(this);
+            const devToolsClass = window.EUIXDevTools || (typeof EUIXDevTools !== "undefined" ? EUIXDevTools : null);
+            if (devToolsClass && typeof devToolsClass.init === "function") {
+                const devtools = devToolsClass.init(this);
                 if (devtools && autoOpen) devtools.toggle(true);
-            }).catch(() => {});
+            }
         }
         return this;
     }

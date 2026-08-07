@@ -5,6 +5,16 @@
   "type": "module",
   "main": "dist/EUIXEngine.umd.js",
   "module": "dist/EUIXEngine.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/EUIXEngine.es.js",
+      "require": "./dist/EUIXEngine.umd.js"
+    },
+    "./devtools": {
+      "import": "./dist/EUIXDevTools.es.js",
+      "require": "./dist/EUIXDevTools.umd.js"
+    }
+  },
   "files": [
     "dist",
     "src",

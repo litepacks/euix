@@ -90,12 +90,16 @@
 </html>
 ```
 
-### 2. Programmatic JavaScript API:
+### 2. Programmatic JavaScript API & NPM Submodules:
 ```javascript
-import EUIXEngine from 'euixjs';
+import { EUIXEngine } from 'euixjs';
+import { EUIXDevTools } from 'euixjs/devtools'; // Optional Standalone DevTools Plugin
 
 // Mount EUIX XML spec directly to a target container
 const engine = EUIXEngine.mount(xmlString, '#app');
+
+// Programmatically attach DevTools Inspector in development
+EUIXDevTools.init(engine);
 
 // Programmatically inspect or mutate reactive state
 console.log(engine.getState('counter'));
@@ -109,39 +113,13 @@ await engine.revalidateApi('data.user_list');
 
 ## 📦 Bundle Sizes & Optimization
 
-Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EUIX Engine delivers an extremely small footprint:
+Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EUIX Engine core has been completely decoupled from DevTools, delivering an ultra-small footprint:
 
 | Dist File | Format / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **84.3 KB** | **23.4 KB** |
-| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **133.4 KB** | **27.6 KB** |
+| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **72.8 KB** | **20.3 KB** |
+| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **139.7 KB** | **28.4 KB** |
 | **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **15.9 KB** | **4.4 KB** |
-
----
-
-## ⚡ Performance Benchmark Matrix (`js-framework-benchmark`)
-
-EUIX Engine bypasses Virtual DOM overhead by manipulating native browser DOM elements directly. Proxy-based **Fine-Grained Reactivity** ensures that state changes update only the exact target DOM node in-place.
-
-| Benchmark Operation | Scale | Duration (ms) | Description |
-| :--- | :--- | :--- | :--- |
-| **Initial XML Mount** | Full App Spec | **< 2.5 ms** | XML parsing, Data Model & DOM tree creation |
-| **Clear All Rows** | **1,000 Items** | **5.3 ms** | Batch unmount and GC DOM removal |
-| **Single State Mutation** | 1 Item Field | **0.4 ms** | Direct fine-grained node mutation |
-| **Interaction Latency (INP)** | Button Click -> DOM | **4.0 ms** | Click event to DOM paint (<16ms 60fps budget) |
-| **Partial Row Update** | 1,000 Items (10th row) | **268 ms** | Selective re-render of matching items |
-| **Swap 2 Rows** | 1,000 Items | **833 ms** | Re-ordering 2 items in 1,000 item list |
-| **Bulk Item Push (`PUSH`)** | **1,000 Items** | **~ 890 ms** | In-place DOM node creation (batch render) |
-| **Append 1,000 Rows** | 1,000 -> 2,000 Items | **1,603 ms** | Append batch rendering |
-
-### 🌐 Real Chrome Browser Benchmark (Playwright E2E with V8 JIT & GPU Painting)
-
-| Benchmark Operation | Scale | Real Chrome Duration | V8 JIT & GPU Paint Performance |
-| :--- | :--- | :--- | :--- |
-| **1,000 Rows Render & Paint** | **1,000 Items** | **42.8 ms** | 🔥 Ultra-fast V8 JIT + Native DOM creation |
-| **3,000 Rows Render & Paint** | **3,000 Items** | **102.3 ms** | 🚀 Full Layout & Rasterization in ~100ms |
-| **Clear All 1,000 Rows** | **1,000 Items** | **20.5 ms** | ⚡ Instant GC Memory Reclamation |
-| **Single State Mutation** | 1 Field | **7.8 ms** | ⚡ In-place Fine-Grained Node Update |
 
 ---
 
