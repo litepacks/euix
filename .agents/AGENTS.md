@@ -30,8 +30,8 @@ EUIX Engine is built on 5 fundamental architectural pillars:
 ```
 
 1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes.
-2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`). Text nodes and attributes bound via `{expression}` or `bind="..."` update reactively when targeted keys change.
-3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively without imperative DOM event listeners.
+2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`). State declarations MUST use `id="..."`.
+3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) without imperative DOM event listeners.
 4. **SWR Data Fetching Engine (`<api_config>` & `<api_endpoint>`)**: Built-in Stale-While-Revalidate HTTP engine handling async REST calls, automatic focus/online revalidation, and component-scoped request interceptors.
 5. **Component Registry & Async Loader**: Loads modular XML components dynamically via `fetch()`, executing scoped state models and prop passing.
 
@@ -76,58 +76,79 @@ When serving files locally or from a relative web server path, use `./` or `../`
 
 ---
 
-## 📜 2. XML UI Specification Syntax
+## 📜 3. XML UI Specification Syntax
 
 Every UI is defined using a declarative `<uid_spec>` XML template:
 
 ```xml
 <uid_spec>
-  <!-- 1. State Data Model -->
+  <!-- 1. State Data Model (Always use id="..." for state declarations) -->
   <data_model>
-    <state key="counter" value="0" type="number" />
-    <state key="user_name" value="Guest" type="string" />
-    <state key="items" value='["Apple", "Banana"]' type="array" />
+    <state id="counter">0</state>
+    <state id="user_name">Guest</state>
+    <state id="items" type="array"></state>
   </data_model>
 
   <!-- 2. Declarative Layout & Bindings -->
-  <container class="card">
-    <h1>Hello, {user_name}!</h1>
-    <p>Counter value: <strong>{counter}</strong></p>
+  <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl">
+    <h1>Hello, {data.user_name}!</h1>
+    <p>Counter value: <strong>{data.counter}</strong></p>
 
     <!-- State Mutation Actions -->
-    <button on_click="SET_STATE" target="counter" value="{counter + 1}">+1</button>
-    <button on_click="SET_STATE" target="counter" value="{counter - 1}">-1</button>
+    <flex direction="row" gap="8">
+      <button class="btn">
+        <on_click action="SET_STATE">
+          <path>data.counter</path>
+          <value>{data.counter} + 1</value>
+        </on_click>
+        +1
+      </button>
+      <button class="btn">
+        <on_click action="SET_STATE">
+          <path>data.counter</path>
+          <value>{data.counter} - 1</value>
+        </on_click>
+        -1
+      </button>
+    </flex>
 
     <!-- Form Inputs with Two-Way Binding -->
-    <input bind="user_name" placeholder="Enter your name" />
+    <input bind="user_name" placeholder="Enter your name" class="input" />
 
     <!-- Array Rendering & State Mutations -->
-    <list>
-      <for_each items="items" var="item" index="i">
-        <item_row>
-          <span>{i + 1}. {item}</span>
-          <button on_click="MUTATE_STATE" action="REMOVE" target="items" index="{i}">Delete</button>
-        </item_row>
+    <flex direction="column" gap="8">
+      <for_each items="{data.items}" var="item">
+        <flex direction="row" align="center" justify="between" class="item-row">
+          <span>{item.title}</span>
+          <button class="btn-danger">
+            <on_click action="MUTATE_STATE">
+              <path>items</path>
+              <operation>REMOVE</operation>
+              <where field="id" equals="{item.id}" />
+            </on_click>
+            Delete
+          </button>
+        </flex>
       </for_each>
-    </list>
-  </container>
+    </flex>
+  </flex>
 </uid_spec>
 ```
 
 ### Supported State Data Types (`type="..."`)
-EUIX Engine supports 5 core state data types inside `<data_model>`:
+EUIX Engine supports core state data types inside `<data_model>` using `id="..."`:
 
 | Data Type (`type`) | Example Specification | Parsing Behavior & Supported Actions |
 | :--- | :--- | :--- |
-| **`string`** | `<state key="user_name" value="Guest" type="string" />` | Default type. String interpolation `{user_name}`, text bindings `<input bind="user_name">`. |
-| **`number`** | `<state key="counter" value="0" type="number" />` | Parsed into JS numeric value. Evaluates math expressions (`{counter + 1}`). |
-| **`boolean`** | `<state key="is_active" value="true" type="boolean" />` | Parsed into JS boolean (`true`/`false`). Toggleable via `action="TOGGLE_STATE"`. |
-| **`array`** | `<state key="items" value='["Apple", "Banana"]' type="array" />` | Parsed into JS Array. Loopable via `<for_each>`, supports `MUTATE_STATE` (`PUSH`, `REMOVE`, `SWAP`, `CLEAR`). |
-| **`object`** | `<state key="user" value='{"name": "Ahmet", "role": "Admin"}' type="object" />` | Parsed into JS Object. Property access via dot notation (`{user.name}`, `{user.role}`). |
+| **`string`** | `<state id="user_name">Guest</state>` | Default type. String interpolation `{data.user_name}`, text bindings `<input bind="user_name">`. |
+| **`number`** | `<state id="counter">0</state>` | Parsed into JS numeric value. Evaluates math expressions (`{data.counter + 1}`). |
+| **`boolean`** | `<state id="is_active">true</state>` | Parsed into JS boolean (`true`/`false`). Toggleable via `<on_click action="TOGGLE_STATE">`. |
+| **`array`** | `<state id="items" type="array"></state>` | Parsed into JS Array. Loopable via `<for_each items="{data.items}">`, supports `MUTATE_STATE` (`PUSH`, `REMOVE`, `SWAP`, `CLEAR`). |
+| **`object`** | `<state id="user" type="object">{"name": "Ahmet"}</state>` | Parsed into JS Object. Property access via dot notation (`{data.user.name}`). |
 
 ---
 
-## 📡 3. REST API & SWR Data Fetching
+## 📡 4. REST API & SWR Data Fetching
 
 Use `<api_config>` to manage HTTP endpoints with reactive binding:
 
@@ -146,9 +167,12 @@ Use `<api_config>` to manage HTTP endpoints with reactive binding:
   />
 
   <container>
-    <button on_click="REVALIDATE_API" tag="get_posts">Refresh Posts</button>
+    <button>
+      <on_click action="REVALIDATE_API" tag="get_posts" />
+      Refresh Posts
+    </button>
 
-    <for_each items="posts_list" var="post">
+    <for_each items="{data.posts_list}" var="post">
       <card>
         <h3>{post.title}</h3>
         <p>{post.body}</p>
@@ -160,7 +184,7 @@ Use `<api_config>` to manage HTTP endpoints with reactive binding:
 
 ---
 
-## 🧩 4. Components & Dynamic Loading
+## 🧩 5. Components & Dynamic Loading
 
 Modular XML components can be loaded asynchronously:
 
@@ -177,7 +201,7 @@ Modular XML components can be loaded asynchronously:
 
 ---
 
-## 🛠️ 5. State API (Programmatic Control)
+## 🛠️ 6. State API (Programmatic Control)
 
 ```js
 // Read state
@@ -187,7 +211,7 @@ const currentCount = engine.getState('counter');
 engine.setState('counter', 42);
 
 // Mutate array state
-engine.mutateState('items', 'PUSH', 'Orange');
+engine.mutateState('items', 'PUSH', { id: Date.now(), title: 'New Item' });
 
 // Programmatically revalidate SWR API endpoints
 engine.revalidateApi('get_posts');
@@ -195,7 +219,7 @@ engine.revalidateApi('get_posts');
 
 ---
 
-## 🪝 6. Lifecycle Hooks & Event Interceptors
+## 🪝 7. Lifecycle Hooks & Event Interceptors
 
 ### XML Lifecycle Hooks
 EUIX Engine provides declarative lifecycle hooks embedded directly inside XML specifications:
@@ -203,7 +227,10 @@ EUIX Engine provides declarative lifecycle hooks embedded directly inside XML sp
 ```xml
 <uid_spec>
   <!-- Mount Hook: Runs when component/view is mounted -->
-  <on_mount action="SET_STATE" target="is_loaded" value="true" />
+  <on_mount action="SET_STATE">
+    <path>data.is_loaded</path>
+    <value>true</value>
+  </on_mount>
   
   <!-- Inline Script Mount Hook -->
   <on_mount action="RUN_SCRIPT">
@@ -216,7 +243,10 @@ EUIX Engine provides declarative lifecycle hooks embedded directly inside XML sp
   </on_state_change>
 
   <!-- Timer Hook: Runs every 1000ms -->
-  <on_interval ms="1000" action="SET_STATE" target="seconds" value="{seconds + 1}" />
+  <on_interval ms="1000" action="SET_STATE">
+    <path>data.seconds</path>
+    <value>{data.seconds} + 1</value>
+  </on_interval>
 
   <!-- Unmount Hook: Runs when DOM element/component is removed -->
   <on_unmount action="RUN_SCRIPT">
@@ -226,37 +256,15 @@ EUIX Engine provides declarative lifecycle hooks embedded directly inside XML sp
 ```
 
 ### Script Execution Context (`action="RUN_SCRIPT"`)
-Inside `<on_mount>`, `<on_state_change>`, or `<button on_click="RUN_SCRIPT">`, the following sandbox context variables are injected automatically:
+Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, the following sandbox context variables are injected automatically:
 - `$el`: Current DOM element reference
 - `$data`: Reactive state data object (read/write access)
 - `$engine`: `EUIXEngine` instance
 - `$evt`: Native browser DOM Event object
 
-### Programmatic API Interceptors & Error Hooks
-```js
-// Request Interceptor (Add Auth Headers dynamically)
-engine.api.onRequest((config) => {
-  config.headers['Authorization'] = 'Bearer ' + localStorage.getItem('token');
-  return config;
-});
-
-// Response Interceptor (Global status handling)
-engine.api.onResponse((response) => {
-  if (response.status === 401) {
-    engine.setState('user_name', 'Guest');
-  }
-  return response;
-});
-
-// Global Error Hook
-engine.onError((err) => {
-  console.error('[EUIX Engine Error]:', err.message);
-});
-```
-
 ---
 
-## 🏷️ 7. Declarative XML Attributes & Directives Reference
+## 🏷️ 8. Declarative XML Attributes & Directives Reference
 
 ### 1. Two-Way Data Binding (`bind="..."`)
 Binds input controls reactively to a state variable key:
@@ -265,139 +273,49 @@ Binds input controls reactively to a state variable key:
 <input bind="user_name" placeholder="Enter name" />
 <textarea bind="bio"></textarea>
 
-<!-- Checkbox (Boolean) -->
+<!-- Checkbox (Boolean - Use bind for void input elements) -->
 <input type="checkbox" bind="is_terms_accepted" />
+<input type="checkbox" bind="task.done" />
 
 <!-- Select Options -->
 <select bind="selected_role">
   <option value="admin">Admin</option>
   <option value="user">User</option>
 </select>
-
-<!-- Radio Buttons -->
-<input type="radio" bind="gender" value="male" /> Male
-<input type="radio" bind="gender" value="female" /> Female
 ```
 
-### 2. Expression Interpolation (`{expression}`)
-Attributes accept dynamic expressions and ternary logic:
+### 2. Expression Interpolation (`{expression}`) & Property Access
+Attributes and text nodes accept dynamic expressions. For property access (e.g. array length or object properties), prefix with **`data.`**:
 ```xml
-<!-- Class & Style -->
-<div class="card {is_active ? 'border-blue-500' : 'border-gray-200'}"></div>
-<span style="color: {badge_color}; opacity: {is_loading ? '0.5' : '1'};">Status</span>
+<!-- Property & Length Access -->
+<p>Total items: {data.items.length}</p>
+<span>User role: {data.user.role}</span>
 
-<!-- Dynamic Standard Attributes -->
-<button disabled="{is_submitting || !user_name}">Submit</button>
-<img src="{avatar_url}" alt="{user_name}'s Profile" />
-<a href="/user/{user_id}">View Profile</a>
+<!-- Dynamic Class & Style -->
+<div class="card {data.is_active ? 'border-blue-500' : 'border-gray-200'}"></div>
+<span style="color: {data.badge_color}; text-decoration: {task.done ? 'line-through' : 'none'};">Status</span>
 ```
 
-### 3. Conditional Directives (`if="..."` & `show="..."`)
+### 3. Layout Tags (`<flex>`, `<container>`, `<collapse>`, `<dialog>`)
+EUIX Engine includes built-in reactive layout components:
 ```xml
-<!-- 'if': Element is created/destroyed in DOM based on condition -->
-<container if="{user_role === 'admin'}">
-  <admin_panel>Admin Controls</admin_panel>
-</container>
+<!-- Flex Layout Container -->
+<flex direction="column" gap="16" align="center" justify="between" class="w-full">
+  <flex direction="row" gap="8">
+    <span>Flex Child 1</span>
+    <span>Flex Child 2</span>
+  </flex>
+</flex>
 
-<!-- 'show': Toggles CSS display (none vs original) -->
-<spinner show="{is_loading}">Loading...</spinner>
-```
+<!-- Accordion / Collapse Component -->
+<collapse bind="data.section_open" title="Section Header" class="border rounded-xl">
+  <p>Collapsible Body Content</p>
+</collapse>
 
-### 4. Event Action Attributes (`on_<event>="..."`)
-Supported events: `on_click`, `on_input`, `on_change`, `on_submit`, `on_mouseenter`, `on_mouseleave`, `on_dragstart`, `on_drop`.
-
-```xml
-<!-- SET_STATE: Sets target key to calculated value -->
-<button on_click="SET_STATE" target="counter" value="{counter + 1}">+1</button>
-
-<!-- TOGGLE_STATE: Inverts boolean state key -->
-<button on_click="TOGGLE_STATE" target="is_modal_open">Toggle Modal</button>
-
-<!-- MUTATE_STATE: Array operations (PUSH, REMOVE, UPDATE, SWAP, MOVE_UP, MOVE_DOWN, CLEAR) -->
-<button on_click="MUTATE_STATE" action="PUSH" target="items" value="New Item">Add</button>
-<button on_click="MUTATE_STATE" action="REMOVE" target="items" index="{i}">Delete</button>
-
-<!-- REVALIDATE_API: Refetches SWR endpoint by tag or id -->
-<button on_click="REVALIDATE_API" tag="get_users">Refresh List</button>
-
-<!-- RUN_SCRIPT: Inlines custom JS sandbox logic -->
-<button on_click="RUN_SCRIPT">
-  alert("Current counter is: " + $data.counter);
-</button>
-```
-
-### 5. Component Props & Configuration Attributes
-```xml
-<!-- External JSON State Hydration -->
-<data_model src="./initial_state.json" />
-<constants src="./design_tokens.json" />
-
-<!-- Component Props Passing -->
-<component name="user-card" src="./UserCard.xml" user_id="{id}" role="Admin" />
-```
-
----
-
-## 🎨 8. Styling & CSS Class Best Practices
-
-### 1. Static CSS Classes & Utility Frameworks
-EUIX Engine supports standard CSS utility classes (Tailwind CSS, Bootstrap, or custom CSS):
-```xml
-<container class="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
-  <h2 class="text-xl font-bold text-slate-800 mb-2">Card Title</h2>
-</container>
-```
-
-### 2. Dynamic & Reactive CSS Classes
-Combine static classes with reactive expression interpolations `{expression}`:
-```xml
-<!-- Toggle class based on boolean state -->
-<button class="px-4 py-2 rounded-lg transition-colors {is_active ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}">
-  Toggle State
-</button>
-
-<!-- Tab switching dynamic border and font weight -->
-<button class="py-2 px-4 {active_tab === 'docs' ? 'border-b-2 border-blue-500 font-bold text-blue-600' : 'text-gray-500'}">
-  Documentation
-</button>
-```
-
-### 3. Dynamic Inline Styles
-Attributes support dynamic HSL colors, pixel bounds, and conditional display properties:
-```xml
-<!-- Reactive style properties -->
-<div style="background-color: {theme_color}; opacity: {is_loading ? '0.5' : '1'};"></div>
-
-<!-- Computed position or width -->
-<div style="width: {progress_percent}%; transition: width 0.3s ease;"></div>
-```
-
-### 4. Design Tokens via `<constants>`
-Define reusable class constants or design tokens at template root:
-```xml
-<uid_spec>
-  <constants>
-    <const key="BTN_PRIMARY" value="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm" />
-    <const key="CARD_BOX" value="bg-white p-5 rounded-2xl border border-slate-100 shadow-md" />
-  </constants>
-
-  <container class="{const.CARD_BOX}">
-    <button class="{const.BTN_PRIMARY}">Click Me</button>
-  </container>
-</uid_spec>
-```
-
-### 5. External Stylesheet Injection (`<use_style>`)
-Declaratively load external CSS stylesheets directly within XML templates:
-```xml
-<uid_spec>
-  <use_style href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-  <use_style href="./css/custom_theme.css" />
-
-  <container class="animate__animated animate__fadeIn">
-    <p>Animated Container</p>
-  </container>
-</uid_spec>
+<!-- Modal Dialog -->
+<dialog show="{data.is_modal_open}" title="Confirm Action">
+  <p>Modal Body Text</p>
+</dialog>
 ```
 
 ---
@@ -405,18 +323,11 @@ Declaratively load external CSS stylesheets directly within XML templates:
 ## 🛡️ 9. Security Best Practices & XSS Guards
 
 ### 1. API URL Scheme Guarding
-EUIX Engine automatically blocks dangerous URI schemes (such as `javascript:`, `vbscript:`, and `data:`) in XHR endpoints and dynamic links to prevent XSS (Cross-Site Scripting) attacks:
-```xml
-<!-- Safe REST Endpoint -->
-<api_endpoint id="get_data" url="/api/v1/data" method="GET" />
-
-<!-- Dangerous schemes like url="javascript:alert(1)" are blocked automatically with error events -->
-```
+EUIX Engine automatically blocks dangerous URI schemes (such as `javascript:`, `vbscript:`, and `data:`) in XHR endpoints and dynamic links to prevent XSS (Cross-Site Scripting) attacks.
 
 ### 2. Secure Token Injection via Request Interceptors
 Never hardcode sensitive Auth tokens or credentials inside XML specifications. Use programmatic request interceptors:
 ```js
-// Inject Bearer tokens dynamically from secure storage
 engine.api.onRequest((config) => {
   const token = sessionStorage.getItem('auth_token');
   if (token) {
@@ -427,31 +338,21 @@ engine.api.onRequest((config) => {
 ```
 
 ### 3. Sandboxed Script Execution (`action="RUN_SCRIPT"`)
-Inline scripts inside `<on_mount>` or `action="RUN_SCRIPT"` execute inside a isolated `new Function()` closure rather than global `eval()`. Only `$el`, `$data`, `$engine`, and `$evt` context variables are injected.
-
-### 4. Infinite Loop & Crash Protection
-- **Reactivity Cascade Limit**: Maximum 50 nested state updates allowed before an infinite reactivity error is raised.
-- **Component Recursion Limit**: Maximum 20 nested component recursion depth allowed to prevent call stack overflows.
-
-### 5. Input & Text Node Sanitization
-State interpolation `{user_input}` automatically converts values to safe text node content. Avoid injecting unescaped raw HTML strings directly into attributes or DOM nodes.
+Inline scripts inside `<on_mount>` or `action="RUN_SCRIPT"` execute inside an isolated `new Function()` closure rather than global `eval()`. Only `$el`, `$data`, `$engine`, and `$evt` context variables are injected.
 
 ---
 
 ## 👪 10. Parent-Child Component Architecture & Slot Projection
 
 ### 1. Prop Passing (Parent -> Child)
-Parent components pass data to children via XML attributes:
-
 ```xml
 <!-- Parent Specification -->
 <uid_spec>
   <data_model>
-    <state key="active_user" value="Ahmet" type="string" />
+    <state id="active_user">Ahmet</state>
   </data_model>
 
-  <!-- Pass 'active_user' state as 'user_name' prop to child -->
-  <component name="user-badge" src="./components/UserBadge.xml" user_name="{active_user}" role="Admin" />
+  <component name="user-badge" src="./components/UserBadge.xml" user_name="{data.active_user}" role="Admin" />
 </uid_spec>
 ```
 
@@ -459,26 +360,29 @@ Parent components pass data to children via XML attributes:
 <!-- Child Component Specification (UserBadge.xml) -->
 <component_def name="user-badge">
   <data_model>
-    <!-- Default fallback props -->
-    <state key="user_name" value="Guest" type="string" />
-    <state key="role" value="User" type="string" />
+    <state id="user_name">Guest</state>
+    <state id="role">User</state>
   </data_model>
 
   <div class="badge">
-    <span>{user_name}</span>
-    <small>({role})</small>
+    <span>{data.user_name}</span>
+    <small>({data.role})</small>
   </div>
 </component_def>
 ```
 
 ### 2. Children / Slot Content Projection (`<children />` or `<slot />`)
-Parents can pass arbitrary XML children nodes inside component tags:
-
 ```xml
 <!-- Parent passing nested content -->
 <component name="card-modal" src="./Modal.xml" title="Confirm Action">
   <p>Are you sure you want to delete this record?</p>
-  <button on_click="SET_STATE" target="is_confirmed" value="true">Confirm</button>
+  <button>
+    <on_click action="SET_STATE">
+      <path>data.is_confirmed</path>
+      <value>true</value>
+    </on_click>
+    Confirm
+  </button>
 </component>
 ```
 
@@ -486,33 +390,12 @@ Parents can pass arbitrary XML children nodes inside component tags:
 <!-- Child Component Projection (Modal.xml) -->
 <component_def name="card-modal">
   <div class="modal-box">
-    <h2>{title}</h2>
-
+    <h2>{data.title}</h2>
     <!-- Projected Parent Content rendered here -->
     <children />
   </div>
 </component_def>
 ```
-
-### 3. State Scoping & Isolation
-- **Scoped Data Store**: Each child component instance manages its own isolated state store.
-- **Parent State Fallback**: If a state key is not found in the child scope, expression resolution falls back to the parent state store.
-- **Zero Pollution**: Child local state mutations do not pollute the parent state unless explicitly bound to a shared target key.
-
-### 4. Architectural Isolation Mechanisms
-1. **Component State Store Isolation**: Each mounted component creates a standalone, encapsulated `<data_model>` instance. Parallel sibling components (e.g. 5 `<user-card>` elements) maintain isolated counters or inputs without cross-contamination.
-2. **API Client Scoping (`<api_config>`)**: API headers, base URL prefixes, and request interceptors defined within a component `<api_config>` are strictly scoped to that component tree and do not leak into global or sibling API configurations.
-3. **Sandbox Script Execution (`action="RUN_SCRIPT"`)**: Custom scripts execute inside isolated `new Function('$el', '$data', '$engine', '$evt')` scopes, preventing global window scope leakage or closure context pollution.
-4. **DevTools & Multi-Engine Instance Isolation**: Multiple active `EUIXEngine` instances on the same page are tracked independently by DevTools without shared state collision.
-
-### 5. Component Isolation & Scoping Matrix
-
-| Tag / Feature | Scope Level | Leakage Risk | Scoping Behavior & Precedence |
-| :--- | :--- | :--- | :--- |
-| **`<api_config>`** | Component & Global | 🟢 **Zero Leakage** | Component-level `<api_config>` overrides global config for all XHR calls within that component tree. |
-| **`<constants>` / `<vars>`** | Component & Global | 🟢 **Zero Leakage** | Component design tokens inherit from parent components and override parent/global constants locally. |
-| **`<on_mount>`, `<on_interval>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
-| **`<state>` / `<data_model>`** | Scoped Reactive Store | 🟢 **Zero Leakage** | States reside in isolated component stores. Component props (`{user_name}`) allow passing parent values. |
 
 ---
 
@@ -564,35 +447,34 @@ Parents can pass arbitrary XML children nodes inside component tags:
 
 ✅ **RIGHT**: Use `<on_click action="MUTATE_STATE">` with `<where field="id" equals="{task.id}" />`.
 ```xml
-<for_each items="{tasks}" var="task">
-  <item_row>
+<for_each items="{data.tasks}" var="task">
+  <flex direction="row" align="center" justify="between">
     <span>{task.title}</span>
     <button class="ai-btn-secondary">
       <on_click action="MUTATE_STATE">
         <path>tasks</path>
         <operation>REMOVE</operation>
-        <where field="field:id" equals="{task.id}" />
+        <where field="id" equals="{task.id}" />
       </on_click>
       Delete
     </button>
-  </item_row>
+  </flex>
 </for_each>
 ```
 
-### 4. Checkbox & Nested Object Property Toggling
-❌ **WRONG**: Expecting automatic method invocation on checkbox click.
+### 4. Checkbox & Void Input Binding
+❌ **WRONG**: Putting child elements inside void `<input>` tags.
 ```xml
-<input type="checkbox" checked="{task.done}" on_click="toggleTask" />
+<input type="checkbox" checked="{task.done}">
+  <on_click action="RUN_SCRIPT">
+    $data.tasks[{i}].done = !$data.tasks[{i}].done;
+  </on_click>
+</input>
 ```
 
-✅ **RIGHT**: Toggle nested item property using `<on_click action="RUN_SCRIPT">`.
+✅ **RIGHT**: Use two-way data binding `bind="task.done"` on `<input type="checkbox" />`.
 ```xml
-<for_each items="{tasks}" var="task">
-  <input type="checkbox" checked="{task.done}">
-    <on_click action="RUN_SCRIPT">
-      const item = $data.tasks.find(t => String(t.id) === "{task.id}");
-      if (item) item.done = !item.done;
-    </on_click>
-  </input>
+<for_each items="{data.tasks}" var="task">
+  <input type="checkbox" bind="task.done" />
 </for_each>
 ```
