@@ -728,6 +728,7 @@ class EUIXEngine {
         if (typeof document === "undefined") return;
         const scripts = document.querySelectorAll('script[type="application/euix"], script[type="text/euix"], script[data-euix-app], euix-app');
         scripts.forEach(script => {
+            if (script.closest && script.closest('code, pre, [data-euix-example], .no-auto-init')) return;
             if (script.dataset?.euixAutoInitialized) return;
             if (script.dataset) script.dataset.euixAutoInitialized = "true";
             const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
