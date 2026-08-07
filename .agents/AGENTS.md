@@ -513,3 +513,86 @@ Parents can pass arbitrary XML children nodes inside component tags:
 | **`<constants>` / `<vars>`** | Component & Global | 🟢 **Zero Leakage** | Component design tokens inherit from parent components and override parent/global constants locally. |
 | **`<on_mount>`, `<on_interval>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
 | **`<state>` / `<data_model>`** | Scoped Reactive Store | 🟢 **Zero Leakage** | States reside in isolated component stores. Component props (`{user_name}`) allow passing parent values. |
+
+---
+
+## ⚠️ 11. Common Pitfalls & Anti-Patterns
+
+### 1. Invalid `on_<event>` Action Names & Syntax
+❌ **WRONG**: Writing custom JS function names or using `key="..."` instead of `id="..."` in `<state>`.
+```xml
+<!-- INVALID: 'key' instead of 'id', 'addTask' is not a recognized EUIX Engine action -->
+<state key="tasks" value="[]" type="array" />
+<button on_click="addTask">Add Task</button>
+```
+
+✅ **RIGHT**: Use `id="..."` for `<state>` and child `<on_click action="...">` elements.
+```xml
+<state id="newTask"></state>
+<state id="tasks" type="array"></state>
+
+<!-- Child <on_click action="RUN_SCRIPT"> tag -->
+<button class="ai-btn">
+  <on_click action="RUN_SCRIPT">
+    if ($data.newTask &amp;&amp; $data.newTask.trim()) {
+      $data.tasks.push({ id: Date.now(), title: $data.newTask.trim(), done: false });
+      $data.newTask = "";
+    }
+  </on_click>
+  Add Task
+</button>
+```
+
+### 2. Correct State Declaration in `<data_model>`
+❌ **WRONG**: Using `key="..."` attribute in `<state>`.
+```xml
+<state key="newTask" value="" type="string" />
+```
+
+✅ **RIGHT**: Use `id="..."` attribute in `<state>`.
+```xml
+<state id="newTask"></state>
+<state id="tasks" type="array"></state>
+<state id="counter">0</state>
+```
+
+### 3. List Item Deletion in `<for_each>`
+❌ **WRONG**: Passing undefined functions or relying on attribute actions without child tags.
+```xml
+<button on_click="deleteTask" id="{task.id}">Delete</button>
+```
+
+✅ **RIGHT**: Use `<on_click action="MUTATE_STATE">` with `<where field="id" equals="{task.id}" />`.
+```xml
+<for_each items="{tasks}" var="task">
+  <item_row>
+    <span>{task.title}</span>
+    <button class="ai-btn-secondary">
+      <on_click action="MUTATE_STATE">
+        <path>tasks</path>
+        <operation>REMOVE</operation>
+        <where field="field:id" equals="{task.id}" />
+      </on_click>
+      Delete
+    </button>
+  </item_row>
+</for_each>
+```
+
+### 4. Checkbox & Nested Object Property Toggling
+❌ **WRONG**: Expecting automatic method invocation on checkbox click.
+```xml
+<input type="checkbox" checked="{task.done}" on_click="toggleTask" />
+```
+
+✅ **RIGHT**: Toggle nested item property using `<on_click action="RUN_SCRIPT">`.
+```xml
+<for_each items="{tasks}" var="task">
+  <input type="checkbox" checked="{task.done}">
+    <on_click action="RUN_SCRIPT">
+      const item = $data.tasks.find(t => String(t.id) === "{task.id}");
+      if (item) item.done = !item.done;
+    </on_click>
+  </input>
+</for_each>
+```
