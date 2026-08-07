@@ -18,6 +18,8 @@
 - **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
 - **🤖 AI-Agent Friendly:** Structured XML specs allow LLMs and AI coding agents to deterministically parse, generate, and refactor UI code with zero syntactic ambiguity.
 
+> 📖 **Agent & Developer Architecture Guide**: For full architecture, state reactivity, SWR REST API client, scoping matrix, and security guidelines, see [.agents/AGENTS.md](.agents/AGENTS.md).
+
 ---
 
 ## 🚀 Usage Guide
