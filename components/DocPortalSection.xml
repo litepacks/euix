@@ -489,24 +489,24 @@
 &lt;body class="bg-slate-100 p-8 flex justify-center"&gt;
   &lt;div id="app" class="w-full max-w-md"&gt;&lt;/div&gt;
 
-  &amp;lt;script type="application/euix" target="#app"&amp;gt;
-    &amp;lt;uid_spec&amp;gt;
-      &amp;lt;data_model&amp;gt;
-        &amp;lt;state id="message"&amp;gt;Hello EUIX Engine!&amp;lt;/state&amp;gt;
-      &amp;lt;/data_model&amp;gt;
+  &lt;script type="application/euix" target="#app"&gt;
+    &lt;uid_spec&gt;
+      &lt;data_model&gt;
+        &lt;state id="message"&gt;Hello EUIX Engine!&lt;/state&gt;
+      &lt;/data_model&gt;
 
-      &amp;lt;flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl shadow-xl"&amp;gt;
-        &amp;lt;h1 class="text-xl font-bold text-white"&amp;gt;&#123;data.message&#125;&amp;lt;/h1&amp;gt;
-        &amp;lt;button type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer"&amp;gt;
-          &amp;lt;on_click action="SET_STATE"&amp;gt;
-            &amp;lt;path&amp;gt;data.message&amp;lt;/path&amp;gt;
-            &amp;lt;value&amp;gt;🚀 Reactively Updated!&amp;lt;/value&amp;gt;
-          &amp;lt;/on_click&amp;gt;
+      &lt;flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl shadow-xl"&gt;
+        &lt;h1 class="text-xl font-bold text-white"&gt;&#123;data.message&#125;&lt;/h1&gt;
+        &lt;button type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer"&gt;
+          &lt;on_click action="SET_STATE"&gt;
+            &lt;path&gt;data.message&lt;/path&gt;
+            &lt;value&gt;🚀 Reactively Updated!&lt;/value&gt;
+          &lt;/on_click&gt;
           Click Me
-        &amp;lt;/button&amp;gt;
-      &amp;lt;/flex&amp;gt;
-    &amp;lt;/uid_spec&amp;gt;
-  &amp;lt;/script&amp;gt;
+        &lt;/button&gt;
+      &lt;/flex&gt;
+    &lt;/uid_spec&gt;
+  &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;</code></pre>
                     </flex>
