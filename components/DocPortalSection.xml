@@ -7,6 +7,7 @@
         <state id="active_tab" type="string">overview</state>
         <state id="active_doc_topic" type="string">getting_started</state>
         <state id="counter_value" type="string">0</state>
+        <state id="current_time" type="string">--:--:--</state>
         <state id="copied_status" type="string">Copy Spec</state>
         <state id="npm_copy_status" type="string">Copy npm i</state>
         <state id="playground_code" type="string"><![CDATA[<uid_spec>
@@ -100,7 +101,7 @@
                 <flex direction="column" gap="4" class="w-full">
                     <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Install via NPM</span>
                     <flex direction="row" align="center" gap="8" class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 flex-wrap justify-between w-full">
-                        <span>npm install euixjs</span>
+                        <span>npm install euixjs@latest</span>
                         <button type="button" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1.5">
                             <on_click action="RUN_SCRIPT">
                                 if (navigator.clipboard) {
@@ -142,43 +143,75 @@
                         <flex direction="column" gap="8">
                             <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
                                 <span class="text-xs font-black uppercase tracking-widest text-emerald-400">⚡ Live Interactive Component</span>
-                                <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] rounded-full border border-emerald-500/30">100% Reactive</span>
+                                <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] rounded-full border border-emerald-500/30">100% Fine-Grained</span>
                             </flex>
                             <h3 class="text-lg sm:text-xl font-black text-white">Live Reactive Component Demo</h3>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Experience fine-grained reactive state updates in action. Modify the counter state directly via the input or increment button and watch the DOM sync instantaneously.
+                                Experience fine-grained reactive state, 2-way input binding, conditional rendering (<code class="text-emerald-400">&lt;if&gt;</code>), and declarative state mutators in real-time with zero Virtual DOM overhead.
                             </p>
                         </flex>
 
                         <!-- Live Mini App Box -->
                         <flex direction="column" gap="12" class="p-4 sm:p-5 bg-slate-950 rounded-xl border border-slate-800 min-w-0 max-w-full">
-                            <flex direction="column" gap="10" class="w-full">
-                                <flex direction="row" align="center" justify="between" class="w-full">
-                                    <span class="text-xs font-bold text-slate-400">Live Component State:</span>
-                                    <span class="text-base font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20">{data.counter_value}</span>
-                                </flex>
+                            <on_mount action="RUN_SCRIPT">
+                                $engine.setState('current_time', new Date().toLocaleTimeString());
+                            </on_mount>
+                            <on_interval ms="1000" action="RUN_SCRIPT">
+                                $engine.setState('current_time', new Date().toLocaleTimeString());
+                            </on_interval>
 
-                                <!-- Number Input for Direct State Editing -->
-                                <flex direction="row" align="center" justify="between" class="w-full pt-2 border-t border-slate-800/80">
-                                    <span class="text-xs text-slate-400 font-bold">Direct Edit (Input):</span>
-                                    <input type="number" bind="data.counter_value" class="w-24 px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-indigo-500 text-indigo-300 rounded-lg text-center text-xs font-mono font-extrabold outline-none" />
-                                </flex>
+                            <!-- Live Clock Header -->
+                            <flex direction="row" align="center" justify="between" class="w-full pb-3 border-b border-slate-800/80 flex-wrap gap-2">
+                                <span class="text-xs font-bold text-slate-400">⏱️ Live Clock (<code class="text-emerald-400">&lt;on_interval&gt;</code>):</span>
+                                <span class="text-xs font-mono font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">{data.current_time}</span>
                             </flex>
 
-                            <flex direction="row" gap="8" class="w-full pt-1">
-                                <button type="button" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
-                                    <on_click action="MUTATE_STATE" operation="INCREMENT">
-                                        <path>data.counter_value</path>
-                                    </on_click>
-                                    ➕ Increment
-                                </button>
-                                <button type="button" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg transition-colors cursor-pointer">
-                                    <on_click action="SET_STATE">
-                                        <path>data.counter_value</path>
-                                        <value>0</value>
-                                    </on_click>
-                                    ↺ Reset
-                                </button>
+                            <flex direction="column" gap="10" class="w-full">
+                                <!-- Reactive Counter Header & Conditional Status Badge -->
+                                <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                                    <flex direction="column" gap="2">
+                                        <span class="text-xs font-bold text-slate-400">Reactive State Store:</span>
+                                        <span class="text-base font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20 w-fit">Count: {data.counter_value}</span>
+                                    </flex>
+
+                                    <!-- Conditional Status Badge (<if>) -->
+                                    <if condition="{data.counter_value} == 0">
+                                        <span class="px-2.5 py-1 bg-slate-800 text-slate-400 font-extrabold text-[11px] rounded-full border border-slate-700">Status: Initial (0)</span>
+                                    </if>
+                                    <if condition="{data.counter_value} > 0">
+                                        <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30">Status: Active ({data.counter_value})</span>
+                                    </if>
+                                </flex>
+
+                                <!-- Two-Way Input Binding -->
+                                <flex direction="row" align="center" justify="between" class="w-full pt-3 border-t border-slate-800/80">
+                                    <span class="text-xs text-slate-400 font-bold">2-Way Binding (<code class="text-indigo-400">bind</code>):</span>
+                                    <input type="number" bind="data.counter_value" class="w-24 px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-indigo-500 text-indigo-300 rounded-lg text-center text-xs font-mono font-extrabold outline-none" />
+                                </flex>
+
+                                <!-- Direct State Mutators -->
+                                <flex direction="row" gap="6" class="w-full pt-1 flex-wrap">
+                                    <button type="button" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
+                                        <on_click action="MUTATE_STATE" operation="INCREMENT">
+                                            <path>data.counter_value</path>
+                                        </on_click>
+                                        +1 Add
+                                    </button>
+                                    <button type="button" class="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
+                                        <on_click action="RUN_SCRIPT">
+                                            const current = parseInt($engine.getState('counter_value') || 0, 10);
+                                            $engine.setState('counter_value', String(current + 5));
+                                        </on_click>
+                                        +5 Add
+                                    </button>
+                                    <button type="button" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+                                        <on_click action="SET_STATE">
+                                            <path>data.counter_value</path>
+                                            <value>0</value>
+                                        </on_click>
+                                        ↺ Reset
+                                    </button>
+                                </flex>
                             </flex>
                         </flex>
                     </flex>
@@ -207,27 +240,55 @@
                                 <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
                                 <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
                                 <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
-                                <span class="text-xs font-bold text-slate-400 ml-2">counter-component.xml</span>
+                                <span class="text-xs font-bold text-slate-400 ml-2">reactive-demo.xml</span>
                             </flex>
                             <span class="text-[10px] text-indigo-400 font-bold">Declarative XML</span>
                         </flex>
 
-                        <pre class="overflow-x-auto max-w-full whitespace-pre-wrap break-all leading-relaxed py-2"><code class="language-xml">&lt;component_def name="interactive-counter"&gt;
+                        <pre class="overflow-x-auto max-h-[320px] overflow-y-auto max-w-full whitespace-pre-wrap break-all leading-relaxed py-2 pr-1"><code class="language-xml">&lt;component_def name="reactive-demo"&gt;
   &lt;data_model&gt;
     &lt;state id="count"&gt;0&lt;/state&gt;
+    &lt;state id="clock"&gt;--:--:--&lt;/state&gt;
   &lt;/data_model&gt;
 
-  &lt;flex direction="column" gap="12" class="p-5 bg-slate-950"&gt;
-    &lt;span class="text-white"&gt;Count: &#123;data.count&#125;&lt;/span&gt;
+  &lt;!-- 1. Background Timer Interval (1s) --&gt;
+  &lt;on_interval ms="1000" action="RUN_SCRIPT"&gt;
+    $engine.setState('clock', new Date().toLocaleTimeString());
+  &lt;/on_interval&gt;
 
+  &lt;flex direction="column" gap="12" class="p-5 bg-slate-950"&gt;
+    &lt;span class="text-emerald-400 font-mono"&gt;Clock: &#123;data.clock&#125;&lt;/span&gt;
+
+    &lt;!-- 2. Reactive Interpolation --&gt;
+    &lt;h3 class="text-white"&gt;Count: &#123;data.count&#125;&lt;/h3&gt;
+
+    &lt;!-- 3. Conditional Rendering --&gt;
+    &lt;if condition="&#123;data.count&#125; == 0"&gt;
+      &lt;span class="badge-slate"&gt;Status: Initial (0)&lt;/span&gt;
+    &lt;/if&gt;
+    &lt;if condition="&#123;data.count&#125; &gt; 0"&gt;
+      &lt;span class="badge-emerald"&gt;Status: Active (&#123;data.count&#125;)&lt;/span&gt;
+    &lt;/if&gt;
+
+    &lt;!-- 4. Two-Way Input Binding --&gt;
     &lt;input type="number" bind="data.count" /&gt;
 
-    &lt;button class="btn-primary"&gt;
-      &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
-        &lt;path&gt;data.count&lt;/path&gt;
-      &lt;/on_click&gt;
-      Increment
-    &lt;/button&gt;
+    &lt;!-- 5. Declarative Actions (+1, +5, Reset) --&gt;
+    &lt;flex direction="row" gap="8"&gt;
+      &lt;button&gt;
+        &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
+          &lt;path&gt;data.count&lt;/path&gt;
+        &lt;/on_click&gt;
+        +1 Add
+      &lt;/button&gt;
+      &lt;button&gt;
+        &lt;on_click action="SET_STATE"&gt;
+          &lt;path&gt;data.count&lt;/path&gt;
+          &lt;value&gt;0&lt;/value&gt;
+        &lt;/on_click&gt;
+        ↺ Reset
+      &lt;/button&gt;
+    &lt;/flex&gt;
   &lt;/flex&gt;
 &lt;/component_def&gt;</code></pre>
 
