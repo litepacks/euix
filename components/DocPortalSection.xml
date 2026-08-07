@@ -79,7 +79,7 @@
                     </on_click>
                     ✨ Overview &amp; Features
                 </button>
-                <button type="button" class="px-4 sm:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
                     <on_click action="SET_STATE">
                         <path>data.active_tab</path>
                         <value>docs</value>
@@ -88,6 +88,10 @@
                 </button>
                 <a href="./playground.html" class="px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
                     🎮 Live Demos (Playground)
+                </a>
+                <a href="https://github.com/litepacks/euix" target="_blank" class="px-4 sm:px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-100 hover:text-white font-extrabold text-xs rounded-xl transition-all border border-slate-700 shadow-md cursor-pointer flex items-center gap-2">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    ⭐ GitHub Repository
                 </a>
             </flex>
         </flex>
@@ -301,41 +305,41 @@
                 </flex>
 
                 <!-- Product Positioning & Architectural Pillars Section -->
-                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-200">
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-800">
                     <flex direction="column" gap="4">
-                        <span class="text-xs font-black uppercase tracking-widest text-indigo-600">🏛️ Architectural Design</span>
-                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Why EUIX? Architectural Clarity &amp; Direct Execution</h2>
-                        <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
+                        <span class="text-xs font-black uppercase tracking-widest text-indigo-400">🏛️ Architectural Design</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">Why EUIX? Architectural Clarity &amp; Direct Execution</h2>
+                        <p class="text-xs text-slate-300 leading-relaxed max-w-3xl">
                             EUIX is built on the principle that UI templates should be structured, machine-readable, and directly executable without heavy compilation steps or complex Virtual DOM diffing algorithms.
                         </p>
                     </flex>
 
                     <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
                             <span class="text-2xl">🎯</span>
-                            <h3 class="font-extrabold text-slate-800 text-sm">Direct DOM Node Mutations</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
+                            <h3 class="font-extrabold text-white text-sm">Direct DOM Node Mutations</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
                                 Target node text and attribute updates directly in-place using proxy reactive listeners, completely bypassing Virtual DOM reconciliation passes.
                             </p>
                         </flex>
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
                             <span class="text-2xl">📄</span>
-                            <h3 class="font-extrabold text-slate-800 text-sm">All-in-One Declarative Specs</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Encapsulate reactive state (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;data_model&gt;</code>), REST API calls, tokens, and layout inside single XML specifications.
+                            <h3 class="font-extrabold text-white text-sm">All-in-One Declarative Specs</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Encapsulate reactive state (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;data_model&gt;</code>), REST API calls, tokens, and layout inside single XML specifications.
                             </p>
                         </flex>
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
                             <span class="text-2xl">📦</span>
-                            <h3 class="font-extrabold text-slate-800 text-sm">Zero Dependency Footprint</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
+                            <h3 class="font-extrabold text-white text-sm">Zero Dependency Footprint</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
                                 Self-contained 23.4 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
                             </p>
                         </flex>
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
                             <span class="text-2xl">🔮</span>
-                            <h3 class="font-extrabold text-slate-800 text-sm">Extensible Runtime Vision</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
+                            <h3 class="font-extrabold text-white text-sm">Extensible Runtime Vision</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
                                 EUIX is designed as a structured UI runtime whose architecture can evolve beyond traditional browser DOM rendering to target alternate platforms.
                             </p>
                         </flex>
@@ -343,61 +347,61 @@
                 </flex>
 
                 <!-- Core Capability Matrix Section -->
-                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-200">
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-800">
                     <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
                         <flex direction="column" gap="2">
-                            <span class="text-xs font-black uppercase tracking-widest text-indigo-600">⚡ Core Capabilities</span>
-                            <h2 class="text-xl sm:text-2xl font-black text-slate-800">Framework Capability Matrix</h2>
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-400">⚡ Core Capabilities</span>
+                            <h2 class="text-xl sm:text-2xl font-black text-white">Framework Capability Matrix</h2>
                         </flex>
-                        <span class="text-xs text-slate-500 font-medium">Structured XML DSL • Zero VDOM Diffing</span>
+                        <span class="text-xs text-slate-400 font-medium">Structured XML DSL • Zero VDOM Diffing</span>
                     </flex>
 
                     <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">🧩</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">Modular Components</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Clean <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;component_def&gt;</code> definitions, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;import src="..." /&gt;</code> tags, parent-child prop passing (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">{props.key}</code>), and slot composition.
+                            <h3 class="font-extrabold text-white text-base">Modular Components</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Clean <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;component_def&gt;</code> definitions, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;import src="..." /&gt;</code> tags, parent-child prop passing (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">{props.key}</code>), and slot composition.
                             </p>
                         </flex>
 
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">⚡</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">Reactive State Store</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Proxy-based fine-grained reactivity store (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;data_model&gt;</code>) with automatic DOM binding synchronization (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">bind="..."</code>).
+                            <h3 class="font-extrabold text-white text-base">Reactive State Store</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Proxy-based fine-grained reactivity store (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;data_model&gt;</code>) with automatic DOM binding synchronization (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">bind="..."</code>).
                             </p>
                         </flex>
 
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">📡</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">REST API Integration</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Declarative <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;api_config&gt;</code> and lifecycle hooks (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_mount action="XHR"&gt;</code>) with automatic CSRF tokens and SWR tag revalidation.
+                            <h3 class="font-extrabold text-white text-base">REST API Integration</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Declarative <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;api_config&gt;</code> and lifecycle hooks (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_mount action="XHR"&gt;</code>) with automatic CSRF tokens and SWR tag revalidation.
                             </p>
                         </flex>
 
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">🎯</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">Declarative Events &amp; Hooks</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Handle user interactions and lifecycle hooks (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_click&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_mount&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_interval&gt;</code>) directly inside markup without inline JS string clutter.
+                            <h3 class="font-extrabold text-white text-base">Declarative Events &amp; Hooks</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Handle user interactions and lifecycle hooks (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_mount&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_interval&gt;</code>) directly inside markup without inline JS string clutter.
                             </p>
                         </flex>
 
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">🚀</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">Direct DOM Mutations</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
+                            <h3 class="font-extrabold text-white text-base">Direct DOM Mutations</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
                                 Reactive state changes trigger precise in-place DOM node updates, avoiding full Virtual DOM subtree rerenders and heavy framework diffing overhead.
                             </p>
                         </flex>
 
-                        <flex direction="column" gap="8" class="p-5 bg-white rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all min-w-0 max-w-full">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
                             <span class="text-3xl">🤖</span>
-                            <h3 class="font-extrabold text-slate-800 text-base">AI-Agent Optimized DSL</h3>
-                            <p class="text-xs text-slate-600 leading-relaxed">
-                                Explicit XML tags (<code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;state&gt;</code>, <code class="bg-slate-100 px-1 py-0.5 rounded text-indigo-600">&lt;on_click&gt;</code>) eliminate template ambiguity, allowing AI agents to reliably parse, generate, and refactor applications.
+                            <h3 class="font-extrabold text-white text-base">AI-Agent Optimized DSL</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Explicit XML tags (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;state&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click&gt;</code>) eliminate template ambiguity, allowing AI agents to reliably parse, generate, and refactor applications.
                             </p>
                         </flex>
                     </grid>
