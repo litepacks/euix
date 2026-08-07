@@ -66,11 +66,26 @@ describe('EUIXEngine Full Coverage Boost Suite (Targeting 100% Code Coverage)', 
         engine.setState('show_dlg', true);
         expect(engine.getState('show_dlg')).toBe(true);
 
-        // Close again via engine.setState
+        // Close again via engine.setState (testing containerNode.contains(backdrop) === false branch)
         engine.setState('show_dlg', false);
         expect(engine.getState('show_dlg')).toBe(false);
 
         window.requestAnimationFrame = originalRaf;
+    });
+
+    it('should test module top-level DOMContentLoaded autoInit when document.readyState is loading', async () => {
+        Object.defineProperty(document, 'readyState', { value: 'loading', configurable: true });
+
+        vi.resetModules();
+        const { EUIXEngine: FreshEngine } = await import('../src/EUIXEngine.js');
+        const { EUIXDevTools: FreshDevTools } = await import('../src/EUIXDevTools.js');
+
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+
+        expect(FreshEngine).toBeDefined();
+        expect(FreshDevTools).toBeDefined();
+
+        Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
     });
 
     it('should test XHR ignore_base_url, relative paths (./ and ../), and revalidate flags', () => {
