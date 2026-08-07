@@ -2925,7 +2925,25 @@ class EUIXEngine {
             n.nodeType === Node.ELEMENT_NODE && !EVENT_TAGS.has(n.tagName.toLowerCase())
         );
 
-        if (childElementNodes.length === 0 && !["input", "select", "textarea", "form"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
+        let isInsideCodeOrPre = false;
+        let pCheck = xmlNode;
+        while (pCheck) {
+            if (pCheck.tagName) {
+                const t = pCheck.tagName.toLowerCase();
+                if (t === "code" || t === "pre") {
+                    isInsideCodeOrPre = true;
+                    break;
+                }
+            }
+            pCheck = pCheck.parentNode;
+        }
+
+        let hasCodeOrPreDescendant = false;
+        if (xmlNode.querySelector) {
+            hasCodeOrPreDescendant = !!(xmlNode.querySelector("code") || xmlNode.querySelector("pre"));
+        }
+
+        if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
             const matches = Array.from(rawContent.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
             if (matches.length > 0) {
