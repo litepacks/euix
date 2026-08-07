@@ -187,7 +187,7 @@
                     <flex direction="column" gap="8" class="w-full md:w-1/2 p-4 sm:p-6 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-xl justify-between font-mono text-xs overflow-hidden min-w-0 max-w-full">
                         <on_mount action="RUN_SCRIPT">
                             const runHl = () => {
-                                if (!window.hljs || !$el) return false;
+                                if (typeof window === "undefined" || !window.hljs || !$el) return false;
                                 const codeEl = $el.querySelector('code');
                                 if (!codeEl) return false;
                                 delete codeEl.dataset.highlighted;
