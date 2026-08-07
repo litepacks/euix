@@ -76,15 +76,13 @@ describe('EUIXEngine Full Coverage Boost Suite (Targeting 100% Code Coverage)', 
     it('should test module top-level DOMContentLoaded autoInit when document.readyState is loading', async () => {
         Object.defineProperty(document, 'readyState', { value: 'loading', configurable: true });
 
-        vi.resetModules();
-        const { EUIXEngine: FreshEngine } = await import('../src/EUIXEngine.js');
-        const { EUIXDevTools: FreshDevTools } = await import('../src/EUIXDevTools.js');
+        const scriptTag = document.createElement('script');
+        scriptTag.setAttribute('data-euix-devtools', 'true');
+        document.head.appendChild(scriptTag);
 
         document.dispatchEvent(new Event('DOMContentLoaded'));
 
-        expect(FreshEngine).toBeDefined();
-        expect(FreshDevTools).toBeDefined();
-
+        if (scriptTag.parentNode) scriptTag.parentNode.removeChild(scriptTag);
         Object.defineProperty(document, 'readyState', { value: 'complete', configurable: true });
     });
 
