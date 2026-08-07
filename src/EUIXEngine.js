@@ -2441,8 +2441,24 @@ class EUIXEngine {
 
     _createHTMLElementInternal(xmlNode, context = {}) {
         if (xmlNode.nodeType === Node.TEXT_NODE) {
-            const txt = xmlNode.textContent.trim();
-            return txt ? document.createTextNode(this.interpolate(txt, context)) : null;
+            let parent = xmlNode.parentNode;
+            let isCodeBlock = false;
+            while (parent) {
+                if (parent.tagName) {
+                    const tag = parent.tagName.toLowerCase();
+                    if (tag === "code" || tag === "pre") {
+                        isCodeBlock = true;
+                        break;
+                    }
+                }
+                parent = parent.parentNode;
+            }
+            const txt = xmlNode.textContent;
+            if (isCodeBlock) {
+                return txt ? document.createTextNode(txt) : null;
+            }
+            const trimmed = txt.trim();
+            return trimmed ? document.createTextNode(this.interpolate(trimmed, context)) : null;
         }
 
         if (xmlNode.nodeType !== Node.ELEMENT_NODE) return null;
