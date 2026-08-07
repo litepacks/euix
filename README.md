@@ -36,7 +36,7 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
   </style>
-  <script src="https://unpkg.com/euixjs@0.0.2/dist/EUIXEngine.umd.js"></script>
+  <script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
   <div id="app" class="w-full max-w-md"></div>
