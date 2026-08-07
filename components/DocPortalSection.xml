@@ -396,33 +396,58 @@
 
                     <!-- Quickstart Code Snippet -->
                     <flex direction="column" gap="6" class="mt-2 p-4 bg-slate-950/80 rounded-xl border border-slate-800 font-mono text-xs">
+                        <on_mount action="RUN_SCRIPT">
+                            const runHl = () => {
+                                if (typeof window === "undefined" || !window.hljs || !$el) return false;
+                                const codeEl = $el.querySelector('code');
+                                if (!codeEl) return false;
+                                delete codeEl.dataset.highlighted;
+                                window.hljs.highlightElement(codeEl);
+                                return true;
+                            };
+                            if (!runHl()) {
+                                let tries = 0;
+                                const timer = setInterval(() => {
+                                    tries = tries + 1;
+                                    if (runHl() || tries &gt; 40) clearInterval(timer);
+                                }, 50);
+                            }
+                        </on_mount>
                         <flex direction="row" align="center" justify="between" class="text-slate-400 text-[11px] font-bold border-b border-slate-800 pb-2">
-                            <span>⚡ Quick Start: 30-Second Minimal HTML Example</span>
+                            <span>⚡ Quick Start: Minimal HTML Example</span>
                             <span class="text-indigo-400">index.html</span>
                         </flex>
-                        <pre class="overflow-x-auto whitespace-pre-wrap break-words text-indigo-200"><code class="language-xml">&lt;!-- 1. Include Engine &amp; Mount Spec directly inside script tag --&gt;
-&lt;script src="https://cdn.jsdelivr.net/npm/euix@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;
+                        <pre class="overflow-x-auto whitespace-pre-wrap break-words text-indigo-200"><code class="language-xml">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8" /&gt;
+  &lt;title&gt;EUIX Minimal App&lt;/title&gt;
+  &lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;
+  &lt;script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body class="bg-slate-100 p-8 flex justify-center"&gt;
+  &lt;div id="app" class="w-full max-w-md"&gt;&lt;/div&gt;
 
-&lt;script type="application/euix" target="#app"&gt;
-  &lt;uid_spec&gt;
-    &lt;data_model&gt;
-      &lt;state id="message"&gt;Hello EUIX Engine!&lt;/state&gt;
-    &lt;/data_model&gt;
+  &amp;lt;script type="application/euix" target="#app"&amp;gt;
+    &amp;lt;uid_spec&amp;gt;
+      &amp;lt;data_model&amp;gt;
+        &amp;lt;state id="message"&amp;gt;Hello EUIX Engine!&amp;lt;/state&amp;gt;
+      &amp;lt;/data_model&amp;gt;
 
-    &lt;flex direction="column" gap="12" class="p-6 bg-slate-900 text-white rounded-2xl"&gt;
-      &lt;h1 class="text-xl font-bold"&gt;{data.message}&lt;/h1&gt;
-      &lt;button class="px-4 py-2 bg-indigo-600 rounded-lg"&gt;
-        &lt;on_click action="SET_STATE"&gt;
-          &lt;path&gt;data.message&lt;/path&gt;
-          &lt;value&gt;🚀 Reactively Updated!&lt;/value&gt;
-        &lt;/on_click&gt;
-        Click Me
-      &lt;/button&gt;
-    &lt;/flex&gt;
-  &lt;/uid_spec&gt;
-&lt;/script&gt;
-
-&lt;div id="app"&gt;&lt;/div&gt;</code></pre>
+      &amp;lt;flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl shadow-xl"&amp;gt;
+        &amp;lt;h1 class="text-xl font-bold text-white"&amp;gt;&#123;data.message&#125;&amp;lt;/h1&amp;gt;
+        &amp;lt;button type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer"&amp;gt;
+          &amp;lt;on_click action="SET_STATE"&amp;gt;
+            &amp;lt;path&amp;gt;data.message&amp;lt;/path&amp;gt;
+            &amp;lt;value&amp;gt;🚀 Reactively Updated!&amp;lt;/value&amp;gt;
+          &amp;lt;/on_click&amp;gt;
+          Click Me
+        &amp;lt;/button&amp;gt;
+      &amp;lt;/flex&amp;gt;
+    &amp;lt;/uid_spec&amp;gt;
+  &amp;lt;/script&amp;gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
                     </flex>
                 </flex>
 
