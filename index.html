@@ -7,6 +7,11 @@
     <title>Vanilla .EUIX Engine</title>
     <!-- Tailwind CSS (CDN for quick Demo styling) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Highlight.js CDN for Syntax Highlighting -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
@@ -16,12 +21,13 @@
     </style>
 </head>
 
-<body class="bg-slate-50/70 min-h-screen py-3 px-2 sm:py-6 sm:px-4 md:px-6 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
+<body
+    class="bg-slate-50/70 min-h-screen py-3 px-2 sm:py-6 sm:px-4 md:px-6 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
     <div id="app" class="w-full max-w-6xl xl:max-w-7xl min-w-0 overflow-hidden"></div>
 
     <!-- EUIX Şablonu (Auto-Init) -->
     <script type="application/euix" target="#app">
-    <uid_spec id="todo_app">
+    <uid_spec id="doc_portal_app">
         <constants src="./public/data/app-tokens.json">
             <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100</const>
             <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer</const>
@@ -29,149 +35,21 @@
         </constants>
 
         <data_model src="./public/data/app-config.json">
-            <state id="new_todo_input" type="string"></state>
-            <state id="edit_todo_input" type="string"></state>
-            <state id="editing_id" type="string"></state>
-            <state id="todos" type="array">
-                <item id="1" text="Task 1" completed="false" />
-                <item id="2" text="Task 2" completed="false" />
-                <item id="3" text="Task 3" completed="true" />
-                <item id="4" text="Task 4" completed="false" />
-                <item id="5" text="Task 5" completed="false" />
-            </state>
-            <state id="pokemons" type="array"></state>
-            <state id="pokemon_loading" type="string">false</state>
-            <state id="pokemon_error" type="string"></state>
-            <state id="pokemon_open" type="string">true</state>
-            <state id="posts" type="array"></state>
-            <state id="posts_loading" type="string">false</state>
-            <state id="posts_error" type="string"></state>
-            <state id="posts_open" type="string">true</state>
-            <state id="new_post_title" type="string"></state>
-            <state id="new_post_body" type="string"></state>
-            <state id="todos_open" type="string">true</state>
-            <state id="events_open" type="string">true</state>
-            <state id="form_open" type="string">true</state>
-            <state id="quick_todo_input" type="string"></state>
-            <state id="hover_status" type="string">Hover over this box...</state>
             <state id="help_open" type="string">false</state>
-            <state id="form_bio" type="string">Vanilla .EUIX Engine developer.</state>
-            <state id="form_category" type="string">frontend</state>
-            <state id="form_level" type="string">senior</state>
-            <state id="form_salary" type="string">85</state>
-            <state id="form_hours" type="string">40</state>
-            <state id="form_email" type="string"></state>
-            <state id="form_username" type="string"></state>
-            <state id="form_status" type="string">Please complete required fields...</state>
-            <state id="dyn_placeholder" type="string">Type search query here...</state>
-            <state id="is_btn_disabled" type="string">false</state>
-            <state id="confirm_modal_open" type="string">false</state>
-            <state id="delete_modal_open" type="string">false</state>
-            <state id="selected_todo_id" type="string"></state>
-            <state id="counter_value" type="string">0</state>
-            <state id="counter_open" type="string">true</state>
-            <state id="state_log" type="string">No state changes yet...</state>
-            <state id="table_open" type="string">true</state>
-            <state id="new_emp_name" type="string"></state>
-            <state id="new_emp_role" type="string"></state>
-            <state id="new_emp_dept" type="string"></state>
             <state id="code_modal_open" type="string">false</state>
             <state id="code_modal_title" type="string"></state>
             <state id="code_modal_lines" type="string"></state>
             <state id="code_modal_content" type="string"></state>
-            <state id="employees" type="array">
-                <item name="Ahmet Yilmaz" role="Lead Architect" dept="Core Engine" status="Active" />
-                <item name="Zeynep Kaya" role="Senior Frontend Engineer" dept="UI/UX" status="Active" />
-                <item name="Can Demir" role="DevOps Lead" dept="Infrastructure" status="Active" />
-            </state>
         </data_model>
-
-        <!-- Declarative State Change Hook Example -->
-        <on_state_change watch="data.counter_value" action="SET_STATE">
-            <path>data.state_log</path>
-            <value>State Watcher: Counter updated to {data.counter_value}</value>
-        </on_state_change>
-
-        <on_mount action="XHR">
-            <method>GET</method>
-            <url>https://pokeapi.co/api/v2/pokemon?limit=12</url>
-            <select>results</select>
-            <target>data.pokemons</target>
-            <loading>data.pokemon_loading</loading>
-            <error>data.pokemon_error</error>
-            <item_map>
-                <field as="id" from="url" match="/(\d+)\/?$/" />
-                <field as="name" from="name" />
-                <field as="image" template="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{id}.png" />
-            </item_map>
-        </on_mount>
-
-        <on_mount action="XHR">
-            <method>GET</method>
-            <url>https://jsonplaceholder.typicode.com/posts?_limit=4</url>
-            <target>data.posts</target>
-            <loading>data.posts_loading</loading>
-            <error>data.posts_error</error>
-        </on_mount>
 
         <imports>
             <import name="doc-portal-section" src="components/DocPortalSection.xml" />
-            <import name="user-badge" src="components/UserBadge.xml" />
-            <import name="app-header" src="components/AppHeader.xml" />
-            <import name="counter-section" src="components/CounterSection.xml" />
-            <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
-            <import name="todo-section" src="components/TodoSection.xml" />
-            <import name="pokemon-card" src="components/PokemonCard.xml" />
-            <import name="pokemon-section" src="components/PokemonSection.xml" />
-            <import name="posts-crud-section" src="components/PostsCrudSection.xml" />
-            <import name="events-section" src="components/EventsSection.xml" />
-            <import name="form-section" src="components/FormSection.xml" />
-            <import name="confirm-modal" src="components/ConfirmModal.xml" />
-            <import name="persistence-section" src="components/PersistenceSection.xml" />
-            <import name="api-client-section" src="components/ApiClientSection.xml" />
-            <import name="countdown-section" src="components/CountdownSection.xml" />
-            <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
-            <import name="table-section" src="components/TableSection.xml" />
-            <import name="kanban-section" src="components/KanbanSection.xml" />
-            <import name="ecommerce-section" src="components/EcommerceSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
             <import name="code-viewer-modal" src="components/CodeViewerModal.xml" />
         </imports>
 
         <flex direction="column" gap="20" class="w-full">
             <doc-portal-section />
-            <!-- External JSON Hydrated Banner Box -->
-            <flex direction="row" align="center" justify="between" class="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl">
-                <flex direction="row" align="center" gap="12">
-                    <span class="text-2xl">⚡</span>
-                    <flex direction="column">
-                        <span class="text-xs font-bold text-indigo-950">{data.banner_message}</span>
-                        <span class="text-[11px] text-indigo-600 font-medium">Server: {data.server_location} | Core Version: {data.system_version}</span>
-                    </flex>
-                </flex>
-                <span class="{const.status_badge}">{data.portal_status}</span>
-            </flex>
-            <ecommerce-section />
-            <kanban-section />
-            <crypto-portfolio-section />
-            <table-section />
-            <counter-section />
-            <countdown-section />
-            <persistence-section />
-            <api-client-section />
-            <state-bridge-badge count="{data.counter_value}" />
-            <!-- State Watcher Live Banner Box -->
-            <flex direction="row" align="center" gap="8" class="p-3 bg-amber-50 border border-amber-200/60 rounded-xl text-amber-800 text-xs font-semibold">
-                <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <span>{data.state_log}</span>
-            </flex>
-            <todo-section />
-            <posts-crud-section />
-            <pokemon-section />
-            <form-section />
-            <events-section />
-            <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
-            <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
             <help-modal />
             <code-viewer-modal />
         </flex>
@@ -188,11 +66,6 @@
             if (window.EUIXEngine && window.EUIXEngine.instance) {
                 const engine = window.EUIXEngine.instance;
                 EUIXDevTools.init(engine);
-
-                // JS Programmatic State Watcher Example
-                engine.watch('counter_value', (newValue, oldValue) => {
-                    console.log(`[JS State Watcher] counter_value updated: ${oldValue} -> ${newValue}`);
-                });
             }
         });
     </script>

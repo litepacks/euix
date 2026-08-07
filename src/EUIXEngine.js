@@ -726,6 +726,8 @@ class EUIXEngine {
         if (typeof document === "undefined") return;
         const scripts = document.querySelectorAll('script[type="application/euix"], script[type="text/euix"], script[data-euix-app], euix-app');
         scripts.forEach(script => {
+            if (script.dataset?.euixAutoInitialized) return;
+            if (script.dataset) script.dataset.euixAutoInitialized = "true";
             const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
             const xml = (script.tagName.toLowerCase() === "euix-app" ) ? script.innerHTML.trim() : script.textContent.trim();
             if (xml) {
@@ -882,6 +884,37 @@ class EUIXEngine {
             if (!isNaN(num)) return num;
         }
         return val;
+    }
+
+    resolveValueFromPath(path, context = {}) {
+        if (!path) return undefined;
+        if (path.startsWith("data.") || path.startsWith("state.")) {
+            return this.getState(path.replace(/^(data|state)\./, ""));
+        }
+        if (path.startsWith("constants.") || path.startsWith("const.")) {
+            const key = path.replace(/^(constants|const)\./, "");
+            return this.getConstant(key);
+        }
+        if (path.startsWith("vars.")) {
+            const key = path.replace(/^vars\./, "");
+            return this.getConstant(key);
+        }
+        const ctxMatch = path.match(/^(\w+)(?:\.(.+))?$/);
+        if (ctxMatch) {
+            const [_, scope, prop] = ctxMatch;
+            if (scope && context && context[scope] !== undefined) {
+                if (prop) {
+                    const parts = prop.split(".");
+                    let curr = context[scope];
+                    for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
+                        curr = curr[parts[i]];
+                    }
+                    return curr;
+                }
+                return context[scope];
+            }
+        }
+        return this.getState(path);
     }
 
     setState(key, value, { silent = false, sourceEl = null } = {}) {
@@ -3198,8 +3231,8 @@ class EUIXEngine {
         if (isScriptAction) {
             const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
             if (!code) return;
-            const interpolatedCode = code.replace(/\{(?:data|props|state|constants|vars)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
-                const val = this.getValueFromPath(p1, context);
+            const interpolatedCode = code.replace(/\{(?:data|props|state|constants|const|vars)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
+                const val = this.resolveValueFromPath(match.slice(1, -1), context);
                 return val !== undefined ? JSON.stringify(val) : match;
             });
             const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
