@@ -214,17 +214,17 @@
 
                         <pre class="overflow-x-auto max-w-full whitespace-pre-wrap break-all leading-relaxed py-2"><code class="language-xml">&lt;component_def name="interactive-counter"&gt;
   &lt;data_model&gt;
-    &lt;state id="counter_value"&gt;&#123;data.counter_value&#125;&lt;/state&gt;
+    &lt;state id="count"&gt;0&lt;/state&gt;
   &lt;/data_model&gt;
 
   &lt;flex direction="column" gap="12" class="p-5 bg-slate-950"&gt;
-    &lt;span&gt;State: &#123;data.counter_value&#125;&lt;/span&gt;
+    &lt;span class="text-white"&gt;Count: &#123;data.count&#125;&lt;/span&gt;
 
-    &lt;input type="number" bind="data.counter_value" /&gt;
+    &lt;input type="number" bind="data.count" /&gt;
 
-    &lt;button&gt;
+    &lt;button class="btn-primary"&gt;
       &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
-        &lt;path&gt;data.counter_value&lt;/path&gt;
+        &lt;path&gt;data.count&lt;/path&gt;
       &lt;/on_click&gt;
       Increment
     &lt;/button&gt;
@@ -371,62 +371,6 @@
                             </p>
                         </flex>
                     </grid>
-                </flex>
-
-                <!-- Performance & Measurable Benchmarks Section -->
-                <flex direction="column" gap="12" class="w-full p-6 bg-white rounded-2xl border border-slate-200/80 shadow-sm">
-                    <flex direction="column" gap="4">
-                        <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
-                            <span class="text-xs font-black uppercase tracking-widest text-emerald-600">⚡ Performance Metrics</span>
-                            <span class="text-xs text-slate-500 font-medium">Chrome V8 Engine Benchmarks</span>
-                        </flex>
-                        <h2 class="text-xl sm:text-2xl font-black text-slate-800">Why EUIX Delivers Predictable Performance</h2>
-                        <p class="text-xs text-slate-600 leading-relaxed max-w-3xl">
-                            Because EUIX mutates target DOM nodes directly through proxy state bindings, application memory consumption remains predictable and execution latency stays minimal even during bulk DOM operations.
-                        </p>
-                    </flex>
-
-                    <flex direction="column" gap="12" class="w-full border-t border-slate-100 pt-4">
-                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
-                            <flex direction="row" align="center" justify="between text-xs font-bold">
-                                <span class="text-slate-800">Initial XML Mount (Full Application Spec)</span>
-                                <span class="text-emerald-600 font-extrabold">&lt; 2.5 ms 🔥</span>
-                            </flex>
-                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full w-[8%]"></div>
-                            </div>
-                        </flex>
-
-                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
-                            <flex direction="row" align="center" justify="between text-xs font-bold">
-                                <span class="text-slate-800">Single State Mutation In-Place (No VDOM Diffing)</span>
-                                <span class="text-emerald-600 font-extrabold">0.4 ms ⚡</span>
-                            </flex>
-                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                                <div class="bg-emerald-500 h-full w-[4%]"></div>
-                            </div>
-                        </flex>
-
-                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
-                            <flex direction="row" align="center" justify="between text-xs font-bold">
-                                <span class="text-slate-800">1,000 Items Bulk DOM Push &amp; Paint (Real Chrome)</span>
-                                <span class="text-blue-600 font-extrabold">42.8 ms 🚀</span>
-                            </flex>
-                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                                <div class="bg-blue-500 h-full w-[25%]"></div>
-                            </div>
-                        </flex>
-
-                        <flex direction="column" gap="4" class="p-4 bg-slate-50 rounded-xl border border-slate-200/60">
-                            <flex direction="row" align="center" justify="between text-xs font-bold">
-                                <span class="text-slate-800">3,000 Items Full Render &amp; Layout Paint (Real Chrome)</span>
-                                <span class="text-blue-600 font-extrabold">102.3 ms 🚀</span>
-                            </flex>
-                            <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                                <div class="bg-blue-500 h-full w-[50%]"></div>
-                            </div>
-                        </flex>
-                    </flex>
                 </flex>
             </flex>
         </if>
