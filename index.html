@@ -4,39 +4,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EUIX Engine - Declarative XML UI Runtime</title>
-    <meta name="description" content="A lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, and zero Virtual DOM reconciliation.">
-    <meta name="keywords" content="EUIX, XML UI Runtime, Declarative UI, Frontend Engine, Zero VDOM, Fine-Grained Reactivity, AI UI DSL">
+    <title>EUIX Engine - Declarative XML UI Runtime &amp; Frontend Engine</title>
+    <meta name="description" content="EUIX Engine is a lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, direct DOM updates, and zero Virtual DOM reconciliation.">
+    <meta name="keywords" content="EUIX, EUIX Engine, XML UI Runtime, Declarative UI, Frontend Engine, Zero VDOM, Fine-Grained Reactivity, AI UI DSL, Structured XML Framework, JavaScript UI DSL">
     <meta name="author" content="Litepacks">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-title" content="EUIX Engine">
     <link rel="canonical" href="https://litepacks.github.io/euix/">
+
+    <!-- Performance Preconnect Hints -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://litepacks.github.io/euix/">
     <meta property="og:title" content="EUIX Engine - Declarative XML UI Runtime">
-    <meta property="og:description" content="Build reactive interfaces using structured XML. Zero external dependencies, direct DOM updates, and AI-agent ready DSL.">
+    <meta property="og:description" content="Build reactive web interfaces using structured XML. Zero external dependencies, direct DOM updates, REST API client, and AI-agent ready DSL.">
     <meta property="og:site_name" content="EUIX Engine">
+    <meta property="og:locale" content="en_US">
 
-    <!-- Twitter -->
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:url" content="https://litepacks.github.io/euix/">
     <meta name="twitter:title" content="EUIX Engine - Declarative XML UI Runtime">
-    <meta name="twitter:description" content="Build reactive interfaces using structured XML. Zero external dependencies, direct DOM updates, and AI-agent ready DSL.">
+    <meta name="twitter:description" content="Build reactive web interfaces using structured XML. Zero external dependencies, direct DOM updates, REST API client, and AI-agent ready DSL.">
 
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data Schema -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
       "name": "EUIX Engine",
+      "alternateName": ["euixjs", "EUIX"],
       "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Web",
+      "operatingSystem": "Web Browser",
+      "url": "https://litepacks.github.io/euix/",
+      "codeRepository": "https://github.com/litepacks/euix",
+      "license": "https://opensource.org/licenses/MIT",
+      "softwareVersion": "0.0.2",
       "offers": {
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "USD"
       },
-      "description": "A declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, and zero Virtual DOM reconciliation."
+      "author": {
+        "@type": "Organization",
+        "name": "Litepacks",
+        "url": "https://github.com/litepacks"
+      },
+      "description": "A lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, and zero Virtual DOM reconciliation."
     }
     </script>
 
@@ -57,6 +76,16 @@
 
 <body
     class="bg-slate-50/70 min-h-screen py-3 px-2 sm:py-6 sm:px-4 md:px-6 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
+    <!-- Static Fallback Content for Crawlers & Search Engines -->
+    <noscript>
+        <header style="padding: 20px; font-family: sans-serif; text-align: center;">
+            <h1>EUIX Engine - Declarative XML UI Runtime</h1>
+            <p>Build reactive web interfaces using structured XML specs with zero Virtual DOM overhead.</p>
+            <p><strong>NPM Package:</strong> <code>npm install euixjs</code></p>
+            <a href="https://github.com/litepacks/euix">GitHub Repository</a> | <a href="./playground.html">Interactive Playground</a>
+        </header>
+    </noscript>
+
     <div id="app" class="w-full max-w-6xl xl:max-w-7xl min-w-0 overflow-hidden"></div>
 
     <!-- EUIX Şablonu (Auto-Init) -->

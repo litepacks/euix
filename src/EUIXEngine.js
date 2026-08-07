@@ -3373,10 +3373,11 @@ class EUIXEngine {
             if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
                 const valNode = this.getChild(actionNode, "value");
                 const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
-                const rawText = valItem ? (valItem.getAttribute("text") || valItem.textContent.trim()) : "";
+                const rawText = valItem ? ((typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) || valItem.textContent?.trim() || "") : "";
                 const textValue = this.interpolate(rawText, context);
 
-                const newItem = { id: `task-${Date.now()}` };
+                const itemId = (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) || `task-${Date.now()}`;
+                const newItem = { id: itemId };
                 if (valItem && valItem.attributes) {
                     Array.from(valItem.attributes).forEach(attr => {
                         const interpolatedVal = this.interpolate(attr.value, context);
@@ -3384,6 +3385,12 @@ class EUIXEngine {
                             newItem[attr.name] = interpolatedVal;
                         }
                     });
+                }
+                if (valItem && typeof valItem.getAttribute === "function") {
+                    const textAttr = valItem.getAttribute("text");
+                    if (textAttr && !newItem.text) newItem.text = this.interpolate(textAttr, context);
+                    const titleAttr = valItem.getAttribute("title");
+                    if (titleAttr && !newItem.title) newItem.title = this.interpolate(titleAttr, context);
                 }
                 if (!newItem.text && textValue) newItem.text = textValue;
                 if (!newItem.title && textValue) newItem.title = textValue;
