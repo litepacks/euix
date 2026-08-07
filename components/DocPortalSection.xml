@@ -54,7 +54,7 @@
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-blue-400">23.4 KB</span>
+                    <span class="text-lg md:text-xl font-black text-blue-400">20.3 KB</span>
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Minified Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
@@ -333,7 +333,7 @@
                             <span class="text-2xl">📦</span>
                             <h3 class="font-extrabold text-white text-sm">Zero Dependency Footprint</h3>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Self-contained 23.4 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
+                                Self-contained 20.3 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
                             </p>
                         </flex>
                         <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
