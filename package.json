@@ -10,6 +10,28 @@
       "import": "./dist/EUIXEngine.es.js",
       "require": "./dist/EUIXEngine.umd.js"
     },
+    "./core": {
+      "import": "./dist/EUIXEngineCore.es.js",
+      "require": "./dist/EUIXEngineCore.umd.js"
+    },
+    "./api": {
+      "import": "./dist/plugins/EUIXApiPlugin.es.js"
+    },
+    "./composer": {
+      "import": "./dist/plugins/EUIXComposerPlugin.es.js"
+    },
+    "./dnd": {
+      "import": "./dist/plugins/EUIXDragDropPlugin.es.js"
+    },
+    "./storage": {
+      "import": "./dist/plugins/EUIXStoragePlugin.es.js"
+    },
+    "./collapse": {
+      "import": "./dist/plugins/EUIXCollapsePlugin.es.js"
+    },
+    "./dialog": {
+      "import": "./dist/plugins/EUIXDialogPlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"
@@ -24,7 +46,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build && vite build --config vite.devtools.config.js",
+    "build": "vite build && vite build --config vite.core.config.js && vite build --config vite.plugins.config.js && vite build --config vite.devtools.config.js",
     "prepublishOnly": "npm run build",
     "preview": "vite preview",
     "test": "vitest run",
