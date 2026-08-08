@@ -370,6 +370,32 @@ Below is a reference of how various EUIX Engine metadata & configuration tags be
 | **`<on_mount>`, `<on_interval>`, `<on_unmount>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
 | **`<state>` / `<data_model>`** | Global Reactive Store | 🟡 **Shared State** | States reside in the global reactive `_rawState`. Component props (`{props.key}`) allow passing isolated values. |
 | **`<persistence>`** | State ID Level | 🟢 **Zero Leakage** | Explicitly targets designated state keys for LocalStorage / SessionStorage persistence. |
+| **`<action_def>`** | Component & Global | 🟢 **Zero Leakage** | Composed workflows registered in component specs override global action definitions locally. |
+
+---
+
+## 🧩 Action Composer Architecture (`<action_def>`)
+
+The Action Composer Architecture in EUIX Engine consists of 4 main subsystems:
+
+```
++---------------------------+       +---------------------------+
+| XML <action_def> Nodes    | ----> | EUIXActionRegistry        |
++---------------------------+       +---------------------------+
+                                                  |
+                                                  v
++---------------------------+       +---------------------------+
+| EUIXActionValidator       | <---- | EUIXActionComposer        |
++---------------------------+       +---------------------------+
+  - Required Params Guard                 - Sequential Step Loop
+  - Circular Recursion Chain              - Async/Promise Await
+  - Max Depth Guard (>25)                 - DevTools Trace Logger
+```
+
+1. **`EUIXActionContext`**: Holds invocation parameters (`args`), engine reference, target DOM element (`_targetEl`), triggering DOM event (`_evt`), parent context, and call depth (`depth`).
+2. **`EUIXActionValidator`**: Validates workflow execution parameters, enforces `required="true"` validation (`EUIXActionValidationError`), tracks the call chain (`callChain` Set) to prevent circular loop recursions (`ActionA -> ActionB -> ActionA`), and enforces max depth limit guards (`depth > 25`).
+3. **`EUIXActionComposer`**: Executes workflow steps sequentially, evaluating conditional `<if condition="...">` branching, awaiting async HTTP (`XHR`) and script promises, updating `{result}` interpolation variables, and logging execution metrics (`durationMs`, `args`, `result`, `error`) to DevTools.
+4. **`EUIXActionRegistry`**: Pre-indexes `<action_def>` nodes during `mount()` and component spec registration (`registerComponentSpec`), supporting both instance-level and static global workflows.
 
 ---
 
@@ -378,9 +404,9 @@ Below is a reference of how various EUIX Engine metadata & configuration tags be
 EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
 
 ```bash
-# Run Vitest Unit, Component, Contract, Persistence & External Resource Tests (83 Tests)
+# Run Vitest Unit, Component, Contract, Action Composer, Persistence & External Resource Tests (133 Tests)
 npm run test
 
-# Run Playwright Real Browser E2E Tests (9 Tests)
+# Run Playwright Real Browser E2E Tests
 npm run test:e2e
 ```

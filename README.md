@@ -125,8 +125,7 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 
 ---
 
-## ✨ Key Features & Capability Matrix
-
+- **🧩 Action Composer System (`<action_def>`, `<param>`, `<return>`):** Define reusable named action workflows with parameters (`required="true"`, `default="..."`), sequential step execution, nested action calls, `{result}` data flow propagation, circular loop guards, and programmatic execution (`engine.executeAction()`).
 - **🗂️ Native & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`):** Fine-grained HTML5 & Pointer Drag & Drop support with zero-lag custom floating drag preview (`#euix-drag-ghost`) and automatic `dragover` preventDefault handling.
 - **🔀 Reactive List Mutations (`MUTATE_STATE` `PUSH`, `REMOVE`, `UPDATE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`):** High-performance array list mutations including item insertion, property updates, index deletion, item swapping (`SWAP`), and quick index reordering (`MOVE_UP`, `MOVE_DOWN`).
 - **🔄 SWR API Revalidation (`REVALIDATE_API`, `<revalidate>`):** Stale-While-Revalidate API data refetching triggered declaratively or programmatically (`revalidateApi()`).
@@ -138,9 +137,9 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 - **📁 External JSON Resource Loading (`src="..."`):** Declaratively fetch initial `<data_model>` states, `<constants>` tokens, or individual `<state>` values directly from JSON files (`<data_model src="...">`, `<constants src="...">`, `loadDataModel()`, `loadConstants()`, `mountAsync()`).
 - **⏱️ Lifecycle Timers & Intervals (`<on_interval>`):** Declarative recurring timers with conditional evaluation (`if="..."`) and automatic unmount cleanup.
 - **📜 External Scripts & Inline Scripting (`<use_script>`, `<use_style>`, `RUN_SCRIPT`):** Declaratively load external JS libraries (e.g. Highlight.js, Canvas-Confetti) and CSS stylesheets. Execute custom JS code snippets safely inside `<on_mount>`, `<on_state_change>`, or `<on_click>` using `action="RUN_SCRIPT"` with `$el`, `$data`, `$engine`, and `$evt` injected in a `new Function()` sandbox (no `eval()`).
-- **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates) and component recursion depth guard (>20 depth) preventing browser freezes or crashes.
+- **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates), component recursion depth guard (>20 depth), and circular action recursion guard preventing browser freezes or crashes.
 - **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
-- **🛡️ Contract & E2E Test Suite:** Fully verified with 10 Vitest unit/component/contract/benchmark test files (100% passing) and Playwright E2E browser tests.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 13 Vitest unit/component/contract/benchmark test files (100% passing) and Playwright E2E browser tests.
 
 ---
 

@@ -648,6 +648,13 @@
                                 </on_click>
                                 🧩 12. Custom Action Extension API
                             </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>action_composer</value>
+                                </on_click>
+                                ⚡ 13. Action Composer Workflow System
+                            </button>
                         </flex>
 
                         <!-- Doc Detail View (Span 2) -->
@@ -994,6 +1001,48 @@ engine.registerAction("TRACK_ANALYTICS", (actionNode, context) =&gt; {
 &lt;button id="buy_now_btn" class="btn-primary"&gt;
   &lt;on_click action="TRACK_ANALYTICS" event="purchase_attempt" /&gt;
   💳 Complete Purchase
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'action_composer'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">⚡ 13. Action Composer Workflow System (`&lt;action_def&gt;`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Define reusable named action subroutines and multi-step workflows with parameters, sequential step execution, nested action calls, step data flow propagation, and circular loop protection.
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">Workflow Definitions:</strong> Define named workflows with <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;action_def name="WorkflowName"&gt;</code> and parameter declarations (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;param name="..." default="..." required="true" /&gt;</code>).</li>
+                                        <li><strong class="text-white">Data Flow &amp; Return Expressions:</strong> Sequential steps receive step results automatically via <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">{result}</code> and evaluate optional <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;return&gt;</code> expressions.</li>
+                                        <li><strong class="text-white">Invocation Syntax:</strong> Execute declaratively using <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click action="EXECUTE_ACTION" name="..."&gt;</code>, shorthand <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click action="WorkflowName"&gt;</code>, or programmatically via <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">engine.executeAction("WorkflowName", args)</code>.</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;actions&gt;
+  &lt;action_def name="SaveUserWorkflow"&gt;
+    &lt;param name="userName" required="true" /&gt;
+    &lt;param name="role" default="User" /&gt;
+    
+    &lt;step action="SET_STATE"&gt;
+      &lt;path&gt;data.user_name&lt;/path&gt;
+      &lt;value&gt;{args.userName}&lt;/value&gt;
+    &lt;/step&gt;
+    
+    &lt;step action="MUTATE_STATE"&gt;
+      &lt;path&gt;data.logs&lt;/path&gt;
+      &lt;operation&gt;UNSHIFT&lt;/operation&gt;
+      &lt;value&gt;User {args.userName} added as {args.role}&lt;/value&gt;
+    &lt;/step&gt;
+    
+    &lt;return&gt;{data.user_name}&lt;/return&gt;
+  &lt;/action_def&gt;
+&lt;/actions&gt;
+ 
+&lt;!-- Declarative Invocation --&gt;
+&lt;button class="btn-primary"&gt;
+  &lt;on_click action="SaveUserWorkflow"&gt;
+    &lt;arg name="userName"&gt;Alice&lt;/arg&gt;
+    &lt;arg name="role"&gt;Admin&lt;/arg&gt;
+  &lt;/on_click&gt;
+  Add Admin User
 &lt;/button&gt;</code></pre>
                                 </flex>
                             </if>
