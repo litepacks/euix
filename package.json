@@ -35,6 +35,9 @@
     "./resilience": {
       "import": "./dist/plugins/EUIXResiliencePlugin.es.js"
     },
+    "./reactive": {
+      "import": "./dist/plugins/EUIXReactivePlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"

@@ -12,7 +12,8 @@ export default defineConfig({
         'plugins/EUIXStoragePlugin': resolve(__dirname, 'src/plugins/EUIXStoragePlugin.js'),
         'plugins/EUIXCollapsePlugin': resolve(__dirname, 'src/plugins/EUIXCollapsePlugin.js'),
         'plugins/EUIXDialogPlugin': resolve(__dirname, 'src/plugins/EUIXDialogPlugin.js'),
-        'plugins/EUIXResiliencePlugin': resolve(__dirname, 'src/plugins/EUIXResiliencePlugin.js')
+        'plugins/EUIXResiliencePlugin': resolve(__dirname, 'src/plugins/EUIXResiliencePlugin.js'),
+        'plugins/EUIXReactivePlugin': resolve(__dirname, 'src/plugins/EUIXReactivePlugin.js')
       },
       formats: ['es']
     },
