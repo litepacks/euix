@@ -6,7 +6,7 @@
                 <textarea bind="data.form_bio" rows="2" placeholder="Write your biography..." class="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </flex>
 
-            <grid cols="2" gap="12">
+            <grid cols="2" gap="12" class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <flex direction="column" gap="4">
                     <label class="text-xs font-bold text-slate-700">Category (Select)</label>
                     <select bind="data.form_category" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none">
@@ -33,7 +33,7 @@
                 </flex>
             </grid>
 
-            <grid cols="2" gap="12">
+            <grid cols="2" gap="12" class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <flex direction="column" gap="4">
                     <label class="text-xs font-bold text-slate-700">Expected Salary (Range: {data.form_salary}k $)</label>
                     <input type="range" min="30" max="150" step="5" bind="data.form_salary" class="w-full accent-blue-600 cursor-pointer" />
@@ -49,7 +49,7 @@
         <!-- Native HTML5 Validated Form Demo -->
         <form class="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex flex-col gap-3">
             <span class="text-xs font-bold text-emerald-950 uppercase tracking-wider">🛡️ Native HTML5 Validated Form</span>
-            <grid cols="2" gap="12">
+            <grid cols="2" gap="12" class="w-full grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <flex direction="column" gap="4">
                     <label class="text-xs font-bold text-slate-700">Email Address (Required, Type: Email)</label>
                     <input type="email" required="true" bind="data.form_email" placeholder="john@example.com" class="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none invalid:border-rose-500 invalid:text-rose-600" />

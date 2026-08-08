@@ -104,7 +104,7 @@
         </flex>
 
         <!-- Dynamic Output Section: Task List & Activity Audit Trail -->
-        <grid cols="2" gap="12" class="mt-2">
+        <grid cols="2" gap="12" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
             <!-- Left: Created Tasks List -->
             <flex direction="column" gap="6" class="p-3 bg-white border border-slate-200/80 rounded-xl">
                 <flex direction="row" align="center" justify="between">

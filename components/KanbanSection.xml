@@ -17,7 +17,7 @@
 
     <flex direction="column" gap="16" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
         <!-- Header Bar -->
-        <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-4">
+        <flex class="border-b border-slate-100 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
             <flex direction="row" align="center" gap="12">
                 <span class="text-3xl">🗂️</span>
                 <flex direction="column">
@@ -25,7 +25,7 @@
                     <span class="text-xs text-slate-500">Native HTML5 Drag &amp; Drop events mapped to fine-grained EUIX state mutations</span>
                 </flex>
             </flex>
-            <flex direction="row" align="center" gap="8">
+            <flex direction="row" align="center" gap="8" class="flex-wrap">
                 <button type="button" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-lg text-xs cursor-pointer transition-all shadow-sm flex items-center gap-1">
                     <on_click action="RUN_SCRIPT">
                         if (window.confetti) window.confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
