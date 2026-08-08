@@ -662,6 +662,13 @@
                                 </on_click>
                                 🧩 14. Modular Plugin Architecture
                             </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>try_catch_finally</value>
+                                </on_click>
+                                🛡️ 15. Try / Catch / Finally Error Handling
+                            </button>
                         </flex>
 
                         <!-- Doc Detail View (Span 2) -->
@@ -1075,6 +1082,41 @@ EUIXEngineCore
 // Mount EUIX XML spec
 const engine = EUIXEngineCore.mount(xmlString, '#app');
 EUIXDevTools.init(engine);</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'try_catch_finally'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🛡️ 15. Declarative Try / Catch / Finally Error Handling</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine supports declarative error handling (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;try&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;catch var="err"&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;finally&gt;</code>) across synchronous actions and asynchronous REST/XHR calls with structured <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">EUIXStructuredError</code> objects.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;button class="btn"&gt;
+  &lt;on_click action="TRY"&gt;
+    &lt;!-- Protected Actions --&gt;
+    &lt;step action="XHR"&gt;
+      &lt;url&gt;https://api.example.com/save&lt;/url&gt;
+      &lt;method&gt;POST&lt;/method&gt;
+    &lt;/step&gt;
+
+    &lt;!-- Catch Scope: Access {err.code}, {err.message}, {err.status} --&gt;
+    &lt;catch var="err"&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.error_message&lt;/path&gt;
+        &lt;value&gt;[{err.code}] {err.message} (Status: {err.status})&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/catch&gt;
+
+    &lt;!-- Finally Scope: Always executes after try or catch --&gt;
+    &lt;finally&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.is_loading&lt;/path&gt;
+        &lt;value&gt;false&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/finally&gt;
+  &lt;/on_click&gt;
+  Submit Form
+&lt;/button&gt;</code></pre>
                                 </flex>
                             </if>
                         </flex>

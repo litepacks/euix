@@ -332,6 +332,43 @@ export class EUIXDevTools {
         }
     }
 
+    logErrorScope(eventType, details = {}) {
+        const time = new Date().toLocaleTimeString();
+        let info = "";
+
+        if (eventType === "TRY_ENTER") {
+            info = `Try scope entered [${details.scopeId}]`;
+        } else if (eventType === "TRY_SUCCESS") {
+            info = `Try scope completed successfully (${details.duration ? details.duration.toFixed(1) : 0}ms)`;
+        } else if (eventType === "ACTION_ERROR") {
+            info = `Action error in try scope: [${details.error?.code}] ${details.error?.message}`;
+        } else if (eventType === "CATCH_ENTER") {
+            info = `Entering catch block (var: ${details.varName})`;
+        } else if (eventType === "CATCH_SUCCESS") {
+            info = `Error caught and handled successfully`;
+        } else if (eventType === "FINALLY_ENTER") {
+            info = `Entering finally block`;
+        } else if (eventType === "FINALLY_COMPLETE") {
+            info = `Finally block completed`;
+        } else if (eventType === "ERROR_PROPAGATED") {
+            info = `Error propagated: [${details.error?.code}] ${details.error?.message}`;
+        } else {
+            info = `${eventType}`;
+        }
+
+        const entry = { time, type: `TRY_CATCH:${eventType}`, info };
+        this.logs.push(entry);
+        if (this.logs.length > 30) this.logs.shift();
+
+        if (typeof console !== "undefined" && console.log) {
+            console.log(`%c[EUIX DevTools ErrorScope]%c 🛡️ ${eventType}: ${info}`, "color:#ef4444;font-weight:bold;", "color:inherit;");
+        }
+
+        if (this.panelOpen) {
+            this.renderPanel();
+        }
+    }
+
     bindEvents() {
         if (typeof document === "undefined") return;
 
