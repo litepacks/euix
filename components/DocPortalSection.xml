@@ -669,6 +669,13 @@
                                 </on_click>
                                 🛡️ 15. Try / Catch / Finally Error Handling
                             </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>resilience_primitives</value>
+                                </on_click>
+                                ⚡ 16. Resilience Primitives (Retry/Timeout/Delay)
+                            </button>
                         </flex>
 
                         <!-- Doc Detail View (Span 2) -->
@@ -1116,6 +1123,40 @@ EUIXDevTools.init(engine);</code></pre>
     &lt;/finally&gt;
   &lt;/on_click&gt;
   Submit Form
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'resilience_primitives'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">⚡ 16. Declarative Resilience Primitives (`EUIXResiliencePlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;retry&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;timeout&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;delay&gt;</code>, and <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">EUIXCancellationController</code> primitives make asynchronous UI workflows resilient without arbitrary JavaScript.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;button class="btn"&gt;
+  &lt;on_click action="TRY"&gt;
+    &lt;!-- 1. Retry with Exponential Backoff --&gt;
+    &lt;retry attempts="3" delay="500" backoff="exponential" max_delay="3000" on_error="API_HTTP_ERROR,API_NETWORK_ERROR,TIMEOUT_ERROR"&gt;
+      &lt;!-- 2. Timeout Scope (2000ms max per attempt) --&gt;
+      &lt;timeout ms="2000" message="API request timed out"&gt;
+        &lt;step action="XHR"&gt;
+          &lt;url&gt;https://api.example.com/unstable-endpoint&lt;/url&gt;
+          &lt;target&gt;data.items&lt;/target&gt;
+        &lt;/step&gt;
+      &lt;/timeout&gt;
+    &lt;/retry&gt;
+
+    &lt;!-- 3. Non-blocking Delay Primitive --&gt;
+    &lt;delay ms="1000" /&gt;
+
+    &lt;catch var="err"&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.error_log&lt;/path&gt;
+        &lt;value&gt;Exhausted attempts: [{err.code}] {err.message}&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/catch&gt;
+  &lt;/on_click&gt;
+  Resilient Action Sequence
 &lt;/button&gt;</code></pre>
                                 </flex>
                             </if>

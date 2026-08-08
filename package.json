@@ -32,6 +32,9 @@
     "./dialog": {
       "import": "./dist/plugins/EUIXDialogPlugin.es.js"
     },
+    "./resilience": {
+      "import": "./dist/plugins/EUIXResiliencePlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"
