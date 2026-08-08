@@ -130,15 +130,18 @@ const engine = EUIXEngine.mount(xmlString, '#app');
 
 | Subpath Import | Module / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **63.5 kB** | **18.8 kB** |
-| **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **87.3 kB** | **24.6 kB** |
-| **`euixjs/api`** | **REST SWR HTTP Client Engine** | **12.1 kB** | **2.9 kB** |
-| **`euixjs/composer`** | **Action Composer Workflow System** | **10.6 kB** | **2.8 kB** |
+| **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **84.8 kB** | **23.2 kB** |
+| **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **130.4 kB** | **35.4 kB** |
+| **`euixjs/animation`** | **Declarative Animation System** | **19.4 kB** | **4.0 kB** |
+| **`euixjs/resilience`** | **Resilience Execution Primitives** | **16.7 kB** | **3.4 kB** |
+| **`euixjs/api`** | **REST SWR HTTP Client Engine** | **13.5 kB** | **3.3 kB** |
+| **`euixjs/reactive`** | **Watch & Computed State System** | **13.1 kB** | **3.2 kB** |
+| **`euixjs/composer`** | **Action Composer Workflow System** | **10.9 kB** | **2.9 kB** |
 | **`euixjs/dnd`** | **HTML5 & Pointer Drag and Drop** | **5.1 kB** | **1.4 kB** |
 | **`euixjs/dialog`** | **Modal Dialog Overlay Component** | **4.8 kB** | **1.5 kB** |
 | **`euixjs/collapse`** | **Accordion / Collapse Component** | **3.3 kB** | **1.1 kB** |
 | **`euixjs/storage`** | **State Storage & Persistence** | **3.1 kB** | **0.9 kB** |
-| **`euixjs/devtools`** | **DevTools Inspector Panel** | **15.9 kB** | **4.4 kB** |
+| **`euixjs/devtools`** | **DevTools Inspector Panel** | **17.0 kB** | **4.8 kB** |
 
 ---
 
@@ -358,6 +361,72 @@ EUIX Engine provides tree-shakeable resilience execution primitives (`<retry>`, 
                 </catch>
             </on_click>
             Resilient Fetch
+        </button>
+    </flex>
+</uid_spec>
+```
+
+---
+
+## ⚡ Watch & Computed State (`EUIXReactivePlugin` - `<computed>`, `<watch>`)
+
+EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive side-effect watchers (`<watch>`) via `EUIXReactivePlugin` (`euixjs/reactive`):
+
+```xml
+<uid_spec>
+    <data_model>
+        <state id="firstName">Jane</state>
+        <state id="lastName">Smith</state>
+        <state id="user_role">Admin</state>
+
+        <!-- 1. Memoized Computed Derived Property -->
+        <computed id="fullName" deps="firstName, lastName">
+            return $data.firstName + " " + $data.lastName;
+        </computed>
+    </data_model>
+
+    <!-- 2. Side-Effect Watcher Triggering Actions on Change -->
+    <watch path="user_role">
+        <step action="MUTATE_STATE">
+            <path>audit_logs</path>
+            <operation>UNSHIFT</operation>
+            <value>Role changed from {prevValue} to {newValue}</value>
+        </step>
+    </watch>
+
+    <flex direction="column">
+        <h1>Welcome, {data.fullName}!</h1>
+    </flex>
+</uid_spec>
+```
+
+---
+
+## 🎭 Declarative Animation System (`EUIXAnimationPlugin` - `<animation_def>`, `<animate>`)
+
+EUIX Engine provides a complete keyframe animation engine with enter and deferred leave transitions (`euixjs/animation`):
+
+```xml
+<uid_spec>
+    <!-- 1. Reusable Keyframe Animation Definition -->
+    <animations>
+        <animation_def name="customPulse" duration="400" easing="ease-in-out">
+            <keyframe offset="0" transform="scale(1)" opacity="1" />
+            <keyframe offset="0.5" transform="scale(1.1)" opacity="0.8" />
+            <keyframe offset="1" transform="scale(1)" opacity="1" />
+        </animation_def>
+    </animations>
+
+    <flex direction="column" gap="16">
+        <!-- 2. Enter and Deferred Leave Lifecycle Transitions -->
+        <div id="hero" enter_animation="slide-in-down" leave_animation="fade-out">
+            <h1>Animated Element</h1>
+        </div>
+
+        <!-- 3. Event-Triggered Declarative Animation Action -->
+        <button class="btn">
+            <on_click action="ANIMATE" target="#hero" name="customPulse" duration="500" />
+            Animate Hero
         </button>
     </flex>
 </uid_spec>

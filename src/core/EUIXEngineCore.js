@@ -277,7 +277,7 @@ const METADATA_AND_EVENT_TAGS = new Set([
     "on_state_change", "on_visible", "on_update", "watch", "api_config", "api", 
     "persistence", "data_model", "imports", "constants", "vars", "variables",
     "use_script", "script_loader", "load_script", "use_style", "style_loader", "load_style",
-    "actions", "action_def", "workflow_def"
+    "actions", "action_def", "workflow_def", "animations", "animation_def", "keyframe_def", "keyframe", "animate", "transition"
 ]);
 
 /**
@@ -1791,6 +1791,19 @@ class EUIXEngineCore {
             this.handleAction(node, contextWithEl);
         });
 
+        // Lifecycle Enter Animation (<on_enter> / enter_animation="...")
+        const enterAnimAttr = xmlNode.getAttribute ? (xmlNode.getAttribute("enter_animation") || xmlNode.getAttribute("on_enter_preset")) : null;
+        const onEnterNodes = this.getChildren(xmlNode, "on_enter");
+        if (enterAnimAttr || onEnterNodes.length) {
+            if (typeof this.animate === "function") {
+                if (onEnterNodes.length && typeof this._handleAnimateAction === "function") {
+                    onEnterNodes.forEach(node => this._handleAnimateAction(node, contextWithEl));
+                } else if (enterAnimAttr) {
+                    this.animate(domEl, enterAnimAttr, {}, contextWithEl);
+                }
+            }
+        }
+
         // 2. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
         const onChangeNodes = [
             ...this.getChildren(xmlNode, "on_state_change"),
@@ -2054,6 +2067,14 @@ class EUIXEngineCore {
                 }
             });
 
+            const animDefNodes = [...Array.from(doc.getElementsByTagName("animation_def")), ...Array.from(doc.getElementsByTagName("keyframe_def"))];
+            animDefNodes.forEach(node => {
+                const name = node.getAttribute("name") || node.getAttribute("id");
+                if (name && typeof this.registerAnimationDef === "function") {
+                    this.registerAnimationDef(name, node);
+                }
+            });
+
             const persistenceNode = doc.querySelector("persistence");
             if (persistenceNode) {
                 const defaultStorage = persistenceNode.getAttribute("storage") || "local";
@@ -2302,6 +2323,10 @@ class EUIXEngineCore {
                 return val !== undefined && val !== null ? String(val) : "";
             }
 
+            if (context && context[trimmed] !== undefined && context[trimmed] !== null && typeof context[trimmed] !== "object") {
+                return String(context[trimmed]);
+            }
+
             return match;
         });
 
@@ -2421,14 +2446,28 @@ class EUIXEngineCore {
         const updateFn = () => {
             const newIndex = getActiveIndex();
             if (newIndex !== activeIndex) {
+                const oldNodes = Array.from(containerNode.children);
                 activeIndex = newIndex;
-                containerNode.innerHTML = "";
-                if (newIndex !== -1) {
-                    const fragment = document.createDocumentFragment();
-                    this.appendChildren(fragment, branches[newIndex].nodes, context, {
-                        skipTags: ["else", "else_if"]
-                    });
-                    containerNode.appendChild(fragment);
+                const renderNewBranch = () => {
+                    containerNode.innerHTML = "";
+                    if (newIndex !== -1) {
+                        const fragment = document.createDocumentFragment();
+                        this.appendChildren(fragment, branches[newIndex].nodes, context, {
+                            skipTags: ["else", "else_if"]
+                        });
+                        containerNode.appendChild(fragment);
+                    }
+                };
+
+                if (oldNodes.length > 0) {
+                    let pendingCount = oldNodes.length;
+                    const onDone = () => {
+                        pendingCount--;
+                        if (pendingCount <= 0) renderNewBranch();
+                    };
+                    oldNodes.forEach(childEl => this._runLeaveTransitionThenRemove(childEl, onDone));
+                } else {
+                    renderNewBranch();
                 }
             }
         };
@@ -2473,10 +2512,12 @@ class EUIXEngineCore {
             if (!attrValue) return;
 
             if (attrName === "id") {
-                el.id = this.interpolate(attrValue, context);
+                const idVal = this.interpolate(attrValue, context);
+                el.id = idVal;
+                el.setAttribute("id", idVal);
             }
 
-            const generalAttrs = ["draggable", "tabindex", "role", "title", "style", "src", "alt", "href", "target", "rel", "data-id", "data-key", "data-value"];
+            const generalAttrs = ["draggable", "tabindex", "role", "title", "style", "src", "alt", "href", "target", "rel", "data-id", "data-key", "data-value", "leave_animation", "enter_animation", "on_leave_preset", "on_enter_preset", "on_leave", "on_enter"];
 
             if (validationAttrs.includes(attrName)) {
                 if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
@@ -3043,7 +3084,7 @@ class EUIXEngineCore {
         this.bindEvents(xmlNode, div, context);
 
         Array.from(xmlNode.childNodes).forEach(child => {
-            if (child.nodeType === Node.ELEMENT_NODE && EVENT_TAGS.has(child.tagName.toLowerCase())) {
+            if (child.nodeType === Node.ELEMENT_NODE && (EVENT_TAGS.has(child.tagName.toLowerCase()) || METADATA_AND_EVENT_TAGS.has(child.tagName.toLowerCase()))) {
                 return;
             }
             const childEl = this.createHTMLElement(child, context);
@@ -3853,6 +3894,11 @@ class EUIXEngineCore {
         }
 
         // Declarative Resilience Primitives (Delay, Timeout, Retry)
+        const isAnimate = actionAttr === "ANIMATE" || actionAttr === "TRANSITION" || tagNameLower === "animate" || tagNameLower === "transition";
+        if (isAnimate && typeof this._handleAnimateAction === "function") {
+            return this._handleAnimateAction(actionNode, context);
+        }
+
         const isDelay = actionAttr === "DELAY" || actionAttr === "WAIT" || actionAttr === "SLEEP" || tagNameLower === "delay" || tagNameLower === "wait" || tagNameLower === "sleep";
         if (isDelay) {
             return this._handleDelay(actionNode, context);
@@ -4020,6 +4066,19 @@ class EUIXEngineCore {
                 } else {
                     this._pendingFocusKey = this.parseBindPath(targetStr);
                 }
+            }
+            return;
+        }
+
+        if (actionType === "TOGGLE_STATE" || actionType === "TOGGLE") {
+            const pathNode = this.getChild(actionNode, "path");
+            const rawPath = pathNode ? pathNode.textContent.trim() : (actionNode.getAttribute("path") || actionNode.getAttribute("target") || actionNode.getAttribute("bind") || "");
+            const interpolatedPath = this.interpolate(rawPath, context);
+            const path = this.parseBindPath(interpolatedPath);
+            if (path) {
+                const currentVal = this.getState(path);
+                const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
+                this.setState(path, isTruthy ? "false" : "true");
             }
             return;
         }

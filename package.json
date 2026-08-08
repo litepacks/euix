@@ -38,6 +38,9 @@
     "./reactive": {
       "import": "./dist/plugins/EUIXReactivePlugin.es.js"
     },
+    "./animation": {
+      "import": "./dist/plugins/EUIXAnimationPlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"

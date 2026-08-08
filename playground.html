@@ -126,6 +126,8 @@
         <imports>
             <import name="user-badge" src="components/UserBadge.xml" />
             <import name="app-header" src="components/AppHeader.xml" />
+            <import name="reactive-section" src="components/ReactiveSection.xml" />
+            <import name="animation-section" src="components/AnimationSection.xml" />
             <import name="counter-section" src="components/CounterSection.xml" />
             <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
             <import name="todo-section" src="components/TodoSection.xml" />
@@ -153,7 +155,7 @@
                 <flex direction="column" gap="4" class="min-w-0">
                     <flex direction="row" align="center" gap="8">
                         <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-xs rounded-full border border-emerald-500/30 uppercase tracking-wider">🎮 Live Playground</span>
-                        <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">11 Interactive Component Suites</span>
+                        <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">13 Interactive Component Suites</span>
                     </flex>
                     <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">EUIX Engine Interactive Demos</h1>
                     <p class="text-xs text-slate-300">Explore real-world full-stack components built 100% with Vanilla .EUIX Engine.</p>
@@ -175,6 +177,8 @@
                 <span class="{const.status_badge} shrink-0 self-start sm:self-auto">{data.portal_status}</span>
             </flex>
 
+            <reactive-section />
+            <animation-section />
             <action-composer-section />
             <ecommerce-section />
             <kanban-section />

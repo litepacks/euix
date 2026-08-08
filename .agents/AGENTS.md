@@ -687,3 +687,43 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive wa
 - **Reactive Side-Effects (`<watch>`)**: Triggers EUIX actions when watched state or computed paths change. Exposes `$newValue`, `$prevValue`, `$path`.
 - **Infinite Reactive Loop Guards (`WATCHER_CYCLE_ERROR`)**: Protects against cascading watcher loops with depth limits and execution tracking.
 - **Component Lifecycle Cleanup**: Component-scoped watchers and computed subscriptions are released on unmount (`disposeComponentReactive`).
+
+---
+
+## 🎭 15. Declarative Animation System (`EUIXAnimationPlugin`)
+
+EUIX Engine provides a tree-shakeable declarative animation system (`<animations>`, `<animation_def>`, `<animate>`, `enter_animation`, `leave_animation`) via `EUIXAnimationPlugin` (`euixjs/animation`):
+
+```xml
+<uid_spec>
+  <!-- 1. Reusable Keyframe Animation Definition -->
+  <animations>
+    <animation_def name="customPulse" duration="400" easing="ease-in-out">
+      <keyframe offset="0" transform="scale(1)" opacity="1" />
+      <keyframe offset="0.5" transform="scale(1.1)" opacity="0.8" />
+      <keyframe offset="1" transform="scale(1)" opacity="1" />
+    </animation_def>
+  </animations>
+
+  <flex direction="column" gap="16">
+    <!-- 2. Enter and Deferred Leave Lifecycle Transitions -->
+    <div id="hero" enter_animation="slide-in-down" leave_animation="fade-out">
+      <h1 class="text-2xl font-bold">Animated Component</h1>
+    </div>
+
+    <!-- 3. Event-Triggered Declarative Animation Action -->
+    <button class="btn">
+      <on_click action="ANIMATE" target="#hero" name="customPulse" duration="500" />
+      Trigger Pulse
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities & Animation Model:
+- **Built-in Presets**: Standard keyframe presets (`fade-in`, `fade-out`, `slide-in-down`, `slide-out-up`, `slide-in-left`, `slide-out-right`, `scale-in`, `scale-out`, `spin`, `pulse`, `bounce`).
+- **`<animation_def>` Declarations**: Reusable named keyframe animation definitions parsed directly from XML.
+- **Lifecycle Enter & Deferred Leave**: Element enter (`enter_animation="..."`) and leave (`leave_animation="..."`) transitions. Deferred DOM detachment on conditional state branch changes until leave transition finishes.
+- **Interruption & Cancellation Policies**: Supports `cancel` (aborts current target animation), `finish` (skips to end state), and `queue` policies. Integrates with `EUIXCancellationController`.
+- **Reduced Motion Awareness**: Respects system `prefers-reduced-motion` settings by collapsing duration to 0ms.
+- **Programmatic Control**: Programmatically trigger animations via `engine.animate(target, keyframesOrName, options)`.
