@@ -254,10 +254,26 @@ export const EUIXApiPlugin = {
                     return data;
                 })
                 .catch((err) => {
+                    const status = err.status || (err.message && err.message.match(/HTTP (\d+)/) ? parseInt(err.message.match(/HTTP (\d+)/)[1], 10) : null);
+                    const StructuredErrorClass = engineClass.EUIXStructuredError || (typeof window !== "undefined" && window.EUIXStructuredError);
+                    const structuredErr = StructuredErrorClass
+                        ? StructuredErrorClass.from(err, {
+                            originatingAction: "XHR",
+                            code: status ? "API_HTTP_ERROR" : "API_NETWORK_ERROR",
+                            status,
+                            request: { url: finalUrl, method }
+                        })
+                        : err;
+
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
-                        if (errorPath) this.setState(errorPath, err.message || "Ağ hatası", { silent: true });
+                        if (errorPath) this.setState(errorPath, structuredErr.message || "Ağ hatası", { silent: true });
                     });
+                    const inTryScope = context._inTryScope || (this._currentActionContext && this._currentActionContext._inTryScope);
+                    if (inTryScope) {
+                        throw structuredErr;
+                    }
+                    return null;
                 });
         };
 

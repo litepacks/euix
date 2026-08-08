@@ -4,7 +4,7 @@
  * Automatically bundles EUIXEngineCore with built-in API, Action Composer, and Drag-and-Drop plugins.
  */
 
-import { EUIXEngineCore, EUIXExpressionParser } from "./core/EUIXEngineCore.js";
+import { EUIXEngineCore, EUIXExpressionParser, EUIXStructuredError } from "./core/EUIXEngineCore.js";
 import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
 import {
     EUIXComposerPlugin,
@@ -32,6 +32,7 @@ const EUIXEngine = EUIXEngineCore;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
+    window.EUIXStructuredError = EUIXStructuredError;
     window.EUIXEngineCore = EUIXEngineCore;
     window.EUIXEngine = EUIXEngine;
     window.EUIXActionRecursionError = EUIXActionRecursionError;
@@ -52,6 +53,7 @@ export {
     EUIXEngine,
     EUIXEngineCore,
     EUIXExpressionParser,
+    EUIXStructuredError,
     EUIXApiPlugin,
     EUIXComposerPlugin,
     EUIXDragDropPlugin,

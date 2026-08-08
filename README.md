@@ -281,6 +281,54 @@ Define reusable CSS utility class tokens or configuration variables at root or c
 
 ---
 
+## 🛡️ Declarative Try / Catch / Finally Error Handling (`<try>`, `<catch var="err">`, `<finally>`)
+
+EUIX Engine supports declarative, structured error handling across both synchronous and asynchronous actions (`XHR`, `RUN_SCRIPT`, `Action Composer` workflows).
+
+```xml
+<uid_spec>
+    <flex direction="column" gap="12">
+        <button class="btn">
+            <on_click action="TRY">
+                <!-- Protected Actions -->
+                <step action="XHR">
+                    <url>https://api.example.com/data</url>
+                    <method>POST</method>
+                </step>
+
+                <!-- Catch Scope: Executes if Try throws or rejects -->
+                <catch var="err">
+                    <step action="SET_STATE">
+                        <path>data.error_message</path>
+                        <value>[{err.code}] {err.message} (Status: {err.status})</value>
+                    </step>
+                </catch>
+
+                <!-- Finally Scope: Always executes after Try / Catch -->
+                <finally>
+                    <step action="SET_STATE">
+                        <path>data.is_loading</path>
+                        <value>false</value>
+                    </step>
+                </finally>
+            </on_click>
+            Submit Data
+        </button>
+    </flex>
+</uid_spec>
+```
+
+### Structured Error Object (`EUIXStructuredError`)
+Errors caught inside `<catch var="err">` provide structured properties:
+- `{err.message}`: Human-readable error message
+- `{err.code}`: Categorized error code (`ACTION_EXECUTION_ERROR`, `API_HTTP_ERROR`, `API_NETWORK_ERROR`, `VALIDATION_ERROR`, `TIMEOUT_ERROR`)
+- `{err.status}`: HTTP status code (e.g. 500, 404) for network errors
+- `{err.originatingAction}`: Action or tag name that produced the failure
+- `{err.component}`: Originating component name
+- `<rethrow />`: Explicitly re-throw caught error to propagate to parent scope
+
+---
+
 ## 🛠️ EUIX DevTools
 
 Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + Shift + I`** or clicking the **`📊 State & Logs`** button:

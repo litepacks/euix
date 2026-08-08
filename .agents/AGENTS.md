@@ -546,3 +546,51 @@ Inline scripts inside `<on_mount>` or `action="RUN_SCRIPT"` execute inside an is
   <input type="checkbox" bind="task.done" />
 </for_each>
 ```
+
+---
+
+## 🛡️ 12. Declarative Try / Catch / Finally Error Handling
+
+EUIX Engine supports declarative, structured error handling across synchronous and asynchronous actions (`XHR`, `RUN_SCRIPT`, `Action Composer` workflows):
+
+```xml
+<uid_spec>
+  <flex direction="column">
+    <button class="btn">
+      <on_click action="TRY">
+        <!-- Protected Actions -->
+        <step action="XHR">
+          <url>https://api.example.com/save</url>
+          <method>POST</method>
+        </step>
+
+        <!-- Catch Scope: Executes if Try throws or rejects -->
+        <catch var="err">
+          <step action="SET_STATE">
+            <path>data.error_message</path>
+            <value>[{err.code}] {err.message} (Status: {err.status})</value>
+          </step>
+        </catch>
+
+        <!-- Finally Scope: Always executes after Try / Catch -->
+        <finally>
+          <step action="SET_STATE">
+            <path>data.is_loading</path>
+            <value>false</value>
+          </step>
+        </finally>
+      </on_click>
+      Submit Form
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### Structured Error Properties (`EUIXStructuredError`)
+Inside `<catch var="err">`, the error object exposes structured properties:
+- `{err.message}`: Human-readable error message
+- `{err.code}`: Categorized error code (`ACTION_EXECUTION_ERROR`, `API_HTTP_ERROR`, `API_NETWORK_ERROR`, `VALIDATION_ERROR`, `TIMEOUT_ERROR`)
+- `{err.status}`: HTTP response status code (e.g. 500, 404) for network errors
+- `{err.originatingAction}`: Action or tag name that produced the failure
+- `{err.component}`: Originating component name
+- `<rethrow />`: Explicitly re-throw caught error to propagate to parent scope

@@ -298,6 +298,88 @@ class EUIXActionValidationError extends Error {
 }
 
 /**
+ * EUIXStructuredError
+ * Categorized, structured error object for EUIX Engine actions.
+ */
+class EUIXStructuredError extends Error {
+    constructor({
+        message = "An action execution error occurred",
+        code = "ACTION_EXECUTION_ERROR",
+        originatingAction = "UNKNOWN",
+        status = null,
+        request = null,
+        component = null,
+        cause = null,
+        caller = null,
+        sourceLocation = null
+    } = {}) {
+        super(message);
+        this.name = "EUIXStructuredError";
+        this.code = code;
+        this.originatingAction = originatingAction;
+        this.status = status;
+        this.request = request;
+        this.component = component;
+        this.cause = cause;
+        this.caller = caller;
+        this.sourceLocation = sourceLocation;
+        this.timestamp = new Date().toISOString();
+
+        if (cause && cause.stack) {
+            this.stack = cause.stack;
+        }
+    }
+
+    static from(err, defaultInfo = {}) {
+        if (err instanceof EUIXStructuredError) {
+            if (defaultInfo.component && !err.component) err.component = defaultInfo.component;
+            if (defaultInfo.originatingAction && (!err.originatingAction || err.originatingAction === "UNKNOWN")) {
+                err.originatingAction = defaultInfo.originatingAction;
+            }
+            return err;
+        }
+
+        let code = defaultInfo.code || "ACTION_EXECUTION_ERROR";
+        let message = (err && err.message) ? err.message : String(err || "Unknown error");
+        let status = defaultInfo.status || (err && err.status) || null;
+        let request = defaultInfo.request || (err && err.request) || null;
+
+        if (err && err.name === "EUIXActionValidationError") {
+            code = "VALIDATION_ERROR";
+        } else if (err && err.name === "EUIXActionRecursionError") {
+            code = "ACTION_RECURSION_ERROR";
+        } else if (status || (code && code.startsWith("API_"))) {
+            code = code || "API_HTTP_ERROR";
+        }
+
+        return new EUIXStructuredError({
+            message,
+            code,
+            originatingAction: defaultInfo.originatingAction || "UNKNOWN",
+            status,
+            request,
+            component: defaultInfo.component || null,
+            cause: err instanceof Error ? err : null,
+            caller: defaultInfo.caller || null,
+            sourceLocation: defaultInfo.sourceLocation || null
+        });
+    }
+
+    toJSON() {
+        return {
+            name: this.name,
+            message: this.message,
+            code: this.code,
+            originatingAction: this.originatingAction,
+            status: this.status,
+            request: this.request,
+            component: this.component,
+            timestamp: this.timestamp
+        };
+    }
+}
+
+/**
  * EUIXActionContext
  * Scoped execution context for composed action invocations.
  */
@@ -1287,12 +1369,20 @@ class EUIXEngineCore {
             const argsObj = context.args || context.params || {};
             return argsObj[key];
         }
+        if (path.startsWith("err.") || path.startsWith("error.")) {
+            const key = path.replace(/^(err|error)\./, "");
+            const errObj = context.err || context.error;
+            return (errObj && typeof errObj === "object") ? errObj[key] : undefined;
+        }
         if (path.startsWith("result.")) {
             const key = path.slice(7);
             return (context.result && typeof context.result === "object") ? context.result[key] : undefined;
         }
         if (path === "result") {
             return context.result;
+        }
+        if (path === "err" || path === "error") {
+            return context.err || context.error;
         }
         const ctxMatch = path.match(/^(\w+)(?:\.(.+))?$/);
         if (ctxMatch) {
@@ -2021,8 +2111,8 @@ class EUIXEngineCore {
             return match;
         });
 
-        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}
-        result = result.replace(/\{(args|params|result)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}
+        result = result.replace(/\{(args|params|result|err|error)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
             if (scope === "args" || scope === "params") {
                 const argsObj = context.args || context.params;
                 if (argsObj && typeof argsObj === "object") {
@@ -2040,6 +2130,18 @@ class EUIXEngineCore {
                 if (context.result && typeof context.result === "object") {
                     const parts = prop.split(".");
                     let curr = context.result;
+                    for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
+                        curr = curr[parts[i]];
+                    }
+                    return curr !== undefined && curr !== null ? String(curr) : "";
+                }
+            }
+            if (scope === "err" || scope === "error") {
+                const errObj = context[scope] || context.err || context.error;
+                if (errObj) {
+                    if (!prop) return typeof errObj === "object" ? (errObj.message || JSON.stringify(errObj)) : String(errObj);
+                    const parts = prop.split(".");
+                    let curr = errObj;
                     for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
                         curr = curr[parts[i]];
                     }
@@ -2967,23 +3069,23 @@ class EUIXEngineCore {
                         const actType = node.getAttribute("action");
                         if (actType === "XHR") this.handleXHR(node, eventContext);
                         else this.batch(() => this.handleAction(node, eventContext));
-                    }
-
-                    const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
-                    if (childActions.length) {
-                        const syncActions = [];
-                        const xhrActions = [];
-                        childActions.forEach(act => {
-                            if (act.getAttribute("action") === "XHR") xhrActions.push(act);
-                            else syncActions.push(act);
-                        });
-
-                        if (syncActions.length) {
-                            this.batch(() => {
-                                syncActions.forEach(act => this.handleAction(act, eventContext));
+                    } else {
+                        const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
+                        if (childActions.length) {
+                            const syncActions = [];
+                            const xhrActions = [];
+                            childActions.forEach(act => {
+                                if (act.getAttribute("action") === "XHR") xhrActions.push(act);
+                                else syncActions.push(act);
                             });
+
+                            if (syncActions.length) {
+                                this.batch(() => {
+                                    syncActions.forEach(act => this.handleAction(act, eventContext));
+                                });
+                            }
+                            xhrActions.forEach(act => this.handleXHR(act, eventContext));
                         }
-                        xhrActions.forEach(act => this.handleXHR(act, eventContext));
                     }
                 }
             });
@@ -3099,14 +3201,152 @@ class EUIXEngineCore {
         return window.confirm(this.interpolate(confirmAttr, context) || "Emin misiniz?");
     }
 
-    handleAction(actionNode, context) {
+    async handleAction(actionNode, context = {}) {
         if (!actionNode) return;
         try {
-            return this._handleActionInternal(actionNode, context);
+            return await this._handleActionInternal(actionNode, context);
         } catch (err) {
-            const actName = actionNode.getAttribute ? actionNode.getAttribute("action") : "unknown";
-            this.reportError(err, `Action Execution Fallback (${actName})`);
+            const actName = actionNode.getAttribute ? (actionNode.getAttribute("action") || actionNode.tagName) : "unknown";
+            const structuredErr = EUIXStructuredError.from(err, {
+                originatingAction: actName,
+                component: context._componentName
+            });
+            this.reportError(structuredErr, `Action Execution Fallback (${actName})`);
+            return undefined;
         }
+    }
+
+    async _handleTryCatchFinally(tryNode, context = {}) {
+        const catchNodes = Array.from(tryNode.children).filter(c => c.tagName && c.tagName.toLowerCase() === "catch");
+        const finallyNodes = Array.from(tryNode.children).filter(c => c.tagName && c.tagName.toLowerCase() === "finally");
+
+        if (catchNodes.length > 1) {
+            const err = new EUIXStructuredError({
+                message: "<try> block can only contain one <catch> handler",
+                code: "VALIDATION_ERROR",
+                originatingAction: "TRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Try/Catch Validation");
+            throw err;
+        }
+
+        if (finallyNodes.length > 1) {
+            const err = new EUIXStructuredError({
+                message: "<try> block can only contain one <finally> handler",
+                code: "VALIDATION_ERROR",
+                originatingAction: "TRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Try/Catch Validation");
+            throw err;
+        }
+
+        const tryActionNodes = Array.from(tryNode.children).filter(c => {
+            const tag = c.tagName ? c.tagName.toLowerCase() : "";
+            return tag !== "catch" && tag !== "finally";
+        });
+
+        let tryResult = undefined;
+        let caughtError = null;
+        let pendingError = null;
+        const scopeId = "scope_" + Math.random().toString(36).substring(2, 9);
+        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            this._devtools.logErrorScope("TRY_ENTER", { scopeId, component: context._componentName });
+        }
+
+        const tryContext = {
+            ...context,
+            _inTryScope: true
+        };
+
+        try {
+            for (const childNode of tryActionNodes) {
+                tryResult = await this._handleActionInternal(childNode, tryContext);
+            }
+            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                this._devtools.logErrorScope("TRY_SUCCESS", {
+                    scopeId,
+                    duration: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
+                });
+            }
+        } catch (rawErr) {
+            caughtError = EUIXStructuredError.from(rawErr, {
+                originatingAction: tryNode.getAttribute("action") || "TRY",
+                component: context._componentName
+            });
+
+            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                this._devtools.logErrorScope("ACTION_ERROR", { scopeId, error: caughtError.toJSON() });
+            }
+
+            const catchNode = catchNodes[0];
+            if (catchNode) {
+                const varName = catchNode.getAttribute("var") || catchNode.getAttribute("as") || catchNode.getAttribute("id") || "err";
+                const catchContext = {
+                    ...context,
+                    _inTryScope: true,
+                    [varName]: caughtError,
+                    err: caughtError,
+                    error: caughtError,
+                    _lastError: caughtError
+                };
+
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("CATCH_ENTER", { scopeId, varName, error: caughtError.toJSON() });
+                }
+
+                try {
+                    const catchActions = Array.from(catchNode.children);
+                    for (const catchAct of catchActions) {
+                        tryResult = await this._handleActionInternal(catchAct, catchContext);
+                    }
+                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                        this._devtools.logErrorScope("CATCH_SUCCESS", { scopeId, handled: true });
+                    }
+                } catch (catchErr) {
+                    pendingError = EUIXStructuredError.from(catchErr, {
+                        originatingAction: "CATCH",
+                        component: context._componentName,
+                        cause: caughtError
+                    });
+                }
+            } else {
+                pendingError = caughtError;
+            }
+        } finally {
+            const finallyNode = finallyNodes[0];
+            if (finallyNode) {
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("FINALLY_ENTER", { scopeId });
+                }
+                try {
+                    const finallyActions = Array.from(finallyNode.children);
+                    for (const finAct of finallyActions) {
+                        await this._handleActionInternal(finAct, context);
+                    }
+                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                        this._devtools.logErrorScope("FINALLY_COMPLETE", { scopeId });
+                    }
+                } catch (finErr) {
+                    pendingError = EUIXStructuredError.from(finErr, {
+                        originatingAction: "FINALLY",
+                        component: context._componentName
+                    });
+                }
+            }
+
+            if (pendingError) {
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("ERROR_PROPAGATED", { scopeId, error: pendingError.toJSON() });
+                }
+                throw pendingError;
+            }
+        }
+
+        return tryResult;
     }
 
     _handleActionInternal(actionNode, context = {}) {
@@ -3123,11 +3363,58 @@ class EUIXEngineCore {
             });
         }
 
+        // Declarative Try / Catch / Finally Error Handling Primitives
+        const isTryBlock = actionAttr === "TRY" || tagNameLower === "try";
+        if (isTryBlock) {
+            return this._handleTryCatchFinally(actionNode, context);
+        }
+
+        const isRethrow = actionAttr === "RETHROW" || tagNameLower === "rethrow";
+        if (isRethrow) {
+            const errToThrow = context.err || context.error || context._lastError || new EUIXStructuredError({ message: "Explicit rethrow triggered", code: "ACTION_EXECUTION_ERROR" });
+            throw errToThrow;
+        }
+
+        const isThrow = actionAttr === "THROW" || tagNameLower === "throw";
+        if (isThrow) {
+            const msg = actionNode.getAttribute("message") || actionNode.getAttribute("msg") || this.getChild(actionNode, "message")?.textContent || "Explicit throw triggered";
+            const code = actionNode.getAttribute("code") || "ACTION_EXECUTION_ERROR";
+            const interpolatedMsg = this.interpolate(msg, context);
+            throw new EUIXStructuredError({
+                message: interpolatedMsg,
+                code,
+                originatingAction: "THROW",
+                component: context._componentName
+            });
+        }
+
+        if (tagNameLower === "catch") {
+            const err = new EUIXStructuredError({
+                message: "Orphan <catch> tag encountered without a parent <try> block",
+                code: "VALIDATION_ERROR",
+                originatingAction: "CATCH",
+                component: context._componentName
+            });
+            this.reportError(err, "Syntax Validation");
+            throw err;
+        }
+
+        if (tagNameLower === "finally") {
+            const err = new EUIXStructuredError({
+                message: "Orphan <finally> tag encountered without a parent <try> block",
+                code: "VALIDATION_ERROR",
+                originatingAction: "FINALLY",
+                component: context._componentName
+            });
+            this.reportError(err, "Syntax Validation");
+            throw err;
+        }
+
         // Action Composer Resolution
         const isComposedCallTag = ["execute_action", "call_action", "run_workflow", "action", "step"].includes(tagNameLower);
         const isComposedCallAttr = actionAttr === "EXECUTE_ACTION" || actionAttr === "CALL_ACTION" || actionAttr === "RUN_WORKFLOW";
         const targetComposedName = (isComposedCallAttr || isComposedCallTag)
-            ? (actionNode.getAttribute("name") || actionNode.getAttribute("action_name") || actionNode.getAttribute("target") || this.getChild(actionNode, "name")?.textContent.trim())
+            ? (actionNode.getAttribute("name") || actionNode.getAttribute("action_name") || actionNode.getAttribute("target") || this.getChild(actionNode, "name")?.textContent.trim() || actionAttr)
             : (actionAttr || tagNameLower);
 
         if (targetComposedName && this.hasActionDef(targetComposedName)) {
@@ -3527,7 +3814,7 @@ class EUIXEngineCore {
             layout = root.querySelector("layout, flex, grid, form, collapse");
         }
         if (!layout) {
-            layout = Array.from(root.children || []).find(c => c.tagName && !["data_model", "imports", "constants", "vars", "variables", "component_def"].includes(c.tagName.toLowerCase())) || root;
+            layout = Array.from(root.children || []).find(c => c.tagName && !["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "api_config"].includes(c.tagName.toLowerCase())) || root;
         }
 
         if (layout) {
@@ -3546,6 +3833,7 @@ EUIXEngineCore.EUIXExpressionParser = EUIXExpressionParser;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
+    window.EUIXStructuredError = EUIXStructuredError;
     window.EUIXEngineCore = EUIXEngineCore;
     window.EUIXEngine = EUIXEngineCore;
     if (document.readyState === "loading") {
@@ -3555,5 +3843,5 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
 }
 
-export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser };
+export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError };
 export default EUIXEngineCore;

@@ -241,9 +241,10 @@ export class EUIXActionComposer {
                 }
             }
         } catch (err) {
-            executionError = err;
-            if (engine) engine.reportError(err, `Action Composer (${actionDef.name})`);
-            throw err;
+            const StructuredErrorClass = (engine && engine.constructor.EUIXStructuredError) || (typeof window !== "undefined" && window.EUIXStructuredError);
+            executionError = StructuredErrorClass ? StructuredErrorClass.from(err, { originatingAction: actionDef.name }) : err;
+            if (engine) engine.reportError(executionError, `Action Composer (${actionDef.name})`);
+            throw executionError;
         } finally {
             if (engine) engine._currentActionContext = prevContext;
 
