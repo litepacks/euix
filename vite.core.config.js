@@ -24,7 +24,8 @@ export default defineConfig({
       mangle: {
         toplevel: true,
         properties: {
-          regex: /^_/
+          regex: /^_/,
+          reserved: ['_index', '_parentStateKey', '_targetEl', '_evt']
         }
       },
       format: {
