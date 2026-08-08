@@ -20,6 +20,7 @@ import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
 import { EUIXCollapsePlugin } from "./plugins/EUIXCollapsePlugin.js";
 import { EUIXDialogPlugin } from "./plugins/EUIXDialogPlugin.js";
 import { EUIXResiliencePlugin, EUIXCancellationController } from "./plugins/EUIXResiliencePlugin.js";
+import { EUIXReactivePlugin, EUIXDependencyGraph, EUIXComputedNode, EUIXWatchNode } from "./plugins/EUIXReactivePlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -29,6 +30,7 @@ EUIXEngineCore.use(EUIXStoragePlugin);
 EUIXEngineCore.use(EUIXCollapsePlugin);
 EUIXEngineCore.use(EUIXDialogPlugin);
 EUIXEngineCore.use(EUIXResiliencePlugin);
+EUIXEngineCore.use(EUIXReactivePlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -45,6 +47,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXActionRegistry = EUIXActionRegistry;
     window.EUIXActionComposer = EUIXActionComposer;
     window.EUIXResiliencePlugin = EUIXResiliencePlugin;
+    window.EUIXReactivePlugin = EUIXReactivePlugin;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -66,6 +69,10 @@ export {
     EUIXCollapsePlugin,
     EUIXDialogPlugin,
     EUIXResiliencePlugin,
+    EUIXReactivePlugin,
+    EUIXDependencyGraph,
+    EUIXComputedNode,
+    EUIXWatchNode,
     EUIXActionRecursionError,
     EUIXActionValidationError,
     EUIXActionContext,

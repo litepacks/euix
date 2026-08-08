@@ -1160,6 +1160,41 @@ EUIXDevTools.init(engine);</code></pre>
 &lt;/button&gt;</code></pre>
                                 </flex>
                             </if>
+
+                            <if condition="{data.active_doc_topic} == 'watch_computed'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">⚡ 17. Declarative Watch &amp; Computed State (`EUIXReactivePlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;computed&gt;</code> state and <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;watch&gt;</code> reactive side-effects provide derived state caching, dependency tracking, read-only guards, and cycle protection.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;uid_spec&gt;
+  &lt;data_model&gt;
+    &lt;state id="firstName"&gt;John&lt;/state&gt;
+    &lt;state id="lastName"&gt;Doe&lt;/state&gt;
+    &lt;state id="user_role"&gt;Admin&lt;/state&gt;
+
+    &lt;!-- 1. Side-Effect Free Computed Property --&gt;
+    &lt;computed id="fullName" deps="firstName, lastName"&gt;
+      return $data.firstName + " " + $data.lastName;
+    &lt;/computed&gt;
+  &lt;/data_model&gt;
+
+  &lt;!-- 2. Reactive Watcher Executing EUIX Actions --&gt;
+  &lt;watch path="user_role"&gt;
+    &lt;step action="RUN_SCRIPT"&gt;
+      console.log("Role changed from", $prevValue, "to", $newValue);
+    &lt;/step&gt;
+  &lt;/watch&gt;
+
+  &lt;!-- 3. Watch Computed Property --&gt;
+  &lt;watch path="computed.fullName"&gt;
+    &lt;step action="RUN_SCRIPT"&gt;
+      console.log("Full name updated:", $newValue);
+    &lt;/step&gt;
+  &lt;/watch&gt;
+&lt;/uid_spec&gt;</code></pre>
+                                </flex>
+                            </if>
                         </flex>
                     </grid>
                 </flex>

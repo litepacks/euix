@@ -379,6 +379,8 @@ class EUIXStructuredError extends Error {
     }
 }
 
+
+
 /**
  * EUIXActionContext
  * Scoped execution context for composed action invocations.
@@ -727,6 +729,11 @@ class EUIXEngineCore {
             EUIXEngineCore._globalActionRegistry = new EUIXActionRegistry();
         }
         this._maxActionDepth = 25;
+        this._depGraph = null;
+        this._computedRegistry = null;
+        this._watchRegistry = null;
+        this._isEvaluatingComputed = false;
+        this._reactiveDepth = 0;
         this._setupStorageListener();
         this._initRevalidationListeners();
     }
@@ -929,10 +936,20 @@ class EUIXEngineCore {
             });
         }
         if (this._stateWatchers) {
+            const watchContext = {
+                path: key,
+                $path: key,
+                newValue,
+                $newValue: newValue,
+                oldValue,
+                $oldValue: oldValue,
+                prevValue: oldValue,
+                $prevValue: oldValue
+            };
             for (const [wKey, list] of this._stateWatchers.entries()) {
                 if (wKey === key || wKey.startsWith(key + ".")) {
                     list.forEach(cb => {
-                        try { cb(newValue, oldValue, key); } catch (err) { this.reportError(err, `watch listener error on "${wKey}"`); }
+                        try { cb(newValue, oldValue, key, watchContext); } catch (err) { this.reportError(err, `watch listener error on "${wKey}"`); }
                     });
                 }
             }
@@ -1334,8 +1351,12 @@ class EUIXEngineCore {
     }
 
     getState(key) {
-        if (!this._rawState) return undefined;
-        let val = this._rawState[key];
+        if (!key) return undefined;
+        const cleanKey = String(key).replace(/^(data|state|computed)\./, "");
+        if (this._computedRegistry && this._computedRegistry.has(cleanKey)) {
+            return this.getComputed(cleanKey);
+        }
+        let val = (this._rawState[cleanKey] !== undefined) ? this._rawState[cleanKey] : this._rawState[key];
         if (val === undefined && typeof key === "string" && key.includes(".")) {
             const parts = key.split(".");
             let curr = this._rawState[parts[0]];
@@ -1353,6 +1374,12 @@ class EUIXEngineCore {
 
     resolveValueFromPath(path, context = {}) {
         if (!path) return undefined;
+        if (path.startsWith("computed.")) {
+            return this.getComputed(path.slice(9));
+        }
+        if (this._computedRegistry && this._computedRegistry.has(path)) {
+            return this.getComputed(path);
+        }
         if (path.startsWith("data.") || path.startsWith("state.")) {
             return this.getState(path.replace(/^(data|state)\./, ""));
         }
@@ -1406,6 +1433,24 @@ class EUIXEngineCore {
         const { silent = false, sourceEl = null, context = null } = (typeof options === "boolean" ? { silent: options } : options);
         if (!this._rawState) return;
 
+        if (this._isEvaluatingComputed) {
+            const err = new EUIXStructuredError({
+                message: `State mutation prohibited inside computed getter (key: "${key}"). Computed properties must be deterministic and side-effect free.`,
+                code: "COMPUTED_MUTATION_ERROR"
+            });
+            this.reportError(err, "Computed Mutation Guard");
+            throw err;
+        }
+
+        if (this._computedRegistry && this._computedRegistry.has(key)) {
+            const err = new EUIXStructuredError({
+                message: `Cannot mutate read-only computed property '${key}'`,
+                code: "COMPUTED_MUTATION_ERROR"
+            });
+            this.reportError(err, "Computed Mutation Guard");
+            throw err;
+        }
+
         const ctxSignal = (context && context._cancellationSignal) ||
             (this._currentActionContext && this._currentActionContext._cancellationSignal);
         if (ctxSignal && ctxSignal.isCancelled) {
@@ -1442,9 +1487,38 @@ class EUIXEngineCore {
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
             }
+
+            const allAffected = new Set();
+            const invalidateComputed = (changedKey) => {
+                const affected = this._depGraph ? this._depGraph.getAffectedComputed(changedKey) : new Set();
+                affected.forEach(cId => {
+                    allAffected.add(cId);
+                    const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
+                    if (cNode && !cNode.isDirty) {
+                        cNode.isDirty = true;
+                        invalidateComputed(cId);
+                        invalidateComputed("computed." + cId);
+                    }
+                });
+            };
+            invalidateComputed(key);
+
             this.syncBindings(key, value, sourceEl);
+
+            allAffected.forEach(cId => {
+                const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
+                if (cNode) {
+                    const cVal = cNode.evaluate();
+                    this.syncBindings("computed." + cId, cVal, sourceEl);
+                    this.syncBindings(cId, cVal, sourceEl);
+                }
+            });
+
             if (!silent) {
                 this.triggerStateWatchers(key, value, oldValue);
+                if (typeof this._triggerReactiveWatchers === "function") {
+                    this._triggerReactiveWatchers(key, value, oldValue, context);
+                }
             }
         } finally {
             this._updateDepth = Math.max(0, (this._updateDepth || 1) - 1);
@@ -1943,6 +2017,12 @@ class EUIXEngineCore {
                         return obj;
                     });
                     rawState[id] = items;
+                } else if (type === "number" || type === "int" || type === "float") {
+                    const txt = node.textContent.trim();
+                    rawState[id] = txt !== "" ? Number(txt) : 0;
+                } else if (type === "boolean" || type === "bool") {
+                    const txt = node.textContent.trim().toLowerCase();
+                    rawState[id] = txt === "true";
                 } else {
                     rawState[id] = node.textContent.trim() || "";
                 }
@@ -1953,6 +2033,24 @@ class EUIXEngineCore {
                         storage: String(persistAttr).toLowerCase(),
                         storageKey: customKey || `euix_state_${id}`
                     });
+                }
+            });
+
+            const computedNodes = doc.querySelectorAll ? Array.from(doc.querySelectorAll("computed")) : Array.from(doc.getElementsByTagName("computed"));
+            computedNodes.forEach(node => {
+                const id = node.getAttribute("id") || node.getAttribute("name");
+                const deps = node.getAttribute("deps") || node.getAttribute("watch");
+                const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
+                if (id) {
+                    this.computed(id, getter, deps);
+                }
+            });
+
+            const watchNodes = doc.querySelectorAll ? Array.from(doc.querySelectorAll("watch")) : Array.from(doc.getElementsByTagName("watch"));
+            watchNodes.forEach(node => {
+                const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
+                if (path) {
+                    this.watch(path, node);
                 }
             });
 
@@ -2038,6 +2136,14 @@ class EUIXEngineCore {
         this._rawState = rawState;
         const self = this;
         this.state = new Proxy(rawState, {
+            get(target, prop, receiver) {
+                if (typeof prop === "string") {
+                    if (self._computedRegistry && self._computedRegistry.has(prop)) {
+                        return self.getComputed(prop);
+                    }
+                }
+                return Reflect.get(target, prop, receiver);
+            },
             set(target, key, value) {
                 target[key] = value;
                 self._savePersistedState(key, value);
@@ -3735,6 +3841,17 @@ class EUIXEngineCore {
             });
         }
 
+        if (["watch", "on_mount", "on_unmount", "on_state_change", "on_click"].includes(tagNameLower) && !actionAttr) {
+            const steps = Array.from(actionNode.children || []).filter(c => c.nodeType === 1);
+            if (steps.length > 0) {
+                let lastResult;
+                for (const step of steps) {
+                    lastResult = this.handleAction(step, context);
+                }
+                return lastResult;
+            }
+        }
+
         // Declarative Resilience Primitives (Delay, Timeout, Retry)
         const isDelay = actionAttr === "DELAY" || actionAttr === "WAIT" || actionAttr === "SLEEP" || tagNameLower === "delay" || tagNameLower === "wait" || tagNameLower === "sleep";
         if (isDelay) {
@@ -3834,8 +3951,16 @@ class EUIXEngineCore {
             });
             const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
             try {
-                const fn = new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", interpolatedCode);
-                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null);
+                const isAsync = interpolatedCode.includes("await ");
+                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+                const fn = isAsync
+                    ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", interpolatedCode)
+                    : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", interpolatedCode);
+                const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
+                const pVal = context.$prevValue !== undefined ? context.$prevValue : (context.prevValue !== undefined ? context.prevValue : context.oldValue);
+                const oVal = context.$oldValue !== undefined ? context.$oldValue : context.oldValue;
+                const pPath = context.$path || context.path || "";
+                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath);
             } catch (err) {
                 this.reportError(err, "Action Execution (RUN_SCRIPT)");
                 throw err;

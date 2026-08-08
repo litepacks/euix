@@ -51,8 +51,8 @@ describe('EUIX Engine Public API & Contract Test Suite', () => {
 
             const engine = await EUIXEngine.mount(xml, '#app');
             expect(engine.getState('username')).toBe('john_doe');
-            expect(engine.getState('age')).toBe('28');
-            expect(engine.getState('active')).toBe('true');
+            expect(engine.getState('age')).toBe(28);
+            expect(engine.getState('active')).toBe(true);
             expect(Array.isArray(engine.getState('items'))).toBe(true);
             expect(engine.getState('items')[0].text).toBe('First Task');
         });

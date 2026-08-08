@@ -638,3 +638,52 @@ EUIX Engine provides tree-shakeable resilience execution primitives (`<retry>`, 
 - **`<timeout ms="...">`**: Bounds execution time. Cancels underlying fetch requests (`AbortSignal`) and blocks late state mutations (`setState`).
 - **`<delay ms="...">`**: Non-blocking awaitable pause, responsive to cancellation signals.
 - **`EUIXCancellationController`**: Token signal propagation preventing race conditions and late state pollution.
+
+---
+
+## ⚡ 14. Declarative Watch & Computed State (`EUIXReactivePlugin`)
+
+EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive watchers (`<watch>`) via `EUIXReactivePlugin` (`euixjs/reactive`):
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="firstName">John</state>
+    <state id="lastName">Doe</state>
+    <state id="user_role">Admin</state>
+    <state id="audit_logs" type="array"></state>
+
+    <!-- 1. Side-Effect Free Computed Property with Caching & Fine-Grained Dependencies -->
+    <computed id="fullName" deps="firstName, lastName">
+      return $data.firstName + " " + $data.lastName;
+    </computed>
+  </data_model>
+
+  <!-- 2. Reactive Watcher Executing EUIX Actions on Change -->
+  <watch path="user_role">
+    <step action="MUTATE_STATE">
+      <path>audit_logs</path>
+      <operation>UNSHIFT</operation>
+      <value>User role changed from {prevValue} to {newValue}</value>
+    </step>
+  </watch>
+
+  <!-- 3. Reactive Watcher on Computed Property -->
+  <watch path="computed.fullName">
+    <step action="RUN_SCRIPT">
+      console.log("User full name changed to:", $newValue);
+    </step>
+  </watch>
+
+  <flex direction="column" gap="12">
+    <h1>Welcome, {data.fullName}!</h1>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities & Safeguards:
+- **Side-Effect Free Derived State (`<computed>`)**: Cached evaluations with fine-grained dependency tracking. Read-only (`COMPUTED_MUTATION_ERROR`).
+- **Circular Dependency Guards (`COMPUTED_CYCLE_ERROR`)**: Detects static and runtime dependency loops (e.g. `A -> B -> C -> A`).
+- **Reactive Side-Effects (`<watch>`)**: Triggers EUIX actions when watched state or computed paths change. Exposes `$newValue`, `$prevValue`, `$path`.
+- **Infinite Reactive Loop Guards (`WATCHER_CYCLE_ERROR`)**: Protects against cascading watcher loops with depth limits and execution tracking.
+- **Component Lifecycle Cleanup**: Component-scoped watchers and computed subscriptions are released on unmount (`disposeComponentReactive`).
