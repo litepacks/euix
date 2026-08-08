@@ -215,6 +215,50 @@ engine.mutateState('items', 'PUSH', { id: Date.now(), title: 'New Item' });
 
 // Programmatically revalidate SWR API endpoints
 engine.revalidateApi('get_posts');
+
+// Programmatically execute composed action workflow
+const result = await engine.executeAction('SaveUserWorkflow', { userName: 'Alice', role: 'Admin' });
+```
+
+---
+
+## ⚡ 6.5. Action Composer Workflow System (`<action_def>`)
+
+Define reusable named action subroutines with parameters (`<param>`), default values, required parameter validation (`required="true"`), sequential step execution (`<step action="...">`), and optional return expressions (`<return>`):
+
+```xml
+<uid_spec>
+  <actions>
+    <action_def name="SaveUserWorkflow">
+      <param name="userName" required="true" />
+      <param name="role" default="User" />
+
+      <step action="SET_STATE">
+        <path>data.user_name</path>
+        <value>{args.userName}</value>
+      </step>
+
+      <step action="MUTATE_STATE">
+        <path>data.logs</path>
+        <operation>UNSHIFT</operation>
+        <value>Added user {args.userName} ({args.role})</value>
+      </step>
+
+      <return>{data.user_name}</return>
+    </action_def>
+  </actions>
+
+  <flex direction="column">
+    <!-- Declarative Invocation -->
+    <button class="btn">
+      <on_click action="SaveUserWorkflow">
+        <arg name="userName">Bob</arg>
+        <arg name="role">Admin</arg>
+      </on_click>
+      Save Admin
+    </button>
+  </flex>
+</uid_spec>
 ```
 
 ---

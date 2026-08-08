@@ -232,3 +232,92 @@ Configures relative BaseURL, default HTTP headers, credentials, and request time
     </flex>
 </component_def>
 ```
+
+---
+
+## 7. ⚡ Action Composer System (`<action_def>`)
+
+The Action Composer System allows software developers and AI agents to define reusable named action subroutines once and invoke them across components, event handlers, or JavaScript code without logic duplication.
+
+### Defining Workflows (`<action_def>`)
+Define named action subroutines inside `<actions>` tags at root level or within modular `<component_def>` tags:
+
+```xml
+<actions>
+    <action_def name="SaveUserWorkflow">
+        <!-- Parameter declarations with default values and validation -->
+        <param name="userName" required="true" />
+        <param name="role" default="User" />
+
+        <!-- Sequential Step 1: Update UI state -->
+        <step action="SET_STATE">
+            <path>data.user_name</path>
+            <value>{args.userName}</value>
+        </step>
+
+        <!-- Sequential Step 2: Push log entry -->
+        <step action="MUTATE_STATE">
+            <path>data.activity_logs</path>
+            <operation>UNSHIFT</operation>
+            <value>User {args.userName} assigned role {args.role}</value>
+        </step>
+
+        <!-- Optional Return Expression -->
+        <return>{data.user_name}</return>
+    </action_def>
+</actions>
+```
+
+### Invocation Syntax & Parameters
+
+1. **Explicit Action Tag**:
+   ```xml
+   <button class="btn-primary">
+       <on_click action="EXECUTE_ACTION" name="SaveUserWorkflow">
+           <arg name="userName">Bob</arg>
+           <arg name="role">Admin</arg>
+       </on_click>
+       Save Admin
+   </button>
+   ```
+
+2. **Short-hand Action Invocation**:
+   ```xml
+   <button class="btn-secondary">
+       <on_click action="SaveUserWorkflow">
+           <arg name="userName">Alice</arg>
+       </on_click>
+       Save Default User
+   </button>
+   ```
+
+3. **Programmatic JS Execution**:
+   ```javascript
+   const result = await engine.executeAction('SaveUserWorkflow', {
+       userName: 'Charlie',
+       role: 'Manager'
+   });
+   ```
+
+### Sequential Step Data Flow (`{result}`)
+Sequential steps automatically receive step evaluation results from prior steps via `{result}` or `{result.prop}`:
+
+```xml
+<action_def name="FetchAndSavePost">
+    <param name="postId" required="true" />
+
+    <step action="XHR">
+        <method>GET</method>
+        <url>https://jsonplaceholder.typicode.com/posts/{args.postId}</url>
+        <target>data.current_post</target>
+    </step>
+
+    <step action="SET_STATE">
+        <path>data.last_fetched_title</path>
+        <value>{result.title}</value>
+    </step>
+
+    <return>{result.title}</return>
+</action_def>
+```
+

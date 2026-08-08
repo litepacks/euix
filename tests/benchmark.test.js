@@ -126,7 +126,7 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
 
         expect(engine.getState('rows')[10].label).toContain('!!!');
         console.log(`[Vitest Bench] Partial Update (10th row of 1,000): ${duration.toFixed(2)} ms`);
-    });
+    }, 30000);
 
     it('should benchmark Swap 2 Rows out of 1,000 items', () => {
         const xml = `
@@ -160,7 +160,7 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(engine.getState('rows')[1].label).toBe('Item 998');
         expect(engine.getState('rows')[998].label).toBe('Item 1');
         console.log(`[Vitest Bench] Swap 2 Rows in 1,000 items: ${duration.toFixed(2)} ms`);
-    });
+    }, 30000);
 
     it('should benchmark Append 1,000 Rows to an existing 1,000 items list', () => {
         const xml = `

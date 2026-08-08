@@ -450,4 +450,35 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         const reorderedTasks = engine.getState('kanban_tasks');
         expect(reorderedTasks[1].id).toBe(initialZeroId);
     });
+
+    it('should render ActionComposerSection.xml and trigger composed actions from UI buttons', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="composer_open" type="string">true</state>
+                <state id="composer_status" type="string">Ready</state>
+                <state id="composer_tasks" type="array"></state>
+                <state id="action_logs" type="array"></state>
+                <state id="last_notification" type="string">None</state>
+            </data_model>
+            <flex direction="column">
+                <action-composer-section />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        expect(engine.getState('composer_status')).toBe('Ready');
+
+        const buttons = Array.from(document.querySelectorAll('button'));
+        const bugBtn = buttons.find(b => b.textContent.includes('Add Bugfix Task'));
+        expect(bugBtn).toBeDefined();
+
+        bugBtn.click();
+        await new Promise(r => setTimeout(r, 50));
+
+        expect(engine.getState('composer_tasks').length).toBe(1);
+        expect(engine.getState('composer_tasks')[0].title).toBe('Fix API Cache Invalidation');
+        expect(engine.getState('last_notification')).toContain('Fix API Cache Invalidation');
+    });
 });
