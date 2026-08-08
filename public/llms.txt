@@ -5,7 +5,7 @@
 ## Documentation & Guidelines
 
 - [AGENTS.md](.agents/AGENTS.md): Full architecture, declarative XML specification syntax, supported state data types (`string`, `number`, `boolean`, `array`, `object`), parent-child prop mechanics, slot projection, SWR API integration, lifecycle hooks, and XSS security best practices.
-- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~20.3 KB Gzip core UMD).
+- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~22.6 KB Gzip core UMD).
 
 ## Core Modules & Specifications
 
