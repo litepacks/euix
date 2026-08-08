@@ -266,7 +266,7 @@ describe("EUIX Engine - Declarative Try / Catch / Finally Test Suite", () => {
         const engine = EUIXEngineCore.mount(xml, container);
         const button = container.querySelector("button");
 
-        await expect(engine.handleAction(button.firstElementChild, {})).resolves.toBeUndefined();
+        expect(engine.handleAction(button.firstElementChild, {})).toBeUndefined();
     });
 
     it("7. should support nested composed action workflows with try/catch", async () => {

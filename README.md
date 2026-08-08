@@ -329,6 +329,42 @@ Errors caught inside `<catch var="err">` provide structured properties:
 
 ---
 
+## ⚡ Declarative Resilience Primitives & `EUIXResiliencePlugin` (`<retry>`, `<timeout>`, `<delay>`)
+
+EUIX Engine provides tree-shakeable resilience execution primitives (`<retry>`, `<timeout>`, `<delay>`, `EUIXCancellationController`) via `EUIXResiliencePlugin`:
+
+```xml
+<uid_spec>
+    <flex direction="column" gap="12">
+        <button class="btn">
+            <on_click action="TRY">
+                <!-- Retry with Exponential Backoff Strategy -->
+                <retry attempts="3" delay="500" backoff="exponential" max_delay="3000" on_error="API_HTTP_ERROR,API_NETWORK_ERROR,TIMEOUT_ERROR">
+                    <timeout ms="2000" message="Request timed out after 2 seconds">
+                        <step action="XHR">
+                            <url>https://api.example.com/data</url>
+                            <target>data.items</target>
+                        </step>
+                    </timeout>
+                </retry>
+
+                <delay ms="500" />
+
+                <catch var="err">
+                    <step action="SET_STATE">
+                        <path>data.error_message</path>
+                        <value>[{err.code}] {err.message}</value>
+                    </step>
+                </catch>
+            </on_click>
+            Resilient Fetch
+        </button>
+    </flex>
+</uid_spec>
+```
+
+---
+
 ## 🛠️ EUIX DevTools
 
 Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + Shift + I`** or clicking the **`📊 State & Logs`** button:

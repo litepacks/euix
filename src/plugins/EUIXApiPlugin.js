@@ -160,12 +160,24 @@ export const EUIXApiPlugin = {
                 fetchOptions.body = body;
             }
 
+            const cancellationSignal = context._cancellationSignal || (this._currentActionContext && this._currentActionContext._cancellationSignal);
+            if (cancellationSignal && cancellationSignal.isCancelled) {
+                cancellationSignal.throwIfCancelled();
+            }
+
             let timeoutId = null;
             const timeoutMs = parseInt(actionNode.getAttribute("timeout") || compApiConfig.timeout || this._apiConfig.timeout || 0, 10);
-            if (timeoutMs > 0 && typeof AbortController !== "undefined") {
+            if (typeof AbortController !== "undefined") {
                 const controller = new AbortController();
                 fetchOptions.signal = controller.signal;
-                timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                if (timeoutMs > 0) {
+                    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                }
+                if (cancellationSignal) {
+                    cancellationSignal.onCancel((reason) => {
+                        try { controller.abort(reason); } catch (_) {}
+                    });
+                }
             }
 
             if (typeof this._apiConfig.onRequest === "function") {
@@ -196,6 +208,9 @@ export const EUIXApiPlugin = {
                     return data;
                 })
                 .then((data) => {
+                    if (cancellationSignal && cancellationSignal.isCancelled) {
+                        return null;
+                    }
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
                         if (select) data = this.getJsonPath(data, select);

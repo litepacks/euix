@@ -594,3 +594,47 @@ Inside `<catch var="err">`, the error object exposes structured properties:
 - `{err.originatingAction}`: Action or tag name that produced the failure
 - `{err.component}`: Originating component name
 - `<rethrow />`: Explicitly re-throw caught error to propagate to parent scope
+
+---
+
+## ⚡ 13. Declarative Resilience Primitives & `EUIXResiliencePlugin`
+
+EUIX Engine provides tree-shakeable resilience execution primitives (`<retry>`, `<timeout>`, `<delay>`, `EUIXCancellationController`) via `EUIXResiliencePlugin`:
+
+```xml
+<uid_spec>
+  <flex direction="column" gap="12">
+    <button class="btn">
+      <on_click action="TRY">
+        <!-- 1. Retry with Exponential Backoff -->
+        <retry attempts="3" delay="500" backoff="exponential" max_delay="3000" on_error="API_HTTP_ERROR,API_NETWORK_ERROR,TIMEOUT_ERROR">
+          <!-- 2. Timeout Scope (2000ms max per attempt) -->
+          <timeout ms="2000" message="Request timed out after 2 seconds">
+            <step action="XHR">
+              <url>https://api.example.com/unstable-endpoint</url>
+              <target>data.items</target>
+            </step>
+          </timeout>
+        </retry>
+
+        <!-- 3. Non-blocking Delay Primitive -->
+        <delay ms="1000" />
+
+        <catch var="err">
+          <step action="SET_STATE">
+            <path>data.error_log</path>
+            <value>Exhausted attempts: [{err.code}] {err.message}</value>
+          </step>
+        </catch>
+      </on_click>
+      Resilient Action Sequence
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities & Backoff Strategies:
+- **`<retry attempts="..." delay="..." backoff="...">`**: Re-executes actions on failure. Supports `fixed`, `linear`, `exponential`, `jitter` backoff strategies, and `on_error` filtering.
+- **`<timeout ms="...">`**: Bounds execution time. Cancels underlying fetch requests (`AbortSignal`) and blocks late state mutations (`setState`).
+- **`<delay ms="...">`**: Non-blocking awaitable pause, responsive to cancellation signals.
+- **`EUIXCancellationController`**: Token signal propagation preventing race conditions and late state pollution.

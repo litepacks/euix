@@ -19,6 +19,7 @@ import { EUIXDragDropPlugin } from "./plugins/EUIXDragDropPlugin.js";
 import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
 import { EUIXCollapsePlugin } from "./plugins/EUIXCollapsePlugin.js";
 import { EUIXDialogPlugin } from "./plugins/EUIXDialogPlugin.js";
+import { EUIXResiliencePlugin, EUIXCancellationController } from "./plugins/EUIXResiliencePlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -27,12 +28,14 @@ EUIXEngineCore.use(EUIXDragDropPlugin);
 EUIXEngineCore.use(EUIXStoragePlugin);
 EUIXEngineCore.use(EUIXCollapsePlugin);
 EUIXEngineCore.use(EUIXDialogPlugin);
+EUIXEngineCore.use(EUIXResiliencePlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
     window.EUIXStructuredError = EUIXStructuredError;
+    window.EUIXCancellationController = EUIXCancellationController;
     window.EUIXEngineCore = EUIXEngineCore;
     window.EUIXEngine = EUIXEngine;
     window.EUIXActionRecursionError = EUIXActionRecursionError;
@@ -41,6 +44,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXActionValidator = EUIXActionValidator;
     window.EUIXActionRegistry = EUIXActionRegistry;
     window.EUIXActionComposer = EUIXActionComposer;
+    window.EUIXResiliencePlugin = EUIXResiliencePlugin;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -54,12 +58,14 @@ export {
     EUIXEngineCore,
     EUIXExpressionParser,
     EUIXStructuredError,
+    EUIXCancellationController,
     EUIXApiPlugin,
     EUIXComposerPlugin,
     EUIXDragDropPlugin,
     EUIXStoragePlugin,
     EUIXCollapsePlugin,
     EUIXDialogPlugin,
+    EUIXResiliencePlugin,
     EUIXActionRecursionError,
     EUIXActionValidationError,
     EUIXActionContext,

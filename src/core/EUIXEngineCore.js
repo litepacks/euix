@@ -1402,8 +1402,15 @@ class EUIXEngineCore {
         return this.getState(path);
     }
 
-    setState(key, value, { silent = false, sourceEl = null } = {}) {
+    setState(key, value, options = {}) {
+        const { silent = false, sourceEl = null, context = null } = (typeof options === "boolean" ? { silent: options } : options);
         if (!this._rawState) return;
+
+        const ctxSignal = (context && context._cancellationSignal) ||
+            (this._currentActionContext && this._currentActionContext._cancellationSignal);
+        if (ctxSignal && ctxSignal.isCancelled) {
+            return;
+        }
 
         // Auto-sanitize expression strings if passed to setState
         if (typeof value === "string" && /\d+\s*[><=?!+\-*/]/.test(value) && value.includes("?")) {
@@ -3068,23 +3075,15 @@ class EUIXEngineCore {
                     if (node.getAttribute("action")) {
                         const actType = node.getAttribute("action");
                         if (actType === "XHR") this.handleXHR(node, eventContext);
-                        else this.batch(() => this.handleAction(node, eventContext));
+                        else this.handleAction(node, eventContext);
                     } else {
                         const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
                         if (childActions.length) {
-                            const syncActions = [];
-                            const xhrActions = [];
-                            childActions.forEach(act => {
-                                if (act.getAttribute("action") === "XHR") xhrActions.push(act);
-                                else syncActions.push(act);
-                            });
-
-                            if (syncActions.length) {
-                                this.batch(() => {
-                                    syncActions.forEach(act => this.handleAction(act, eventContext));
-                                });
-                            }
-                            xhrActions.forEach(act => this.handleXHR(act, eventContext));
+                            (async () => {
+                                for (const act of childActions) {
+                                    await this.handleAction(act, eventContext);
+                                }
+                            })().catch(err => this.reportError(err, "Event Action Execution"));
                         }
                     }
                 }
@@ -3201,18 +3200,29 @@ class EUIXEngineCore {
         return window.confirm(this.interpolate(confirmAttr, context) || "Emin misiniz?");
     }
 
-    async handleAction(actionNode, context = {}) {
+    handleAction(actionNode, context = {}) {
         if (!actionNode) return;
-        try {
-            return await this._handleActionInternal(actionNode, context);
-        } catch (err) {
+        const onError = (err) => {
             const actName = actionNode.getAttribute ? (actionNode.getAttribute("action") || actionNode.tagName) : "unknown";
             const structuredErr = EUIXStructuredError.from(err, {
                 originatingAction: actName,
                 component: context._componentName
             });
             this.reportError(structuredErr, `Action Execution Fallback (${actName})`);
+            if (context && (context._inTryScope || context.rethrow)) {
+                throw structuredErr;
+            }
             return undefined;
+        };
+
+        try {
+            const res = this._handleActionInternal(actionNode, context);
+            if (res && typeof res.then === "function") {
+                return res.catch(onError);
+            }
+            return res;
+        } catch (err) {
+            return onError(err);
         }
     }
 
@@ -3227,7 +3237,7 @@ class EUIXEngineCore {
                 originatingAction: "TRY",
                 component: context._componentName
             });
-            this.reportError(err, "Try/Catch Validation");
+            this.reportError(err, "Syntax Validation");
             throw err;
         }
 
@@ -3238,7 +3248,7 @@ class EUIXEngineCore {
                 originatingAction: "TRY",
                 component: context._componentName
             });
-            this.reportError(err, "Try/Catch Validation");
+            this.reportError(err, "Syntax Validation");
             throw err;
         }
 
@@ -3247,15 +3257,15 @@ class EUIXEngineCore {
             return tag !== "catch" && tag !== "finally";
         });
 
-        let tryResult = undefined;
-        let caughtError = null;
-        let pendingError = null;
-        const scopeId = "scope_" + Math.random().toString(36).substring(2, 9);
+        const scopeId = "try_" + Math.random().toString(36).substring(2, 9);
         const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
 
         if (this._devtools && typeof this._devtools.logErrorScope === "function") {
             this._devtools.logErrorScope("TRY_ENTER", { scopeId, component: context._componentName });
         }
+
+        let tryResult = undefined;
+        let caughtError = null;
 
         const tryContext = {
             ...context,
@@ -3303,21 +3313,17 @@ class EUIXEngineCore {
                     for (const catchAct of catchActions) {
                         tryResult = await this._handleActionInternal(catchAct, catchContext);
                     }
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("CATCH_SUCCESS", { scopeId, handled: true });
-                    }
                 } catch (catchErr) {
-                    pendingError = EUIXStructuredError.from(catchErr, {
+                    caughtError = EUIXStructuredError.from(catchErr, {
                         originatingAction: "CATCH",
-                        component: context._componentName,
-                        cause: caughtError
+                        component: context._componentName
                     });
                 }
-            } else {
-                pendingError = caughtError;
             }
         } finally {
             const finallyNode = finallyNodes[0];
+            let pendingError = caughtError;
+
             if (finallyNode) {
                 if (this._devtools && typeof this._devtools.logErrorScope === "function") {
                     this._devtools.logErrorScope("FINALLY_ENTER", { scopeId });
@@ -3350,6 +3356,372 @@ class EUIXEngineCore {
     }
 
     _handleActionInternal(actionNode, context = {}) {
+        if (context._cancellationSignal && context._cancellationSignal.isCancelled) {
+            context._cancellationSignal.throwIfCancelled();
+        }
+
+        const prevContext = this._currentActionContext;
+        this._currentActionContext = context;
+
+        try {
+            const res = this._executeActionInternalBody(actionNode, context);
+            if (res && typeof res.then === "function") {
+                return res.finally(() => {
+                    this._currentActionContext = prevContext;
+                });
+            }
+            this._currentActionContext = prevContext;
+            return res;
+        } catch (err) {
+            this._currentActionContext = prevContext;
+            throw err;
+        }
+    }
+
+    _calculateBackoffDelay(strategy = "fixed", baseDelay = 0, attempt = 1, maxDelay = null) {
+        if (baseDelay <= 0) return 0;
+        let calculated = baseDelay;
+
+        const cleanStrategy = String(strategy || "fixed").toLowerCase().trim();
+        if (cleanStrategy === "linear") {
+            calculated = baseDelay * attempt;
+        } else if (cleanStrategy === "exponential" || cleanStrategy === "exp") {
+            calculated = baseDelay * Math.pow(2, attempt - 1);
+        } else if (cleanStrategy === "jitter") {
+            const exp = baseDelay * Math.pow(2, attempt - 1);
+            calculated = Math.round(exp * (0.5 + Math.random() * 0.5));
+        }
+
+        if (maxDelay !== null && maxDelay !== undefined && !isNaN(parseFloat(maxDelay))) {
+            const cap = parseFloat(maxDelay);
+            if (cap >= 0) calculated = Math.min(calculated, cap);
+        }
+
+        return Math.max(0, Math.round(calculated));
+    }
+
+    async _handleDelayDirect(ms, context = {}) {
+        const duration = parseFloat(ms);
+        if (isNaN(duration) || duration < 0) {
+            const err = new EUIXStructuredError({
+                message: `<delay> duration must be a non-negative number (received: ${ms})`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "DELAY",
+                component: context._componentName
+            });
+            this.reportError(err, "Delay Validation");
+            throw err;
+        }
+
+        const signal = context._cancellationSignal;
+        if (signal && signal.isCancelled) {
+            signal.throwIfCancelled();
+        }
+
+        const scopeId = "delay_" + Math.random().toString(36).substring(2, 9);
+        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            this._devtools.logErrorScope("DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
+        }
+
+        return new Promise((resolve, reject) => {
+            let timerId = null;
+            let unsubscribe = null;
+
+            const cleanup = () => {
+                if (timerId) clearTimeout(timerId);
+                if (unsubscribe) unsubscribe();
+            };
+
+            if (signal) {
+                unsubscribe = signal.onCancel((reason) => {
+                    cleanup();
+                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                        this._devtools.logErrorScope("DELAY_CANCELLED", { scopeId, reason });
+                    }
+                    reject(reason || new EUIXStructuredError({ message: "Delay was cancelled", code: "ACTION_CANCELLED" }));
+                });
+            }
+
+            timerId = setTimeout(() => {
+                cleanup();
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("DELAY_COMPLETED", { scopeId, durationMs: duration });
+                }
+                resolve(true);
+            }, duration);
+        });
+    }
+
+    async _handleDelay(delayNode, context = {}) {
+        const msAttr = delayNode.getAttribute("ms") || delayNode.getAttribute("delay") || delayNode.getAttribute("for") || this.getChild(delayNode, "ms")?.textContent.trim() || this.getChild(delayNode, "delay")?.textContent.trim();
+        const interpolatedMs = this.interpolate(msAttr || "0", context);
+        return this._handleDelayDirect(interpolatedMs, context);
+    }
+
+    async _handleTimeout(timeoutNode, context = {}) {
+        const msAttr = timeoutNode.getAttribute("ms") || timeoutNode.getAttribute("timeout") || timeoutNode.getAttribute("duration") || this.getChild(timeoutNode, "ms")?.textContent.trim() || this.getChild(timeoutNode, "timeout")?.textContent.trim();
+        const interpolatedMs = this.interpolate(msAttr || "0", context);
+        const duration = parseFloat(interpolatedMs);
+
+        if (isNaN(duration) || duration <= 0) {
+            const err = new EUIXStructuredError({
+                message: `<timeout> duration must be a positive number (received: ${msAttr})`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "TIMEOUT",
+                component: context._componentName
+            });
+            this.reportError(err, "Timeout Validation");
+            throw err;
+        }
+
+        const parentSignal = context._cancellationSignal || null;
+        if (parentSignal && parentSignal.isCancelled) {
+            parentSignal.throwIfCancelled();
+        }
+
+        const controller = new EUIXCancellationController(parentSignal);
+        const timeoutContext = {
+            ...context,
+            _cancellationSignal: controller.signal
+        };
+
+        const customMsg = timeoutNode.getAttribute("message") || timeoutNode.getAttribute("msg") || this.getChild(timeoutNode, "message")?.textContent.trim();
+        const interpolatedMsg = customMsg ? this.interpolate(customMsg, context) : `Execution timed out after ${duration}ms`;
+
+        const scopeId = "timeout_" + Math.random().toString(36).substring(2, 9);
+        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            this._devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
+        }
+
+        const timeoutError = new EUIXStructuredError({
+            message: interpolatedMsg,
+            code: "TIMEOUT_ERROR",
+            originatingAction: timeoutNode.getAttribute("action") || "TIMEOUT",
+            component: context._componentName
+        });
+        timeoutError.timeoutMs = duration;
+        timeoutError.cancelled = true;
+
+        const childActions = Array.from(timeoutNode.children).filter(c => {
+            const tag = c.tagName ? c.tagName.toLowerCase() : "";
+            return !["message", "msg", "ms", "duration"].includes(tag);
+        });
+
+        let timerId = null;
+        const timerPromise = new Promise((_, reject) => {
+            timerId = setTimeout(() => {
+                const elapsedMs = ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime;
+                timeoutError.elapsedMs = Math.round(elapsedMs);
+                controller.cancel(timeoutError);
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
+                }
+                reject(timeoutError);
+            }, duration);
+        });
+
+        const actionPromise = (async () => {
+            let result = undefined;
+            if (childActions.length === 0) {
+                const actAttr = timeoutNode.getAttribute("action");
+                if (actAttr && actAttr !== "TIMEOUT") {
+                    result = await this._handleActionInternal(timeoutNode, timeoutContext);
+                }
+            } else {
+                for (const childNode of childActions) {
+                    result = await this._handleActionInternal(childNode, timeoutContext);
+                }
+            }
+            return result;
+        })();
+
+        try {
+            const result = await Promise.race([actionPromise, timerPromise]);
+            clearTimeout(timerId);
+            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                this._devtools.logErrorScope("TIMEOUT_COMPLETED", {
+                    scopeId,
+                    durationMs: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
+                });
+            }
+            return result;
+        } catch (err) {
+            clearTimeout(timerId);
+            throw err;
+        }
+    }
+
+    async _handleRetry(retryNode, context = {}) {
+        const attemptsAttr = retryNode.getAttribute("attempts") || retryNode.getAttribute("max_attempts") || retryNode.getAttribute("count") || this.getChild(retryNode, "attempts")?.textContent.trim();
+        const attemptsStr = this.interpolate(attemptsAttr || "3", context);
+        const maxAttempts = parseInt(attemptsStr, 10);
+
+        if (isNaN(maxAttempts) || maxAttempts <= 0) {
+            const err = new EUIXStructuredError({
+                message: `<retry> attempts must be a positive integer (received: ${attemptsAttr})`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "RETRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Retry Validation");
+            throw err;
+        }
+
+        const delayAttr = retryNode.getAttribute("delay") || retryNode.getAttribute("delay_ms") || retryNode.getAttribute("ms") || this.getChild(retryNode, "delay")?.textContent.trim();
+        const baseDelay = parseFloat(this.interpolate(delayAttr || "0", context));
+        if (isNaN(baseDelay) || baseDelay < 0) {
+            const err = new EUIXStructuredError({
+                message: `<retry> delay must be a non-negative number (received: ${delayAttr})`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "RETRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Retry Validation");
+            throw err;
+        }
+
+        const backoff = retryNode.getAttribute("backoff") || retryNode.getAttribute("strategy") || "fixed";
+        const validBackoff = ["fixed", "linear", "exponential", "exp", "jitter"].includes(String(backoff).toLowerCase());
+        if (!validBackoff) {
+            const err = new EUIXStructuredError({
+                message: `<retry> invalid backoff strategy "${backoff}". Supported strategies: fixed, linear, exponential, jitter`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "RETRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Retry Validation");
+            throw err;
+        }
+
+        const maxDelayAttr = retryNode.getAttribute("max_delay") || retryNode.getAttribute("max_delay_ms");
+        const maxDelay = maxDelayAttr ? parseFloat(this.interpolate(maxDelayAttr, context)) : null;
+        if (maxDelay !== null && (isNaN(maxDelay) || maxDelay < baseDelay)) {
+            const err = new EUIXStructuredError({
+                message: `<retry> max_delay must be a number greater than or equal to initial delay (received: ${maxDelayAttr})`,
+                code: "VALIDATION_ERROR",
+                originatingAction: "RETRY",
+                component: context._componentName
+            });
+            this.reportError(err, "Retry Validation");
+            throw err;
+        }
+
+        const onErrorAttr = retryNode.getAttribute("on_error") || retryNode.getAttribute("when") || retryNode.getAttribute("filter");
+        const errorFilters = onErrorAttr ? onErrorAttr.split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : null;
+
+        const childActions = Array.from(retryNode.children).filter(c => {
+            const tag = c.tagName ? c.tagName.toLowerCase() : "";
+            return !["delay", "ms", "attempts", "filter"].includes(tag);
+        });
+
+        const scopeId = "retry_" + Math.random().toString(36).substring(2, 9);
+        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            this._devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
+        }
+
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const parentSignal = context._cancellationSignal;
+            if (parentSignal && parentSignal.isCancelled) {
+                parentSignal.throwIfCancelled();
+            }
+
+            const nextDelay = (attempt < maxAttempts) ? this._calculateBackoffDelay(backoff, baseDelay, attempt, maxDelay) : 0;
+            const retryInfo = {
+                attempt,
+                max_attempts: maxAttempts,
+                maxAttempts,
+                is_last: attempt === maxAttempts,
+                isLast: attempt === maxAttempts,
+                prev_error: lastError,
+                prevError: lastError,
+                next_delay: nextDelay,
+                nextDelay
+            };
+
+            const retryContext = {
+                ...context,
+                retry: retryInfo,
+                $retry: retryInfo
+            };
+
+            try {
+                let result = undefined;
+                for (const childNode of childActions) {
+                    result = await this._handleActionInternal(childNode, retryContext);
+                }
+
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
+                }
+                return result;
+            } catch (rawErr) {
+                lastError = EUIXStructuredError.from(rawErr, {
+                    originatingAction: retryNode.getAttribute("action") || "RETRY",
+                    component: context._componentName
+                });
+                lastError.attempt = attempt;
+                lastError.maxAttempts = maxAttempts;
+
+                if (attempt === maxAttempts) {
+                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                        this._devtools.logErrorScope("RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
+                    }
+                    throw lastError;
+                }
+
+                if (errorFilters && errorFilters.length > 0) {
+                    const codeMatch = errorFilters.includes(lastError.code.toUpperCase());
+                    const statusMatch = lastError.status && errorFilters.includes(String(lastError.status));
+                    const messageMatch = errorFilters.some(f => lastError.message.toUpperCase().includes(f));
+                    if (!codeMatch && !statusMatch && !messageMatch) {
+                        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                            this._devtools.logErrorScope("RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
+                        }
+                        throw lastError;
+                    }
+                }
+
+                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                    this._devtools.logErrorScope("RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
+                }
+
+                if (nextDelay > 0) {
+                    await this._handleDelayDirect(nextDelay, retryContext);
+                }
+            }
+        }
+
+        throw lastError;
+    }
+
+    _handleActionInternal(actionNode, context = {}) {
+        if (context._cancellationSignal && context._cancellationSignal.isCancelled) {
+            context._cancellationSignal.throwIfCancelled();
+        }
+
+        const prevContext = this._currentActionContext;
+        this._currentActionContext = context;
+
+        try {
+            const res = this._executeActionInternalBody(actionNode, context);
+            if (res && typeof res.then === "function") {
+                return res.finally(() => {
+                    this._currentActionContext = prevContext;
+                });
+            }
+            this._currentActionContext = prevContext;
+            return res;
+        } catch (err) {
+            this._currentActionContext = prevContext;
+            throw err;
+        }
+    }
+
+    _executeActionInternalBody(actionNode, context = {}) {
         const actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
         const actionType = actionAttr;
         const tagNameLower = actionNode.tagName ? actionNode.tagName.toLowerCase() : "";
@@ -3361,6 +3733,22 @@ class EUIXEngineCore {
                 path: pathNode ? pathNode.textContent.trim() : "",
                 operation: opNode ? opNode.textContent.trim() : ""
             });
+        }
+
+        // Declarative Resilience Primitives (Delay, Timeout, Retry)
+        const isDelay = actionAttr === "DELAY" || actionAttr === "WAIT" || actionAttr === "SLEEP" || tagNameLower === "delay" || tagNameLower === "wait" || tagNameLower === "sleep";
+        if (isDelay) {
+            return this._handleDelay(actionNode, context);
+        }
+
+        const isTimeout = actionAttr === "TIMEOUT" || tagNameLower === "timeout";
+        if (isTimeout) {
+            return this._handleTimeout(actionNode, context);
+        }
+
+        const isRetry = actionAttr === "RETRY" || tagNameLower === "retry";
+        if (isRetry) {
+            return this._handleRetry(actionNode, context);
         }
 
         // Declarative Try / Catch / Finally Error Handling Primitives
@@ -3446,8 +3834,8 @@ class EUIXEngineCore {
             });
             const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
             try {
-                const fn = new Function("$el", "$data", "$engine", "$evt", "$args", "$result", interpolatedCode);
-                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result);
+                const fn = new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", interpolatedCode);
+                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null);
             } catch (err) {
                 this.reportError(err, "Action Execution (RUN_SCRIPT)");
                 throw err;
