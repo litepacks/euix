@@ -164,19 +164,60 @@ Fine-grained dynamic list rendering.
 
 ---
 
+### `<computed>` & `<watch>` (Watch & Computed State)
+Memoized derived properties and reactive side-effect watchers (`EUIXReactivePlugin`):
+
+```xml
+<data_model>
+    <state id="firstName">Jane</state>
+    <state id="lastName">Doe</state>
+
+    <!-- Computed Property -->
+    <computed id="fullName" deps="firstName, lastName">
+        return $data.firstName + " " + $data.lastName;
+    </computed>
+</data_model>
+
+<!-- Reactive Watcher -->
+<watch path="user_role">
+    <step action="RUN_SCRIPT">
+        console.log("Role changed from", $prevValue, "to", $newValue);
+    </step>
+</watch>
+```
+
+---
+
 ## 5. ⚡ Universal Event Listeners & Actions
 
 ### Action Types:
 - `SET_STATE`: Updates state value (`<path>`, `<value>`).
-- `MUTATE_STATE`: Performs array operations:
-  - `PUSH` / `UNSHIFT`: Inserts item to array.
-  - `UPDATE`: Updates item matching `<where>` query (`<where equals="..." />`).
-  - `REMOVE`: Removes item by `<index>` or `<where>` query.
-  - `SWAP`: Swaps positions and status between 2 items (`<where equals="..." />`, `<target_where equals="..." />`).
-  - `MOVE_UP` / `MOVE_DOWN`: Moves item index up or down in array.
-  - `CLEAR` / `RESET`: Empties array list.
+- `MUTATE_STATE`: Performs array operations (`PUSH`, `UNSHIFT`, `UPDATE`, `REMOVE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`, `CLEAR`, `RESET`).
 - `XHR`: Performs declarative async HTTP requests with loading/error handling.
-- `REVALIDATE_API`: Triggers SWR (Stale-While-Revalidate) background data refetching (`<revalidate target="data.key" />`).
+- `REVALIDATE_API`: Triggers SWR (Stale-While-Revalidate) background data refetching.
+- `ANIMATE`: Triggers keyframe animation sequences (`target="..."`, `name="..."`, `duration="..."`, `easing="..."`).
+- `RUN_SCRIPT`: Executes custom JavaScript code safely inside a sandbox (`$el`, `$data`, `$engine`, `$evt`).
+
+---
+
+### 🎭 Animations (`<animations>`, `<animation_def>`, `enter_animation`, `leave_animation`)
+
+Declarative keyframe definitions and element transitions (`EUIXAnimationPlugin`):
+
+```xml
+<animations>
+    <animation_def name="customPulse" duration="400" easing="ease-in-out">
+        <keyframe offset="0" transform="scale(1)" opacity="1" />
+        <keyframe offset="0.5" transform="scale(1.1)" opacity="0.8" />
+        <keyframe offset="1" transform="scale(1)" opacity="1" />
+    </animation_def>
+</animations>
+
+<!-- Lifecycle Transitions -->
+<div id="box" enter_animation="slide-in-down" leave_animation="fade-out">
+    <span>Content</span>
+</div>
+```
 
 ---
 

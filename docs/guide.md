@@ -399,6 +399,46 @@ The Action Composer Architecture in EUIX Engine consists of 4 main subsystems:
 
 ---
 
+## ⚡ Watch & Computed State System (`EUIXReactivePlugin`)
+
+The `EUIXReactivePlugin` (`euixjs/reactive`) adds derived computed properties and reactive side-effect watchers without modifying the core Proxy store architecture:
+
+### 1. Computed Derived State (`<computed>`)
+- Define derived state calculated from existing state paths: `<computed id="fullName" deps="firstName, lastName">return $data.firstName + ' ' + $data.lastName;</computed>`
+- Results are memoized and re-evaluated only when specified dependencies mutate.
+- Exposed directly via standard bindings (`{data.fullName}`) and state accessors (`engine.getState('fullName')`).
+- Mutating a computed property throws a `COMPUTED_MUTATION_ERROR`.
+- Static and dynamic circular dependencies trigger a `COMPUTED_CYCLE_ERROR`.
+
+### 2. Reactive Watchers (`<watch>`)
+- Observe state or computed path mutations declaratively (`<watch path="user_role">`) or programmatically (`engine.watch(path, handler)`).
+- Automatically injects `$newValue`, `$prevValue`, and `$path` into execution context.
+- Cascading watcher loops are capped with a max recursion depth guard (`WATCHER_CYCLE_ERROR`).
+
+---
+
+## 🎭 Declarative Animation System (`EUIXAnimationPlugin`)
+
+The `EUIXAnimationPlugin` (`euixjs/animation`) provides keyframe animations, enter/leave lifecycle transitions, and declarative action execution using native Web Animations API (WAAPI):
+
+### 1. Custom Animation Definitions (`<animation_def>`)
+- Define reusable keyframes: `<animation_def name="customPulse" duration="400" easing="ease-in-out">`
+- Supports `<keyframe offset="0" transform="scale(1)" opacity="1" />` declarations.
+
+### 2. Built-in Keyframe Presets
+- Pre-installed presets: `fade-in`, `fade-out`, `slide-in-down`, `slide-out-up`, `slide-in-left`, `slide-out-right`, `scale-in`, `scale-out`, `spin`, `pulse`, `bounce`.
+
+### 3. Lifecycle Enter & Deferred Leave Transitions
+- `enter_animation="fade-in"`: Runs automatically upon mounting.
+- `leave_animation="fade-out"`: Defers DOM detachment on state/conditional branch updates until the leave animation completes cleanly.
+
+### 4. Interruption & Reduced Motion
+- Supports `cancel`, `finish`, and `queue` interruption policies for target element animations.
+- Integrates with `EUIXCancellationController` to abort active play states cleanly.
+- Respects `prefers-reduced-motion` media queries by collapsing duration to 0ms.
+
+---
+
 ## 🧪 Running Test Suites
 
 EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:

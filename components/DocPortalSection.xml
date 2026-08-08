@@ -7,6 +7,9 @@
         <state id="active_tab" type="string">overview</state>
         <state id="active_doc_topic" type="string">getting_started</state>
         <state id="counter_value" type="string">0</state>
+        <computed id="doubled_counter" deps="counter_value">
+            return (parseInt($data.counter_value || 0, 10) * 2);
+        </computed>
         <state id="current_time" type="string">--:--:--</state>
         <state id="quickstart_demo_msg" type="string">Hello EUIX Engine!</state>
         <state id="copied_status" type="string">Copy Spec</state>
@@ -54,7 +57,7 @@
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-blue-400">18.8 KB</span>
+                    <span class="text-lg md:text-xl font-black text-blue-400">23.2 KB</span>
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lite Core Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
@@ -155,7 +158,7 @@
                             </flex>
                             <h3 class="text-lg sm:text-xl font-black text-white">Live Reactive Component Demo</h3>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Experience fine-grained reactive state, 2-way input binding, conditional rendering (<code class="text-emerald-400">&lt;if&gt;</code>), and declarative state mutators in real-time with zero Virtual DOM overhead.
+                                Experience fine-grained reactive state, computed state (<code class="text-purple-300">&lt;computed&gt;</code>), 2-way input binding, WAAPI animations (<code class="text-indigo-400">ANIMATE</code>), and conditional transitions (<code class="text-emerald-400">&lt;if&gt;</code>) with zero Virtual DOM overhead.
                             </p>
                         </flex>
 
@@ -175,20 +178,25 @@
                             </flex>
 
                             <flex direction="column" gap="10" class="w-full">
-                                <!-- Reactive Counter Header & Conditional Status Badge -->
+                                <!-- Reactive Counter Header & Computed 2x Badge -->
                                 <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
                                     <flex direction="column" gap="2">
-                                        <span class="text-xs font-bold text-slate-400">Reactive State Store:</span>
-                                        <span class="text-base font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20 w-fit">Count: {data.counter_value}</span>
+                                        <span class="text-xs font-bold text-slate-400">Reactive State &amp; Computed:</span>
+                                        <flex direction="row" align="center" gap="6" class="flex-wrap">
+                                            <span id="live-demo-count-badge" class="text-sm font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20 w-fit">Count: {data.counter_value}</span>
+                                            <span class="text-xs font-bold text-purple-300 font-mono bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">2x Computed: {data.doubled_counter}</span>
+                                        </flex>
                                     </flex>
 
-                                    <!-- Conditional Status Badge (<if>) -->
-                                    <if condition="{data.counter_value} == 0">
-                                        <span class="px-2.5 py-1 bg-slate-800 text-slate-400 font-extrabold text-[11px] rounded-full border border-slate-700">Status: Initial (0)</span>
-                                    </if>
-                                    <if condition="{data.counter_value} > 0">
-                                        <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30">Status: Active ({data.counter_value})</span>
-                                    </if>
+                                    <!-- Dedicated Status Badge Container (prevents flex-between 3-item shifts) -->
+                                    <flex align="center" justify="end" class="relative">
+                                        <if condition="{data.counter_value} == 0">
+                                            <span enter_animation="fade-in" leave_animation="fade-out" class="px-2.5 py-1 bg-slate-800 text-slate-400 font-extrabold text-[11px] rounded-full border border-slate-700">Status: Initial (0)</span>
+                                            <else>
+                                                <span enter_animation="fade-in" leave_animation="fade-out" class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30">Status: Active ({data.counter_value})</span>
+                                            </else>
+                                        </if>
+                                    </flex>
                                 </flex>
 
                                 <!-- Two-Way Input Binding -->
@@ -197,12 +205,13 @@
                                     <input type="number" bind="data.counter_value" class="w-24 px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-indigo-500 text-indigo-300 rounded-lg text-center text-xs font-mono font-extrabold outline-none" />
                                 </flex>
 
-                                <!-- Direct State Mutators -->
+                                <!-- Direct State Mutators with Declarative WAAPI Animations -->
                                 <flex direction="row" gap="6" class="w-full pt-1 flex-wrap">
                                     <button type="button" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
                                         <on_click action="MUTATE_STATE" operation="INCREMENT">
                                             <path>data.counter_value</path>
                                         </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="bounce" duration="400" />
                                         +1 Add
                                     </button>
                                     <button type="button" class="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
@@ -210,6 +219,7 @@
                                             const current = parseInt($engine.getState('counter_value') || 0, 10);
                                             $engine.setState('counter_value', String(current + 5));
                                         </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="pulse" duration="400" />
                                         +5 Add
                                     </button>
                                     <button type="button" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg transition-colors cursor-pointer">
@@ -217,6 +227,7 @@
                                             <path>data.counter_value</path>
                                             <value>0</value>
                                         </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="shake" duration="400" />
                                         ↺ Reset
                                     </button>
                                 </flex>
@@ -268,25 +279,26 @@
     &lt;span class="text-emerald-400 font-mono"&gt;Clock: &#123;data.clock&#125;&lt;/span&gt;
 
     &lt;!-- 2. Reactive Interpolation --&gt;
-    &lt;h3 class="text-white"&gt;Count: &#123;data.count&#125;&lt;/h3&gt;
+    &lt;h3 id="count-badge" class="text-white"&gt;Count: &#123;data.count&#125;&lt;/h3&gt;
 
-    &lt;!-- 3. Conditional Rendering --&gt;
+    &lt;!-- 3. Conditional Lifecycle Animations (&lt;if&gt;/&lt;else&gt;) --&gt;
     &lt;if condition="&#123;data.count&#125; == 0"&gt;
-      &lt;span class="badge-slate"&gt;Status: Initial (0)&lt;/span&gt;
-    &lt;/if&gt;
-    &lt;if condition="&#123;data.count&#125; &gt; 0"&gt;
-      &lt;span class="badge-emerald"&gt;Status: Active (&#123;data.count&#125;)&lt;/span&gt;
+      &lt;span enter_animation="fade-in" leave_animation="fade-out" class="badge-slate"&gt;Status: Initial (0)&lt;/span&gt;
+      &lt;else&gt;
+        &lt;span enter_animation="fade-in" leave_animation="fade-out" class="badge-emerald"&gt;Status: Active (&#123;data.count&#125;)&lt;/span&gt;
+      &lt;/else&gt;
     &lt;/if&gt;
 
     &lt;!-- 4. Two-Way Input Binding --&gt;
     &lt;input type="number" bind="data.count" /&gt;
 
-    &lt;!-- 5. Declarative Actions (+1, +5, Reset) --&gt;
+    &lt;!-- 5. Declarative Actions &amp; WAAPI Animations --&gt;
     &lt;flex direction="row" gap="8"&gt;
       &lt;button&gt;
         &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
           &lt;path&gt;data.count&lt;/path&gt;
         &lt;/on_click&gt;
+        &lt;on_click action="ANIMATE" target="#count-badge" name="bounce" duration="400" /&gt;
         +1 Add
       &lt;/button&gt;
       &lt;button&gt;
@@ -294,6 +306,7 @@
           &lt;path&gt;data.count&lt;/path&gt;
           &lt;value&gt;0&lt;/value&gt;
         &lt;/on_click&gt;
+        &lt;on_click action="ANIMATE" target="#count-badge" name="shake" duration="400" /&gt;
         ↺ Reset
       &lt;/button&gt;
     &lt;/flex&gt;
@@ -675,6 +688,20 @@
                                     <value>resilience_primitives</value>
                                 </on_click>
                                 ⚡ 16. Resilience Primitives (Retry/Timeout/Delay)
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>watch_computed</value>
+                                </on_click>
+                                ⚡ 17. Watch &amp; Computed State
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>animation_system</value>
+                                </on_click>
+                                🎭 18. Declarative Animation System
                             </button>
                         </flex>
 
@@ -1192,6 +1219,38 @@ EUIXDevTools.init(engine);</code></pre>
       console.log("Full name updated:", $newValue);
     &lt;/step&gt;
   &lt;/watch&gt;
+&lt;/uid_spec&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'animation_system'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🎭 18. Declarative Animation System (`EUIXAnimationPlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative keyframe definitions (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;animation_def&gt;</code>), enter/leave transitions (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">enter_animation</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">leave_animation</code>), and animation action steps (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">action="ANIMATE"</code>) using native Web Animations API (WAAPI).
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;uid_spec&gt;
+  &lt;!-- 1. Reusable Keyframe Definition --&gt;
+  &lt;animations&gt;
+    &lt;animation_def name="customPulse" duration="400" easing="ease-in-out"&gt;
+      &lt;keyframe offset="0" transform="scale(1)" opacity="1" /&gt;
+      &lt;keyframe offset="0.5" transform="scale(1.1)" opacity="0.8" /&gt;
+      &lt;keyframe offset="1" transform="scale(1)" opacity="1" /&gt;
+    &lt;/animation_def&gt;
+  &lt;/animations&gt;
+
+  &lt;flex direction="column" gap="16"&gt;
+    &lt;!-- 2. Lifecycle Transitions --&gt;
+    &lt;div id="hero" enter_animation="slide-in-down" leave_animation="fade-out"&gt;
+      &lt;h1&gt;Animated Component&lt;/h1&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 3. Event-Triggered Animation Action --&gt;
+    &lt;button class="btn"&gt;
+      &lt;on_click action="ANIMATE" target="#hero" name="customPulse" duration="500" /&gt;
+      Trigger Pulse
+    &lt;/button&gt;
+  &lt;/flex&gt;
 &lt;/uid_spec&gt;</code></pre>
                                 </flex>
                             </if>
