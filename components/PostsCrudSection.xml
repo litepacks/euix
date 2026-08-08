@@ -2,7 +2,7 @@
     <collapse bind="data.posts_open" title="📡 Declarative Posts CRUD (JSONPlaceholder REST API)" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
         
         <!-- Header & Action Info -->
-        <flex direction="row" justify="between" align="center" class="pb-3 border-b border-slate-100">
+        <flex class="pb-3 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
             <flex direction="column">
                 <span class="text-xs font-bold text-slate-700">JSONPlaceholder REST API Endpoints</span>
                 <span class="text-[11px] text-slate-500">GET, POST, DELETE https://jsonplaceholder.typicode.com/posts</span>
