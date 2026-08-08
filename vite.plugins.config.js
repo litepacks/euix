@@ -1,0 +1,36 @@
+import { defineConfig } from 'vite';
+import { resolve } from 'path';
+
+export default defineConfig({
+  build: {
+    target: ['es2022', 'chrome100', 'firefox100', 'safari15', 'edge100'],
+    lib: {
+      entry: {
+        'plugins/EUIXApiPlugin': resolve(__dirname, 'src/plugins/EUIXApiPlugin.js'),
+        'plugins/EUIXComposerPlugin': resolve(__dirname, 'src/plugins/EUIXComposerPlugin.js'),
+        'plugins/EUIXDragDropPlugin': resolve(__dirname, 'src/plugins/EUIXDragDropPlugin.js'),
+        'plugins/EUIXStoragePlugin': resolve(__dirname, 'src/plugins/EUIXStoragePlugin.js'),
+        'plugins/EUIXCollapsePlugin': resolve(__dirname, 'src/plugins/EUIXCollapsePlugin.js'),
+        'plugins/EUIXDialogPlugin': resolve(__dirname, 'src/plugins/EUIXDialogPlugin.js')
+      },
+      formats: ['es']
+    },
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].es.js'
+      }
+    },
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_debugger: true,
+        passes: 3
+      },
+      format: {
+        comments: false
+      }
+    },
+    sourcemap: true,
+    emptyOutDir: false
+  }
+});

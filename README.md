@@ -9,10 +9,11 @@
 
 ## 📄 What is .EUIX Engine?
 
-**EUIX Engine** is a declarative UI runtime based on structured XML designed for modern web applications. It allows you to build full reactive web interfaces using **Structured XML** — handling **components** (`<component_def>`), **state management** (`<data_model>`), **REST API integration** (`<on_mount action="XHR">`), **conditional rendering** (`<if>`), **loops** (`<for_each>`), and **direct DOM updates** declaratively inside XML specs with **zero external dependencies** and an **AI-friendly syntax**.
+**EUIX Engine** is a declarative UI runtime based on structured XML designed for modern web applications. It allows you to build full reactive web interfaces using **Structured XML** — handling **components** (`<component_def>`), **state management** (`<data_model>`), **Action Composer workflows** (`<action_def>`), **REST API integration** (`<api_endpoint>`), **conditional rendering** (`<if>`), **loops** (`<for_each>`), and **direct DOM updates** declaratively inside XML specs with **zero external dependencies** and an **AI-friendly syntax**.
 
 ### Why EUIX?
 - **📄 Declarative XML Specs:** State management, REST API calls, design tokens, variables, and event listeners all defined declaratively in XML without JS boilerplate.
+- **🧩 Modular Plugin Architecture:** Ultra-lightweight core (`euixjs/core`) with tree-shakeable eklenti extensions (`composer`, `api`, `dnd`, `storage`, `collapse`, `dialog`).
 - **🌳 Parent-Child Component Hierarchy:** Modular component architecture (`<component_def>`) with clean `<imports>`, `<import src="..." />` tags, and parent-to-child prop & state sharing (`{props.key}`).
 - **⚡ Direct DOM Updates:** State mutations directly update affected target DOM nodes without Virtual DOM reconciliation overhead.
 - **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
@@ -92,40 +93,58 @@
 </html>
 ```
 
-### 2. Programmatic JavaScript API & NPM Submodules:
+---
+
+### 2. Modular Plugin API (`euixjs/core` + Subpaths)
+
+For custom builds and minimum bundle sizes, load **Lite Core** (`euixjs/core`) and register only the plugins you need:
+
+```javascript
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXComposerPlugin } from 'euixjs/composer';
+import { EUIXApiPlugin } from 'euixjs/api';
+import { EUIXStoragePlugin } from 'euixjs/storage';
+import { EUIXDevTools } from 'euixjs/devtools';
+
+// Register plugins on Lite Core
+EUIXEngineCore
+  .use(EUIXComposerPlugin)
+  .use(EUIXApiPlugin)
+  .use(EUIXStoragePlugin);
+
+// Mount spec using Lite Core
+const engine = EUIXEngineCore.mount(xmlString, '#app');
+EUIXDevTools.init(engine);
+```
+
+#### Full Bundle API (`euixjs`)
+For full bundle backward compatibility with all plugins pre-registered:
 ```javascript
 import { EUIXEngine } from 'euixjs';
-import { EUIXDevTools } from 'euixjs/devtools'; // Optional Standalone DevTools Plugin
-
-// Mount EUIX XML spec directly to a target container
 const engine = EUIXEngine.mount(xmlString, '#app');
-
-// Programmatically attach DevTools Inspector in development
-EUIXDevTools.init(engine);
-
-// Programmatically inspect or mutate reactive state
-console.log(engine.getState('counter'));
-engine.setState('counter', 10);
-
-// Programmatically revalidate API data or persist state
-await engine.revalidateApi('data.user_list');
 ```
 
 ---
 
-## 📦 Bundle Sizes & Optimization
+## 📦 Subpath Package Exports & Bundle Metrics
 
-Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EUIX Engine core has been completely decoupled from DevTools, delivering an ultra-small footprint:
-
-| Dist File | Format / Description | Raw Size | Compressed (Gzip) |
+| Subpath Import | Module / Description | Raw Size | Compressed (Gzip) |
 | :--- | :--- | :--- | :--- |
-| **`dist/EUIXEngine.umd.js`** | **EUIX Engine Core (Minified UMD Build)** | **80.7 KB** | **22.6 KB** |
-| **`dist/EUIXEngine.es.js`** | **EUIX Engine Core (Modern ESM Build)** | **156.7 KB** | **31.8 KB** |
-| **`dist/EUIXDevTools.umd.js`** | **EUIX DevTools Inspector (Standalone Plugin)** | **15.9 KB** | **4.4 KB** |
+| **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **63.5 kB** | **18.8 kB** |
+| **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **87.3 kB** | **24.6 kB** |
+| **`euixjs/api`** | **REST SWR HTTP Client Engine** | **12.1 kB** | **2.9 kB** |
+| **`euixjs/composer`** | **Action Composer Workflow System** | **10.6 kB** | **2.8 kB** |
+| **`euixjs/dnd`** | **HTML5 & Pointer Drag and Drop** | **5.1 kB** | **1.4 kB** |
+| **`euixjs/dialog`** | **Modal Dialog Overlay Component** | **4.8 kB** | **1.5 kB** |
+| **`euixjs/collapse`** | **Accordion / Collapse Component** | **3.3 kB** | **1.1 kB** |
+| **`euixjs/storage`** | **State Storage & Persistence** | **3.1 kB** | **0.9 kB** |
+| **`euixjs/devtools`** | **DevTools Inspector Panel** | **15.9 kB** | **4.4 kB** |
 
 ---
 
-- **🧩 Action Composer System (`<action_def>`, `<param>`, `<return>`):** Define reusable named action workflows with parameters (`required="true"`, `default="..."`), sequential step execution, nested action calls, `{result}` data flow propagation, circular loop guards, and programmatic execution (`engine.executeAction()`).
+## ✨ Features & Capabilities
+
+- **⚡ Action Composer System (`<action_def>`, `<param>`, `<return>`):** Define reusable named action workflows with parameters (`required="true"`, `default="..."`), sequential step execution, nested action calls, `{result}` data flow propagation, circular loop guards, and programmatic execution (`engine.executeAction()`).
 - **🗂️ Native & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`):** Fine-grained HTML5 & Pointer Drag & Drop support with zero-lag custom floating drag preview (`#euix-drag-ghost`) and automatic `dragover` preventDefault handling.
 - **🔀 Reactive List Mutations (`MUTATE_STATE` `PUSH`, `REMOVE`, `UPDATE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`):** High-performance array list mutations including item insertion, property updates, index deletion, item swapping (`SWAP`), and quick index reordering (`MOVE_UP`, `MOVE_DOWN`).
 - **🔄 SWR API Revalidation (`REVALIDATE_API`, `<revalidate>`):** Stale-While-Revalidate API data refetching triggered declaratively or programmatically (`revalidateApi()`).
@@ -139,7 +158,7 @@ Thanks to Terser AST minification and Vite/Rollup tree-shaking optimizations, EU
 - **📜 External Scripts & Inline Scripting (`<use_script>`, `<use_style>`, `RUN_SCRIPT`):** Declaratively load external JS libraries (e.g. Highlight.js, Canvas-Confetti) and CSS stylesheets. Execute custom JS code snippets safely inside `<on_mount>`, `<on_state_change>`, or `<on_click>` using `action="RUN_SCRIPT"` with `$el`, `$data`, `$engine`, and `$evt` injected in a `new Function()` sandbox (no `eval()`).
 - **🛑 Infinite Loop Guard:** Built-in reactivity cascade depth guard (>50 updates), component recursion depth guard (>20 depth), and circular action recursion guard preventing browser freezes or crashes.
 - **🛠️ EUIX DevTools Inspector:** Floating Inspector, real-time **State Tree Inspector**, and **Action Log Stream** panel with global `$state` and `$engine` console exposure.
-- **🛡️ Contract & E2E Test Suite:** Fully verified with 13 Vitest unit/component/contract/benchmark test files (100% passing) and Playwright E2E browser tests.
+- **🛡️ Contract & E2E Test Suite:** Fully verified with 14 Vitest unit/component/contract/benchmark test files (100% passing) and Playwright E2E browser tests.
 
 ---
 
@@ -272,10 +291,11 @@ Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + S
 
 ---
 
-## 📖 Documentation
+## 📖 Documentation & Architecture
 
 For detailed component specs, API references, and architecture guides:
 
+- 📖 **[.agents/AGENTS.md](.agents/AGENTS.md)**: Agent & Developer Architecture Guide, state reactivity, SWR REST API client, scoping matrix, and security guidelines.
 - 📚 **[docs/components.md](docs/components.md)**: Full Layout, UI Components, Control Flow Tags, Constants & Actions Reference.
 - 🛠️ **[docs/guide.md](docs/guide.md)**: Architecture, State Reactivity Model, DevTools & Testing Guide.
 

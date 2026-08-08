@@ -1,38 +1,39 @@
 # AGENTS.md
 
-This guide explains the **Core Architecture** of **EUIX Engine** (`euixjs`) and how to build declarative reactive UIs, manage state, handle API data fetching, and mount components.
+This guide explains the **Core Architecture** of **EUIX Engine** (`euixjs`) and how to build declarative reactive UIs, manage state, handle API data fetching, load modular plugins, and mount components.
 
 ---
 
 ## 🧠 1. Core Architecture & Concepts
 
-EUIX Engine is built on 5 fundamental architectural pillars:
+EUIX Engine is built on a **Modular Plugin Architecture**:
 
 ```
-                  +-----------------------------------+
-                  |  <uid_spec> XML Specification     |
-                  +-----------------------------------+
-                                    |
-            +-----------------------+-----------------------+
-            |                       |                       |
-            v                       v                       v
-    +---------------+       +---------------+       +---------------+
-    | Data Model    |       | Declarative   |       | SWR API       |
-    | Store (State) |       | Event Actions |       | Client Engine |
-    +---------------+       +---------------+       +---------------+
-            |                       |                       |
-            +-----------------------+-----------------------+
-                                    |
-                                    v
-                  +-----------------------------------+
-                  | Fine-Grained Reactive DOM Sync    |
-                  +-----------------------------------+
+                                  +---------------------------------------+
+                                  |         EUIXEngine (Full Bundle)      |
+                                  +---------------------------------------+
+                                                      |
+         +--------------------+-----------------------+-----------------------+--------------------+
+         |                    |                       |                       |                    |
+         v                    v                       v                       v                    v
+  +--------------+    +---------------+       +---------------+       +---------------+    +---------------+
+  |EUIXEngineCore|    | EUIXApiPlugin |       |EUIXComposerPlg|       | EUIXStoragePlg|    | EUIXDialogPlg |
+  | (Lite Core)  |    | (SWR Client)  |       | (Workflows)   |       | (Persistence) |    |   (Modals)    |
+  +--------------+    +---------------+       +---------------+       +---------------+    +---------------+
+         |
+         +--------------------------------------------+
+         |                                            |
+         v                                            v
+  +--------------+                            +---------------+
+  | EUIXDragDrop |                            |EUIXCollapsePlg|
+  |  (Pointer)   |                            |  (Accordions) |
+  +--------------+                            +---------------+
 ```
 
 1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes.
 2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`). State declarations MUST use `id="..."`.
 3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) without imperative DOM event listeners.
-4. **SWR Data Fetching Engine (`<api_config>` & `<api_endpoint>`)**: Built-in Stale-While-Revalidate HTTP engine handling async REST calls, automatic focus/online revalidation, and component-scoped request interceptors.
+4. **Modular Plugin System (`.use(plugin)`)**: Extend Lite Core (`EUIXEngineCore`) dynamically with tree-shakeable plugins (`euixjs/api`, `euixjs/composer`, `euixjs/dnd`, `euixjs/storage`, `euixjs/collapse`, `euixjs/dialog`).
 5. **Component Registry & Async Loader**: Loads modular XML components dynamically via `fetch()`, executing scoped state models and prop passing.
 
 ---
@@ -40,11 +41,34 @@ EUIX Engine is built on 5 fundamental architectural pillars:
 ## 🚀 2. Import & Mounting
 
 ### ESM (Bundlers / Node)
+
+#### Option A: Modular Subpath Imports (Recommended for Minimal Bundle Size)
+```js
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXComposerPlugin } from 'euixjs/composer';
+import { EUIXApiPlugin } from 'euixjs/api';
+import { EUIXStoragePlugin } from 'euixjs/storage';
+import { EUIXDevTools } from 'euixjs/devtools';
+
+// Register required plugins on Lite Core
+EUIXEngineCore
+  .use(EUIXComposerPlugin)
+  .use(EUIXApiPlugin)
+  .use(EUIXStoragePlugin);
+
+// Mount XML specification to a DOM container
+const engine = EUIXEngineCore.mount(xmlString, document.getElementById('app'));
+
+// Initialize DevTools Inspector (optional)
+EUIXDevTools.init(engine);
+```
+
+#### Option B: Full Bundle (Backwards Compatible)
 ```js
 import { EUIXEngine } from 'euixjs';
 import { EUIXDevTools } from 'euixjs/devtools';
 
-// Mount XML specification to a DOM container
+// Mount XML specification to a DOM container (all plugins pre-registered)
 const engine = EUIXEngine.mount(xmlString, document.getElementById('app'));
 
 // Initialize DevTools Inspector (optional)

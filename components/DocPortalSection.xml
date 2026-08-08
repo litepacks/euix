@@ -54,8 +54,8 @@
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-blue-400">22.6 KB</span>
-                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Minified Gzip</span>
+                    <span class="text-lg md:text-xl font-black text-blue-400">18.8 KB</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lite Core Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
                     <span class="text-lg md:text-xl font-black text-amber-400">Direct DOM</span>
@@ -655,6 +655,13 @@
                                 </on_click>
                                 ⚡ 13. Action Composer Workflow System
                             </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>modular_plugins</value>
+                                </on_click>
+                                🧩 14. Modular Plugin Architecture
+                            </button>
                         </flex>
 
                         <!-- Doc Detail View (Span 2) -->
@@ -1044,6 +1051,30 @@ engine.registerAction("TRACK_ANALYTICS", (actionNode, context) =&gt; {
   &lt;/on_click&gt;
   Add Admin User
 &lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'modular_plugins'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🧩 14. Modular Plugin Architecture</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine is split into a Lite Core (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">euixjs/core</code> - 18.8 KB Gzip) and tree-shakeable plugins (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">composer</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">api</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dnd</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">storage</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">collapse</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dialog</code>).
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-javascript">import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXComposerPlugin } from 'euixjs/composer';
+import { EUIXApiPlugin } from 'euixjs/api';
+import { EUIXStoragePlugin } from 'euixjs/storage';
+import { EUIXDevTools } from 'euixjs/devtools';
+
+// Register plugins on Lite Core
+EUIXEngineCore
+  .use(EUIXComposerPlugin)
+  .use(EUIXApiPlugin)
+  .use(EUIXStoragePlugin);
+
+// Mount EUIX XML spec
+const engine = EUIXEngineCore.mount(xmlString, '#app');
+EUIXDevTools.init(engine);</code></pre>
                                 </flex>
                             </if>
                         </flex>

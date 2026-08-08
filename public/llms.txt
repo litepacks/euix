@@ -5,10 +5,17 @@
 ## Documentation & Guidelines
 
 - [AGENTS.md](.agents/AGENTS.md): Full architecture, declarative XML specification syntax, supported state data types (`string`, `number`, `boolean`, `array`, `object`), parent-child prop mechanics, slot projection, SWR API integration, lifecycle hooks, and XSS security best practices.
-- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~22.6 KB Gzip core UMD).
+- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~18.8 KB Gzip Lite Core, ~24.6 KB Full Bundle UMD).
 
 ## Core Modules & Specifications
 
-- [src/EUIXEngine.js](src/EUIXEngine.js): Core declarative XML engine, DOM compiler, reactive state store, SWR HTTP client, and async component registry.
+- [src/core/EUIXEngineCore.js](src/core/EUIXEngineCore.js): Core declarative XML engine, DOM compiler, reactive state store, and plugin loader (`euixjs/core`).
+- [src/plugins/EUIXComposerPlugin.js](src/plugins/EUIXComposerPlugin.js): Action Composer Workflow System plugin (`euixjs/composer`).
+- [src/plugins/EUIXApiPlugin.js](src/plugins/EUIXApiPlugin.js): SWR REST API Data Fetching plugin (`euixjs/api`).
+- [src/plugins/EUIXDragDropPlugin.js](src/plugins/EUIXDragDropPlugin.js): HTML5 Drag and Drop plugin (`euixjs/dnd`).
+- [src/plugins/EUIXStoragePlugin.js](src/plugins/EUIXStoragePlugin.js): State Storage & Persistence plugin (`euixjs/storage`).
+- [src/plugins/EUIXCollapsePlugin.js](src/plugins/EUIXCollapsePlugin.js): Accordion / Collapse UI Component plugin (`euixjs/collapse`).
+- [src/plugins/EUIXDialogPlugin.js](src/plugins/EUIXDialogPlugin.js): Modal Dialog Component plugin (`euixjs/dialog`).
+- [src/EUIXEngine.js](src/EUIXEngine.js): Main full bundle entry point auto-registering default plugins (`euixjs`).
 - [src/EUIXDevTools.js](src/EUIXDevTools.js): Standalone DevTools inspector submodule (`euixjs/devtools`).
 - [components/DocPortalSection.xml](components/DocPortalSection.xml): Interactive documentation portal component specification.
