@@ -2115,7 +2115,10 @@ class EUIXEngineCore {
             const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
             useScriptNodes.forEach(node => {
                 const src = node.getAttribute("src") || node.getAttribute("url");
-                if (src) this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+                if (src) {
+                    const p = this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+                    if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+                }
             });
 
             const useStyleNodes = Array.from(doc.querySelectorAll("use_style, style_loader, load_style"));
