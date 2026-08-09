@@ -1,0 +1,115 @@
+<component_def name="table-section">
+    <constants>
+        <const id="table_th">px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-50/80 border-b border-slate-100</const>
+        <const id="table_td">px-4 py-3.5 text-xs text-slate-700 border-b border-slate-100/70 align-middle</const>
+        <const id="badge_active">px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[11px] border border-emerald-200/60 inline-flex items-center gap-1</const>
+        <const id="badge_offline">px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg text-[11px] border border-slate-200 inline-flex items-center gap-1</const>
+    </constants>
+
+    <flex direction="column" gap="12" class="w-full">
+        <!-- Section Header -->
+        <flex direction="row" align="center" justify="between" class="cursor-pointer select-none">
+            <on_click action="SET_STATE">
+                <path>data.table_open</path>
+                <value>{data.table_open === 'true' ? 'false' : 'true'}</value>
+            </on_click>
+            <flex direction="row" align="center" gap="8">
+                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-extrabold text-xs rounded-lg border border-amber-200/60 hidden sm:inline-block">📄 115 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_title</path>
+                        <value>Data Table &amp; Roster (components/TableSection.xml)</value>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_lines</path>
+                        <value>115</value>
+                    </on_click>
+                    <on_click action="XHR">
+                        <method>GET</method>
+                        <url>./components/TableSection.xml</url>
+                        <target>data.code_modal_content</target>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                    🔍 View XML Code
+                </button>
+                <span class="text-slate-400 font-bold">{data.table_open === 'true' ? '▲' : '▼'}</span>
+            </flex>
+        </flex>
+
+        <if condition="{data.table_open} == 'true'">
+            <flex direction="column" gap="14" class="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <!-- Add New User Form Bar -->
+                <flex direction="row" align="center" gap="8" wrap="true" class="w-full">
+                    <input type="text" placeholder="Employee Name" bind="data.new_emp_name" class="flex-1 min-w-[140px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <input type="text" placeholder="Role (e.g. Architect)" bind="data.new_emp_role" class="flex-1 min-w-[120px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <input type="text" placeholder="Dept (e.g. R&amp;D)" bind="data.new_emp_dept" class="flex-1 min-w-[100px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
+                    <button class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0">
+                        <on_click action="MUTATE_STATE" operation="PUSH">
+                            <path>data.employees</path>
+                            <value name="{data.new_emp_name}" role="{data.new_emp_role}" dept="{data.new_emp_dept}" status="Active" />
+                        </on_click>
+                        <on_click action="SET_STATE">
+                            <path>data.new_emp_name</path>
+                            <value></value>
+                        </on_click>
+                        <on_click action="SET_STATE">
+                            <path>data.new_emp_role</path>
+                            <value></value>
+                        </on_click>
+                        <on_click action="SET_STATE">
+                            <path>data.new_emp_dept</path>
+                            <value></value>
+                        </on_click>
+                        ➕ Add Employee
+                    </button>
+                </flex>
+
+                <!-- Data Table -->
+                <div class="w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+                    <table class="w-full border-collapse text-left">
+                        <thead>
+                            <tr>
+                                <th class="{const.table_th}">#</th>
+                                <th class="{const.table_th}">Employee Name</th>
+                                <th class="{const.table_th}">Role</th>
+                                <th class="{const.table_th}">Department</th>
+                                <th class="{const.table_th}">Status</th>
+                                <th class="{const.table_th} text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <for_each items="{data.employees}" var="emp">
+                                <tr class="hover:bg-slate-50/80 transition-colors">
+                                    <td class="{const.table_td} font-mono font-bold text-slate-400">#{emp._index + 1}</td>
+                                    <td class="{const.table_td} font-bold text-slate-800">{emp.name}</td>
+                                    <td class="{const.table_td} text-slate-600">{emp.role}</td>
+                                    <td class="{const.table_td}"><span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-semibold">{emp.dept}</span></td>
+                                    <td class="{const.table_td}">
+                                        <if condition="{emp.status} == 'Active'">
+                                            <span class="{const.badge_active}"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active</span>
+                                        </if>
+                                        <if condition="{emp.status} != 'Active'">
+                                            <span class="{const.badge_offline}">Offline</span>
+                                        </if>
+                                    </td>
+                                    <td class="{const.table_td} text-right">
+                                        <button class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] rounded-md transition-colors cursor-pointer">
+                                            <on_click action="MUTATE_STATE" operation="REMOVE">
+                                                <path>data.employees</path>
+                                                <index>{emp._index}</index>
+                                            </on_click>
+                                            Remove
+                                        </button>
+                                    </td>
+                                </tr>
+                            </for_each>
+                        </tbody>
+                    </table>
+                </div>
+            </flex>
+        </if>
+    </flex>
+</component_def>

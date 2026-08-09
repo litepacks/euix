@@ -1,33 +1,24 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { JSDOM } from 'jsdom';
 import fs from 'fs';
 import path from 'path';
+import { EUIXEngineCore } from '../src/core/EUIXEngineCore.js';
 
 describe('DocPortalSection Tab Switching', () => {
-    let EUIXEngine;
-    let dom;
+    let container;
 
-    beforeEach(async () => {
-        dom = new JSDOM('<!DOCTYPE html><html><body><div id="app"></div></body></html>', {
-            url: 'http://localhost/'
-        });
-        global.window = dom.window;
-        global.document = dom.window.document;
-        global.Node = dom.window.Node;
-        global.HTMLElement = dom.window.HTMLElement;
-        global.navigator = dom.window.navigator;
-
-        const engineModule = await import('../src/EUIXEngine.js');
-        EUIXEngine = engineModule.EUIXEngine || engineModule.default;
+    beforeEach(() => {
+        container = document.createElement('div');
+        container.id = 'app';
+        document.body.appendChild(container);
     });
 
     afterEach(() => {
-        if (dom && dom.window) {
-            dom.window.close();
+        if (container && container.parentNode) {
+            container.parentNode.removeChild(container);
         }
     });
 
-    it('should switch active_tab to docs when Documentation button is clicked', async () => {
+    it('should switch active_tab to docs when Documentation button is clicked', () => {
         const xmlPath = path.resolve(process.cwd(), 'components/DocPortalSection.xml');
         const xmlContent = fs.readFileSync(xmlPath, 'utf8');
 
@@ -36,10 +27,10 @@ describe('DocPortalSection Tab Switching', () => {
             <doc-portal-section />
         </uid_spec>`;
 
-        const engine = await EUIXEngine.mount(spec, '#app');
+        const engine = EUIXEngineCore.mount(spec, container);
         expect(engine.getState('active_tab')).toBe('overview');
 
-        const buttons = Array.from(document.querySelectorAll('button'));
+        const buttons = Array.from(container.querySelectorAll('button'));
         const docsBtn = buttons.find(b => b.textContent.includes('Documentation'));
 
         expect(docsBtn).toBeDefined();
@@ -47,6 +38,7 @@ describe('DocPortalSection Tab Switching', () => {
         docsBtn.click();
 
         expect(engine.getState('active_tab')).toBe('docs');
-        expect(document.body.textContent).toContain('What is EUIX Engine?');
+        expect(container.textContent).toContain('What is EUIX Engine?');
+        engine.unmount();
     }, 10000);
 });

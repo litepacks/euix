@@ -4,8 +4,17 @@ import fc from 'fast-check';
  * Reusable fast-check Arbitraries for Structurally Valid EUIX Applications
  */
 
-// Valid identifiers for state, actions, components
-export const identifierArb = fc.stringMatching(/^[a-zA-Z][a-zA-Z0-9_]{1,12}$/);
+const RESERVED_JS_PROPS = new Set([
+  'length', 'toString', 'valueOf', 'constructor', 'prototype', '__proto__',
+  'slice', 'concat', 'indexOf', 'includes', 'join', 'pop', 'push', 'shift',
+  'unshift', 'reverse', 'sort', 'splice', 'hasOwnProperty', 'isPrototypeOf',
+  'propertyIsEnumerable', 'toLocaleString'
+]);
+
+// Valid identifiers for state, actions, components (excluding JS Object prototype properties)
+export const identifierArb = fc
+  .stringMatching(/^[a-zA-Z][a-zA-Z0-9_]{1,12}$/)
+  .filter(id => !RESERVED_JS_PROPS.has(id));
 
 // Primitive state values
 export const statePrimitiveArb = fc.oneof(

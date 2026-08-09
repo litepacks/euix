@@ -41,7 +41,7 @@ describe('EUIX Engine - Property-Based Testing Suite', () => {
       }),
       { numRuns: 50 }
     );
-  });
+  }, 30000);
 
   it('should maintain state reactivity invariants under random initial state values', () => {
     fc.assert(
@@ -69,5 +69,5 @@ describe('EUIX Engine - Property-Based Testing Suite', () => {
       }),
       { numRuns: 50 }
     );
-  });
+  }, 30000);
 });

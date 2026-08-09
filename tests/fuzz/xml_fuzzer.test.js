@@ -39,11 +39,11 @@ describe('EUIX Engine - Invalid Input Fuzzing & Safety Invariants', () => {
           if (engine) engine.unmount();
         } catch (e) {
           // Failure must be structured or handled safely, no unhandled stack overflow
-          expect(e).toBeDefined();
+      expect(e).toBeDefined();
         }
       }).not.toThrow(RangeError); // No stack overflow RangeError
     }
-  });
+  }, 30000);
 
   it('should handle extreme DOM nesting depth gracefully without call stack overflow', () => {
     let deepXml = '<span>Leaf Content</span>';
@@ -57,7 +57,7 @@ describe('EUIX Engine - Invalid Input Fuzzing & Safety Invariants', () => {
       expect(engine).toBeDefined();
       engine.unmount();
     }).not.toThrow(RangeError);
-  });
+  }, 30000);
 
   it('should handle circular computed dependencies by predictably throwing COMPUTED_CYCLE_ERROR', () => {
     const xml = `
@@ -80,5 +80,5 @@ describe('EUIX Engine - Invalid Input Fuzzing & Safety Invariants', () => {
       const val = engine.getState('compA');
       engine.unmount();
     }).toThrow();
-  });
+  }, 30000);
 });

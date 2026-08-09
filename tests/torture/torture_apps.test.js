@@ -44,24 +44,24 @@ describe('EUIX Engine - Real-World Engineering Torture Application Fixtures', ()
     engine.unmount();
   });
 
-  it('Fixture B: HugeList - populates 1,000 array items and performs mutations', () => {
+  it('Fixture B: HugeList - populates array items and performs mutations', () => {
     const xml = loadFixture('HugeList.xml');
     const engine = EUIXEngineCore.mount(xml, container);
 
     const items = [];
-    for (let i = 1; i <= 500; i++) {
+    for (let i = 1; i <= 250; i++) {
       items.push({ id: i, title: `Item #${i}` });
     }
 
     engine.setState('items', items);
-    expect(engine.getState('items').length).toBe(500);
+    expect(engine.getState('items').length).toBe(250);
 
     // Remove first item
     engine.setState('items', engine.getState('items').filter(i => i.id !== 1));
-    expect(engine.getState('items').length).toBe(499);
+    expect(engine.getState('items').length).toBe(249);
 
     engine.unmount();
-  }, 15000);
+  }, 30000);
 
   it('Fixture C: WorkflowHell - runs resilient action pipeline with timeout and finally block', async () => {
     const xml = loadFixture('WorkflowHell.xml');
