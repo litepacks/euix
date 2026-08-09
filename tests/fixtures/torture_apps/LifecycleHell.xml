@@ -1,0 +1,19 @@
+<uid_spec>
+  <data_model>
+    <state id="seconds">0</state>
+  </data_model>
+
+  <on_mount action="SET_STATE">
+    <path>data.seconds</path>
+    <value>1</value>
+  </on_mount>
+
+  <on_interval ms="50" action="SET_STATE">
+    <path>data.seconds</path>
+    <value>{data.seconds} + 1</value>
+  </on_interval>
+
+  <container>
+    <h1>Seconds Mounted: {data.seconds}</h1>
+  </container>
+</uid_spec>

@@ -1,0 +1,35 @@
+<uid_spec>
+  <data_model>
+    <state id="ticker">0</state>
+    <state id="active_tab">overview</state>
+    <state id="user_name">Admin</state>
+    <state id="metrics" type="object">{"cpu": 45, "memory": 72, "latency": 12}</state>
+    <computed id="display_header" deps="user_name, ticker">
+      return $data.user_name + " - Tick #" + $data.ticker;
+    </computed>
+  </data_model>
+
+  <container class="p-6 bg-gray-900 text-white rounded-xl shadow-2xl">
+    <flex direction="row" align="center" justify="between" class="mb-4">
+      <h1 id="header">{data.display_header}</h1>
+      <button id="tick_btn">
+        <on_click action="SET_STATE">
+          <path>data.ticker</path>
+          <value>{data.ticker} + 1</value>
+        </on_click>
+        Tick
+      </button>
+    </flex>
+
+    <flex direction="row" gap="16">
+      <div class="card p-4 bg-gray-800 rounded-lg">
+        <h3>CPU Usage</h3>
+        <p id="cpu_val">{data.metrics.cpu}%</p>
+      </div>
+      <div class="card p-4 bg-gray-800 rounded-lg">
+        <h3>Memory Usage</h3>
+        <p id="mem_val">{data.metrics.memory}%</p>
+      </div>
+    </flex>
+  </container>
+</uid_spec>

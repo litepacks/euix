@@ -444,16 +444,37 @@ Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + S
 
 ---
 
-## 📖 Documentation & Architecture
+## 🛡️ Battle-Testing & Release Verification Suite
 
-For detailed component specs, API references, and architecture guides:
+EUIX Engine is systematically battle-tested under malformed input, concurrency, cancellation, long-running workloads, and complex execution combinations.
 
-- 📖 **[.agents/AGENTS.md](.agents/AGENTS.md)**: Agent & Developer Architecture Guide, state reactivity, SWR REST API client, scoping matrix, and security guidelines.
-- 📚 **[docs/components.md](docs/components.md)**: Full Layout, UI Components, Control Flow Tags, Constants & Actions Reference.
-- 🛠️ **[docs/guide.md](docs/guide.md)**: Architecture, State Reactivity Model, DevTools & Testing Guide.
+### Test Architecture Overview
+- **Property-Based Testing (`fast-check`)**: Validates structural invariants across randomly generated valid EUIX applications.
+- **Invalid Input Fuzzing**: Tests hostile XML, unclosed tags, duplicate state IDs, 150-depth DOM nesting, and circular computed dependencies (`COMPUTED_CYCLE_ERROR`) without process crashes.
+- **AST Round-Trip Equivalence**: Asserts `XML -> Spec AST -> JSON -> Spec AST -> XML` semantic equivalence.
+- **Action Permutation Engine**: Tests nested combinations of `TRY`, `RETRY`, `TIMEOUT`, `DELAY`, `COMPOSED_ACTION`, `XHR`, `MUTATE_STATE`.
+- **Async Chaos & Late Mutation Protection**: Uses a seedable PRNG to simulate network delays and guarantees that timed-out/cancelled operations CANNOT mutate state after scope exit.
+- **Torture Suites & Stress Fixtures**: Includes 10k reactive storms, 5-level computed DAG torture, 200 cycle mount/unmount leak checks, resource single-disposal (`dispose()`), and 4 permanent engineering stress fixtures (*StressDashboard*, *HugeList*, *WorkflowHell*, *LifecycleHell*).
+- **Package Artifact Smoke Test**: Builds, packs (`npm pack`), extracts, and verifies UMD/ESM distribution integrity.
+- **Cross-Browser Matrix**: Playwright testing across Chromium, Firefox, and WebKit.
 
----
+### Test Commands
+```bash
+# Fast Unit & Integration Suite (185 tests)
+npm test
 
-## 📄 License
+# Battle-Testing Suite (Property, Fuzz, Chaos, Permutations, Torture)
+npm run test:battle
 
-This project is licensed under the **MIT License**.
+# Playwright Cross-Browser Matrix (Chromium, Firefox, WebKit)
+npm run test:browser
+
+# Configurable Duration Soak Load Test
+npm run test:soak
+
+# Package Artifact Tarball Smoke Test
+npm run test:package
+
+# Full Release Verification Gate (Build, Unit, Battle, Package Smoke Dashboard)
+npm run verify:release
+```
