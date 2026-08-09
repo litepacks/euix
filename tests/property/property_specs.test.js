@@ -28,6 +28,7 @@ describe('EUIX Engine - Property-Based Testing Suite', () => {
   it('should parse and mount arbitrary structurally valid EUIX applications without runtime errors', () => {
     fc.assert(
       fc.property(euixAppArb, (xml) => {
+        container.innerHTML = '';
         const engine = EUIXEngineCore.mount(xml, container);
         expect(engine).toBeDefined();
         expect(engine.container).toBe(container);
@@ -46,6 +47,7 @@ describe('EUIX Engine - Property-Based Testing Suite', () => {
   it('should maintain state reactivity invariants under random initial state values', () => {
     fc.assert(
       fc.property(identifierArb, fc.string({ minLength: 1, maxLength: 30 }), (stateId, val) => {
+        container.innerHTML = '';
         const xml = `
           <uid_spec>
             <data_model>

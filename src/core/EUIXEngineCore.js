@@ -4481,7 +4481,10 @@ class EUIXEngineCore {
 
         if (layout) {
             const dom = this.createHTMLElement(layout);
-            if (dom) this.container.appendChild(dom);
+            if (dom && this.container) {
+                this.container.innerHTML = "";
+                this.container.appendChild(dom);
+            }
         }
 
         const autofocusEl = this.container.querySelector("[data-euix-autofocus='true']");
