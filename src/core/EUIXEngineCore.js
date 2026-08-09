@@ -1844,7 +1844,7 @@ class EUIXEngineCore {
     }
 
     processLifecycleHooks(xmlNode, domEl, context = {}) {
-        if (!xmlNode || !domEl || domEl.nodeType !== Node.ELEMENT_NODE) return;
+        if (!xmlNode || !domEl || domEl.nodeType !== (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1)) return;
         const contextWithEl = { ...context, _targetEl: domEl };
 
         // 1. <on_mount>

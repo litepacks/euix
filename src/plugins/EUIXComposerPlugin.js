@@ -135,12 +135,12 @@ export class EUIXActionRegistry {
             }
         });
 
-        const returnNode = Array.from(xmlNode.childNodes).find(n => n.nodeType === 1 && n.tagName && n.tagName.toLowerCase() === "return");
+        const returnNode = Array.from(xmlNode.childNodes).find(n => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && n.tagName && n.tagName.toLowerCase() === "return");
         if (returnNode) {
             returnExpr = returnNode.textContent.trim() || returnNode.getAttribute("value") || returnNode.getAttribute("expr") || "";
         }
 
-        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === 1);
+        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1));
         childNodes.forEach(child => {
             const tag = child.tagName.toLowerCase();
             if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
