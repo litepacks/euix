@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { EUIXEngineCore } from '../../../src/core/EUIXEngineCore.js';
-import { EUIXReactivePlugin } from '../../../src/plugins/EUIXReactivePlugin.js';
-import { EUIXResiliencePlugin } from '../../../src/plugins/EUIXResiliencePlugin.js';
+import { EUIXEngineCore } from '../../../../src/core/EUIXEngineCore.js';
+import { EUIXReactivePlugin } from '../../../../src/plugins/EUIXReactivePlugin.js';
+import { EUIXResiliencePlugin } from '../../../../src/plugins/EUIXResiliencePlugin.js';
 
 EUIXEngineCore.use(EUIXReactivePlugin).use(EUIXResiliencePlugin);
 
