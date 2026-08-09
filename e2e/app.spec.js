@@ -48,8 +48,9 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const firstTask = page.locator('span:has-text("Task 1")');
     await expect(firstTask).toBeVisible();
 
-    // Click Delete on first task
-    await page.locator('button:has-text("Delete")').first().click();
+    // Click Delete on first task (Task 1)
+    const task1Row = page.locator('span:has-text("Task 1")').locator('xpath=ancestor::*[contains(@class, "bg-white")][1]');
+    await task1Row.locator('button:has-text("Delete")').click();
 
     // Confirm dialog backdrop should open
     const modalTitle = page.locator('.dialog-title');
