@@ -1,0 +1,76 @@
+name: EUIX Engine CI & Release Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: "0 2 * * *" # Nightly stress & soak run
+
+jobs:
+  pr_validation:
+    name: PR Validation & Battle Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build Bundles
+        run: npm run build
+
+      - name: Run Unit & Integration Tests
+        run: npm test
+
+      - name: Run Battle Test Suite (Property, Fuzz, Roundtrip, Permutations, Chaos)
+        run: npm run test:battle
+
+      - name: Package Artifact Smoke Test
+        run: npm run test:package
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright E2E Matrix (Chromium, Firefox, WebKit)
+        run: npm run test:browser
+
+      - name: Upload Test Results on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-failure-artifacts
+          path: |
+            test-results/
+            playwright-report/
+
+  nightly_soak_mutation:
+    name: Nightly Soak & Mutation Testing
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run 5-Minute Soak Test
+        run: SOAK_DURATION_MIN=5 npm run test:soak
+
+      - name: Run StrykerJS Mutation Testing
+        run: npm run test:mutation

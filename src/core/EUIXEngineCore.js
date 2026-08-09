@@ -858,6 +858,24 @@ class EUIXEngineCore {
         if (this._globalStateWatchers) {
             this._globalStateWatchers = [];
         }
+        if (this._watchRegistry) {
+            this._watchRegistry.clear();
+        }
+        if (this._computedRegistry) {
+            this._computedRegistry.clear();
+        }
+        if (this._activeAnimations) {
+            this._activeAnimations.forEach(anim => anim.cancel && anim.cancel());
+            this._activeAnimations.clear();
+        }
+        if (this._activeControllers) {
+            this._activeControllers.forEach(ctrl => ctrl.cancel && ctrl.cancel());
+            this._activeControllers.clear();
+        }
+        if (this._externalResources) {
+            this._externalResources.forEach(res => res.dispose && res.dispose());
+            this._externalResources.clear();
+        }
         if (this.refs) {
             this.refs = {};
         }
@@ -868,6 +886,19 @@ class EUIXEngineCore {
             EUIXEngineCore.instance = null;
         }
         return this;
+    }
+
+    _getTestStats() {
+        return {
+            activeIntervals: this._activeIntervals ? this._activeIntervals.length : 0,
+            activeWatchers: (this._stateWatchers ? this._stateWatchers.size : 0) + (this._watchRegistry ? this._watchRegistry.size : 0),
+            activeSubscriptions: this._bindings ? this._bindings.size : 0,
+            activeXhrs: this._registeredXhrs ? this._registeredXhrs.size : 0,
+            mountedComponents: this._componentSpecs ? this._componentSpecs.size : 0,
+            activeAnimations: this._activeAnimations ? this._activeAnimations.size : 0,
+            activeControllers: this._activeControllers ? this._activeControllers.size : 0,
+            activeResources: this._externalResources ? this._externalResources.size : 0
+        };
     }
 
     configureApi(options = {}) {
@@ -4003,13 +4034,14 @@ class EUIXEngineCore {
                 const isAsync = interpolatedCode.includes("await ");
                 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
                 const fn = isAsync
-                    ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", interpolatedCode)
-                    : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", interpolatedCode);
+                    ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode)
+                    : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode);
                 const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
                 const pVal = context.$prevValue !== undefined ? context.$prevValue : (context.prevValue !== undefined ? context.prevValue : context.oldValue);
                 const oVal = context.$oldValue !== undefined ? context.$oldValue : context.oldValue;
                 const pPath = context.$path || context.path || "";
-                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath);
+                const errVal = context.err || context.error || context._lastError || null;
+                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath, errVal);
             } catch (err) {
                 this.reportError(err, "Action Execution (RUN_SCRIPT)");
                 throw err;

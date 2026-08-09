@@ -703,6 +703,13 @@
                                 </on_click>
                                 🎭 18. Declarative Animation System
                             </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>battle_testing</value>
+                                </on_click>
+                                🛡️ 19. Battle-Testing &amp; Release Gate
+                            </button>
                         </flex>
 
                         <!-- Doc Detail View (Span 2) -->
@@ -1252,6 +1259,28 @@ EUIXDevTools.init(engine);</code></pre>
     &lt;/button&gt;
   &lt;/flex&gt;
 &lt;/uid_spec&gt;</code></pre>
+                                </flex>
+                            </if>
+                            <if condition="{data.active_doc_topic} == 'battle_testing'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🛡️ 19. Battle-Testing &amp; Release Verification Suite</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine is systematically battle-tested under malformed input, concurrency, cancellation, long-running workloads, and complex execution combinations using property generators (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">fast-check</code>), hostile XML fuzzer, AST round-trip equivalence, deterministic async chaos, and 4 engineering stress application fixtures.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-bash"># Run Fast Unit &amp; Integration Suite (185 tests)
+npm test
+
+# Run Battle-Testing Suite (Property, Fuzz, Chaos, Permutations, Torture)
+npm run test:battle
+
+# Run Playwright Cross-Browser Matrix (Chromium, Firefox, WebKit)
+npm run test:browser
+
+# Run Package Distribution Tarball Smoke Test
+npm run test:package
+
+# Full Release Verification Gate (Build, Unit, Battle, Package Smoke Dashboard)
+npm run verify:release</code></pre>
                                 </flex>
                             </if>
                         </flex>

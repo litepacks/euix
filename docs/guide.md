@@ -439,14 +439,56 @@ The `EUIXAnimationPlugin` (`euixjs/animation`) provides keyframe animations, ent
 
 ---
 
-## 🧪 Running Test Suites
+## 🧪 Battle-Testing & Reliability Architecture
 
-EUIX Engine includes comprehensive unit, component, contract, and browser E2E test suites:
+EUIX Engine features an extensive, multi-tier battle-testing framework designed to stress the parser, runtime, state system, reactive graph, action executor, async workflows, lifecycle management, DOM renderer, plugins, and browser behavior under malformed input, concurrency, cancellation, long-running workloads, and unexpected execution combinations.
 
+### 1. Test Suite Categories & Organization
+
+```
+tests/
+├── unit/                       # Core correctness unit specs
+├── integration/                # Plugin & component integration specs
+├── property/                   # fast-check property-based test suites
+├── fuzz/                       # Malformed & hostile XML fuzzing
+├── roundtrip/                  # AST <-> JSON <-> XML semantic equivalence
+├── permutations/               # Action Composer workflow graph permutation engine
+├── chaos/                      # Seedable deterministic async chaos & late mutation protection
+├── torture/                    # High-load stress (reactive storm, watch/computed, lifecycle, soak)
+├── fixtures/                   # Stress application & release compatibility fixtures
+├── browser/                    # Playwright cross-browser matrix (Chromium, Firefox, WebKit)
+├── package/                    # Package tarball smoke test runner
+└── helpers/invariants.js       # Shared invariant assertion library
+```
+
+### 2. Critical Runtime Invariants
+- **Hostile Input Safety:** Malformed XML, unclosed tags, duplicate state IDs, or extreme nesting (150-depth) MUST NEVER crash the process with unhandled JS exceptions or stack overflows (`RangeError`).
+- **AST Round-Trip Equivalence:** `XML -> Spec AST -> JSON -> Spec AST -> XML` must yield semantically identical state models, component specs, and action trees.
+- **Try/Catch/Finally Guarantee:** `<finally>` executes EXACTLY ONCE; `<catch>` executes ONLY on errors.
+- **Resilience & Cancellation Invariant:** Timed-out or cancelled execution scopes IMMEDIATELY abort child processes (`AbortSignal`) and PERMANENTLY BLOCK any subsequent state mutations (`setState`, `mutateState`).
+- **Reactive Cycle Protection:** Static and dynamic circular dependencies in `<computed>` (`A -> B -> C -> A`) predictably throw `COMPUTED_CYCLE_ERROR` without call stack overflow.
+- **Lifecycle & Memory Invariant:** Unmounting a component releases all active timers, watchers, subscriptions, animations, event listeners, and external resource references without leaks (`dispose()`).
+
+### 3. Execution Commands
 ```bash
-# Run Vitest Unit, Component, Contract, Action Composer, Persistence & External Resource Tests (133 Tests)
-npm run test
+# 1. Unit & Integration Suite (185 tests)
+npm test
 
-# Run Playwright Real Browser E2E Tests
-npm run test:e2e
+# 2. Battle-Testing Suite (Property, Fuzz, Chaos, Permutations, Torture)
+npm run test:battle
+
+# 3. Playwright Cross-Browser Matrix (Chromium, Firefox, WebKit)
+npm run test:browser
+
+# 4. Configurable Duration Soak Load Test
+npm run test:soak
+
+# 5. StrykerJS Mutation Testing
+npm run test:mutation
+
+# 6. Package Tarball Distribution Smoke Test
+npm run test:package
+
+# 7. Full Release Verification Gate (Build, Unit, Battle, Package Smoke Dashboard)
+npm run verify:release
 ```

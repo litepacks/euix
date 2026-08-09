@@ -1,0 +1,40 @@
+<uid_spec>
+  <actions>
+    <action_def name="ResilientPipeline">
+      <step action="TRY">
+        <timeout ms="200">
+          <retry attempts="3" delay="10">
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>pipeline_running</value>
+            </step>
+          </retry>
+        </timeout>
+        <catch var="err">
+          <step action="SET_STATE">
+            <path>data.status</path>
+            <value>pipeline_failed</value>
+          </step>
+        </catch>
+        <finally>
+          <step action="SET_STATE">
+            <path>data.finished</path>
+            <value>true</value>
+          </step>
+        </finally>
+      </step>
+    </action_def>
+  </actions>
+
+  <data_model>
+    <state id="status">idle</state>
+    <state id="finished">false</state>
+  </data_model>
+
+  <container>
+    <button id="start_pipeline">
+      <on_click action="ResilientPipeline" />
+      Start Pipeline
+    </button>
+  </container>
+</uid_spec>

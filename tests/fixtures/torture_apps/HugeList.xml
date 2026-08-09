@@ -1,0 +1,27 @@
+<uid_spec>
+  <data_model>
+    <state id="items" type="array"></state>
+    <state id="filter_query"></state>
+  </data_model>
+
+  <container class="p-6">
+    <h2>Huge List Benchmark</h2>
+    <input id="filter_input" bind="filter_query" placeholder="Filter items..." />
+
+    <flex direction="column" gap="4" class="mt-4">
+      <for_each items="{data.items}" var="item">
+        <flex direction="row" justify="between" class="p-2 border-b">
+          <span>{item.title}</span>
+          <button class="btn-danger">
+            <on_click action="MUTATE_STATE">
+              <path>items</path>
+              <operation>REMOVE</operation>
+              <where field="id" equals="{item.id}" />
+            </on_click>
+            Delete
+          </button>
+        </flex>
+      </for_each>
+    </flex>
+  </container>
+</uid_spec>
