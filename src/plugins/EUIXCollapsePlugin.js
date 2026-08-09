@@ -52,7 +52,7 @@ export const EUIXCollapsePlugin = {
             const renderBodyChildren = () => {
                 body.innerHTML = "";
                 Array.from(xmlNode.childNodes).forEach(child => {
-                    if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === "summary") return;
+                    if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && child.tagName.toLowerCase() === "summary") return;
                     const el = this.createHTMLElement(child, context);
                     if (el) body.appendChild(el);
                 });

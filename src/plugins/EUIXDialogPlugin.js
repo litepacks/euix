@@ -71,7 +71,7 @@ export const EUIXDialogPlugin = {
             const body = document.createElement("div");
             body.className = xmlNode.getAttribute("body_class") || "dialog-body p-5";
             Array.from(xmlNode.childNodes).forEach(child => {
-                if (child.nodeType === Node.ELEMENT_NODE &&
+                if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
                     ["summary", "actions"].includes(child.tagName.toLowerCase())) {
                     return;
                 }
