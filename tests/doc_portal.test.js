@@ -18,7 +18,7 @@ describe('DocPortalSection Tab Switching', () => {
         }
     });
 
-    it('should switch active_tab to docs when Documentation button is clicked', () => {
+    it('should switch active_tab to docs when Documentation button is clicked', async () => {
         const xmlPath = path.resolve(process.cwd(), 'components/DocPortalSection.xml');
         const xmlContent = fs.readFileSync(xmlPath, 'utf8');
 
@@ -28,6 +28,7 @@ describe('DocPortalSection Tab Switching', () => {
         </uid_spec>`;
 
         const engine = EUIXEngine.mount(spec, container);
+        await engine.preloadAsyncResources();
         expect(engine.getState('active_tab')).toBe('overview');
 
         const buttons = Array.from(container.querySelectorAll('button'));
