@@ -961,29 +961,60 @@ class EUIXEngineCore {
     }
 
     triggerStateWatchers(key, newValue, oldValue) {
-        if (this._globalStateWatchers && this._globalStateWatchers.length) {
-            this._globalStateWatchers.forEach(cb => {
-                try { cb(key, newValue, oldValue); } catch (err) { this.reportError(err, `onStateChange watcher error on "${key}"`); }
+        if (!this._reactiveDepth) this._reactiveDepth = 0;
+        this._reactiveDepth++;
+
+        if (this._reactiveDepth > 25) {
+            this._reactiveDepth = 0;
+            const err = new EUIXStructuredError({
+                message: `Maximum watcher reaction depth (25) exceeded for path "${key}". Possible circular watcher cascade loop.`,
+                code: "WATCHER_CYCLE_ERROR"
             });
+            this.reportError(err, "Watcher Cycle Guard");
+            throw err;
         }
-        if (this._stateWatchers) {
-            const watchContext = {
-                path: key,
-                $path: key,
-                newValue,
-                $newValue: newValue,
-                oldValue,
-                $oldValue: oldValue,
-                prevValue: oldValue,
-                $prevValue: oldValue
-            };
-            for (const [wKey, list] of this._stateWatchers.entries()) {
-                if (wKey === key || wKey.startsWith(key + ".")) {
-                    list.forEach(cb => {
-                        try { cb(newValue, oldValue, key, watchContext); } catch (err) { this.reportError(err, `watch listener error on "${wKey}"`); }
-                    });
+
+        const isCycleError = (err) => {
+            const msg = err && err.message ? err.message : "";
+            const code = err && err.code ? err.code : "";
+            return code === "WATCHER_CYCLE_ERROR" || code === "COMPUTED_CYCLE_ERROR" ||
+                msg.includes("Infinite Loop Guard") || msg.includes("Maximum watcher reaction depth") ||
+                msg.includes("Cascade limit exceeded");
+        };
+
+        try {
+            if (this._globalStateWatchers && this._globalStateWatchers.length) {
+                this._globalStateWatchers.forEach(cb => {
+                    try { cb(key, newValue, oldValue); } catch (err) {
+                        if (isCycleError(err)) throw err;
+                        this.reportError(err, `onStateChange watcher error on "${key}"`);
+                    }
+                });
+            }
+            if (this._stateWatchers) {
+                const watchContext = {
+                    path: key,
+                    $path: key,
+                    newValue,
+                    $newValue: newValue,
+                    oldValue,
+                    $oldValue: oldValue,
+                    prevValue: oldValue,
+                    $prevValue: oldValue
+                };
+                for (const [wKey, list] of this._stateWatchers.entries()) {
+                    if (wKey === key || wKey.startsWith(key + ".")) {
+                        list.forEach(cb => {
+                            try { cb(newValue, oldValue, key, watchContext); } catch (err) {
+                                if (isCycleError(err)) throw err;
+                                this.reportError(err, `watch listener error on "${wKey}"`);
+                            }
+                        });
+                    }
                 }
             }
+        } finally {
+            this._reactiveDepth = Math.max(0, this._reactiveDepth - 1);
         }
     }
 
@@ -1007,8 +1038,8 @@ class EUIXEngineCore {
 
     reportError(error, contextInfo = "") {
         const msg = error instanceof Error ? error.message : String(error);
-        if (typeof console !== "undefined") {
-            console.warn(`[EUIXEngine Fallback] ${contextInfo ? contextInfo + ": " : ""}${msg}`, error);
+        if (typeof console !== "undefined" && !EUIXEngineCore.silent && (typeof process === "undefined" || !process.env || process.env.NODE_ENV !== "test")) {
+            console.warn(`[EUIXEngine Fallback] ${contextInfo ? contextInfo + ": " : ""}${msg}`);
         }
         if (typeof this.onError === "function") {
             try {
@@ -3409,7 +3440,9 @@ class EUIXEngineCore {
                 component: context._componentName
             });
             this.reportError(structuredErr, `Action Execution Fallback (${actName})`);
-            if (context && (context._inTryScope || context.rethrow)) {
+            const errMsg = (err && err.message) ? err.message : "";
+            const isLoopGuard = errMsg.includes("Infinite Loop Guard") || errMsg.includes("Cascade limit exceeded") || errMsg.includes("Maximum watcher reaction depth");
+            if (structuredErr.code === "WATCHER_CYCLE_ERROR" || structuredErr.code === "COMPUTED_CYCLE_ERROR" || isLoopGuard || (context && (context._inTryScope || context.rethrow))) {
                 throw structuredErr;
             }
             return undefined;
@@ -4435,7 +4468,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def"];
+        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
         
         let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {

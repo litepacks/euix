@@ -1,23 +1,25 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { EUIXEngine } from "../src/EUIXEngine.js";
-import { EUIXEngineCore, EUIXStructuredError } from "../src/core/EUIXEngineCore.js";
-import { EUIXReactivePlugin, EUIXDependencyGraph, EUIXComputedNode, EUIXWatchNode } from "../src/plugins/EUIXReactivePlugin.js";
+import { EUIXEngineCore } from "../src/core/EUIXEngineCore.js";
+import { EUIXReactivePlugin } from "../src/plugins/EUIXReactivePlugin.js";
+
+let container;
+
+beforeEach(() => {
+    container = document.createElement("div");
+    container.id = "app";
+    document.body.appendChild(container);
+});
+
+afterEach(() => {
+    if (container && container.parentNode) {
+        container.parentNode.removeChild(container);
+    }
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+});
 
 describe("EUIX Engine - Watch & Computed State Test Suite", () => {
-    let container;
-
-    beforeEach(() => {
-        container = document.createElement("div");
-        container.id = "app";
-        document.body.appendChild(container);
-    });
-
-    afterEach(() => {
-        if (container && container.parentNode) {
-            container.parentNode.removeChild(container);
-        }
-        document.body.innerHTML = "";
-    });
 
     describe("1. Computed State Core", () => {
         test("should evaluate single state dependency and cache result", () => {
@@ -202,7 +204,6 @@ describe("EUIX Engine - Watch & Computed State Test Suite", () => {
 
             const engine = EUIXEngine.mount(xml, container);
             engine.setState("username", "Bob");
-            await new Promise(r => setTimeout(r, 20));
 
             expect(engine.getState("username")).toBe("Bob");
             expect(window._lastNew).toBe("Bob");
@@ -212,7 +213,7 @@ describe("EUIX Engine - Watch & Computed State Test Suite", () => {
             delete window._lastPrev;
         });
 
-        test("should watch computed property changes", async () => {
+        test("should watch computed property changes", () => {
             const xml = `
                 <uid_spec>
                     <data_model>
@@ -235,7 +236,6 @@ describe("EUIX Engine - Watch & Computed State Test Suite", () => {
 
             // Mutation changing isEven from true to false
             engine.setState("num", 11);
-            await new Promise(r => setTimeout(r, 20));
 
             expect(window._watchCount).toBe(1);
             expect(window._capturedVal).toBe(false);

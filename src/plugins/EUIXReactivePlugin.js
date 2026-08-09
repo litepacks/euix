@@ -62,6 +62,14 @@ export class EUIXDependencyGraph {
                 watchSet.forEach(id => affected.add(id));
             }
         }
+
+        const affectedComputed = this.getAffectedComputed(cleanChanged);
+        affectedComputed.forEach(compKey => {
+            if (this.pathToWatchers.has(compKey)) {
+                this.pathToWatchers.get(compKey).forEach(id => affected.add(id));
+            }
+        });
+
         return affected;
     }
 
@@ -189,26 +197,41 @@ export class EUIXWatchNode {
         this.options = options;
     }
 
-    run(newValue, oldValue, triggerPath, context = {}) {
+    run(rawNewValue, rawOldValue, triggerPath, context = {}) {
         if (!this.engine) return;
+
+        const cleanPath = String(this.path || "").replace(/^(data|state|computed)\./, "").trim();
+        const cleanTrigger = String(triggerPath || "").replace(/^(data|state|computed)\./, "").trim();
+
+        let val = rawNewValue;
+        let prevVal = rawOldValue;
+
+        if (cleanPath !== cleanTrigger) {
+            val = typeof this.engine.getState === "function" ? this.engine.getState(cleanPath) : rawNewValue;
+            prevVal = this._lastValue !== undefined ? this._lastValue : rawOldValue;
+            if (val === prevVal) return;
+            this._lastValue = val;
+        } else {
+            this._lastValue = val;
+        }
 
         const watchContext = {
             ...(context || {}),
-            newValue,
-            $newValue: newValue,
-            prevValue: oldValue,
-            $prevValue: oldValue,
-            oldValue,
-            $oldValue: oldValue,
-            path: triggerPath || this.path,
-            $path: triggerPath || this.path,
+            newValue: val,
+            $newValue: val,
+            prevValue: prevVal,
+            $prevValue: prevVal,
+            oldValue: prevVal,
+            $oldValue: prevVal,
+            path: this.path,
+            $path: this.path,
             $timestamp: (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(),
             $source: "WATCHER",
             _componentName: this.component || (context ? context._componentName : null)
         };
 
         if (typeof this.handler === "function") {
-            return this.handler.call(this.engine, newValue, oldValue, triggerPath || this.path, watchContext);
+            return this.handler.call(this.engine, val, prevVal, this.path, watchContext);
         } else if (this.handler && typeof this.handler === "object") {
             return this.engine.handleAction(this.handler, watchContext);
         }

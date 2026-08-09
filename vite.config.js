@@ -46,9 +46,13 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+    bail: 1,
+    testTimeout: 10000,
+    teardownTimeout: 2000,
     fileParallelism: true,
-    maxConcurrency: 4,
-    pool: 'threads',
+    onConsoleLog(log) {
+      if (log.includes('[EUIXEngine Fallback]')) return false;
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
