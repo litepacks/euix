@@ -2,12 +2,12 @@ import { test, expect } from '@playwright/test';
 
 test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/playground.html');
   });
 
   test('should mount EUIX Engine Demo page and render header', async ({ page }) => {
     const title = await page.locator('h1').textContent();
-    expect(title).toBe('EUIX Engine Demo');
+    expect(title).toBe('EUIX Engine Interactive Demos');
   });
 
   test('should interact with Counter Section math operations (+1, +5, -1, -5, Reset)', async ({ page }) => {
@@ -15,7 +15,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await expect(counterSpan).toHaveText('0');
 
     // Click +1
-    await page.locator('button:has-text("+")').first().click();
+    await page.locator('button:text-is("+")').click();
     await expect(counterSpan).toHaveText('1');
 
     // Click +5
@@ -23,7 +23,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await expect(counterSpan).toHaveText('6');
 
     // Click -1
-    await page.locator('button:has-text("-")').first().click();
+    await page.locator('button:text-is("-")').click();
     await expect(counterSpan).toHaveText('5');
 
     // Click -5
@@ -31,7 +31,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await expect(counterSpan).toHaveText('0');
 
     // Click Reset
-    await page.locator('button:has-text("+")').first().click();
+    await page.locator('button:text-is("+")').click();
     await page.locator('button:has-text("Reset (0)")').click();
     await expect(counterSpan).toHaveText('0');
   });
@@ -69,7 +69,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test('should add a new task and toggle completion', async ({ page }) => {
     const input = page.locator('input[placeholder="Enter a new task..."]');
     await input.fill('Playwright E2E Test Task');
-    await page.locator('button:has-text("Add Task")').click();
+    await page.locator('button:text-is("Add Task")').click();
 
     // Verify new task was appended
     const lastTask = page.locator('span:has-text("Playwright E2E Test Task")');
@@ -149,8 +149,8 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   });
 
   test('should render Dynamic Data Table and handle adding and removing employees', async ({ page }) => {
-    const tableHeader = page.locator('span:has-text("Dynamic Data Table & Employee Roster")');
-    await expect(tableHeader).toBeVisible();
+    const tableInput = page.locator('input[placeholder="Employee Name"]');
+    await expect(tableInput).toBeVisible();
 
     // Check initial 3 employees
     const rows = page.locator('table tr');
