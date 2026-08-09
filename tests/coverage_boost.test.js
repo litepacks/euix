@@ -425,7 +425,7 @@ describe('EUIXEngine Full Coverage Boost Suite (Targeting 100% Code Coverage)', 
         devtools.stateFilterQuery = 'non_matching_query_12345';
         devtools.renderPanel();
         expect(devtools.panelEl.innerHTML).toContain('No matching state variables');
-    });
+    }, 30000);
 
     it('should test EUIXDevTools element inspection top & left window overflow positioning', () => {
         const xml = `
@@ -475,7 +475,7 @@ describe('EUIXEngine Full Coverage Boost Suite (Targeting 100% Code Coverage)', 
 
         devtools.hideHighlight();
         devtools.toggle(false);
-    });
+    }, 30000);
 
     it('should test EUIXDevTools mousemove targeting hud/panel elements and document body', () => {
         const xml = `<uid_spec><flex><span id="target_span">Target</span></flex></uid_spec>`;

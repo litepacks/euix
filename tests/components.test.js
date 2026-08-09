@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import EUIXEnginePkg from '../src/EUIXEngine.js';
@@ -21,9 +21,12 @@ function registerAllComponents() {
 }
 
 describe('EUIXEngine Components Integration Test Suite', () => {
+    beforeAll(() => {
+        registerAllComponents();
+    });
+
     beforeEach(() => {
         document.body.innerHTML = '<div id="app"></div>';
-        registerAllComponents();
     });
 
     it('should correctly render AppHeader.xml and UserBadge.xml components', () => {

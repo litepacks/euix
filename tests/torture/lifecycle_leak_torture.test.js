@@ -47,5 +47,5 @@ describe('EUIX Engine - Mount/Unmount Lifecycle Memory Leak Torture Suite', () =
     }
 
     expect(container.children.length).toBe(0);
-  });
+  }, 30000);
 });

@@ -1,0 +1,1304 @@
+<component_def name="doc-portal-section">
+    <!-- Declarative External JS & CSS Loaders for Highlight.js -->
+    <use_script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" />
+    <use_style src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
+
+    <data_model>
+        <state id="active_tab" type="string">overview</state>
+        <state id="active_doc_topic" type="string">getting_started</state>
+        <state id="counter_value" type="string">0</state>
+        <computed id="doubled_counter" deps="counter_value">
+            return (parseInt($data.counter_value || 0, 10) * 2);
+        </computed>
+        <state id="current_time" type="string">--:--:--</state>
+        <state id="quickstart_demo_msg" type="string">Hello EUIX Engine!</state>
+        <state id="copied_status" type="string">Copy Spec</state>
+        <state id="npm_copy_status" type="string">Copy npm i</state>
+        <state id="playground_code" type="string"><![CDATA[<uid_spec>
+  <data_model>
+    <state id="count">0</state>
+  </data_model>
+  <flex direction="column" gap="12" class="p-6 bg-white rounded-2xl shadow-xl">
+    <h2 class="text-lg font-bold">Counter: {data.count}</h2>
+    <button class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg">
+      <on_click action="SET_STATE">
+        <path>data.count</path>
+        <value>{data.count + 1}</value>
+      </on_click>
+      Increment
+    </button>
+  </flex>
+</uid_spec>]]></state>
+    </data_model>
+
+    <flex direction="column" gap="24" class="w-full">
+        <!-- Hero Banner Header -->
+        <flex direction="column" align="center" justify="center" gap="16" class="w-full p-8 md:p-12 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl shadow-2xl border border-indigo-500/20 relative overflow-hidden text-center">
+            <!-- Background Glow Orbs -->
+            <div class="absolute -top-24 -left-24 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div class="absolute -bottom-24 -right-24 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            <flex direction="row" align="center" gap="8" class="px-3.5 py-1.5 bg-indigo-500/10 border border-indigo-400/30 rounded-full text-indigo-300 font-bold text-xs uppercase tracking-wider backdrop-blur-md">
+                <span>⚡ Declarative UI Runtime Built Around Structured XML</span>
+            </flex>
+
+            <h1 class="text-3xl md:text-5xl font-black tracking-tight bg-gradient-to-r from-white via-indigo-100 to-blue-200 bg-clip-text text-transparent">
+                Build reactive interfaces using structured XML.
+            </h1>
+
+            <p class="max-w-2xl text-sm md:text-base text-slate-300 font-medium leading-relaxed">
+                EUIX provides fine-grained state reactivity, component composition, REST API integration, lifecycle hooks, and direct DOM rendering — declared entirely in structured XML specs with zero Virtual DOM reconciliation overhead.
+            </p>
+
+            <!-- Metrics Pills Grid (2 cols on mobile, 4 on desktop) -->
+            <grid class="w-full max-w-2xl pt-4 border-t border-indigo-500/20 grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span class="text-lg md:text-xl font-black text-emerald-400">Zero Build</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
+                </flex>
+                <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span class="text-lg md:text-xl font-black text-blue-400">23.2 KB</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lite Core Gzip</span>
+                </flex>
+                <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span class="text-lg md:text-xl font-black text-amber-400">Direct DOM</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Zero VDOM Reconciliation</span>
+                </flex>
+                <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
+                    <span class="text-lg md:text-xl font-black text-purple-400">Structured</span>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">AI-Agent Ready</span>
+                </flex>
+            </grid>
+
+            <!-- Navigation Anchor -->
+            <div id="doc_section_anchor" class="pt-2"></div>
+
+            <!-- Navigation Tabs Bar -->
+            <flex direction="row" align="center" justify="center" gap="8" class="pt-4 w-full flex-wrap justify-center">
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center gap-2">
+                    <on_click action="SET_STATE">
+                        <path>data.active_tab</path>
+                        <value>overview</value>
+                    </on_click>
+                    ✨ Overview &amp; Features
+                </button>
+                <button type="button" class="px-4 sm:px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-extrabold text-xs rounded-xl transition-all border border-slate-700 cursor-pointer flex items-center gap-2">
+                    <on_click action="SET_STATE">
+                        <path>data.active_tab</path>
+                        <value>docs</value>
+                    </on_click>
+                    📖 Documentation
+                </button>
+                <a href="./playground.html" class="px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
+                    🎮 Live Demos (Playground)
+                </a>
+                <a href="https://github.com/litepacks/euix" target="_blank" class="px-4 sm:px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-100 hover:text-white font-extrabold text-xs rounded-xl transition-all border border-slate-700 shadow-md cursor-pointer flex items-center gap-2">
+                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                    ⭐ GitHub Repository
+                </a>
+            </flex>
+        </flex>
+
+        <!-- Quick Start Installation Section -->
+        <flex class="w-full p-6 sm:p-8 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+            <flex direction="column" gap="8" class="min-w-0 flex-1 w-full">
+                <flex direction="row" align="center" gap="8">
+                    <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30 uppercase tracking-wider">⚡ Quick Start</span>
+                    <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">NPM Package &amp; Global CDN</span>
+                </flex>
+                <flex direction="column" gap="4" class="w-full">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Install via NPM</span>
+                    <flex direction="row" align="center" gap="8" class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-xs text-emerald-400 flex-wrap justify-between w-full">
+                        <span>npm install euixjs@latest</span>
+                        <button type="button" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1.5">
+                            <on_click action="RUN_SCRIPT">
+                                if (navigator.clipboard) {
+                                    navigator.clipboard.writeText("npm install euixjs");
+                                    $engine.setState("npm_copy_status", "Copied!");
+                                    setTimeout(function() { $engine.setState("npm_copy_status", "Copy npm i"); }, 2000);
+                                }
+                            </on_click>
+                            📋 {data.npm_copy_status}
+                        </button>
+                    </flex>
+                </flex>
+                <flex direction="column" gap="4" class="w-full">
+                    <span class="text-xs font-bold text-slate-300 uppercase tracking-wider">Or Include via Global UMD CDN</span>
+                    <pre class="p-3 bg-slate-950 rounded-xl border border-slate-800 font-mono text-[11px] text-slate-300 overflow-x-auto whitespace-pre-wrap break-all w-full">&lt;script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;</pre>
+                </flex>
+            </flex>
+            <flex direction="column" gap="10" class="shrink-0 w-full md:w-auto">
+                <button type="button" class="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-indigo-600/30 cursor-pointer flex items-center justify-center gap-2 w-full">
+                    <on_click action="SET_STATE">
+                        <path>data.active_tab</path>
+                        <value>docs</value>
+                    </on_click>
+                    📖 View Documentation
+                </button>
+                <a href="./playground.html" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center justify-center gap-2 text-center w-full">
+                    🎮 Launch Live Playground
+                </a>
+                <a href="./.agents/AGENTS.md" class="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-slate-900/50 cursor-pointer flex items-center justify-center gap-2 text-center w-full">
+                    🤖 AGENTS.md Guide
+                </a>
+            </flex>
+        </flex>
+
+        <!-- TAB 1: OVERVIEW & CAPABILITIES -->
+        <if condition="{data.active_tab} == 'overview'">
+            <flex direction="column" gap="20" class="w-full">
+                <!-- Split Interactive Hero Section: Left Preview, Right XML Code -->
+                <flex class="w-full flex flex-col md:flex-row md:items-stretch gap-4 sm:gap-6">
+                    <!-- Left Column: Interactive Live Component Preview -->
+                    <flex direction="column" gap="12" class="w-full md:w-1/2 p-4 sm:p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl justify-between min-w-0 max-w-full">
+                        <flex direction="column" gap="8">
+                            <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
+                                <span class="text-xs font-black uppercase tracking-widest text-emerald-400">⚡ Live Interactive Component</span>
+                                <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] rounded-full border border-emerald-500/30">100% Fine-Grained</span>
+                            </flex>
+                            <h3 class="text-lg sm:text-xl font-black text-white">Live Reactive Component Demo</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Experience fine-grained reactive state, computed state (<code class="text-purple-300">&lt;computed&gt;</code>), 2-way input binding, WAAPI animations (<code class="text-indigo-400">ANIMATE</code>), and conditional transitions (<code class="text-emerald-400">&lt;if&gt;</code>) with zero Virtual DOM overhead.
+                            </p>
+                        </flex>
+
+                        <!-- Live Mini App Box -->
+                        <flex direction="column" gap="12" class="p-4 sm:p-5 bg-slate-950 rounded-xl border border-slate-800 min-w-0 max-w-full">
+                            <on_mount action="RUN_SCRIPT">
+                                $engine.setState('current_time', new Date().toLocaleTimeString());
+                            </on_mount>
+                            <on_interval ms="1000" action="RUN_SCRIPT">
+                                $engine.setState('current_time', new Date().toLocaleTimeString());
+                            </on_interval>
+
+                            <!-- Live Clock Header -->
+                            <flex direction="row" align="center" justify="between" class="w-full pb-3 border-b border-slate-800/80 flex-wrap gap-2">
+                                <span class="text-xs font-bold text-slate-400">⏱️ Live Clock (<code class="text-emerald-400">&lt;on_interval&gt;</code>):</span>
+                                <span class="text-xs font-mono font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md border border-emerald-500/20">{data.current_time}</span>
+                            </flex>
+
+                            <flex direction="column" gap="10" class="w-full">
+                                <!-- Reactive Counter Header & Computed 2x Badge -->
+                                <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                                    <flex direction="column" gap="2">
+                                        <span class="text-xs font-bold text-slate-400">Reactive State &amp; Computed:</span>
+                                        <flex direction="row" align="center" gap="6" class="flex-wrap">
+                                            <span id="live-demo-count-badge" class="text-sm font-extrabold text-indigo-400 font-mono bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20 w-fit">Count: {data.counter_value}</span>
+                                            <span class="text-xs font-bold text-purple-300 font-mono bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">2x Computed: {data.doubled_counter}</span>
+                                        </flex>
+                                    </flex>
+
+                                    <!-- Dedicated Status Badge Container (prevents flex-between 3-item shifts) -->
+                                    <flex align="center" justify="end" class="relative">
+                                        <if condition="{data.counter_value} == 0">
+                                            <span enter_animation="fade-in" leave_animation="fade-out" class="px-2.5 py-1 bg-slate-800 text-slate-400 font-extrabold text-[11px] rounded-full border border-slate-700">Status: Initial (0)</span>
+                                            <else>
+                                                <span enter_animation="fade-in" leave_animation="fade-out" class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-[11px] rounded-full border border-emerald-500/30">Status: Active ({data.counter_value})</span>
+                                            </else>
+                                        </if>
+                                    </flex>
+                                </flex>
+
+                                <!-- Two-Way Input Binding -->
+                                <flex direction="row" align="center" justify="between" class="w-full pt-3 border-t border-slate-800/80">
+                                    <span class="text-xs text-slate-400 font-bold">2-Way Binding (<code class="text-indigo-400">bind</code>):</span>
+                                    <input type="number" bind="data.counter_value" class="w-24 px-3 py-1.5 bg-slate-900 border border-slate-700 focus:border-indigo-500 text-indigo-300 rounded-lg text-center text-xs font-mono font-extrabold outline-none" />
+                                </flex>
+
+                                <!-- Direct State Mutators with Declarative WAAPI Animations -->
+                                <flex direction="row" gap="6" class="w-full pt-1 flex-wrap">
+                                    <button type="button" class="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
+                                        <on_click action="MUTATE_STATE" operation="INCREMENT">
+                                            <path>data.counter_value</path>
+                                        </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="bounce" duration="400" />
+                                        +1 Add
+                                    </button>
+                                    <button type="button" class="flex-1 py-2 bg-indigo-700 hover:bg-indigo-600 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-md">
+                                        <on_click action="RUN_SCRIPT">
+                                            const current = parseInt($engine.getState('counter_value') || 0, 10);
+                                            $engine.setState('counter_value', String(current + 5));
+                                        </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="pulse" duration="400" />
+                                        +5 Add
+                                    </button>
+                                    <button type="button" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+                                        <on_click action="SET_STATE">
+                                            <path>data.counter_value</path>
+                                            <value>0</value>
+                                        </on_click>
+                                        <on_click action="ANIMATE" target="#live-demo-count-badge" name="shake" duration="400" />
+                                        ↺ Reset
+                                    </button>
+                                </flex>
+                            </flex>
+                        </flex>
+                    </flex>
+
+                    <!-- Right Column: Code Editor View with Highlight.js -->
+                    <flex direction="column" gap="8" class="w-full md:w-1/2 p-4 sm:p-6 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-xl justify-between font-mono text-xs overflow-hidden min-w-0 max-w-full">
+                        <on_mount action="RUN_SCRIPT">
+                            const runHl = () => {
+                                if (typeof window === "undefined" || !window.hljs || !$el) return false;
+                                const codeEl = $el.querySelector('code');
+                                if (!codeEl) return false;
+                                delete codeEl.dataset.highlighted;
+                                window.hljs.highlightElement(codeEl);
+                                return true;
+                            };
+                            if (!runHl()) {
+                                let tries = 0;
+                                const timer = setInterval(() => {
+                                    tries = tries + 1;
+                                    if (runHl() || tries &gt; 40) clearInterval(timer);
+                                }, 50);
+                            }
+                        </on_mount>
+                        <flex direction="row" align="center" justify="between" class="border-b border-slate-800 pb-3 flex-wrap gap-2">
+                            <flex direction="row" align="center" gap="8">
+                                <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                                <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                                <span class="text-xs font-bold text-slate-400 ml-2">reactive-demo.xml</span>
+                            </flex>
+                            <span class="text-[10px] text-indigo-400 font-bold">Declarative XML</span>
+                        </flex>
+
+                        <pre class="overflow-x-auto max-h-[320px] overflow-y-auto max-w-full whitespace-pre-wrap break-all leading-relaxed py-2 pr-1"><code class="language-xml">&lt;component_def name="reactive-demo"&gt;
+  &lt;data_model&gt;
+    &lt;state id="count"&gt;0&lt;/state&gt;
+    &lt;state id="clock"&gt;--:--:--&lt;/state&gt;
+  &lt;/data_model&gt;
+
+  &lt;!-- 1. Background Timer Interval (1s) --&gt;
+  &lt;on_interval ms="1000" action="RUN_SCRIPT"&gt;
+    $engine.setState('clock', new Date().toLocaleTimeString());
+  &lt;/on_interval&gt;
+
+  &lt;flex direction="column" gap="12" class="p-5 bg-slate-950"&gt;
+    &lt;span class="text-emerald-400 font-mono"&gt;Clock: &#123;data.clock&#125;&lt;/span&gt;
+
+    &lt;!-- 2. Reactive Interpolation --&gt;
+    &lt;h3 id="count-badge" class="text-white"&gt;Count: &#123;data.count&#125;&lt;/h3&gt;
+
+    &lt;!-- 3. Conditional Lifecycle Animations (&lt;if&gt;/&lt;else&gt;) --&gt;
+    &lt;if condition="&#123;data.count&#125; == 0"&gt;
+      &lt;span enter_animation="fade-in" leave_animation="fade-out" class="badge-slate"&gt;Status: Initial (0)&lt;/span&gt;
+      &lt;else&gt;
+        &lt;span enter_animation="fade-in" leave_animation="fade-out" class="badge-emerald"&gt;Status: Active (&#123;data.count&#125;)&lt;/span&gt;
+      &lt;/else&gt;
+    &lt;/if&gt;
+
+    &lt;!-- 4. Two-Way Input Binding --&gt;
+    &lt;input type="number" bind="data.count" /&gt;
+
+    &lt;!-- 5. Declarative Actions &amp; WAAPI Animations --&gt;
+    &lt;flex direction="row" gap="8"&gt;
+      &lt;button&gt;
+        &lt;on_click action="MUTATE_STATE" operation="INCREMENT"&gt;
+          &lt;path&gt;data.count&lt;/path&gt;
+        &lt;/on_click&gt;
+        &lt;on_click action="ANIMATE" target="#count-badge" name="bounce" duration="400" /&gt;
+        +1 Add
+      &lt;/button&gt;
+      &lt;button&gt;
+        &lt;on_click action="SET_STATE"&gt;
+          &lt;path&gt;data.count&lt;/path&gt;
+          &lt;value&gt;0&lt;/value&gt;
+        &lt;/on_click&gt;
+        &lt;on_click action="ANIMATE" target="#count-badge" name="shake" duration="400" /&gt;
+        ↺ Reset
+      &lt;/button&gt;
+    &lt;/flex&gt;
+  &lt;/flex&gt;
+&lt;/component_def&gt;</code></pre>
+
+                        <flex direction="row" align="center" justify="between" class="border-t border-slate-800 pt-3 text-[11px] text-slate-500">
+                            <span>UTF-8</span>
+                            <span>XML / Tailwind CSS</span>
+                        </flex>
+                    </flex>
+                </flex>
+
+                <!-- Product Positioning & Architectural Pillars Section -->
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-800">
+                    <flex direction="column" gap="4">
+                        <span class="text-xs font-black uppercase tracking-widest text-indigo-400">🏛️ Architectural Design</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">Why EUIX? Architectural Clarity &amp; Direct Execution</h2>
+                        <p class="text-xs text-slate-300 leading-relaxed max-w-3xl">
+                            EUIX is built on the principle that UI templates should be structured, machine-readable, and directly executable without heavy compilation steps or complex Virtual DOM diffing algorithms.
+                        </p>
+                    </flex>
+
+                    <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
+                            <span class="text-2xl">🎯</span>
+                            <h3 class="font-extrabold text-white text-sm">Direct DOM Node Mutations</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Target node text and attribute updates directly in-place using proxy reactive listeners, completely bypassing Virtual DOM reconciliation passes.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
+                            <span class="text-2xl">📄</span>
+                            <h3 class="font-extrabold text-white text-sm">All-in-One Declarative Specs</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Encapsulate reactive state (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;data_model&gt;</code>), REST API calls, tokens, and layout inside single XML specifications.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
+                            <span class="text-2xl">📦</span>
+                            <h3 class="font-extrabold text-white text-sm">Zero Dependency Footprint</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Self-contained 22.6 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
+                            <span class="text-2xl">🔮</span>
+                            <h3 class="font-extrabold text-white text-sm">Extensible Runtime Vision</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                EUIX is designed as a structured UI runtime whose architecture can evolve beyond traditional browser DOM rendering to target alternate platforms.
+                            </p>
+                        </flex>
+                    </grid>
+                </flex>
+
+                <!-- Core Capability Matrix Section -->
+                <flex direction="column" gap="12" class="w-full pt-4 border-t border-slate-800">
+                    <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-2">
+                        <flex direction="column" gap="2">
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-400">⚡ Core Capabilities</span>
+                            <h2 class="text-xl sm:text-2xl font-black text-white">Framework Capability Matrix</h2>
+                        </flex>
+                        <span class="text-xs text-slate-400 font-medium">Structured XML DSL • Zero VDOM Diffing</span>
+                    </flex>
+
+                    <grid class="w-full grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🧩</span>
+                            <h3 class="font-extrabold text-white text-base">Modular Components</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Clean <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;component_def&gt;</code> definitions, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;import src="..." /&gt;</code> tags, parent-child prop passing (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">{props.key}</code>), and slot composition.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">⚡</span>
+                            <h3 class="font-extrabold text-white text-base">Reactive State Store</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Proxy-based fine-grained reactivity store (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;data_model&gt;</code>) with automatic DOM binding synchronization (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">bind="..."</code>).
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">📡</span>
+                            <h3 class="font-extrabold text-white text-base">REST API Integration</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Declarative <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;api_config&gt;</code> and lifecycle hooks (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_mount action="XHR"&gt;</code>) with automatic CSRF tokens and SWR tag revalidation.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🎯</span>
+                            <h3 class="font-extrabold text-white text-base">Declarative Events &amp; Hooks</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Handle user interactions and lifecycle hooks (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_mount&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_interval&gt;</code>) directly inside markup without inline JS string clutter.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🚀</span>
+                            <h3 class="font-extrabold text-white text-base">Direct DOM Mutations</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Reactive state changes trigger precise in-place DOM node updates, avoiding full Virtual DOM subtree rerenders and heavy framework diffing overhead.
+                            </p>
+                        </flex>
+
+                        <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all min-w-0 max-w-full">
+                            <span class="text-3xl">🤖</span>
+                            <h3 class="font-extrabold text-white text-base">AI-Agent Optimized DSL</h3>
+                            <p class="text-xs text-slate-300 leading-relaxed">
+                                Explicit XML tags (<code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;state&gt;</code>, <code class="bg-slate-950 px-1 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click&gt;</code>) eliminate template ambiguity, allowing AI agents to reliably parse, generate, and refactor applications.
+                            </p>
+                        </flex>
+                    </grid>
+                </flex>
+
+                <!-- AI Section: Engineered for AI Coding Agents & LLMs -->
+                <flex direction="column" gap="12" class="w-full p-6 sm:p-8 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl">
+                    <flex direction="column" gap="4">
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full font-extrabold text-xs w-fit">🤖 Machine-Readable DSL</span>
+                        <h2 class="text-xl sm:text-2xl font-black text-white">Engineered for AI Coding Agents &amp; LLMs</h2>
+                        <p class="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                            Structured XML provides a deterministic, machine-readable syntax that makes applications significantly easier for AI models (Claude, Gemini, ChatGPT) to generate, inspect, validate, and refactor accurately.
+                        </p>
+                    </flex>
+
+                    <grid class="w-full grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-800 pt-6">
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-emerald-400">1. Deterministic Structure</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Explicit tags for state, components, and event hooks eliminate ambiguous JavaScript template AST structures during model inference.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-indigo-400">2. Schema &amp; AST Validation</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                Well-formed XML syntax enables automated static analysis, XSD schema validation, and reliable AST transformations before runtime execution.
+                            </p>
+                        </flex>
+                        <flex direction="column" gap="4" class="p-4 bg-slate-950/80 rounded-xl border border-slate-800">
+                            <span class="text-sm font-extrabold text-blue-400">3. Safe Automated Refactoring</span>
+                            <p class="text-xs text-slate-400 leading-relaxed">
+                                AI agents can modify specific component specifications or state bindings without risk of breaking global JavaScript module scopes.
+                            </p>
+                        </flex>
+                    </grid>
+                </flex>
+            </flex>
+        </if>
+
+        <!-- TAB 2: DOCUMENTATION REFERENCE -->
+        <if condition="{data.active_tab} == 'docs'">
+            <flex direction="column" gap="16" class="w-full">
+                <!-- Overview Intro Card -->
+                <flex direction="column" gap="12" class="p-6 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-indigo-500/20 shadow-xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    
+                    <flex direction="row" align="center" justify="between" class="w-full flex-wrap gap-4">
+                        <flex direction="column" gap="4">
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-400">⚡ Declarative Web Specs</span>
+                            <h2 class="text-xl md:text-2xl font-black text-white">What is EUIX Engine?</h2>
+                        </flex>
+                        <span class="px-3 py-1 bg-indigo-500/20 border border-indigo-400/30 rounded-full text-indigo-300 font-extrabold text-xs">100% Vanilla JS • Zero Build</span>
+                    </flex>
+
+                    <p class="text-xs md:text-sm text-slate-300 leading-relaxed max-w-3xl">
+                        <strong>.EUIX Engine</strong> is a lightweight, zero-build, declarative XML frontend framework. It allows software engineers and AI agents to create fully interactive, state-driven, reactive web applications directly using clean XML tags mapped to browser DOM and Tailwind CSS without build pipelines or complex JS setup.
+                    </p>
+
+                    <!-- Quick Start Split View: Live Working Preview + Copyable Code -->
+                    <flex class="w-full flex-col lg:flex-row gap-6 items-stretch">
+                        <!-- Left: Live Working Rendered Output -->
+                        <flex direction="column" gap="10" class="w-full lg:w-1/2 p-5 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl justify-between">
+                            <flex direction="column" gap="6">
+                                <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
+                                    <span class="text-xs font-black uppercase tracking-widest text-emerald-400">🖥️ Rendered Live Preview</span>
+                                    <span class="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] rounded-full border border-emerald-500/30">100% Interactive</span>
+                                </flex>
+                                <p class="text-xs text-slate-300 leading-relaxed">
+                                    Test the minimal HTML example live right here on the portal:
+                                </p>
+                            </flex>
+
+                            <!-- Interactive Card matching the minimal HTML code -->
+                            <flex direction="column" gap="16" class="p-6 bg-slate-950 rounded-2xl border border-slate-800 shadow-2xl my-2">
+                                <h1 class="text-xl font-bold text-white">{data.quickstart_demo_msg}</h1>
+                                <button type="button" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shadow-md shadow-indigo-600/30">
+                                    <on_click action="SET_STATE">
+                                        <path>data.quickstart_demo_msg</path>
+                                        <value>🚀 Reactively Updated!</value>
+                                    </on_click>
+                                    Click Me (Test Live!)
+                                </button>
+                            </flex>
+
+                            <flex direction="row" align="center" justify="between" class="text-[11px] text-slate-400 pt-2 border-t border-slate-800 flex-wrap gap-2">
+                                <span>State: <code class="text-indigo-300 font-mono">data.message</code></span>
+                                <button type="button" class="text-xs text-indigo-400 hover:text-indigo-300 font-bold underline cursor-pointer">
+                                    <on_click action="SET_STATE">
+                                        <path>data.quickstart_demo_msg</path>
+                                        <value>Hello EUIX Engine!</value>
+                                    </on_click>
+                                    ↺ Reset Demo
+                                </button>
+                            </flex>
+                        </flex>
+
+                        <!-- Right: Copyable HTML Source Code -->
+                        <flex direction="column" gap="8" class="w-full lg:w-1/2 p-5 bg-slate-950 text-slate-100 rounded-2xl border border-slate-800 shadow-xl justify-between font-mono text-xs overflow-hidden">
+                            <on_mount action="RUN_SCRIPT">
+                                const runHl = () => {
+                                    if (typeof window === "undefined" || !window.hljs || !$el) return false;
+                                    const codeEl = $el.querySelector('code');
+                                    if (!codeEl) return false;
+                                    delete codeEl.dataset.highlighted;
+                                    window.hljs.highlightElement(codeEl);
+                                    return true;
+                                };
+                                if (!runHl()) {
+                                    let tries = 0;
+                                    const timer = setInterval(() => {
+                                        tries = tries + 1;
+                                        if (runHl() || tries &gt; 40) clearInterval(timer);
+                                    }, 50);
+                                }
+                            </on_mount>
+                            <flex direction="row" align="center" justify="between" class="text-slate-400 text-[11px] font-bold border-b border-slate-800 pb-2 flex-wrap gap-2">
+                                <span>📄 Copyable index.html Spec</span>
+                                <span class="text-indigo-400">Standalone HTML</span>
+                            </flex>
+                            <pre class="overflow-x-auto max-h-[300px] overflow-y-auto whitespace-pre-wrap break-all leading-relaxed py-2 pr-1 text-indigo-200"><code class="language-xml">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8" /&gt;
+  &lt;title&gt;EUIX Minimal App&lt;/title&gt;
+  &lt;script src="https://cdn.tailwindcss.com"&gt;&lt;/script&gt;
+  &lt;script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body class="bg-slate-100 p-8 flex justify-center"&gt;
+  &lt;div id="app" class="w-full max-w-md"&gt;&lt;/div&gt;
+
+  &lt;script type="application/euix" target="#app"&gt;
+    &lt;uid_spec&gt;
+      &lt;data_model&gt;
+        &lt;state id="message"&gt;Hello EUIX Engine!&lt;/state&gt;
+      &lt;/data_model&gt;
+
+      &lt;flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl shadow-xl"&gt;
+        &lt;h1 class="text-xl font-bold text-white"&gt;&#123;data.message&#125;&lt;/h1&gt;
+        &lt;button type="button" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg cursor-pointer"&gt;
+          &lt;on_click action="SET_STATE"&gt;
+            &lt;path&gt;data.message&lt;/path&gt;
+            &lt;value&gt;🚀 Reactively Updated!&lt;/value&gt;
+          &lt;/on_click&gt;
+          Click Me
+        &lt;/button&gt;
+      &lt;/flex&gt;
+    &lt;/uid_spec&gt;
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+                        </flex>
+                    </flex>
+                </flex>
+
+                <!-- Doc Topics Grid (Sidebar + Details) -->
+                <grid cols="3" gap="16" class="w-full grid-cols-1 lg:grid-cols-3">
+                    <!-- Sidebar Menu -->
+                    <flex direction="column" gap="6" class="col-span-1 p-4 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl h-fit">
+                            <span class="text-xs font-black text-slate-400 uppercase tracking-wider px-2 pb-2 border-b border-slate-800">Doc Topics</span>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>getting_started</value>
+                                </on_click>
+                                🚀 1. Getting Started
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>layout_containers</value>
+                                </on_click>
+                                📐 2. Layout &amp; Containers
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>control_flow</value>
+                                </on_click>
+                                🔀 3. Control Flow (&lt;if&gt;, &lt;for_each&gt;)
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>actions_events</value>
+                                </on_click>
+                                ⚡ 4. Actions &amp; State Mutations
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>drag_drop</value>
+                                </on_click>
+                                🗂️ 5. Drag &amp; Drop Specification
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>hooks</value>
+                                </on_click>
+                                🪝 6. Declarative Hooks System
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>external_scripts</value>
+                                </on_click>
+                                📜 7. External Scripts &amp; JS Execution
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>api_client</value>
+                                </on_click>
+                                📡 8. API Client &amp; BaseURL Rules
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>swr_revalidation</value>
+                                </on_click>
+                                🔄 9. SWR &amp; Real-Time Revalidation
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>design_tokens</value>
+                                </on_click>
+                                🎨 10. Design Tokens &amp; External JSON
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>storage_persistence</value>
+                                </on_click>
+                                💾 11. State Persistence &amp; Storage
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>custom_actions</value>
+                                </on_click>
+                                🧩 12. Custom Action Extension API
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>action_composer</value>
+                                </on_click>
+                                ⚡ 13. Action Composer Workflow System
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>modular_plugins</value>
+                                </on_click>
+                                🧩 14. Modular Plugin Architecture
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>try_catch_finally</value>
+                                </on_click>
+                                🛡️ 15. Try / Catch / Finally Error Handling
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>resilience_primitives</value>
+                                </on_click>
+                                ⚡ 16. Resilience Primitives (Retry/Timeout/Delay)
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>watch_computed</value>
+                                </on_click>
+                                ⚡ 17. Watch &amp; Computed State
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>animation_system</value>
+                                </on_click>
+                                🎭 18. Declarative Animation System
+                            </button>
+                            <button type="button" class="w-full text-left px-3 py-2.5 rounded-xl font-bold text-xs cursor-pointer transition-all border border-slate-800 bg-slate-950/60 hover:bg-slate-800 text-slate-200 hover:text-white flex items-center justify-between group">
+                                <on_click action="SET_STATE">
+                                    <path>data.active_doc_topic</path>
+                                    <value>battle_testing</value>
+                                </on_click>
+                                🛡️ 19. Battle-Testing &amp; Release Gate
+                            </button>
+                        </flex>
+
+                        <!-- Doc Detail View (Span 2) -->
+                        <flex direction="column" gap="12" class="col-span-2 p-6 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl min-w-0 max-w-full overflow-hidden text-slate-100">
+                            <on_mount action="RUN_SCRIPT">
+                                const hl = () => {
+                                    if (typeof window === "undefined" || typeof document === "undefined" || !$el) return true;
+                                    if (!window.hljs) return false;
+                                    $el.querySelectorAll('pre code').forEach((b) => {
+                                        delete b.dataset.highlighted;
+                                        window.hljs.highlightElement(b);
+                                    });
+                                    return true;
+                                };
+                                if (!hl()) {
+                                    var _hl_attempts = 0;
+                                    var _hl_timer = setInterval(function() {
+                                        _hl_attempts = _hl_attempts + 1;
+                                        if (hl() || _hl_attempts &gt; 40) clearInterval(_hl_timer);
+                                    }, 50);
+                                }
+                            </on_mount>
+
+                            <on_state_change watch="data.active_doc_topic" action="RUN_SCRIPT">
+                                setTimeout(() => {
+                                    if (window.hljs &amp;&amp; $el) {
+                                        $el.querySelectorAll('pre code').forEach((b) => {
+                                            delete b.dataset.highlighted;
+                                            window.hljs.highlightElement(b);
+                                        });
+                                    }
+                                }, 30);
+                            </on_state_change>
+
+                            <if condition="{data.active_doc_topic} == 'getting_started'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🚀 1. Getting Started with EUIX</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine can be embedded directly inside standard HTML pages using script tags with <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">type="application/euix"</code> or mounted programmatically via JavaScript.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;script type="application/euix" target="#app"&gt;
+  &lt;uid_spec&gt;
+    &lt;data_model&gt;
+      &lt;state id="counter"&gt;0&lt;/state&gt;
+    &lt;/data_model&gt;
+    &lt;flex direction="column" gap="12"&gt;
+      &lt;span&gt;Count: {data.counter}&lt;/span&gt;
+      &lt;button&gt;
+        &lt;on_click action="SET_STATE"&gt;
+          &lt;path&gt;data.counter&lt;/path&gt;
+          &lt;value&gt;{data.counter + 1}&lt;/value&gt;
+        &lt;/on_click&gt;
+        Increment
+      &lt;/button&gt;
+    &lt;/flex&gt;
+  &lt;/uid_spec&gt;
+&lt;/script&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'layout_containers'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">📐 2. Layout &amp; Container Tags</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX includes native layout tags mapped directly to CSS Flexbox and Grid engines:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">&lt;flex&gt;</strong>: Attributes <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">direction="row|column"</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">align="center|start|end"</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">justify="between|center"</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">gap="16"</code>.</li>
+                                        <li><strong class="text-white">&lt;grid&gt;</strong>: Attributes <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">cols="1|2|3|4"</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">gap="12"</code>.</li>
+                                        <li><strong class="text-white">&lt;collapse&gt;</strong>: Collapsible drawer with <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">bind="data.open"</code>.</li>
+                                        <li><strong class="text-white">&lt;dialog&gt;</strong>: Native modal container with backdrop blur and backdrop click listener.</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code>&lt;!-- Responsive 3-Column Grid --&gt;
+&lt;grid cols="3" gap="16" class="w-full grid-cols-1 sm:grid-cols-2 md:grid-cols-3"&gt;
+  &lt;flex direction="column" gap="12" class="p-6 bg-slate-900 rounded-2xl border border-slate-800"&gt;
+    &lt;span class="font-bold text-white"&gt;Flex Box Item 1&lt;/span&gt;
+  &lt;/flex&gt;
+&lt;/grid&gt;
+
+&lt;!-- Collapsible Drawer --&gt;
+&lt;collapse bind="data.drawer_open"&gt;
+  &lt;div class="p-4 bg-slate-950 rounded-xl border border-slate-800 text-slate-200"&gt;Collapsible Drawer Content&lt;/div&gt;
+&lt;/collapse&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'control_flow'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🔀 3. Logic &amp; Control Flow Tags</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative conditional rendering and dynamic list iteration:
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;if condition="{data.user.role} == admin"&gt;
+  &lt;span&gt;Admin Dashboard&lt;/span&gt;
+  &lt;else&gt;
+    &lt;span&gt;Guest View&lt;/span&gt;
+  &lt;/else&gt;
+&lt;/if&gt;
+
+&lt;for_each items="{data.tasks}" var="task"&gt;
+  &lt;span&gt;{task.title}&lt;/span&gt;
+&lt;/for_each&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'actions_events'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">⚡ 4. Actions &amp; State Mutations Reference</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX provides 7 native declarative actions to manage state, execute async network calls, run custom JS scripts, and handle UI dialogs:
+                                    </p>
+                                    
+                                    <!-- Action 1: SET_STATE -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">1. action="SET_STATE"</span>
+                                        <p class="text-xs text-slate-300">Sets a target state key (<code class="bg-slate-900 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;path&gt;</code>) to a primitive value or evaluated expression (<code class="bg-slate-900 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;value&gt;</code>).</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;on_click action="SET_STATE"&gt;
+  &lt;path&gt;data.active_tab&lt;/path&gt;
+  &lt;value&gt;docs&lt;/value&gt;
+&lt;/on_click&gt;</code></pre>
+                                    </flex>
+
+                                    <!-- Action 2: MUTATE_STATE -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">2. action="MUTATE_STATE"</span>
+                                        <p class="text-xs text-slate-300">Performs zero-boilerplate array and numeric state mutations: <code class="bg-slate-900 px-1 text-purple-400 font-mono">PUSH</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">REMOVE</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">SWAP</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">INCREMENT</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">DECREMENT</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">MOVE_UP</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">MOVE_DOWN</code>, <code class="bg-slate-900 px-1 text-purple-400 font-mono">CLEAR</code>.</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;!-- Push new item to array --&gt;
+&lt;on_click action="MUTATE_STATE" operation="PUSH"&gt;
+  &lt;path&gt;data.todos&lt;/path&gt;
+  &lt;value id="{data.next_id}" text="{data.new_todo_input}" completed="false" /&gt;
+&lt;/on_click&gt;
+
+&lt;!-- Remove item matching condition --&gt;
+&lt;on_click action="MUTATE_STATE" operation="REMOVE"&gt;
+  &lt;path&gt;data.todos&lt;/path&gt;
+  &lt;where equals="{item.id}" /&gt;
+&lt;/on_click&gt;</code></pre>
+                                    </flex>
+
+                                    <!-- Action 3: XHR -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">3. action="XHR"</span>
+                                        <p class="text-xs text-slate-300">Performs asynchronous HTTP requests (<code class="bg-slate-900 px-1 text-emerald-400 font-mono">GET|POST|PUT|DELETE</code>) and binds response data directly into state.</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;on_mount action="XHR" tag="users_api"&gt;
+  &lt;method&gt;GET&lt;/method&gt;
+  &lt;url&gt;https://jsonplaceholder.typicode.com/users&lt;/url&gt;
+  &lt;target&gt;data.users&lt;/target&gt;
+&lt;/on_mount&gt;</code></pre>
+                                    </flex>
+
+                                    <!-- Action 4: REVALIDATE_API -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">4. action="REVALIDATE_API"</span>
+                                        <p class="text-xs text-slate-300">Refetches cached SWR API endpoints by tag without component unmounting.</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;on_click action="REVALIDATE_API" tag="users_api" /&gt;</code></pre>
+                                    </flex>
+
+                                    <!-- Action 5: RUN_SCRIPT -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">5. action="RUN_SCRIPT" / action="EVAL_JS"</span>
+                                        <p class="text-xs text-slate-300">Executes custom JavaScript code snippets safely inside a sandboxed <code class="bg-slate-900 px-1 text-purple-400 font-mono">new Function()</code> scope with injected variables (<code class="bg-slate-900 px-1 text-indigo-300 font-mono">$el</code>, <code class="bg-slate-900 px-1 text-indigo-300 font-mono">$data</code>, <code class="bg-slate-900 px-1 text-indigo-300 font-mono">$engine</code>, <code class="bg-slate-900 px-1 text-indigo-300 font-mono">$evt</code>).</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;on_click action="RUN_SCRIPT"&gt;
+  if (window.confetti) confetti({ particleCount: 100, spread: 70 });
+&lt;/on_click&gt;</code></pre>
+                                    </flex>
+
+                                    <!-- Action 6 & 7: MODAL & DRAWER -->
+                                    <flex direction="column" gap="6" class="p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-xs font-black text-indigo-400 font-mono">6 &amp; 7. TOGGLE_MODAL &amp; TOGGLE_DRAWER</span>
+                                        <p class="text-xs text-slate-300">Built-in UI state togglers for modal overlays and collapsible drawers.</p>
+                                        <pre class="p-3 bg-slate-900 text-indigo-200 text-xs rounded-lg border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap font-mono"><code class="language-xml">&lt;on_click action="TOGGLE_MODAL" target="confirm_modal" /&gt;
+&lt;on_click action="TOGGLE_DRAWER" target="filter_drawer" /&gt;</code></pre>
+                                    </flex>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'drag_drop'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🗂️ 5. Drag &amp; Drop Specification</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        HTML5 &amp; Pointer Drag and Drop with zero-lag floating drag previews:
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;div draggable="true" data-id="{item.id}"&gt;
+  &lt;on_dragstart action="SET_STATE"&gt;
+    &lt;path&gt;data.dragged_id&lt;/path&gt;
+    &lt;value&gt;{item.id}&lt;/value&gt;
+  &lt;/on_dragstart&gt;
+  &lt;on_drop action="MUTATE_STATE" operation="SWAP"&gt;
+    &lt;path&gt;data.items&lt;/path&gt;
+    &lt;where equals="{data.dragged_id}" /&gt;
+    &lt;target_where equals="{item.id}" /&gt;
+  &lt;/on_drop&gt;
+&lt;/div&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'hooks'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🪝 6. Declarative Hooks System</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX provides rich declarative lifecycle and state observation hooks directly inside XML:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">&lt;on_mount&gt;</strong>: Executes when element mounts. Commonly used for XHR REST data fetching (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">&lt;on_mount action="XHR"&gt;</code>).</li>
+                                        <li><strong class="text-white">&lt;on_unmount&gt;</strong>: Executes automatically when element is unmounted or removed from DOM tree.</li>
+                                        <li><strong class="text-white">&lt;on_state_change&gt;</strong>: Watches state key (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">watch="data.counter"</code>) and triggers actions on change.</li>
+                                        <li><strong class="text-white">&lt;on_interval&gt;</strong>: Declarative timer hook running every N milliseconds (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">ms="1000"</code>).</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;!-- State Watcher Hook --&gt;
+&lt;on_state_change watch="data.counter" action="SET_STATE"&gt;
+  &lt;path&gt;data.log&lt;/path&gt;
+  &lt;value&gt;Counter updated to {data.counter}&lt;/value&gt;
+&lt;/on_state_change&gt;
+ 
+&lt;!-- Recurring Timer Hook --&gt;
+&lt;on_interval ms="1000" action="SET_STATE"&gt;
+  &lt;path&gt;data.seconds&lt;/path&gt;
+  &lt;value&gt;{data.seconds + 1}&lt;/value&gt;
+&lt;/on_interval&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'external_scripts'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">📜 7. External Scripts &amp; Inline JS Execution</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine declaratively loads external JS libraries (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;use_script src="..." /&gt;</code>) and CSS stylesheets (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;use_style src="..." /&gt;</code>) directly inside XML specs. Custom JS code snippets are executed safely in a <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">new Function()</code> sandbox with <code class="bg-slate-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">$el</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">$data</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">$engine</code>, and <code class="bg-slate-950 px-1.5 py-0.5 rounded text-purple-400 font-mono">$evt</code> injected:
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;use_script src="https://cdnjs.cloudflare.com/libs/highlight.js/11.9.0/highlight.min.js" /&gt;
+&lt;use_style src="https://cdnjs.cloudflare.com/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" /&gt;
+&lt;use_script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js" /&gt;
+ 
+&lt;button class="btn-primary"&gt;
+  &lt;on_click action="RUN_SCRIPT"&gt;
+    if (window.confetti) confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+  &lt;/on_click&gt;
+  🎉 Celebrate Order
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'api_client'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">📡 8. Component-Scoped API Client &amp; BaseURL Resolution</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX features a component-scoped API client configured via <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;api_config base_url="..." credentials="..." timeout="..." /&gt;</code>:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">BaseURL Resolution Rules:</strong> Action-level <code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">base_url</code> overrides component &amp; global defaults.</li>
+                                        <li><strong class="text-white">Local Path Bypass Rule:</strong> Local relative paths starting with <code class="bg-slate-950 px-1 text-emerald-400 font-mono">./</code> or <code class="bg-slate-950 px-1 text-emerald-400 font-mono">../</code> (or actions with <code class="bg-slate-950 px-1 text-emerald-400 font-mono">ignore_base_url="true"</code> / <code class="bg-slate-950 px-1 text-emerald-400 font-mono">base_url=""</code>) <strong>automatically bypass</strong> external API domain prepending so local XML files load safely.</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;api_config base_url="https://api.coingecko.com/api/v3" credentials="include" timeout="5000"&gt;
+  &lt;headers&gt;
+    &lt;header name="Authorization"&gt;Bearer token_xyz&lt;/header&gt;
+  &lt;/headers&gt;
+&lt;/api_config&gt;
+ 
+&lt;!-- Local file fetch bypasses base_url automatically --&gt;
+&lt;on_click action="XHR"&gt;
+  &lt;url&gt;./components/DocPortalSection.xml&lt;/url&gt;
+  &lt;target&gt;data.code_modal_content&lt;/target&gt;
+&lt;/on_click&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'swr_revalidation'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🔄 9. SWR &amp; Real-Time API Revalidation</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Stale-While-Revalidate API data refetching triggered declaratively or programmatically:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">Tagging XHR Requests:</strong> Add <code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">tag="my_feed"</code> to any XHR action.</li>
+                                        <li><strong class="text-white">Declarative Revalidation:</strong> Trigger <code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">&lt;on_click action="REVALIDATE_API" tag="my_feed" /&gt;</code> to refetch cached endpoints instantly.</li>
+                                        <li><strong class="text-white">Auto Focus &amp; Network Refetch:</strong> Automatic background revalidation when browser window regains focus (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">window focus</code>) or comes back online (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">online</code>).</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;on_mount action="XHR" tag="pokemon_list"&gt;
+  &lt;url&gt;https://pokeapi.co/api/v2/pokemon?limit=12&lt;/url&gt;
+  &lt;target&gt;data.pokemons&lt;/target&gt;
+&lt;/on_mount&gt;
+ 
+&lt;button&gt;
+  &lt;on_click action="REVALIDATE_API" tag="pokemon_list" /&gt;
+  🔄 Refresh Feed
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'design_tokens'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🎨 10. Design Tokens, Constants &amp; External JSON Loading</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Define reusable CSS utility classes, design tokens, or initial states via XML or external JSON files:
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;!-- Load design tokens &amp; initial states from JSON files --&gt;
+&lt;constants src="/data/app-tokens.json" /&gt;
+&lt;data_model src="/data/initial-state.json" /&gt;
+ 
+&lt;flex class="{const.card_bg}"&gt;
+  &lt;span class="{const.title_style}"&gt;Status: {data.app_status}&lt;/span&gt;
+&lt;/flex&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'storage_persistence'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">💾 11. State Persistence &amp; Web Storage (`localStorage` &amp; `sessionStorage`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX automatically syncs state variables with browser <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">localStorage</code> or <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">sessionStorage</code> declaratively by declaring <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">storage="local|session"</code>:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">Automatic Hydration:</strong> On mount, EUIX hydrates state from storage key if present.</li>
+                                        <li><strong class="text-white">Zero-Boilerplate Auto-Sync:</strong> Any subsequent state mutation (<code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">SET_STATE</code>, <code class="bg-slate-950 px-1 text-indigo-300 border border-slate-800">MUTATE_STATE</code>) immediately persists the updated state back to Web Storage without writing custom JS code.</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;data_model&gt;
+  &lt;!-- Persists in localStorage across page reloads --&gt;
+  &lt;state id="user_settings" storage="local" key="app_v1_settings"&gt;
+    &lt;item theme="dark" notifications="true" /&gt;
+  &lt;/state&gt;
+ 
+  &lt;!-- Persists in sessionStorage for current browser tab --&gt;
+  &lt;state id="draft_comment" storage="session" key="active_comment_draft"&gt;&lt;/state&gt;
+&lt;/data_model&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'custom_actions'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">🧩 12. Custom Action Extension API (`engine.registerAction()`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Extend EUIX Engine with custom domain-specific actions registered via JavaScript:
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">Registration API:</strong> Call <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">engine.registerAction(actionName, handlerFn)</code> to register custom handlers.</li>
+                                        <li><strong class="text-white">Declarative Invocation:</strong> Invoke registered custom actions anywhere in XML specs (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click action="MY_CUSTOM_ACTION" /&gt;</code>).</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;!-- 1. Register Custom Action Handler in JS --&gt;
+engine.registerAction("TRACK_ANALYTICS", (actionNode, context) =&gt; {
+  const eventName = actionNode.getAttribute("event") || "click";
+  window.gtag &amp;&amp; window.gtag("event", eventName, { path: context._targetEl.id });
+});
+ 
+&lt;!-- 2. Invoke Declaratively in XML --&gt;
+&lt;button id="buy_now_btn" class="btn-primary"&gt;
+  &lt;on_click action="TRACK_ANALYTICS" event="purchase_attempt" /&gt;
+  💳 Complete Purchase
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'action_composer'">
+                                <flex direction="column" gap="12">
+                                    <h3 class="text-lg font-black text-white">⚡ 13. Action Composer Workflow System (`&lt;action_def&gt;`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Define reusable named action subroutines and multi-step workflows with parameters, sequential step execution, nested action calls, step data flow propagation, and circular loop protection.
+                                    </p>
+                                    <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4">
+                                        <li><strong class="text-white">Workflow Definitions:</strong> Define named workflows with <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;action_def name="WorkflowName"&gt;</code> and parameter declarations (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;param name="..." default="..." required="true" /&gt;</code>).</li>
+                                        <li><strong class="text-white">Data Flow &amp; Return Expressions:</strong> Sequential steps receive step results automatically via <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">{result}</code> and evaluate optional <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;return&gt;</code> expressions.</li>
+                                        <li><strong class="text-white">Invocation Syntax:</strong> Execute declaratively using <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click action="EXECUTE_ACTION" name="..."&gt;</code>, shorthand <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;on_click action="WorkflowName"&gt;</code>, or programmatically via <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">engine.executeAction("WorkflowName", args)</code>.</li>
+                                    </ul>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;actions&gt;
+  &lt;action_def name="SaveUserWorkflow"&gt;
+    &lt;param name="userName" required="true" /&gt;
+    &lt;param name="role" default="User" /&gt;
+    
+    &lt;step action="SET_STATE"&gt;
+      &lt;path&gt;data.user_name&lt;/path&gt;
+      &lt;value&gt;{args.userName}&lt;/value&gt;
+    &lt;/step&gt;
+    
+    &lt;step action="MUTATE_STATE"&gt;
+      &lt;path&gt;data.logs&lt;/path&gt;
+      &lt;operation&gt;UNSHIFT&lt;/operation&gt;
+      &lt;value&gt;User {args.userName} added as {args.role}&lt;/value&gt;
+    &lt;/step&gt;
+    
+    &lt;return&gt;{data.user_name}&lt;/return&gt;
+  &lt;/action_def&gt;
+&lt;/actions&gt;
+ 
+&lt;!-- Declarative Invocation --&gt;
+&lt;button class="btn-primary"&gt;
+  &lt;on_click action="SaveUserWorkflow"&gt;
+    &lt;arg name="userName"&gt;Alice&lt;/arg&gt;
+    &lt;arg name="role"&gt;Admin&lt;/arg&gt;
+  &lt;/on_click&gt;
+  Add Admin User
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'modular_plugins'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🧩 14. Modular Plugin Architecture</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine is split into a Lite Core (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">euixjs/core</code> - 18.8 KB Gzip) and tree-shakeable plugins (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">composer</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">api</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dnd</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">storage</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">collapse</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dialog</code>).
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-javascript">import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXComposerPlugin } from 'euixjs/composer';
+import { EUIXApiPlugin } from 'euixjs/api';
+import { EUIXStoragePlugin } from 'euixjs/storage';
+import { EUIXDevTools } from 'euixjs/devtools';
+
+// Register plugins on Lite Core
+EUIXEngineCore
+  .use(EUIXComposerPlugin)
+  .use(EUIXApiPlugin)
+  .use(EUIXStoragePlugin);
+
+// Mount EUIX XML spec
+const engine = EUIXEngineCore.mount(xmlString, '#app');
+EUIXDevTools.init(engine);</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'try_catch_finally'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🛡️ 15. Declarative Try / Catch / Finally Error Handling</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine supports declarative error handling (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;try&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;catch var="err"&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;finally&gt;</code>) across synchronous actions and asynchronous REST/XHR calls with structured <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">EUIXStructuredError</code> objects.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;button class="btn"&gt;
+  &lt;on_click action="TRY"&gt;
+    &lt;!-- Protected Actions --&gt;
+    &lt;step action="XHR"&gt;
+      &lt;url&gt;https://api.example.com/save&lt;/url&gt;
+      &lt;method&gt;POST&lt;/method&gt;
+    &lt;/step&gt;
+
+    &lt;!-- Catch Scope: Access {err.code}, {err.message}, {err.status} --&gt;
+    &lt;catch var="err"&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.error_message&lt;/path&gt;
+        &lt;value&gt;[{err.code}] {err.message} (Status: {err.status})&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/catch&gt;
+
+    &lt;!-- Finally Scope: Always executes after try or catch --&gt;
+    &lt;finally&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.is_loading&lt;/path&gt;
+        &lt;value&gt;false&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/finally&gt;
+  &lt;/on_click&gt;
+  Submit Form
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'resilience_primitives'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">⚡ 16. Declarative Resilience Primitives (`EUIXResiliencePlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;retry&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;timeout&gt;</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;delay&gt;</code>, and <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">EUIXCancellationController</code> primitives make asynchronous UI workflows resilient without arbitrary JavaScript.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;button class="btn"&gt;
+  &lt;on_click action="TRY"&gt;
+    &lt;!-- 1. Retry with Exponential Backoff --&gt;
+    &lt;retry attempts="3" delay="500" backoff="exponential" max_delay="3000" on_error="API_HTTP_ERROR,API_NETWORK_ERROR,TIMEOUT_ERROR"&gt;
+      &lt;!-- 2. Timeout Scope (2000ms max per attempt) --&gt;
+      &lt;timeout ms="2000" message="API request timed out"&gt;
+        &lt;step action="XHR"&gt;
+          &lt;url&gt;https://api.example.com/unstable-endpoint&lt;/url&gt;
+          &lt;target&gt;data.items&lt;/target&gt;
+        &lt;/step&gt;
+      &lt;/timeout&gt;
+    &lt;/retry&gt;
+
+    &lt;!-- 3. Non-blocking Delay Primitive --&gt;
+    &lt;delay ms="1000" /&gt;
+
+    &lt;catch var="err"&gt;
+      &lt;step action="SET_STATE"&gt;
+        &lt;path&gt;data.error_log&lt;/path&gt;
+        &lt;value&gt;Exhausted attempts: [{err.code}] {err.message}&lt;/value&gt;
+      &lt;/step&gt;
+    &lt;/catch&gt;
+  &lt;/on_click&gt;
+  Resilient Action Sequence
+&lt;/button&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'watch_computed'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">⚡ 17. Declarative Watch &amp; Computed State (`EUIXReactivePlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;computed&gt;</code> state and <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;watch&gt;</code> reactive side-effects provide derived state caching, dependency tracking, read-only guards, and cycle protection.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;uid_spec&gt;
+  &lt;data_model&gt;
+    &lt;state id="firstName"&gt;John&lt;/state&gt;
+    &lt;state id="lastName"&gt;Doe&lt;/state&gt;
+    &lt;state id="user_role"&gt;Admin&lt;/state&gt;
+
+    &lt;!-- 1. Side-Effect Free Computed Property --&gt;
+    &lt;computed id="fullName" deps="firstName, lastName"&gt;
+      return $data.firstName + " " + $data.lastName;
+    &lt;/computed&gt;
+  &lt;/data_model&gt;
+
+  &lt;!-- 2. Reactive Watcher Executing EUIX Actions --&gt;
+  &lt;watch path="user_role"&gt;
+    &lt;step action="RUN_SCRIPT"&gt;
+      console.log("Role changed from", $prevValue, "to", $newValue);
+    &lt;/step&gt;
+  &lt;/watch&gt;
+
+  &lt;!-- 3. Watch Computed Property --&gt;
+  &lt;watch path="computed.fullName"&gt;
+    &lt;step action="RUN_SCRIPT"&gt;
+      console.log("Full name updated:", $newValue);
+    &lt;/step&gt;
+  &lt;/watch&gt;
+&lt;/uid_spec&gt;</code></pre>
+                                </flex>
+                            </if>
+
+                            <if condition="{data.active_doc_topic} == 'animation_system'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🎭 18. Declarative Animation System (`EUIXAnimationPlugin`)</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        Declarative keyframe definitions (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">&lt;animation_def&gt;</code>), enter/leave transitions (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">enter_animation</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">leave_animation</code>), and animation action steps (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">action="ANIMATE"</code>) using native Web Animations API (WAAPI).
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-xml">&lt;uid_spec&gt;
+  &lt;!-- 1. Reusable Keyframe Definition --&gt;
+  &lt;animations&gt;
+    &lt;animation_def name="customPulse" duration="400" easing="ease-in-out"&gt;
+      &lt;keyframe offset="0" transform="scale(1)" opacity="1" /&gt;
+      &lt;keyframe offset="0.5" transform="scale(1.1)" opacity="0.8" /&gt;
+      &lt;keyframe offset="1" transform="scale(1)" opacity="1" /&gt;
+    &lt;/animation_def&gt;
+  &lt;/animations&gt;
+
+  &lt;flex direction="column" gap="16"&gt;
+    &lt;!-- 2. Lifecycle Transitions --&gt;
+    &lt;div id="hero" enter_animation="slide-in-down" leave_animation="fade-out"&gt;
+      &lt;h1&gt;Animated Component&lt;/h1&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 3. Event-Triggered Animation Action --&gt;
+    &lt;button class="btn"&gt;
+      &lt;on_click action="ANIMATE" target="#hero" name="customPulse" duration="500" /&gt;
+      Trigger Pulse
+    &lt;/button&gt;
+  &lt;/flex&gt;
+&lt;/uid_spec&gt;</code></pre>
+                                </flex>
+                            </if>
+                            <if condition="{data.active_doc_topic} == 'battle_testing'">
+                                <flex direction="column" gap="12" class="min-w-0 max-w-full">
+                                    <h3 class="text-lg font-black text-white">🛡️ 19. Battle-Testing &amp; Release Verification Suite</h3>
+                                    <p class="text-xs text-slate-300 leading-relaxed">
+                                        EUIX Engine is systematically battle-tested under malformed input, concurrency, cancellation, long-running workloads, and complex execution combinations using property generators (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">fast-check</code>), hostile XML fuzzer, AST round-trip equivalence, deterministic async chaos, and 4 engineering stress application fixtures.
+                                    </p>
+                                    <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-bash"># Run Fast Unit &amp; Integration Suite (185 tests)
+npm test
+
+# Run Battle-Testing Suite (Property, Fuzz, Chaos, Permutations, Torture)
+npm run test:battle
+
+# Run Playwright Cross-Browser Matrix (Chromium, Firefox, WebKit)
+npm run test:browser
+
+# Run Package Distribution Tarball Smoke Test
+npm run test:package
+
+# Full Release Verification Gate (Build, Unit, Battle, Package Smoke Dashboard)
+npm run verify:release</code></pre>
+                                </flex>
+                            </if>
+                        </flex>
+                    </grid>
+                </flex>
+            </if>
+
+        <!-- TAB 4: DEMOS INTERACTIVE PICKER -->
+        <if condition="{data.active_tab} == 'demos'">
+            <flex direction="column" gap="16" class="w-full p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 shadow-xl">
+                <flex direction="row" align="center" justify="between">
+                    <flex direction="column">
+                        <h3 class="text-lg font-black text-white">🎮 Interactive Live Component Suite</h3>
+                        <span class="text-xs text-slate-400">Select any component below to inspect live reactivity:</span>
+                    </flex>
+                </flex>
+                <span class="text-xs text-slate-400 italic">All live component sections (E-Commerce Catalog &amp; Cart, 3-Column Kanban Board, Crypto Portfolio, REST CRUD Table) are mounted directly below for live interaction!</span>
+            </flex>
+        </if>
+    </flex>
+</component_def>
