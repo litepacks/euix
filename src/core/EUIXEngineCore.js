@@ -2085,7 +2085,7 @@ class EUIXEngineCore {
                 const id = node.getAttribute("id") || node.getAttribute("name");
                 const deps = node.getAttribute("deps") || node.getAttribute("watch");
                 const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
-                if (id) {
+                if (id && typeof this.computed === "function") {
                     this.computed(id, getter, deps);
                 }
             });
@@ -2093,7 +2093,7 @@ class EUIXEngineCore {
             const watchNodes = doc.querySelectorAll ? Array.from(doc.querySelectorAll("watch")) : Array.from(doc.getElementsByTagName("watch"));
             watchNodes.forEach(node => {
                 const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
-                if (path) {
+                if (path && typeof this.watch === "function") {
                     this.watch(path, node);
                 }
             });
@@ -4416,12 +4416,14 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        let layout = this.getChild(root, "layout") || this.getChild(root, "flex") || this.getChild(root, "grid") || this.getChild(root, "form");
+        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style"];
+        
+        let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {
-            layout = root.querySelector("layout, flex, grid, form, collapse");
+            layout = Array.from(root.querySelectorAll("*")).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()) && !c.closest("component_def"));
         }
         if (!layout) {
-            layout = Array.from(root.children || []).find(c => c.tagName && !["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "api_config"].includes(c.tagName.toLowerCase())) || root;
+            layout = root;
         }
 
         if (layout) {

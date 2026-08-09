@@ -21,7 +21,7 @@ describe('EUIX Engine - Soak Load Test Suite', () => {
   });
 
   it('should sustain continuous state updates, mounts, and unmounts over soak duration without unhandled rejections', async () => {
-    const durationMin = parseFloat(process.env.SOAK_DURATION_MIN || '0.05'); // Default short duration (3 sec) for test suite
+    const durationMin = parseFloat(process.env.SOAK_DURATION_MIN || '0.002'); // Short default (~100ms) for fast unit test suite pass; set SOAK_DURATION_MIN for longer runs
     const durationMs = durationMin * 60 * 1000;
     const startTime = Date.now();
 

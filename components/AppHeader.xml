@@ -9,6 +9,6 @@
                 <span class="text-xs font-medium text-slate-500">Ultra-Lightweight Declarative Framework</span>
             </flex>
         </flex>
-        <user-badge title="Senior Developer" badge_label="EUIX Core" avatar="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80" />
+        <user-badge title="Senior Developer" badge_label="EUIX Core" avatar="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&amp;auto=format&amp;fit=crop&amp;q=80" />
     </flex>
 </component_def>

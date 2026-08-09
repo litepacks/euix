@@ -8,7 +8,7 @@
     </data_model>
 
     <flex direction="column" class="w-full">
-        <collapse bind="data.composer_open" title="⚡ Action Composer (Reusable Workflows & Subroutines)" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
+        <collapse bind="data.composer_open" title="⚡ Action Composer (Reusable Workflows &amp; Subroutines)" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
 
         <!-- Composed Action Definitions -->
         <actions>
