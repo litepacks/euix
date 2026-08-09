@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { EUIXEngineCore } from '../src/core/EUIXEngineCore.js';
+import { EUIXEngine } from '../src/EUIXEngine.js';
 
 describe('DocPortalSection Tab Switching', () => {
     let container;
@@ -27,7 +27,7 @@ describe('DocPortalSection Tab Switching', () => {
             <doc-portal-section />
         </uid_spec>`;
 
-        const engine = EUIXEngineCore.mount(spec, container);
+        const engine = EUIXEngine.mount(spec, container);
         expect(engine.getState('active_tab')).toBe('overview');
 
         const buttons = Array.from(container.querySelectorAll('button'));
