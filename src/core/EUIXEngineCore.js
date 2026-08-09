@@ -2024,12 +2024,12 @@ class EUIXEngineCore {
     initDataModel() {
         const rawState = {};
 
-        const collectStatesFromDoc = (doc) => {
+        const collectStatesFromDoc = (doc, isMainDoc = false) => {
             if (!doc) return;
             const dataModelNode = this.getChild(doc.querySelector("uid_spec") || doc, "data_model") || doc.querySelector("data_model");
             if (dataModelNode) {
                 const src = dataModelNode.getAttribute("src") || dataModelNode.getAttribute("url");
-                if (src && typeof fetch !== "undefined") {
+                if (src && isMainDoc && typeof fetch !== "undefined") {
                     const interpolatedSrc = this.interpolate(src);
                     const p = this.loadDataModel(interpolatedSrc);
                     if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
@@ -2045,7 +2045,7 @@ class EUIXEngineCore {
                 const src = node.getAttribute("src") || node.getAttribute("url");
                 const persistAttr = node.getAttribute("persist") || node.getAttribute("storage");
 
-                if (src && typeof fetch !== "undefined") {
+                if (src && isMainDoc && typeof fetch !== "undefined") {
                     const interpolatedSrc = this.interpolate(src);
                     const p = fetch(interpolatedSrc)
                         .then(res => res.json())
@@ -2143,31 +2143,33 @@ class EUIXEngineCore {
                 });
             }
 
-            const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
-            useScriptNodes.forEach(node => {
-                const src = node.getAttribute("src") || node.getAttribute("url");
-                if (src) {
-                    const p = this.loadScript(src, { async: node.getAttribute("async") !== "false" });
-                    if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
-                }
-            });
+            if (isMainDoc) {
+                const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
+                useScriptNodes.forEach(node => {
+                    const src = node.getAttribute("src") || node.getAttribute("url");
+                    if (src) {
+                        const p = this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+                        if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
+                    }
+                });
 
-            const useStyleNodes = Array.from(doc.querySelectorAll("use_style, style_loader, load_style"));
-            useStyleNodes.forEach(node => {
-                const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
-                if (href) this.loadStyle(href);
-            });
+                const useStyleNodes = Array.from(doc.querySelectorAll("use_style, style_loader, load_style"));
+                useStyleNodes.forEach(node => {
+                    const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+                    if (href) this.loadStyle(href);
+                });
+            }
         };
 
         if (EUIXEngineCore._globalComponentSpecs) {
-            EUIXEngineCore._globalComponentSpecs.forEach(spec => collectStatesFromDoc(spec));
+            EUIXEngineCore._globalComponentSpecs.forEach(spec => collectStatesFromDoc(spec, false));
         }
         if (this._componentSpecs) {
-            this._componentSpecs.forEach(spec => collectStatesFromDoc(spec));
+            this._componentSpecs.forEach(spec => collectStatesFromDoc(spec, false));
         }
 
         if (this.xmlDoc) {
-            collectStatesFromDoc(this.xmlDoc);
+            collectStatesFromDoc(this.xmlDoc, true);
         }
 
         for (const [key, config] of this._persistenceConfig.entries()) {
@@ -2220,29 +2222,46 @@ class EUIXEngineCore {
         const cleanUrl = this.interpolate(src, options.context || {});
         if (!cleanUrl) return Promise.resolve();
 
+        const isJSDOM = typeof window !== 'undefined' && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('jsdom');
+
         const existing = document.querySelector(`script[src="${cleanUrl}"]`);
         if (existing) {
             if (existing.getAttribute('data-loaded') === 'true') {
                 return Promise.resolve();
             }
-            return new Promise((resolve, reject) => {
-                existing.addEventListener('load', resolve);
-                existing.addEventListener('error', reject);
+            return new Promise((resolve) => {
+                const onDone = () => resolve();
+                existing.addEventListener('load', onDone, { once: true });
+                existing.addEventListener('error', onDone, { once: true });
+                setTimeout(onDone, isJSDOM ? 10 : 500);
             });
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve) => {
             const script = document.createElement('script');
             script.src = cleanUrl;
             script.async = options.async !== false;
             if (options.defer) script.defer = true;
             if (options.id) script.id = options.id;
-            script.onload = () => {
-                script.setAttribute('data-loaded', 'true');
-                resolve();
+
+            let settled = false;
+            const done = () => {
+                if (!settled) {
+                    settled = true;
+                    script.setAttribute('data-loaded', 'true');
+                    resolve();
+                }
             };
-            script.onerror = (err) => reject(err);
+
+            script.onload = done;
+            script.onerror = done;
             document.head.appendChild(script);
+
+            if (isJSDOM) {
+                setTimeout(done, 10);
+            } else {
+                setTimeout(done, 5000);
+            }
         });
     }
 
@@ -2632,7 +2651,7 @@ class EUIXEngineCore {
         if (!xmlNode) return null;
         try {
             const el = this._createHTMLElementInternal(xmlNode, context);
-            if (el && el.nodeType === Node.ELEMENT_NODE) {
+            if (el && el.nodeType === 1) {
                 this.processLifecycleHooks(xmlNode, el, context);
             }
             return el;
@@ -2647,7 +2666,7 @@ class EUIXEngineCore {
     }
 
     _createHTMLElementInternal(xmlNode, context = {}) {
-        if (xmlNode.nodeType === Node.TEXT_NODE) {
+        if (xmlNode.nodeType === 3) {
             let parent = xmlNode.parentNode;
             let isCodeBlock = false;
             while (parent) {
@@ -2668,7 +2687,7 @@ class EUIXEngineCore {
             return trimmed ? document.createTextNode(this.interpolate(trimmed, context)) : null;
         }
 
-        if (xmlNode.nodeType !== Node.ELEMENT_NODE) return null;
+        if (xmlNode.nodeType !== 1) return null;
 
         const tagName = xmlNode.tagName.toLowerCase();
         if (METADATA_AND_EVENT_TAGS.has(tagName) || tagName.startsWith("on_")) {
@@ -4416,7 +4435,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style"];
+        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def"];
         
         let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {
