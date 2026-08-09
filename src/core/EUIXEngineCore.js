@@ -2688,6 +2688,7 @@ class EUIXEngineCore {
             return el;
         } catch (err) {
             this.reportError(err, `Error rendering <${xmlNode.tagName || 'element'}>`);
+            if (typeof document === "undefined") return null;
             const fallback = document.createElement("div");
             fallback.className = "euix-error-fallback";
             fallback.style.cssText = "padding:4px 8px;margin:2px 0;background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;color:#e11d48;font-size:11px;font-family:sans-serif;";

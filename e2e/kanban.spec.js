@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('Kanban Drag & Drop task card transfer between columns', async ({ page }) => {
-    await page.goto('http://localhost:5173');
+    await page.goto('/playground.html');
 
     // Wait for Kanban component to render
     const card = page.locator('.bg-slate-50\\/80 [draggable="true"]').first();
