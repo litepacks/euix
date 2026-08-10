@@ -66,7 +66,7 @@
     "test:battle": "vitest run tests/property tests/fuzz tests/roundtrip tests/permutations tests/chaos tests/torture",
     "test:browser": "playwright test",
     "test:e2e": "playwright test",
-    "test:soak": "SOAK_DURATION_MIN=1 vitest run tests/torture/soak.test.js",
+    "test:soak": "vitest run tests/torture/soak.test.js",
     "test:mutation": "stryker run",
     "test:package": "node scripts/validate-package.js",
     "verify:release": "node scripts/verify-release.js",
