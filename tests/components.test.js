@@ -55,7 +55,7 @@ describe('EUIXEngine Components Integration Test Suite', () => {
         const xml = `
         <uid_spec>
             <data_model>
-                <state id="counter_value" type="string">0</state>
+                <state id="counter_value" type="number">0</state>
                 <state id="counter_open" type="string">true</state>
             </data_model>
             <flex direction="column">
