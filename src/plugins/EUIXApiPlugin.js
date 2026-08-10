@@ -15,8 +15,7 @@ export const EUIXApiPlugin = {
             const methodNode = this.getChild(actionNode, "method");
             const method = (methodNode?.textContent || "GET").trim().toUpperCase();
             const urlNode = this.getChild(actionNode, "url");
-            const targetNode = this.getChild(actionNode, "target");
-            if (!urlNode || !targetNode) return;
+            if (!urlNode) return;
 
             const loadingNode = this.getChild(actionNode, "loading");
             const loadingPath = this.parseBindPath(loadingNode?.textContent || "");
@@ -50,7 +49,8 @@ export const EUIXApiPlugin = {
                 finalUrl = `${base}/${relative}`;
             }
 
-            const target = this.parseBindPath(targetNode.textContent);
+            const targetNode = this.getChild(actionNode, "target");
+            const target = targetNode ? this.parseBindPath(targetNode.textContent) : "";
             const selectNode = this.getChild(actionNode, "select");
             const select = selectNode?.textContent.trim() || "";
             const itemMapNode = this.getChild(actionNode, "item_map");
@@ -260,9 +260,10 @@ export const EUIXApiPlugin = {
                         if (errorPath) this.setState(errorPath, "", { silent: true });
 
                         const revalidateNode = this.getChild(actionNode, "revalidate") || this.getChild(actionNode, "revalidate_tag");
-                        const revalidateTag = revalidateNode ? revalidateNode.textContent.trim() : (actionNode.getAttribute("revalidate") || actionNode.getAttribute("revalidate_tag") || "");
+                        const rawRevalidateTag = revalidateNode ? revalidateNode.textContent.trim() : (actionNode.getAttribute("revalidate") || actionNode.getAttribute("revalidate_tag") || "");
 
-                        if (revalidateTag) {
+                        if (rawRevalidateTag) {
+                            const revalidateTag = this.interpolate(rawRevalidateTag, context);
                             this.revalidateApi(revalidateTag);
                         }
                     });
@@ -299,10 +300,10 @@ export const EUIXApiPlugin = {
 
         // Register REVALIDATE_API Action Handler
         engineClass.registerAction("REVALIDATE_API", async function(actionNode, context) {
-            const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim();
-            if (tagAttr) {
-                return this.revalidateApi(tagAttr);
-            }
+            const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") || this.getChild(actionNode, "revalidate");
+            const rawTag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || actionNode.getAttribute("revalidate") || "");
+            const tag = this.interpolate(rawTag, context);
+            return this.revalidateApi(tag);
         });
     }
 };
