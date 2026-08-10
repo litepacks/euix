@@ -201,7 +201,7 @@ class EUIXExpressionParser {
             case "Identifier": {
                 const val = resolveValueFn(ast.name);
                 if (val !== undefined) return val;
-                if (ast.name.startsWith("data.") || ast.name.startsWith("parent.data.")) return "";
+                if (ast.name.includes(".") || ast.name.startsWith("data.") || ast.name.startsWith("parent.data.")) return undefined;
                 return ast.name;
             }
 
@@ -274,7 +274,7 @@ const EVENT_TAGS = new Set(["event", "on", "on_click", "on_change", "on_submit",
 const METADATA_AND_EVENT_TAGS = new Set([
     "event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", 
     "on_mouseenter", "on_mouseleave", "on_interval", "on_timer", "on_mount", 
-    "on_state_change", "on_visible", "on_update", "watch", "api_config", "api", 
+    "on_state_change", "on_visible", "on_update", "watch", "api_config", "api_endpoint", "endpoint", "api", 
     "persistence", "data_model", "imports", "constants", "vars", "variables",
     "use_script", "script_loader", "load_script", "use_style", "style_loader", "load_style",
     "actions", "action_def", "workflow_def", "animations", "animation_def", "keyframe_def", "keyframe", "animate", "transition"
@@ -770,7 +770,7 @@ class EUIXEngineCore {
             const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
             if (!filter) {
                 if (isGetOrHead) targets.push(item);
-            } else if (isGetOrHead && (item.tag === filter || (item.url && item.url.includes(filter)))) {
+            } else if (item.tag === filter || (item.url && item.url.includes(filter))) {
                 targets.push(item);
             }
         });
@@ -2377,25 +2377,42 @@ class EUIXEngineCore {
                 return match;
             }
 
-            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes("data.")) {
+            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.")) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(trimmed, (name) => {
                         const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
-                        let val = this.getState(this.parseBindPath(cleanKey));
-                        if (val === undefined && context[name] !== undefined) {
-                            val = context[name];
-                        }
-                        if (val === undefined && name.includes(".")) {
-                            const parts = name.split(".");
-                            let curr = context[parts[0]];
+                        const parts = name.split(".");
+                        const firstPart = parts[0];
+
+                        if (context && context[firstPart] !== undefined) {
+                            let curr = context[firstPart];
+                            if (parts.length === 1) {
+                                return curr;
+                            }
                             for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
                                 curr = curr[parts[i]];
                             }
-                            if (curr !== undefined) val = curr;
+                            if (curr !== undefined) return curr;
                         }
-                        return val;
+
+                        let val = this.getState(this.parseBindPath(cleanKey));
+                        if (val !== undefined) return val;
+
+                        if (context && context[name] !== undefined) {
+                            return context[name];
+                        }
+
+                        if (name.includes(".")) {
+                            let curr = context[firstPart];
+                            for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
+                                curr = curr[parts[i]];
+                            }
+                            if (curr !== undefined) return curr;
+                        }
+
+                        return undefined;
                     });
-                    if (evaluated !== undefined && evaluated !== null) {
+                    if (evaluated !== undefined && evaluated !== null && typeof evaluated !== "object") {
                         return String(evaluated);
                     }
                 } catch (_) {}
@@ -4469,7 +4486,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
+        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
         
         let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {
