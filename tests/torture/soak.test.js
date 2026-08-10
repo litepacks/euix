@@ -44,8 +44,11 @@ describe('EUIX Engine - Soak Load Test Suite', () => {
       }
       engine.unmount();
       cycles++;
+      if (cycles % 50 === 0) {
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
 
     expect(cycles).toBeGreaterThan(0);
-  });
+  }, 30 * 60 * 1000);
 });
