@@ -1545,6 +1545,25 @@ class EUIXEngineCore {
         try {
             const oldValue = this._rawState[key];
             this._rawState[key] = value;
+
+            if (key.includes(".")) {
+                const parts = key.split(".");
+                const firstPart = parts[0];
+                let curr = this._rawState[firstPart];
+                if (typeof curr !== "object" || curr === null) {
+                    curr = {};
+                    this._rawState[firstPart] = curr;
+                }
+                for (let i = 1; i < parts.length - 1; i++) {
+                    const p = parts[i];
+                    if (typeof curr[p] !== "object" || curr[p] === null) {
+                        curr[p] = {};
+                    }
+                    curr = curr[p];
+                }
+                curr[parts[parts.length - 1]] = value;
+            }
+
             this._savePersistedState(key, value);
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
@@ -2809,9 +2828,17 @@ class EUIXEngineCore {
 
             const renderItems = () => {
                 listContainer.innerHTML = "";
-                const list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
+                let list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
                     ? this._rawState[itemsKey]
-                    : [];
+                    : null;
+                if (!list) {
+                    const resolved = this.resolveValueFromPath(itemsKey || itemsAttr.replace(/^\{|\}$/g, ""), context);
+                    if (Array.isArray(resolved)) {
+                        list = resolved;
+                    } else {
+                        list = [];
+                    }
+                }
 
                 list.forEach((item, idx) => {
                     if (typeof item === "object" && item !== null) {
