@@ -287,7 +287,7 @@ Persisted `localStorage` state keys automatically sync across open browser tabs 
 
 EUIX Engine supports centralized API Client configuration for relative HTTP endpoints, common authorization headers, CORS credentials, request timeouts, and interceptors.
 
-### 1. Declarative XML `<api_config>`
+### 1. Declarative XML `<api_config>` & `<api_endpoint>`
 ```xml
 <uid_spec>
     <api_config base_url="https://api.example.com/v1" credentials="include" timeout="5000">
@@ -296,9 +296,37 @@ EUIX Engine supports centralized API Client configuration for relative HTTP endp
             <header name="X-App-Version">1.2.0</header>
             <header name="Accept">application/json</header>
         </headers>
+
+        <!-- 1. Auto-fetching GET Endpoint -->
+        <api_endpoint 
+            id="get_posts" 
+            url="/posts" 
+            method="GET" 
+            bind_target="posts_list" 
+            auto_fetch="true" 
+            revalidate_focus="true" 
+        />
+
+        <!-- 2. On-demand Tagged Endpoint (Pre-registered, auto_fetch="false") -->
+        <api_endpoint 
+            id="get_countries" 
+            tag="get_countries" 
+            url="/countries/search" 
+            method="POST" 
+            target="countries" 
+            auto_fetch="false" 
+        >
+            <body>{"search": "{data.searchQuery}"}</body>
+        </api_endpoint>
     </api_config>
 </uid_spec>
 ```
+
+#### `<api_endpoint>` Capabilities & Attributes:
+- **`auto_fetch="true"`** *(default)*: Fetches automatically upon component or document mount.
+- **`auto_fetch="false"`**: Pre-registers the endpoint in `_registeredXhrs` without making an initial HTTP call, allowing on-demand execution via `<on_click action="REVALIDATE_API" tag="...">` or `<watch>`.
+- **Attribute & Child Node Support**: Endpoint parameters (`url`, `method`, `target`/`bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`) can be specified directly as XML attributes or nested child elements.
+- **Reentrancy Guard**: `revalidateApi` includes a reentrancy guard (`_isRevalidating`) preventing infinite loops when mutation `POST` endpoints trigger group revalidations.
 
 ### 2. Programmatic JS API
 ```javascript
@@ -412,8 +440,22 @@ The `EUIXReactivePlugin` (`euixjs/reactive`) adds derived computed properties an
 
 ### 2. Reactive Watchers (`<watch>`)
 - Observe state or computed path mutations declaratively (`<watch path="user_role">`) or programmatically (`engine.watch(path, handler)`).
+- Can be declared directly inside `<data_model>` or at the root level of `<uid_spec>`.
 - Automatically injects `$newValue`, `$prevValue`, and `$path` into execution context.
 - Cascading watcher loops are capped with a max recursion depth guard (`WATCHER_CYCLE_ERROR`).
+
+```xml
+<uid_spec>
+    <data_model>
+        <state id="searchQuery"></state>
+        
+        <!-- Live watcher inside <data_model> triggering API revalidation on input change -->
+        <watch path="searchQuery">
+            <step action="REVALIDATE_API" tag="get_countries" />
+        </watch>
+    </data_model>
+</uid_spec>
+```
 
 ---
 

@@ -378,14 +378,20 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive si
         <state id="firstName">Jane</state>
         <state id="lastName">Smith</state>
         <state id="user_role">Admin</state>
+        <state id="searchQuery"></state>
 
         <!-- 1. Memoized Computed Derived Property -->
         <computed id="fullName" deps="firstName, lastName">
             return $data.firstName + " " + $data.lastName;
         </computed>
+
+        <!-- 2. Reactive Watcher Declared Inside <data_model> -->
+        <watch path="searchQuery">
+            <step action="REVALIDATE_API" tag="get_countries" />
+        </watch>
     </data_model>
 
-    <!-- 2. Side-Effect Watcher Triggering Actions on Change -->
+    <!-- 3. Side-Effect Watcher Triggering Actions on Change -->
     <watch path="user_role">
         <step action="MUTATE_STATE">
             <path>audit_logs</path>

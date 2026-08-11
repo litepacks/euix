@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EUIX Engine - Live Studio & Monaco Editor</title>
+
+  <!-- Tailwind CSS & EUIX Engine UMD -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./dist/EUIXEngine.umd.js"></script>
+
+  <!-- Monaco Editor CDN Loader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap');
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .code-font {
+      font-family: 'Fira Code', monospace;
+    }
+
+    .glass-header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+</head>
+
+<body class="h-screen flex flex-col">
+
+  <!-- Top Studio Header Toolbar (Pure HTML for 100% Instant Responsiveness) -->
+  <header class="glass-header px-6 py-3.5 w-full flex items-center justify-between flex-wrap gap-4 z-20">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">⚡</span>
+      <div>
+        <h1 class="text-base font-bold text-white tracking-wide flex items-center gap-2">
+          EUIX Studio 
+          <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono">Monaco IDE</span>
+        </h1>
+        <p class="text-[11px] text-slate-400">Declarative XML Editor &amp; Live Reactivity Engine</p>
+      </div>
+    </div>
+
+    <!-- Action Toolbar -->
+    <div class="flex items-center gap-3 flex-wrap">
+      
+      <!-- Preset Dropdown -->
+      <div class="flex items-center gap-2">
+        <label for="preset_select" class="text-xs font-semibold text-slate-300">Presets:</label>
+        <select id="preset_select" onchange="window.onPresetSelectChange(this.value)" class="px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-inner">
+          <option value="counter">🚀 Counter &amp; Todo List</option>
+          <option value="accordion">📌 Accordion Collapse</option>
+          <option value="modal">📍 Modal Dialog</option>
+        </select>
+      </div>
+
+      <!-- Reset Default Button -->
+      <button onclick="window.onResetDefault()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-900 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition flex items-center gap-1.5">
+        <span>🔄</span> Reset Default
+      </button>
+
+      <!-- Manual Run Button -->
+      <button onclick="window.onRunClick()" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-lg shadow-blue-600/30 transition flex items-center gap-1.5">
+        <span>▶</span> Run Preview
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Split Pane -->
+  <main class="flex-1 w-full flex overflow-hidden">
+    
+    <!-- Left: Monaco Code Editor Pane -->
+    <section class="w-1/2 h-full border-r border-slate-800 bg-slate-950 flex flex-col">
+      <div class="px-4 py-2 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+        <div class="flex items-center gap-2">
+          <span>📄 XML UI Specification</span>
+          <span class="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Monaco Engine</span>
+        </div>
+        <span class="text-[11px] text-slate-500">Live Auto-Sync</span>
+      </div>
+
+      <!-- Monaco Editor Mount Container -->
+      <div class="flex-1 w-full relative">
+        <div id="monaco-editor-container" class="w-full h-full"></div>
+        <textarea id="fallback_textarea" oninput="window.renderLivePreview(this.value)" class="hidden w-full h-full p-4 bg-slate-950 text-slate-200 code-font text-xs leading-relaxed resize-none border-none focus:outline-none" placeholder="Write <uid_spec> XML here..."></textarea>
+      </div>
+    </section>
+
+    <!-- Right: Live Render Preview Pane -->
+    <section class="w-1/2 h-full bg-slate-950 flex flex-col relative">
+      <div class="px-4 py-2 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+        <div class="flex items-center gap-2">
+          <span>🖥️ Live Render Preview</span>
+          <span id="preview-status" class="px-2 py-0.5 rounded text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">Reactive</span>
+        </div>
+        <button onclick="window.onRunClick()" class="hover:text-white transition">Refresh</button>
+      </div>
+
+      <!-- Error Notification Overlay -->
+      <div id="error-banner" class="hidden p-3 bg-rose-950/90 border-b border-rose-800/80 text-rose-300 text-xs code-font overflow-x-auto"></div>
+
+      <!-- Render Target Container -->
+      <div class="flex-1 p-6 overflow-auto">
+        <div id="preview-mount-root" class="w-full h-full"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Presets Library
+    const DEFAULT_XML_PRESET = `<uid_spec>
+  <data_model>
+    <state id="counter">0</state>
+    <state id="user_name">Alex</state>
+    <state id="todos" type="array">
+      <item id="1" text="Try EUIX Engine Live Monaco Studio" done="true" />
+      <item id="2" text="Build declarative reactive UIs" done="false" />
+    </state>
+    <state id="new_task"></state>
+  </data_model>
+
+  <flex direction="column" gap="20" class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-xl mx-auto">
+    <flex direction="row" justify="between" align="center">
+      <h1 class="text-2xl font-bold text-blue-400">⚡ Hello, {data.user_name}!</h1>
+      <span class="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full border border-blue-500/30">Count: {data.counter}</span>
+    </flex>
+
+    <!-- Two-way Data Binding -->
+    <flex direction="column" gap="6">
+      <label class="text-xs font-bold uppercase tracking-wider text-slate-400">User Name</label>
+      <input bind="user_name" class="px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white focus:border-blue-500" />
+    </flex>
+
+    <!-- Counter Actions -->
+    <flex direction="row" gap="12">
+      <button class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition">
+        <on_click action="SET_STATE">
+          <path>data.counter</path>
+          <value>{data.counter} + 1</value>
+        </on_click>
+        ➕ Increment (+1)
+      </button>
+      <button class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-sm transition">
+        <on_click action="SET_STATE">
+          <path>data.counter</path>
+          <value>0</value>
+        </on_click>
+        🔄 Reset
+      </button>
+    </flex>
+
+    <!-- Todo List Section -->
+    <flex direction="column" gap="12" class="pt-4 border-t border-slate-800">
+      <h3 class="text-sm font-bold text-slate-300">📝 Reactive Todo List ({data.todos.length})</h3>
+      
+      <flex direction="row" gap="8">
+        <input bind="new_task" placeholder="Add new task..." class="flex-1 px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white" />
+        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold">
+          <on_click action="RUN_SCRIPT">
+            if ($data.new_task &amp;&amp; $data.new_task.trim()) {
+              $data.todos.push({ id: String(Date.now()), text: $data.new_task.trim(), done: false });
+              $data.new_task = "";
+            }
+          </on_click>
+          Add
+        </button>
+      </flex>
+
+      <flex direction="column" gap="8">
+        <for_each items="{data.todos}" var="todo">
+          <flex direction="row" align="center" justify="between" class="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
+            <flex direction="row" align="center" gap="10">
+              <input type="checkbox" bind="todo.done" class="w-4 h-4 rounded text-blue-600" />
+              <span class="text-sm {todo.done ? 'line-through text-slate-500' : 'text-slate-200'}">{todo.text}</span>
+            </flex>
+            <button class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded">
+              <on_click action="MUTATE_STATE">
+                <path>todos</path>
+                <operation>REMOVE</operation>
+                <where field="id" equals="{todo.id}" />
+              </on_click>
+              ✕ Delete
+            </button>
+          </flex>
+        </for_each>
+      </flex>
+    </flex>
+  </flex>
+</uid_spec>`;
+
+    const SAMPLES = {
+      counter: DEFAULT_XML_PRESET,
+      accordion: `<uid_spec>
+  <data_model>
+    <state id="sec1" type="boolean">true</state>
+    <state id="sec2" type="boolean">false</state>
+  </data_model>
+  <flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 max-w-xl mx-auto shadow-2xl">
+    <h2 class="text-xl font-bold text-emerald-400">📌 Collapsible Accordion</h2>
+    
+    <collapse bind="data.sec1" title="1. Zero Virtual DOM Overhead" class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+      <p class="text-sm text-slate-300 py-2">EUIX Engine parses XML specifications directly into optimized DOM nodes with reactive data binding.</p>
+    </collapse>
+
+    <collapse bind="data.sec2" title="2. Automatic State Persistence" class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+      <p class="text-sm text-slate-300 py-2">Mark any state with persist="local" for automatic LocalStorage synchronization across browser tabs.</p>
+    </collapse>
+  </flex>
+</uid_spec>`,
+      modal: `<uid_spec>
+  <data_model>
+    <state id="isOpen" type="boolean">false</state>
+  </data_model>
+  <flex direction="column" gap="16" class="p-6 bg-slate-900 text-white rounded-2xl border border-slate-800 max-w-xl mx-auto shadow-2xl">
+    <h2 class="text-xl font-bold text-purple-400">📍 Modal Dialog Demo</h2>
+    <p class="text-sm text-slate-400">Click below to toggle the declarative modal dialog.</p>
+    <button class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-semibold text-sm transition">
+      <on_click action="SET_STATE">
+        <path>data.isOpen</path>
+        <value>true</value>
+      </on_click>
+      Open Modal Dialog
+    </button>
+
+    <dialog show="{data.isOpen}" title="Confirm Action">
+      <flex direction="column" gap="12" class="p-4">
+        <p class="text-sm text-slate-300">Are you sure you want to proceed with this operation?</p>
+        <flex direction="row" justify="end" gap="8">
+          <button class="px-4 py-2 bg-slate-800 text-slate-300 hover:bg-slate-700 rounded text-xs font-semibold">
+            <on_click action="SET_STATE">
+              <path>data.isOpen</path>
+              <value>false</value>
+            </on_click>
+            Cancel
+          </button>
+          <button class="px-4 py-2 bg-purple-600 text-white hover:bg-purple-500 rounded text-xs font-semibold">
+            <on_click action="SET_STATE">
+              <path>data.isOpen</path>
+              <value>false</value>
+            </on_click>
+            Confirm
+          </button>
+        </flex>
+      </flex>
+    </dialog>
+  </flex>
+</uid_spec>`
+    };
+
+    window.SAMPLES = SAMPLES;
+    window.DEFAULT_XML_PRESET = DEFAULT_XML_PRESET;
+
+    let activePreviewEngine = null;
+
+    // Get current active XML string from Monaco or Fallback Textarea
+    window.getCurrentXmlCode = function() {
+      if (window.monacoEditor) {
+        return window.monacoEditor.getValue();
+      }
+      const txt = document.getElementById("fallback_textarea");
+      if (txt && !txt.classList.contains("hidden")) {
+        return txt.value;
+      }
+      return DEFAULT_XML_PRESET;
+    };
+
+    // Update editor content cleanly across Monaco and Fallback Textarea
+    window.setEditorCode = function(xmlCode) {
+      if (window.monacoEditor) {
+        window.monacoEditor.setValue(xmlCode);
+      }
+      const txt = document.getElementById("fallback_textarea");
+      if (txt) {
+        txt.value = xmlCode;
+      }
+      localStorage.setItem("euix_studio_saved_code", xmlCode);
+    };
+
+    // Global Live Preview Renderer
+    window.renderLivePreview = function(xmlString) {
+      let xml = xmlString !== undefined ? xmlString : window.getCurrentXmlCode();
+      const previewRoot = document.getElementById("preview-mount-root");
+      const errorBanner = document.getElementById("error-banner");
+
+      if (!previewRoot) return;
+
+      if (!xml || !xml.trim()) {
+        previewRoot.innerHTML = '<div class="text-slate-500 text-sm italic p-4 text-center">Type XML spec in the editor to preview...</div>';
+        if (errorBanner) errorBanner.classList.add("hidden");
+        return;
+      }
+
+      try {
+        previewRoot.innerHTML = "";
+        const EUIXEngine = window.EUIXEngine || window.EUIXEngineCore || window.EUIX;
+        if (EUIXEngine && EUIXEngine.mount) {
+          activePreviewEngine = EUIXEngine.mount(xml, previewRoot);
+        }
+        if (errorBanner) {
+          errorBanner.classList.add("hidden");
+          errorBanner.innerText = "";
+        }
+      } catch (err) {
+        console.error("Preview Render Error:", err);
+        if (errorBanner) {
+          errorBanner.innerText = "❌ XML Render Error: " + err.message;
+          errorBanner.classList.remove("hidden");
+        }
+      }
+    };
+
+    // Preset Selection Event Handler
+    window.onPresetSelectChange = function(presetKey) {
+      if (presetKey && typeof presetKey === "object" && presetKey.target) {
+        presetKey = presetKey.target.value;
+      }
+      console.log("🔄 Preset Selected:", presetKey);
+      if (SAMPLES[presetKey]) {
+        localStorage.setItem("euix_studio_active_preset", presetKey);
+        const newCode = SAMPLES[presetKey];
+        window.setEditorCode(newCode);
+        window.renderLivePreview(newCode);
+      }
+    };
+
+    // Reset Button Event Handler
+    window.onResetDefault = function() {
+      const selectEl = document.getElementById("preset_select");
+      const activePreset = (selectEl && selectEl.value) || localStorage.getItem("euix_studio_active_preset") || "counter";
+      const presetCode = SAMPLES[activePreset] || DEFAULT_XML_PRESET;
+      window.setEditorCode(presetCode);
+      window.renderLivePreview(presetCode);
+    };
+
+    // Run Button Event Handler
+    window.onRunClick = function() {
+      const xml = window.getCurrentXmlCode();
+      window.renderLivePreview(xml);
+    };
+
+    // Initialize Monaco Editor
+    window.initMonaco = function(initialCode) {
+      const container = document.getElementById("monaco-editor-container");
+      const fallbackTxt = document.getElementById("fallback_textarea");
+
+      if (!window.require) {
+        if (fallbackTxt) fallbackTxt.classList.remove("hidden");
+        setTimeout(() => window.initMonaco(initialCode), 200);
+        return;
+      }
+
+      try {
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs' } });
+        require(['vs/editor/editor.main'], function () {
+          if (!container) return;
+          container.innerHTML = "";
+
+          window.monacoEditor = monaco.editor.create(container, {
+            value: initialCode,
+            language: 'xml',
+            theme: 'vs-dark',
+            automaticLayout: true,
+            fontSize: 13,
+            fontFamily: "'Fira Code', 'Courier New', monospace",
+            minimap: { enabled: false },
+            lineNumbers: 'on',
+            scrollBeyondLastLine: false,
+            tabSize: 2,
+            padding: { top: 12 }
+          });
+
+          if (fallbackTxt) fallbackTxt.classList.add("hidden");
+
+          // Sync typing directly to live preview & localStorage
+          window.monacoEditor.onDidChangeModelContent(function () {
+            const val = window.monacoEditor.getValue();
+            localStorage.setItem("euix_studio_saved_code", val);
+            window.renderLivePreview(val);
+          });
+        });
+      } catch (err) {
+        console.warn("Monaco Editor CDN fallback active:", err);
+        if (fallbackTxt) fallbackTxt.classList.remove("hidden");
+      }
+    };
+
+    // App Initialization
+    function initStudio() {
+      const savedPreset = localStorage.getItem("euix_studio_active_preset") || "counter";
+      const selectEl = document.getElementById("preset_select");
+      if (selectEl) {
+        selectEl.value = savedPreset;
+      }
+
+      const savedCode = localStorage.getItem("euix_studio_saved_code") || (SAMPLES[savedPreset] || DEFAULT_XML_PRESET);
+      window.initMonaco(savedCode);
+      window.renderLivePreview(savedCode);
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initStudio);
+    } else {
+      initStudio();
+    }
+  </script>
+</body>
+
+</html>

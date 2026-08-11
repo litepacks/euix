@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { EUIXEngineCore } from "../src/core/EUIXEngineCore.js";
 import EUIXApiPlugin from "../src/plugins/EUIXApiPlugin.js";
+import EUIXReactivePlugin from "../src/plugins/EUIXReactivePlugin.js";
 
-EUIXEngineCore.use(EUIXApiPlugin);
+EUIXEngineCore.use(EUIXApiPlugin).use(EUIXReactivePlugin);
 
 describe("EUIX Engine - Upstream Package Fixes Verification", () => {
     let container;
@@ -382,6 +383,46 @@ describe("EUIX Engine - Upstream Package Fixes Verification", () => {
             expect(userState.profile).toBeDefined();
             expect(userState.profile.bio).toBe("Hello World");
         });
+
+        it("should support <watch> declared inside <data_model> to revalidate API on state changes", async () => {
+            const fetchSpy = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ items: [] })
+            });
+            global.fetch = fetchSpy;
+
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="searchQuery"></state>
+                    <watch path="searchQuery">
+                        <step action="REVALIDATE_API" tag="get_countries" />
+                    </watch>
+                </data_model>
+                <api_config base_url="https://api.example.com" />
+                <api_endpoint id="get_countries" tag="get_countries" auto_fetch="false">
+                    <url>/api/countries</url>
+                    <method>POST</method>
+                    <target>countries</target>
+                </api_endpoint>
+                <flex direction="column">
+                    <input id="search_input" bind="searchQuery" />
+                </flex>
+            </uid_spec>
+            `;
+
+            const engine = EUIXEngineCore.mount(xml, container);
+            expect(fetchSpy).not.toHaveBeenCalled();
+
+            // Mutate searchQuery (simulating live input bind)
+            engine.setState("searchQuery", "Turkey");
+            await new Promise(r => setTimeout(r, 50));
+
+            // Watcher inside data_model triggered REVALIDATE_API tag get_countries
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
+        });
     });
 });
+
 
