@@ -174,21 +174,34 @@ EUIX Engine supports core state data types inside `<data_model>` using `id="..."
 
 ## 📡 4. REST API & SWR Data Fetching
 
-Use `<api_config>` to manage HTTP endpoints with reactive binding:
+Use `<api_config>` and `<api_endpoint>` to manage HTTP endpoints with reactive binding:
 
 ```xml
 <uid_spec>
-  <api_config base_url="https://api.example.com" />
+  <!-- Declarative API Configuration & Pre-Registration -->
+  <api_config base_url="https://api.example.com">
+    <!-- 1. Auto-fetching GET Endpoint -->
+    <api_endpoint 
+      id="get_posts" 
+      url="/posts" 
+      method="GET" 
+      bind_target="posts_list" 
+      auto_fetch="true" 
+      revalidate_focus="true" 
+    />
 
-  <!-- Declarative Data Fetching -->
-  <api_endpoint 
-    id="get_posts" 
-    url="/posts" 
-    method="GET" 
-    bind_target="posts_list" 
-    auto_fetch="true" 
-    revalidate_focus="true" 
-  />
+    <!-- 2. On-demand Tagged Endpoint (Pre-registered, auto_fetch="false") -->
+    <api_endpoint 
+      id="get_countries" 
+      tag="get_countries" 
+      url="/countries/search" 
+      method="POST" 
+      target="countries" 
+      auto_fetch="false" 
+    >
+      <body>{"search": "{data.searchQuery}"}</body>
+    </api_endpoint>
+  </api_config>
 
   <container>
     <button>
@@ -205,6 +218,12 @@ Use `<api_config>` to manage HTTP endpoints with reactive binding:
   </container>
 </uid_spec>
 ```
+
+### `<api_endpoint>` Attributes & Behavior
+- **`auto_fetch="true"`** *(default)*: Fetches automatically when component/app mounts.
+- **`auto_fetch="false"`**: Pre-registers endpoint into engine's `_registeredXhrs` registry without fetching immediately, enabling on-demand execution via `<on_click action="REVALIDATE_API" tag="...">` or `<watch>`.
+- **Method & Attribute Support**: Endpoint attributes (`url`, `method`, `target`, `bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`) can be specified directly as attributes or nested child elements.
+- **Reentrancy Safeguard**: Built-in `_isRevalidating` guard prevents infinite loops when mutation `POST` endpoints trigger `REVALIDATE_API`.
 
 ---
 
@@ -651,15 +670,21 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive wa
     <state id="firstName">John</state>
     <state id="lastName">Doe</state>
     <state id="user_role">Admin</state>
+    <state id="searchQuery"></state>
     <state id="audit_logs" type="array"></state>
 
     <!-- 1. Side-Effect Free Computed Property with Caching & Fine-Grained Dependencies -->
     <computed id="fullName" deps="firstName, lastName">
       return $data.firstName + " " + $data.lastName;
     </computed>
+
+    <!-- 2. Watcher Declared Inside <data_model> for Live Reactive Side-Effects -->
+    <watch path="searchQuery">
+      <step action="REVALIDATE_API" tag="get_countries" />
+    </watch>
   </data_model>
 
-  <!-- 2. Reactive Watcher Executing EUIX Actions on Change -->
+  <!-- 3. Reactive Watcher Executing EUIX Actions on Change -->
   <watch path="user_role">
     <step action="MUTATE_STATE">
       <path>audit_logs</path>
@@ -668,7 +693,7 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive wa
     </step>
   </watch>
 
-  <!-- 3. Reactive Watcher on Computed Property -->
+  <!-- 4. Reactive Watcher on Computed Property -->
   <watch path="computed.fullName">
     <step action="RUN_SCRIPT">
       console.log("User full name changed to:", $newValue);

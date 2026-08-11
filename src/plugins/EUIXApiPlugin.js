@@ -13,16 +13,17 @@ export const EUIXApiPlugin = {
             const compApiConfig = context._componentApiConfig || {};
 
             const methodNode = this.getChild(actionNode, "method");
-            const method = (methodNode?.textContent || "GET").trim().toUpperCase();
+            const method = (methodNode?.textContent || actionNode.getAttribute("method") || "GET").trim().toUpperCase();
             const urlNode = this.getChild(actionNode, "url");
-            if (!urlNode) return;
+            const rawUrlStr = urlNode ? urlNode.textContent.trim() : (actionNode.getAttribute("url") || "");
+            if (!rawUrlStr) return;
 
             const loadingNode = this.getChild(actionNode, "loading");
-            const loadingPath = this.parseBindPath(loadingNode?.textContent || "");
+            const loadingPath = this.parseBindPath(loadingNode?.textContent || actionNode.getAttribute("loading") || "");
             const errorNode = this.getChild(actionNode, "error");
-            const errorPath = this.parseBindPath(errorNode?.textContent || "");
+            const errorPath = this.parseBindPath(errorNode?.textContent || actionNode.getAttribute("error") || "");
 
-            let rawUrl = this.interpolate(urlNode.textContent.trim(), context);
+            let rawUrl = this.interpolate(rawUrlStr, context);
 
             // Security Guard: Block dangerous URL schemes (javascript:, vbscript:, data:)
             if (/^(javascript|vbscript|data):/i.test(rawUrl.trim())) {
@@ -49,17 +50,20 @@ export const EUIXApiPlugin = {
                 finalUrl = `${base}/${relative}`;
             }
 
-            const targetNode = this.getChild(actionNode, "target");
-            const target = targetNode ? this.parseBindPath(targetNode.textContent) : "";
+            const targetNode = this.getChild(actionNode, "target") || this.getChild(actionNode, "bind_target");
+            const targetStr = targetNode ? targetNode.textContent.trim() : (actionNode.getAttribute("target") || actionNode.getAttribute("bind_target") || "");
+            const target = targetStr ? this.parseBindPath(targetStr) : "";
+
             const selectNode = this.getChild(actionNode, "select");
-            const select = selectNode?.textContent.trim() || "";
+            const select = selectNode?.textContent.trim() || actionNode.getAttribute("select") || "";
             const itemMapNode = this.getChild(actionNode, "item_map");
             const bodyNode = this.getChild(actionNode, "body");
 
             const targetOpNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "target_op");
-            const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : "SET";
+            const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : (actionNode.getAttribute("operation") || actionNode.getAttribute("target_op") || "SET").toUpperCase();
 
-            const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim() || compApiConfig.tag || "";
+            const idAttr = actionNode.getAttribute("id") || actionNode.getAttribute("name") || "";
+            const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim() || idAttr || compApiConfig.tag || "";
             const revalidateFocus = actionNode.getAttribute("revalidate_focus") === "true" || compApiConfig.revalidateFocus === true;
             const revalidateOnline = actionNode.getAttribute("revalidate_online") === "true" || compApiConfig.revalidateOnline === true;
             const cacheTtlMs = parseInt(actionNode.getAttribute("cache_ttl") || actionNode.getAttribute("cache") || compApiConfig.cacheTtl || 0, 10);
@@ -86,6 +90,11 @@ export const EUIXApiPlugin = {
             } else {
                 existingEntry.url = finalUrl;
                 existingEntry.context = context;
+            }
+
+            if (context && context._registerOnly) {
+                delete context._registerOnly;
+                return;
             }
 
             // Stale-While-Revalidate Caching Check

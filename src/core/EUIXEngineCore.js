@@ -2204,6 +2204,21 @@ class EUIXEngineCore {
                 });
             }
 
+            const apiEndpoints = doc.querySelectorAll
+                ? Array.from(doc.querySelectorAll("api_endpoint, endpoint"))
+                : Array.from(doc.getElementsByTagName("api_endpoint")).concat(Array.from(doc.getElementsByTagName("endpoint")));
+            apiEndpoints.forEach(node => {
+                const autoFetchAttr = node.getAttribute("auto_fetch");
+                const autoFetch = autoFetchAttr !== "false";
+                if (typeof this.handleXHR === "function") {
+                    if (autoFetch) {
+                        this.handleXHR(node);
+                    } else {
+                        this.handleXHR(node, { _registerOnly: true });
+                    }
+                }
+            });
+
             if (isMainDoc) {
                 const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
                 useScriptNodes.forEach(node => {
@@ -2260,7 +2275,30 @@ class EUIXEngineCore {
                         return self.getComputed(prop);
                     }
                 }
-                return Reflect.get(target, prop, receiver);
+                const val = Reflect.get(target, prop, receiver);
+                if (Array.isArray(val) && typeof prop === "string") {
+                    return new Proxy(val, {
+                        get(arrTarget, arrProp, arrReceiver) {
+                            const mutatingMethods = ["push", "pop", "shift", "unshift", "splice", "sort", "reverse"];
+                            if (typeof arrProp === "string" && mutatingMethods.includes(arrProp)) {
+                                return function(...args) {
+                                    const res = Array.prototype[arrProp].apply(arrTarget, args);
+                                    self.setState(prop, arrTarget);
+                                    return res;
+                                };
+                            }
+                            return Reflect.get(arrTarget, arrProp, arrReceiver);
+                        },
+                        set(arrTarget, arrKey, arrVal) {
+                            const res = Reflect.set(arrTarget, arrKey, arrVal);
+                            if (arrKey !== "length") {
+                                self.setState(prop, arrTarget);
+                            }
+                            return res;
+                        }
+                    });
+                }
+                return val;
             },
             set(target, key, value) {
                 target[key] = value;
@@ -2650,7 +2688,19 @@ class EUIXEngineCore {
 
             const generalAttrs = ["draggable", "tabindex", "role", "title", "style", "src", "alt", "href", "target", "rel", "data-id", "data-key", "data-value", "leave_animation", "enter_animation", "on_leave_preset", "on_enter_preset", "on_leave", "on_enter"];
 
-            if (validationAttrs.includes(attrName)) {
+            if (attrName.startsWith("on") && attrName.length > 2 && !attrName.startsWith("on_")) {
+                const eventName = attrName.toLowerCase();
+                const handlerCode = this.interpolate(attrValue, context);
+                try {
+                    const isAsync = handlerCode.includes("await ");
+                    const AsyncFn = Object.getPrototypeOf(async function(){}).constructor;
+                    el[eventName] = isAsync 
+                        ? new AsyncFn("event", "$evt", handlerCode) 
+                        : new Function("event", "$evt", handlerCode);
+                } catch (_) {
+                    el.setAttribute(attrName, handlerCode);
+                }
+            } else if (validationAttrs.includes(attrName)) {
                 if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
                     const isBoolTrue = this.isTruthy(attrValue) || attrValue === "" || attrValue.toLowerCase() === attrName;
                     if (isBoolTrue) {
@@ -2915,9 +2965,9 @@ class EUIXEngineCore {
             if (bindPath) {
                 sel.value = this.getState(bindPath) ?? "";
                 this.registerBinding(bindPath, sel, "input");
-                sel.onchange = (e) => {
+                sel.addEventListener("change", (e) => {
                     this.setState(bindPath, e.target.value);
-                };
+                });
             }
 
             this.bindEvents(xmlNode, sel, context);
