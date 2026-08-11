@@ -764,23 +764,34 @@ class EUIXEngineCore {
     revalidateApi(tagOrUrl = "") {
         const filter = String(tagOrUrl).trim();
         if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
+        if (this._isRevalidating) return this;
 
-        const targets = [];
-        this._registeredXhrs.forEach(item => {
-            const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
-            if (!filter) {
-                if (isGetOrHead) targets.push(item);
-            } else if (item.tag === filter || (item.url && item.url.includes(filter))) {
-                targets.push(item);
-            }
-        });
+        this._isRevalidating = true;
+        try {
+            const targets = [];
+            this._registeredXhrs.forEach(item => {
+                const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
+                if (!filter) {
+                    if (isGetOrHead) targets.push(item);
+                } else {
+                    const isExplicitUrlFilter = filter.includes("/");
+                    const matchesTag = Boolean(item.tag && item.tag === filter);
+                    const matchesUrl = (isGetOrHead || isExplicitUrlFilter) && Boolean(item.url && item.url.includes(filter));
+                    if (matchesTag || matchesUrl) {
+                        targets.push(item);
+                    }
+                }
+            });
 
-        targets.forEach(item => {
-            if (this._xhrCache && item.url) {
-                this._xhrCache.delete(item.url);
-            }
-            this.handleXHR(item.actionNode, item.context);
-        });
+            targets.forEach(item => {
+                if (this._xhrCache && item.url) {
+                    this._xhrCache.delete(item.url);
+                }
+                this.handleXHR(item.actionNode, item.context);
+            });
+        } finally {
+            this._isRevalidating = false;
+        }
 
         return this;
     }
