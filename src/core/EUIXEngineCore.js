@@ -1530,14 +1530,6 @@ class EUIXEngineCore {
             return;
         }
 
-        // Auto-sanitize expression strings if passed to setState
-        if (typeof value === "string" && /\d+\s*[><=?!+\-*/]/.test(value) && value.includes("?")) {
-            const num = parseFloat(value);
-            if (!isNaN(num)) {
-                value = num;
-            }
-        }
-
         this._updateDepth = (this._updateDepth || 0) + 1;
         if (this._updateDepth > (this._maxUpdateDepth || 50)) {
             const currentDepth = this._updateDepth;
