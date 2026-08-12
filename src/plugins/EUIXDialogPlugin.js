@@ -9,7 +9,12 @@ export const EUIXDialogPlugin = {
     install(engineClass) {
         engineClass.prototype.renderDialog = function(xmlNode, context = {}) {
             const rawBind = xmlNode.getAttribute("bind") || xmlNode.getAttribute("show") || xmlNode.getAttribute("open") || xmlNode.getAttribute("is_open") || "";
-            const bindPath = this.parseBindPath(rawBind);
+            const interpolatedBind = this.interpolate(rawBind, context);
+            let bindPath = this.parseBindPath(interpolatedBind);
+            if (!bindPath || bindPath === "true" || bindPath === "false" || !isNaN(Number(bindPath))) {
+                bindPath = this.parseBindPath(rawBind);
+            }
+
             let open = bindPath ? this.isTruthy(this.getState(bindPath)) : false;
 
             const closeOnBackdrop = xmlNode.getAttribute("close_on_backdrop") !== "false";
@@ -21,7 +26,14 @@ export const EUIXDialogPlugin = {
                 : this.interpolate(titleAttr, context) || "Dialog";
 
             const close = () => {
-                if (bindPath) this.setState(bindPath, false);
+                if (bindPath) {
+                    const currentVal = this.getState(bindPath);
+                    if (typeof currentVal === "string") {
+                        this.setState(bindPath, "false");
+                    } else {
+                        this.setState(bindPath, false);
+                    }
+                }
             };
 
             const containerNode = document.createElement("div");

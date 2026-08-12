@@ -422,6 +422,38 @@ describe("EUIX Engine - Upstream Package Fixes Verification", () => {
             // Watcher inside data_model triggered REVALIDATE_API tag get_countries
             expect(fetchSpy).toHaveBeenCalledTimes(1);
         });
+
+        it("should gracefully interpolate null or unhydrated state during auto_fetch='true' without throwing TypeError", async () => {
+            const fetchSpy = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                json: () => Promise.resolve({ items: [] })
+            });
+            global.fetch = fetchSpy;
+
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="user_filter" type="object"></state>
+                </data_model>
+                <api_config base_url="https://api.example.com" />
+                <api_endpoint id="fetch_users" tag="fetch_users" auto_fetch="true">
+                    <url>/api/users?name={data.user_filter.name}</url>
+                    <method>POST</method>
+                    <body>{"query": "{data.user_filter.query}"}</body>
+                    <target>users</target>
+                </api_endpoint>
+            </uid_spec>
+            `;
+
+            expect(() => {
+                EUIXEngineCore.mount(xml, container);
+            }).not.toThrow();
+
+            expect(fetchSpy).toHaveBeenCalled();
+            const calledUrl = fetchSpy.mock.calls[0][0];
+            expect(calledUrl).toContain("/api/users?name=");
+        });
     });
 });
 

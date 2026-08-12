@@ -1424,15 +1424,15 @@ class EUIXEngineCore {
     }
 
     getState(key) {
-        if (!key) return undefined;
+        if (!key || !this._rawState) return undefined;
         const cleanKey = String(key).replace(/^(data|state|computed)\./, "");
         if (this._computedRegistry && this._computedRegistry.has(cleanKey)) {
             return this.getComputed(cleanKey);
         }
-        let val = (this._rawState[cleanKey] !== undefined) ? this._rawState[cleanKey] : this._rawState[key];
-        if (val === undefined && typeof key === "string" && key.includes(".")) {
-            const parts = key.split(".");
-            let curr = this._rawState[parts[0]];
+        let val = (this._rawState && this._rawState[cleanKey] !== undefined) ? this._rawState[cleanKey] : (this._rawState ? this._rawState[key] : undefined);
+        if (val === undefined && typeof cleanKey === "string" && cleanKey.includes(".")) {
+            const parts = cleanKey.split(".");
+            let curr = this._rawState ? this._rawState[parts[0]] : undefined;
             for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
                 curr = curr[parts[i]];
             }
@@ -1487,7 +1487,7 @@ class EUIXEngineCore {
         const ctxMatch = path.match(/^(\w+)(?:\.(.+))?$/);
         if (ctxMatch) {
             const [_, scope, prop] = ctxMatch;
-            if (scope && context && context[scope] !== undefined) {
+            if (scope && context && context[scope] !== undefined && context[scope] !== null) {
                 if (prop) {
                     const parts = prop.split(".");
                     let curr = context[scope];
@@ -2452,7 +2452,7 @@ class EUIXEngineCore {
                         const parts = name.split(".");
                         const firstPart = parts[0];
 
-                        if (context && context[firstPart] !== undefined) {
+                        if (context && context[firstPart] !== undefined && context[firstPart] !== null) {
                             let curr = context[firstPart];
                             if (parts.length === 1) {
                                 return curr;
@@ -2464,13 +2464,13 @@ class EUIXEngineCore {
                         }
 
                         let val = this.getState(this.parseBindPath(cleanKey));
-                        if (val !== undefined) return val;
+                        if (val !== undefined && val !== null) return val;
 
                         if (context && context[name] !== undefined) {
                             return context[name];
                         }
 
-                        if (name.includes(".")) {
+                        if (name.includes(".") && context && context[firstPart] !== undefined && context[firstPart] !== null) {
                             let curr = context[firstPart];
                             for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
                                 curr = curr[parts[i]];
