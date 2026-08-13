@@ -1438,10 +1438,6 @@ class EUIXEngineCore {
             }
             if (curr !== undefined) val = curr;
         }
-        if (typeof val === "string" && /\d+\s*[><=?!+\-*/]/.test(val) && val.includes("?")) {
-            const num = parseFloat(val);
-            if (!isNaN(num)) return num;
-        }
         return val;
     }
 
