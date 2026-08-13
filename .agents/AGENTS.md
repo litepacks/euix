@@ -614,6 +614,24 @@ Inside `<catch var="err">`, the error object exposes structured properties:
 - `{err.component}`: Originating component name
 - `<rethrow />`: Explicitly re-throw caught error to propagate to parent scope
 
+### Visual Component Fallback (Inline Error Boundary)
+When an XML element or custom component fails during rendering, EUIX Engine isolates the failure and renders a graceful inline error fallback element (`.euix-error-fallback`) without unmounting or crashing the rest of the application tree:
+```html
+<!-- Automatically rendered inline on component render failure -->
+<div class="euix-error-fallback">⚠️ Component Error: &lt;broken_component&gt;</div>
+```
+
+### Programmatic Global Error Handler (`engine.onError`)
+Register a global `onError` callback on the engine instance to capture all uncaught runtime errors, XML parsing failures, XHR errors, or component rendering exceptions for telemetry or error monitoring:
+```js
+const engine = EUIXEngine.mount(xmlString, '#app');
+
+engine.onError = (error, contextInfo) => {
+  console.error(`[EUIX Error Boundary] ${contextInfo}:`, error);
+  // Send to error logging service
+};
+```
+
 ---
 
 ## ⚡ 13. Declarative Resilience Primitives & `EUIXResiliencePlugin`

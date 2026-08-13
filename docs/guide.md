@@ -507,6 +507,8 @@ tests/
 - **Hostile Input Safety:** Malformed XML, unclosed tags, duplicate state IDs, or extreme nesting (150-depth) MUST NEVER crash the process with unhandled JS exceptions or stack overflows (`RangeError`).
 - **AST Round-Trip Equivalence:** `XML -> Spec AST -> JSON -> Spec AST -> XML` must yield semantically identical state models, component specs, and action trees.
 - **Try/Catch/Finally Guarantee:** `<finally>` executes EXACTLY ONCE; `<catch>` executes ONLY on errors.
+- **Visual Component Error Isolation:** Render-time failures inside components or XML elements are isolated using internal try/catch boundaries, rendering an inline fallback element (`.euix-error-fallback`) without crashing the application tree.
+- **Global Error Handler Hook:** Engine instances expose an `onError(error, contextInfo)` callback to intercept and report unhandled parsing, rendering, action, or XHR exceptions to monitoring services.
 - **Resilience & Cancellation Invariant:** Timed-out or cancelled execution scopes IMMEDIATELY abort child processes (`AbortSignal`) and PERMANENTLY BLOCK any subsequent state mutations (`setState`, `mutateState`).
 - **Reactive Cycle Protection:** Static and dynamic circular dependencies in `<computed>` (`A -> B -> C -> A`) predictably throw `COMPUTED_CYCLE_ERROR` without call stack overflow.
 - **Lifecycle & Memory Invariant:** Unmounting a component releases all active timers, watchers, subscriptions, animations, event listeners, and external resource references without leaks (`dispose()`).
