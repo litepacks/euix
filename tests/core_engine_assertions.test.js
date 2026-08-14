@@ -301,4 +301,76 @@ describe('EUIXEngineCore - Deep Assertions & Edge Cases Test Suite', () => {
             vi.unstubAllGlobals();
         });
     });
+
+    describe('6. Targeted Mutant Elimination & Boundary Assertions', () => {
+        it('should trigger WATCHER_CYCLE_ERROR when watcher reaction depth exceeds 25', () => {
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="ping">0</state>
+                    <state id="pong">0</state>
+                </data_model>
+                <container><div/></container>
+            </uid_spec>
+            `;
+
+            const engine = EUIXEngineCore.mount(xml, container);
+            const reportSpy = vi.spyOn(engine, 'reportError');
+
+            // Set up circular watcher cascade
+            engine.watch('ping', (val) => {
+                engine.setState('pong', val + 1);
+            });
+            engine.watch('pong', (val) => {
+                engine.setState('ping', val + 1);
+            });
+
+            expect(() => engine.setState('ping', 1)).toThrow(/Maximum watcher reaction depth/);
+            expect(reportSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ code: 'WATCHER_CYCLE_ERROR' }),
+                expect.stringContaining('Watcher Cycle Guard')
+            );
+        });
+
+        it('should handle MUTATE_STATE SWAP out-of-bounds indices gracefully without array corruption', () => {
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="items" type="array">[{"id": 1}, {"id": 2}]</state>
+                </data_model>
+                <container><div/></container>
+            </uid_spec>
+            `;
+
+            const engine = EUIXEngineCore.mount(xml, container);
+            engine.setState('items', [{ id: 1 }, { id: 2 }]);
+
+            // Negative index SWAP -> should do nothing
+            engine.mutateState('items', 'SWAP', { index1: -1, index2: 1 });
+            expect(engine.getState('items')).toEqual([{ id: 1 }, { id: 2 }]);
+
+            // Out-of-bounds index SWAP -> should do nothing
+            engine.mutateState('items', 'SWAP', { index1: 0, index2: 10 });
+            expect(engine.getState('items')).toEqual([{ id: 1 }, { id: 2 }]);
+        });
+
+        it('should parse escaped quotes inside string expression literals in EUIXExpressionParser', () => {
+            const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="msg">hello</state>
+                </data_model>
+                <container>
+                    <p>{data.msg === "hello" ? "It\\"s fine" : 'Other\\'s'}</p>
+                </container>
+            </uid_spec>
+            `;
+
+            const engine = EUIXEngineCore.mount(xml, container);
+            expect(container.querySelector('p').textContent).toBe("It\"s fine");
+
+            engine.setState('msg', 'other');
+            expect(container.querySelector('p').textContent).toBe("Other's");
+        });
+    });
 });

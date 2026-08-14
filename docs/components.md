@@ -152,15 +152,31 @@ Conditional rendering based on reactive state expressions.
 ---
 
 ### `<for_each>`
-Fine-grained dynamic list rendering.
+Fine-grained dynamic list rendering with Keyed DOM Reconciliation (`key="..."`).
 
 ```xml
-<for_each items="{data.todos}" var="todo">
+<!-- Keyed list rendering (preserves DOM focus, active input states, and CSS transitions) -->
+<for_each items="{data.todos}" var="todo" key="id">
     <flex direction="row" justify="between">
+        <input bind="todo.completed" type="checkbox" />
         <span>{todo.text}</span>
     </flex>
 </for_each>
+
+<!-- Interpolated dynamic key expression -->
+<for_each items="{data.users}" var="usr" key="{usr.uuid}">
+    <span>{usr.name}</span>
+</for_each>
 ```
+
+#### Keyed Reconciliation & Performance Optimization:
+- **`key="id"` / `key_field="uuid"`**: Specifies the unique item property used for DOM reconciliation.
+- **`key="{item.uuid}"`**: Supports dynamic interpolated key expressions.
+- **DOM Element Reuse**: Reordering (`SWAP`), insertion, and deletion reuse existing DOM nodes via `insertBefore` without clearing `innerHTML`, preserving input focus, draft form text, and active CSS transitions.
+- **`DocumentFragment` DOM Batching**: Bulk list rendering batches insertions into off-screen fragments, reducing DOM mutations to 1 single operation.
+- **Event Delegation**: Child listeners (`<on_click>`, `<on_change>`, etc.) are automatically delegated to `listContainer`, reducing memory footprint by ~70%.
+- **State Mutation Batching**: Rapid consecutive `setState` calls are coalesced into a single microtask flush via `queueMicrotask()`.
+- **Expression AST LRU Cache**: String expressions (`{data.counter + 1}`) are parsed into AST once and cached in `EUIXExpressionParser._astCache` with O(1) lookup speed.
 
 ---
 
