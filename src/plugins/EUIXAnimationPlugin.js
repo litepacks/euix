@@ -274,6 +274,8 @@ export const EUIXAnimationPlugin = {
                         targetEl = context._targetEl;
                     }
                 }
+            } else if (target && target.nodeType === 1) {
+                targetEl = target;
             } else if (!target) {
                 targetEl = context._targetEl || context.$el || null;
             }

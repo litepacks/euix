@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EUIXEngine } from '../src/EUIXEngine.js';
+import { EUIXStoragePlugin } from '../src/plugins/EUIXStoragePlugin.js';
 
 describe('EUIXEngine State Persistence Suite (LocalStorage & SessionStorage)', () => {
     let container;
@@ -189,5 +190,77 @@ describe('EUIXEngine State Persistence Suite (LocalStorage & SessionStorage)', (
 
         btn.click();
         expect(engine.getState('persisted_counter')).toBe('3');
+    });
+
+    it('should test EUIXStoragePlugin plugin metadata, install method, and null/empty guards', () => {
+        expect(EUIXStoragePlugin.name).toBe('storage');
+        expect(typeof EUIXStoragePlugin.install).toBe('function');
+
+        const mockEngineClass = function() {};
+        mockEngineClass.prototype = {
+            _persistenceConfig: new Map(),
+            parseBindPath: (k) => k
+        };
+
+        EUIXStoragePlugin.install(mockEngineClass);
+
+        const instance = new mockEngineClass();
+        expect(typeof instance.persist).toBe('function');
+        expect(typeof instance.clearPersistedState).toBe('function');
+
+        // Guard tests for empty key
+        expect(instance.persist('')).toBe(instance);
+        expect(instance.persist(null)).toBe(instance);
+        expect(instance.clearPersistedState('')).toBe(instance);
+        expect(instance.clearPersistedState(null)).toBe(instance);
+    });
+
+    it('should handle JSON parse fallback and storage event with null newValue in EUIXStoragePlugin', () => {
+        localStorage.setItem('euix_state_fallback_key', 'raw_string_without_quotes');
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="fallback_key" persist="local">default_val</state>
+            </data_model>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        expect(engine.getState('fallback_key')).toBe('raw_string_without_quotes');
+
+        // Trigger storage event with null newValue
+        const storageEvent = new Event('storage');
+        storageEvent.key = 'euix_state_fallback_key';
+        storageEvent.newValue = null;
+        window.dispatchEvent(storageEvent);
+
+        expect(engine.getState('fallback_key')).toBe('');
+    });
+
+    it('should clear sessionStorage persisted state and handle undefined value persistence', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="sess_key">initial</state>
+                <state id="undef_key">initial_undef</state>
+            </data_model>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.persist('sess_key', { storage: 'session', key: 'custom_session_key' });
+        engine.persist('undef_key', { storage: 'local', key: 'custom_undef_key' });
+        engine.mount(xml);
+
+        expect(sessionStorage.getItem('custom_session_key')).toBe('"initial"');
+        engine.clearPersistedState('sess_key');
+        expect(sessionStorage.getItem('custom_session_key')).toBeNull();
+
+        // Test undefined state value persistence
+        engine.setState('undef_key', undefined);
+        expect(localStorage.getItem('custom_undef_key')).toBe('""');
     });
 });

@@ -53,7 +53,7 @@ class EUIXExpressionParser {
             }
 
             // Single-character operators & punctuation
-            if ([">", "<", "!", "+", "-", "*", "/", "(", ")", ",", "?", ":"].includes(char)) {
+            if ([">", "<", "!", "+", "-", "*", "/", "%", "(", ")", ",", "?", ":"].includes(char)) {
                 if (char === "(" || char === ")" || char === ",") {
                     tokens.push({ type: char, value: char });
                 } else {
@@ -152,7 +152,7 @@ class EUIXExpressionParser {
             return parsePrimary();
         }
 
-        function parseMultiplicative() { return parseBinary(parseUnary, ["*", "/"]); }
+        function parseMultiplicative() { return parseBinary(parseUnary, ["*", "/", "%"]); }
         function parseAdditive() { return parseBinary(parseMultiplicative, ["+", "-"]); }
         function parseRelational() { return parseBinary(parseAdditive, [">", "<", ">=", "<="]); }
         function parseEquality() { return parseBinary(parseRelational, ["==", "!="]); }
@@ -225,7 +225,10 @@ class EUIXExpressionParser {
                     case "<=": return Number(left) <= Number(right);
                     case "&&": return Boolean(left) && Boolean(right);
                     case "||": return Boolean(left) || Boolean(right);
-                    case "+": return left + right;
+                    case "*": return Number(left) * Number(right);
+                    case "/": return Number(right) !== 0 ? Number(left) / Number(right) : 0;
+                    case "%": return Number(right) !== 0 ? Number(left) % Number(right) : 0;
+                    case "+": return (typeof left === "string" || typeof right === "string") ? String(left ?? "") + String(right ?? "") : Number(left) + Number(right);
                     case "-": return Number(left) - Number(right);
                     default: return false;
                 }
@@ -598,22 +601,44 @@ class EUIXActionComposer {
 
         try {
             // 4. Sequential Step Execution
+            let skipNextElse = false;
             for (const step of actionDef.steps) {
                 mergedContext.result = invocationCtx.result;
+                const tag = step.tagName ? step.tagName.toLowerCase() : "";
 
-                // Handle step-level conditional checking (<if condition="...">)
-                if (step.tagName && step.tagName.toLowerCase() === "if") {
+                if (tag === "else") {
+                    if (skipNextElse) {
+                        skipNextElse = false;
+                        continue;
+                    }
+                    const res = await engine._handleActionInternal(step, mergedContext);
+                    if (res !== undefined) invocationCtx.result = res;
+                    continue;
+                }
+
+                if (tag === "if") {
                     const cond = step.getAttribute("condition") || step.getAttribute("test");
-                    if (cond && engine && !engine.evalCondition(cond, mergedContext)) {
+                    const isTrue = !cond || !engine || engine.evalCondition(cond, mergedContext);
+
+                    if (isTrue) {
+                        skipNextElse = true;
+                        const res = await engine._handleActionInternal(step, mergedContext);
+                        if (res !== undefined) invocationCtx.result = res;
+                    } else {
+                        skipNextElse = false;
                         const elseNode = engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null);
                         if (elseNode) {
                             const elseRes = await engine._handleActionInternal(elseNode, mergedContext);
                             if (elseRes !== undefined) invocationCtx.result = elseRes;
+                            if (elseNode === step.nextElementSibling) {
+                                skipNextElse = true;
+                            }
                         }
-                        continue;
                     }
+                    continue;
                 }
 
+                skipNextElse = false;
                 const res = await engine._handleActionInternal(step, mergedContext);
                 if (res !== undefined) {
                     invocationCtx.result = res;
@@ -1059,20 +1084,103 @@ class EUIXEngineCore {
         }
     }
 
-    static mount(xmlString, containerSelector = "#app") {
+    static _astCache = new Map();
+    static _astCacheMaxSize = 500;
+    static _astCacheStats = { hits: 0, misses: 0 };
+
+    static _cloneDocument(doc) {
+        if (!doc) return null;
+        try {
+            if (typeof document !== "undefined" && document.implementation && typeof document.implementation.createDocument === "function") {
+                const cloned = document.implementation.createDocument(null, null, null);
+                if (doc.documentElement) {
+                    cloned.appendChild(cloned.importNode(doc.documentElement, true));
+                }
+                return cloned;
+            }
+            return doc.cloneNode(true);
+        } catch (_) {
+            return doc.cloneNode(true);
+        }
+    }
+
+    static parseXmlToAst(xmlString, options = {}) {
+        if (!xmlString || typeof xmlString !== "string") return null;
+
+        const sanitizedXml = xmlString.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+        const bypassCache = options && options.bypassCache === true;
+
+        if (!bypassCache && EUIXEngineCore._astCache.has(sanitizedXml)) {
+            EUIXEngineCore._astCacheStats.hits++;
+            const cachedDoc = EUIXEngineCore._astCache.get(sanitizedXml);
+            // Refresh LRU position (delete and re-insert)
+            EUIXEngineCore._astCache.delete(sanitizedXml);
+            EUIXEngineCore._astCache.set(sanitizedXml, cachedDoc);
+            return EUIXEngineCore._cloneDocument(cachedDoc);
+        }
+
+        EUIXEngineCore._astCacheStats.misses++;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(sanitizedXml, "text/xml");
+
+        if (!bypassCache) {
+            if (EUIXEngineCore._astCache.size >= EUIXEngineCore._astCacheMaxSize) {
+                const oldestKey = EUIXEngineCore._astCache.keys().next().value;
+                if (oldestKey !== undefined) {
+                    EUIXEngineCore._astCache.delete(oldestKey);
+                }
+            }
+            EUIXEngineCore._astCache.set(sanitizedXml, doc);
+        }
+
+        return EUIXEngineCore._cloneDocument(doc);
+    }
+
+    static clearAstCache() {
+        EUIXEngineCore._astCache.clear();
+        EUIXEngineCore._astCacheStats = { hits: 0, misses: 0 };
+    }
+
+    static getAstCacheStats() {
+        const total = EUIXEngineCore._astCacheStats.hits + EUIXEngineCore._astCacheStats.misses;
+        const hitRatio = total > 0 ? (EUIXEngineCore._astCacheStats.hits / total) : 0;
+        return {
+            size: EUIXEngineCore._astCache.size,
+            maxSize: EUIXEngineCore._astCacheMaxSize,
+            hits: EUIXEngineCore._astCacheStats.hits,
+            misses: EUIXEngineCore._astCacheStats.misses,
+            hitRatio: parseFloat(hitRatio.toFixed(4))
+        };
+    }
+
+    static setAstCacheSize(maxSize) {
+        if (typeof maxSize === "number" && maxSize > 0) {
+            EUIXEngineCore._astCacheMaxSize = maxSize;
+            while (EUIXEngineCore._astCache.size > EUIXEngineCore._astCacheMaxSize) {
+                const oldestKey = EUIXEngineCore._astCache.keys().next().value;
+                if (oldestKey !== undefined) {
+                    EUIXEngineCore._astCache.delete(oldestKey);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    static mount(xmlString, containerSelector = "#app", options = {}) {
         const engine = new EUIXEngineCore(containerSelector);
         EUIXEngineCore.instance = engine;
-        engine.mount(xmlString);
+        engine.mount(xmlString, options);
         return engine;
     }
 
-    static async mountAsync(xmlString, containerSelector = "#app") {
-        const engine = EUIXEngineCore.mount(xmlString, containerSelector);
+    static async mountAsync(xmlString, containerSelector = "#app", options = {}) {
+        const engine = EUIXEngineCore.mount(xmlString, containerSelector, options);
         await engine.preloadAsyncResources();
         return engine;
     }
 
-    static async loadComponent(name, url) {
+    static async loadComponent(name, url, options = {}) {
         try {
             if (typeof fetch === "undefined") {
                 console.error("[EUIXEngine] fetch is not available in this environment.");
@@ -1082,38 +1190,34 @@ class EUIXEngineCore {
             const res = await fetch(url, isDev ? { cache: "no-cache" } : undefined);
             const xmlText = typeof res.text === "function" ? await res.text() : (typeof res === "string" ? res : String(res));
             
-            const sanitizedXml = xmlText.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(sanitizedXml, "text/xml");
+            const doc = EUIXEngineCore.parseXmlToAst(xmlText, options);
 
             const nestedImports = Array.from(doc.querySelectorAll("import"));
             for (const imp of nestedImports) {
                 const impSrc = imp.getAttribute("src");
                 const impName = imp.getAttribute("name") || imp.getAttribute("as");
                 if (impSrc && impName) {
-                    await EUIXEngineCore.loadComponent(impName, impSrc);
+                    await EUIXEngineCore.loadComponent(impName, impSrc, options);
                 }
             }
 
-            return EUIXEngineCore.registerComponentSpec(name, doc);
+            return EUIXEngineCore.registerComponentSpec(name, doc, options);
         } catch (err) {
             console.error(`[EUIXEngine] Failed to load component from file ('${name}' -> '${url}'):`, err);
             return null;
         }
     }
 
-    static registerComponentSpec(name, xmlStringOrNode) {
+    static registerComponentSpec(name, xmlStringOrNode, options = {}) {
         let node;
         if (typeof xmlStringOrNode === "string") {
-            const sanitizedXml = xmlStringOrNode.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(sanitizedXml, "text/xml");
+            const doc = EUIXEngineCore.parseXmlToAst(xmlStringOrNode, options);
 
             const nestedDefs = Array.from(doc.querySelectorAll("component_def"));
             nestedDefs.forEach(def => {
                 const defName = def.getAttribute("name") || def.getAttribute("id");
                 if (defName && defName.toLowerCase() !== (name || "").toLowerCase()) {
-                    EUIXEngineCore.registerComponentSpec(defName, def);
+                    EUIXEngineCore.registerComponentSpec(defName, def, options);
                 }
             });
 
@@ -1584,6 +1688,12 @@ class EUIXEngineCore {
             invalidateComputed(key);
 
             this.syncBindings(key, value, sourceEl);
+            if (key.includes(".")) {
+                const rootKey = key.split(".")[0];
+                this.syncBindings(rootKey, this._rawState[rootKey], sourceEl);
+                this.syncBindings("data." + rootKey, this._rawState[rootKey], sourceEl);
+                this.syncBindings("data." + key, value, sourceEl);
+            }
 
             allAffected.forEach(cId => {
                 const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
@@ -1608,6 +1718,90 @@ class EUIXEngineCore {
                     performance.measure(`⚡ EUIX setState (${key})`, markStart, markEnd);
                 } catch (_) {}
             }
+        }
+    }
+
+    toggleState(key) {
+        const currentVal = this.getState(key);
+        this.setState(key, !currentVal);
+        return this.getState(key);
+    }
+
+    mutateState(key, operation, payload = {}) {
+        const cleanKey = String(key || "").replace(/^(data|state)\./, "");
+        if (!cleanKey || !operation) return;
+        const op = String(operation).toUpperCase();
+        const current = Array.isArray(this.getState(cleanKey)) ? [...this.getState(cleanKey)] : [];
+
+        if (op === "CLEAR" || op === "EMPTY" || op === "RESET") {
+            this.setState(cleanKey, []);
+            return [];
+        }
+        if (op === "PUSH" || op === "APPEND") {
+            const item = (payload && typeof payload === "object" && payload.item !== undefined) ? payload.item : payload;
+            current.push(item);
+            this.setState(cleanKey, current);
+            return current;
+        }
+        if (op === "UNSHIFT" || op === "PREPEND") {
+            const item = (payload && typeof payload === "object" && payload.item !== undefined) ? payload.item : payload;
+            current.unshift(item);
+            this.setState(cleanKey, current);
+            return current;
+        }
+        if (op === "POP") {
+            current.pop();
+            this.setState(cleanKey, current);
+            return current;
+        }
+        if (op === "SHIFT") {
+            current.shift();
+            this.setState(cleanKey, current);
+            return current;
+        }
+        if (op === "REMOVE" || op === "DELETE") {
+            let updated;
+            if (payload && payload.where) {
+                const { field, equals } = payload.where;
+                updated = current.filter(item => item && String(item[field]) !== String(equals));
+            } else if (payload && payload.index !== undefined) {
+                updated = current.filter((_, idx) => idx !== Number(payload.index));
+            } else {
+                updated = current.filter(item => item !== payload);
+            }
+            this.setState(cleanKey, updated);
+            return updated;
+        }
+        if (op === "INSERT") {
+            const idx = Number(payload.index || 0);
+            const item = (payload && typeof payload === "object" && payload.item !== undefined) ? payload.item : payload;
+            current.splice(idx, 0, item);
+            this.setState(cleanKey, current);
+            return current;
+        }
+        if (op === "UPDATE") {
+            if (payload && payload.where) {
+                const { field, equals } = payload.where;
+                const updated = current.map(item => {
+                    if (item && String(item[field]) === String(equals)) {
+                        return (typeof payload.value === "object") ? { ...item, ...payload.value } : payload.value;
+                    }
+                    return item;
+                });
+                this.setState(cleanKey, updated);
+                return updated;
+            }
+        }
+        if (op === "SWAP") {
+            const idx1 = Number(payload.index1);
+            const idx2 = Number(payload.index2);
+            if (!isNaN(idx1) && !isNaN(idx2) && idx1 >= 0 && idx2 >= 0 && idx1 < current.length && idx2 < current.length) {
+                const temp = current[idx1];
+                current[idx1] = current[idx2];
+                current[idx2] = temp;
+                this.setState(cleanKey, current);
+            }
+            return current;
         }
     }
 
@@ -1789,10 +1983,8 @@ class EUIXEngineCore {
         }
     }
 
-    mount(appXmlString) {
-        const sanitizedXml = appXmlString.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
-        const parser = new DOMParser();
-        this.xmlDoc = parser.parseFromString(sanitizedXml, "text/xml");
+    mount(appXmlString, options = {}) {
+        this.xmlDoc = EUIXEngineCore.parseXmlToAst(appXmlString, options);
 
         const parserError = this.xmlDoc.querySelector("parsererror");
         if (parserError) {
@@ -1865,26 +2057,7 @@ class EUIXEngineCore {
         if (!xmlNode || !domEl || domEl.nodeType !== (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1)) return;
         const contextWithEl = { ...context, _targetEl: domEl };
 
-        // 1. <on_mount>
-        const onMountNodes = this.getChildren(xmlNode, "on_mount");
-        onMountNodes.forEach(node => {
-            this.handleAction(node, contextWithEl);
-        });
-
-        // Lifecycle Enter Animation (<on_enter> / enter_animation="...")
-        const enterAnimAttr = xmlNode.getAttribute ? (xmlNode.getAttribute("enter_animation") || xmlNode.getAttribute("on_enter_preset")) : null;
-        const onEnterNodes = this.getChildren(xmlNode, "on_enter");
-        if (enterAnimAttr || onEnterNodes.length) {
-            if (typeof this.animate === "function") {
-                if (onEnterNodes.length && typeof this._handleAnimateAction === "function") {
-                    onEnterNodes.forEach(node => this._handleAnimateAction(node, contextWithEl));
-                } else if (enterAnimAttr) {
-                    this.animate(domEl, enterAnimAttr, {}, contextWithEl);
-                }
-            }
-        }
-
-        // 2. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
+        // 1. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
         const onChangeNodes = [
             ...this.getChildren(xmlNode, "on_state_change"),
             ...this.getChildren(xmlNode, "on_change"),
@@ -1892,7 +2065,7 @@ class EUIXEngineCore {
             ...this.getChildren(xmlNode, "watch")
         ];
         onChangeNodes.forEach(node => {
-            const rawWatch = node.getAttribute("watch") || node.getAttribute("path") || node.getAttribute("bind");
+            const rawWatch = node.getAttribute("watch") || node.getAttribute("path") || node.getAttribute("key") || node.getAttribute("bind");
             const watchPath = rawWatch ? this.parseBindPath(rawWatch) : null;
             if (watchPath) {
                 const unwatch = this.watch(watchPath, (newValue, oldValue) => {
@@ -1903,6 +2076,12 @@ class EUIXEngineCore {
                     this.handleAction(node, { ...contextWithEl, newValue, oldValue });
                 });
             }
+        });
+
+        // 2. <on_mount>
+        const onMountNodes = this.getChildren(xmlNode, "on_mount");
+        onMountNodes.forEach(node => {
+            this.handleAction(node, contextWithEl);
         });
 
         // 3. <on_interval ms="5000"> / <on_timer ms="1000">
@@ -2116,6 +2295,13 @@ class EUIXEngineCore {
                 } else if (type === "boolean" || type === "bool") {
                     const txt = node.textContent.trim().toLowerCase();
                     rawState[id] = txt === "true";
+                } else if (type === "object" || type === "json") {
+                    const txt = node.textContent.trim();
+                    try {
+                        rawState[id] = txt ? JSON.parse(txt) : {};
+                    } catch (_) {
+                        rawState[id] = {};
+                    }
                 } else {
                     rawState[id] = node.textContent.trim() || "";
                 }
@@ -2506,18 +2692,23 @@ class EUIXEngineCore {
         if (resolved === "false" || resolved === "") return false;
 
         const resolveValueFn = (name) => {
+            let val;
             if (name.startsWith("data.")) {
-                return this.getState(name.slice(5));
-            }
-            const ctxMatch = name.match(/^(\w+)(?:\.(\w+))?$/);
-            if (ctxMatch) {
-                const [_, scope, prop] = ctxMatch;
-                if (scope && context[scope] !== undefined) {
-                    if (prop) return context[scope][prop];
-                    return context[scope];
+                val = this.getState(name.slice(5));
+            } else {
+                const ctxMatch = name.match(/^(\w+)(?:\.(\w+))?$/);
+                if (ctxMatch) {
+                    const [_, scope, prop] = ctxMatch;
+                    if (scope && context[scope] !== undefined) {
+                        val = prop ? context[scope][prop] : context[scope];
+                    }
                 }
+                if (val === undefined) val = this.getState(name);
             }
-            return this.getState(name);
+            if (typeof val === "string" && val.trim() !== "" && !isNaN(Number(val))) {
+                return Number(val);
+            }
+            return val;
         };
 
         if (/[==|!=|>|<|&&|\|\||!|\(\)]/.test(expr)) {
@@ -3554,8 +3745,8 @@ class EUIXEngineCore {
     }
 
     async _handleTryCatchFinally(tryNode, context = {}) {
-        const catchNodes = Array.from(tryNode.children).filter(c => c.tagName && c.tagName.toLowerCase() === "catch");
-        const finallyNodes = Array.from(tryNode.children).filter(c => c.tagName && c.tagName.toLowerCase() === "finally");
+        const catchNodes = this.getChildren(tryNode, "catch");
+        const finallyNodes = this.getChildren(tryNode, "finally");
 
         if (catchNodes.length > 1) {
             const err = new EUIXStructuredError({
@@ -3579,7 +3770,7 @@ class EUIXEngineCore {
             throw err;
         }
 
-        const tryActionNodes = Array.from(tryNode.children).filter(c => {
+        const tryActionNodes = this.getChildren(tryNode).filter(c => {
             const tag = c.tagName ? c.tagName.toLowerCase() : "";
             return tag !== "catch" && tag !== "finally";
         });
@@ -4062,12 +4253,13 @@ class EUIXEngineCore {
             });
         }
 
-        if (["watch", "on_mount", "on_unmount", "on_state_change", "on_click"].includes(tagNameLower) && !actionAttr) {
+        if (["watch", "on_mount", "on_unmount", "on_state_change", "on_click", "if", "else", "step"].includes(tagNameLower) && !actionAttr) {
             const steps = Array.from(actionNode.children || []).filter(c => c.nodeType === 1);
             if (steps.length > 0) {
                 let lastResult;
                 for (const step of steps) {
-                    lastResult = this.handleAction(step, context);
+                    if (step.tagName && step.tagName.toLowerCase() === "else") continue;
+                    lastResult = this._handleActionInternal(step, context);
                 }
                 return lastResult;
             }
@@ -4588,6 +4780,7 @@ class EUIXEngineCore {
 }
 
 EUIXEngineCore.EUIXExpressionParser = EUIXExpressionParser;
+EUIXEngineCore.EUIXStructuredError = EUIXStructuredError;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;

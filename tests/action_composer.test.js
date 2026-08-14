@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EUIXEngine } from '../src/EUIXEngine.js';
+import {
+    EUIXComposerPlugin,
+    EUIXActionRecursionError,
+    EUIXActionValidationError,
+    EUIXActionContext,
+    EUIXActionValidator,
+    EUIXActionRegistry,
+    EUIXActionComposer
+} from '../src/plugins/EUIXComposerPlugin.js';
 
 describe('EUIX Engine - Action Composer Test Suite', () => {
     let container;
@@ -352,4 +361,283 @@ describe('EUIX Engine - Action Composer Test Suite', () => {
             depth: 1
         }));
     });
+
+    it('11. should instantiate custom error classes correctly', () => {
+        const recErr = new EUIXActionRecursionError('Recursion error');
+        expect(recErr.name).toBe('EUIXActionRecursionError');
+        expect(recErr.message).toBe('Recursion error');
+
+        const valErr = new EUIXActionValidationError('Validation error');
+        expect(valErr.name).toBe('EUIXActionValidationError');
+        expect(valErr.message).toBe('Validation error');
+    });
+
+    it('12. should construct EUIXActionContext with default and inherited properties', () => {
+        const parentCtx = new EUIXActionContext({
+            name: 'ParentAction',
+            args: { x: 10 },
+            eventContext: { _targetEl: container, props: { theme: 'dark' }, constants: { API: 'v1' } }
+        });
+        expect(parentCtx.depth).toBe(1);
+        expect(parentCtx.callChain.has('ParentAction')).toBe(true);
+        expect(parentCtx._targetEl).toBe(container);
+        expect(parentCtx.props.theme).toBe('dark');
+
+        const childCtx = new EUIXActionContext({
+            name: 'ChildAction',
+            args: { y: 20 },
+            parent: parentCtx
+        });
+        expect(childCtx.depth).toBe(2);
+        expect(childCtx.callChain.has('ParentAction')).toBe(true);
+        expect(childCtx.callChain.has('ChildAction')).toBe(true);
+        expect(childCtx._targetEl).toBe(container);
+        expect(childCtx.props.theme).toBe('dark');
+        expect(childCtx.constants.API).toBe('v1');
+    });
+
+    it('13. should validate action definition names and objects in EUIXActionValidator', () => {
+        expect(() => EUIXActionValidator.validateDefinition('', {})).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition(null, {})).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition(123, {})).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition('ValidName', null)).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition('ValidName', 'not-an-object')).toThrow(EUIXActionValidationError);
+
+        expect(() => EUIXActionValidator.validateDefinition('ValidName', { steps: [] })).not.toThrow();
+    });
+
+    it('14. should validate action invocation parameter requirements and edge cases in EUIXActionValidator', () => {
+        expect(() => EUIXActionValidator.validateInvocation(null, {}, { name: 'Unknown' }, null)).toThrow(
+            EUIXActionValidationError
+        );
+
+        const actionDef = {
+            name: 'TestParamAction',
+            params: [
+                { name: 'reqField', required: true }
+            ]
+        };
+
+        expect(() => EUIXActionValidator.validateInvocation(actionDef, { reqField: undefined }, { name: 'TestParamAction' }, null)).toThrow(
+            EUIXActionValidationError
+        );
+        expect(() => EUIXActionValidator.validateInvocation(actionDef, { reqField: null }, { name: 'TestParamAction' }, null)).toThrow(
+            EUIXActionValidationError
+        );
+        expect(() => EUIXActionValidator.validateInvocation(actionDef, { reqField: '' }, { name: 'TestParamAction' }, null)).toThrow(
+            EUIXActionValidationError
+        );
+        expect(() => EUIXActionValidator.validateInvocation(actionDef, { reqField: 'valid' }, { name: 'TestParamAction' }, null)).not.toThrow();
+    });
+
+    it('15. should register and parse XML action definitions with arg_def, parameter, return expressions in EUIXActionRegistry', () => {
+        const registry = new EUIXActionRegistry();
+
+        expect(registry.register('', {})).toBeNull();
+        expect(registry.register(null, {})).toBeNull();
+        expect(registry.register('InvalidType', 12345)).toBeNull();
+
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(`
+            <action_def name="CustomXmlAction">
+                <arg_def name="param1" default="default1" required="true" type="string" />
+                <parameter name="param2" value="val2" />
+                <step action="SET_STATE"><path>data.x</path><value>1</value></step>
+                <return value='{"status":"success"}' />
+            </action_def>
+        `, 'text/xml');
+
+        const registered = registry.register('CustomXmlAction', xmlDoc.documentElement);
+        expect(registered).not.toBeNull();
+        expect(registered.name).toBe('CustomXmlAction');
+        expect(registered.params).toHaveLength(2);
+        expect(registered.params[0]).toEqual({ name: 'param1', default: 'default1', required: true, type: 'string' });
+        expect(registered.params[1]).toEqual({ name: 'param2', default: 'val2', required: false, type: 'string' });
+        expect(registered.returnExpr).toBe('{"status":"success"}');
+
+        expect(registry.has('CustomXmlAction')).toBe(true);
+        expect(registry.has('NonExistent')).toBe(false);
+        expect(registry.get('CustomXmlAction')).toBeDefined();
+        expect(registry.getAll().size).toBe(1);
+
+        registry.clear();
+        expect(registry.getAll().size).toBe(0);
+    });
+
+    it('16. should parse JSON return expressions automatically in EUIXActionComposer', async () => {
+        const xml = `
+        <uid_spec>
+            <actions>
+                <action_def name="GetJsonObject">
+                    <param name="key" default="user" />
+                    <return>{"status": "ok", "requestedKey": "{args.key}"}</return>
+                </action_def>
+            </actions>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, container);
+        const res = await engine.executeAction('GetJsonObject', { key: 'profile' });
+
+        expect(res).toEqual({ status: 'ok', requestedKey: 'profile' });
+    });
+
+    it('17. should execute <if condition="..."> and <else> branches in action steps', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="score">75</state>
+                <state id="grade">unknown</state>
+            </data_model>
+
+            <actions>
+                <action_def name="EvaluateGrade">
+                    <if condition="{data.score} >= 50">
+                        <step action="SET_STATE">
+                            <path>data.grade</path>
+                            <value>Pass</value>
+                        </step>
+                    </if>
+                    <else>
+                        <step action="SET_STATE">
+                            <path>data.grade</path>
+                            <value>Fail</value>
+                        </step>
+                    </else>
+                    <return>{data.grade}</return>
+                </action_def>
+            </actions>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, container);
+        const passRes = await engine.executeAction('EvaluateGrade');
+        expect(passRes).toBe('Pass');
+        expect(engine.getState('grade')).toBe('Pass');
+
+        engine.setState('score', 30);
+        const failRes = await engine.executeAction('EvaluateGrade');
+        expect(failRes).toBe('Fail');
+        expect(engine.getState('grade')).toBe('Fail');
+    });
+
+    it('18. should support EXECUTE_ACTION attribute variants (action_name, target, child <name>) and arguments', async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="target_val">none</state>
+            </data_model>
+
+            <actions>
+                <action_def name="UpdateValue">
+                    <param name="val" required="true" />
+                    <step action="SET_STATE">
+                        <path>data.target_val</path>
+                        <value>{args.val}</value>
+                    </step>
+                </action_def>
+            </actions>
+
+            <flex direction="column">
+                <button id="btn-action-name">
+                    <on_click action="EXECUTE_ACTION" action_name="UpdateValue" val="FromAttr" />
+                </button>
+
+                <button id="btn-target">
+                    <on_click action="EXECUTE_ACTION" target="UpdateValue">
+                        <argument name="val" value="FromChildArgument" />
+                    </on_click>
+                </button>
+
+                <button id="btn-child-name">
+                    <on_click action="EXECUTE_ACTION">
+                        <name>UpdateValue</name>
+                        <param name="val" value="FromChildParam" />
+                    </on_click>
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, container);
+
+        container.querySelector('#btn-action-name').click();
+        await new Promise(r => setTimeout(r, 50));
+        expect(engine.getState('target_val')).toBe('FromAttr');
+
+        container.querySelector('#btn-target').click();
+        await new Promise(r => setTimeout(r, 50));
+        expect(engine.getState('target_val')).toBe('FromChildArgument');
+
+        container.querySelector('#btn-child-name').click();
+        await new Promise(r => setTimeout(r, 50));
+        expect(engine.getState('target_val')).toBe('FromChildParam');
+    });
+
+    it('19. should trigger window.__EUIX_DEVTOOLS_LOG_ACTION__ callback when action executes', async () => {
+        const devtoolsSpy = vi.fn();
+        window.__EUIX_DEVTOOLS_LOG_ACTION__ = devtoolsSpy;
+
+        const actionDef = {
+            name: 'GlobalDevToolsAction',
+            steps: []
+        };
+
+        const engine = EUIXEngine.mount('<uid_spec></uid_spec>', container);
+        await EUIXActionComposer.execute(actionDef, {}, engine);
+
+        expect(devtoolsSpy).toHaveBeenCalledWith(expect.objectContaining({
+            type: 'ACTION_COMPOUND',
+            actionName: 'GlobalDevToolsAction'
+        }));
+
+        delete window.__EUIX_DEVTOOLS_LOG_ACTION__;
+    });
+
+    it('20. should test EUIXComposerPlugin metadata, installation, and EXECUTE_ACTION handler edge cases', async () => {
+        expect(EUIXComposerPlugin.name).toBe('composer');
+        expect(typeof EUIXComposerPlugin.install).toBe('function');
+
+        let executeHandler = null;
+        const mockEngineClass = {
+            registerAction(name, handler) {
+                if (name === 'EXECUTE_ACTION') {
+                    executeHandler = handler;
+                }
+            }
+        };
+
+        EUIXComposerPlugin.install(mockEngineClass);
+        expect(executeHandler).toBeInstanceOf(Function);
+
+        const executeActionSpy = vi.fn().mockResolvedValue('OK');
+        const fakeEngine = {
+            getChild() { return null; },
+            executeAction: executeActionSpy
+        };
+
+        // 1. Missing action name returns undefined
+        const noNameNode = document.createElement('on_click');
+        const emptyResult = await executeHandler.call(fakeEngine, noNameNode, {});
+        expect(emptyResult).toBeUndefined();
+        expect(executeActionSpy).not.toHaveBeenCalled();
+
+        // 2. Action name via attribute with arg expr/id
+        const actionNode = document.createElement('on_click');
+        actionNode.setAttribute('action_name', 'MyWorkflow');
+        actionNode.setAttribute('customAttr', 'val1');
+
+        const argChild = document.createElement('arg');
+        argChild.setAttribute('id', 'paramKey');
+        argChild.setAttribute('expr', '{data.val}');
+        actionNode.appendChild(argChild);
+
+        const res = await executeHandler.call(fakeEngine, actionNode, { _componentName: 'App' });
+        expect(res).toBe('OK');
+        expect(executeActionSpy).toHaveBeenCalledWith('MyWorkflow', {
+            customattr: 'val1',
+            paramKey: '{data.val}'
+        }, { _componentName: 'App' });
+    });
 });
+
