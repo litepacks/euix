@@ -252,5 +252,32 @@ describe("EUIX Engine - Declarative Animation System Suite", () => {
 
             expect(typeof engine.animate).toBe("function");
         });
+
+        test("should test EUIXAnimationPlugin metadata, presets, and disposeComponentAnimations edge cases", () => {
+            expect(EUIXAnimationPlugin.name).toBe("EUIXAnimationPlugin");
+            expect(EUIXAnimationPresets["fade-in"]).toBeDefined();
+            expect(EUIXAnimationPresets["fade-out"]).toBeDefined();
+            expect(EUIXAnimationPresets["slide-in-down"]).toBeDefined();
+
+            const xml = `<uid_spec><container><div id="box1">Box 1</div><div id="box2">Box 2</div></container></uid_spec>`;
+            const engine = EUIXEngine.mount(xml, container);
+            const target1 = container.querySelector("#box1");
+            const target2 = container.querySelector("#box2");
+
+            engine.animate("#box1", "fade-in", { duration: 1000 });
+            engine.animate("#box2", "fade-in", { duration: 1000 });
+
+            expect(engine._activeAnimations.has(target1)).toBe(true);
+            expect(engine._activeAnimations.has(target2)).toBe(true);
+
+            // Dispose single target element
+            engine.disposeComponentAnimations(target1);
+            expect(engine._activeAnimations.has(target1)).toBe(false);
+            expect(engine._activeAnimations.has(target2)).toBe(true);
+
+            // Dispose with null _activeAnimations guard
+            const dummyEngine = { _activeAnimations: null };
+            expect(() => EUIXAnimationPlugin.install({ prototype: dummyEngine }) || dummyEngine.disposeComponentAnimations()).not.toThrow();
+        });
     });
 });

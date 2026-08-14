@@ -209,21 +209,44 @@ export class EUIXActionComposer {
         if (engine) engine._currentActionContext = invocationCtx;
 
         try {
+            let skipNextElse = false;
             for (const step of actionDef.steps) {
                 mergedContext.result = invocationCtx.result;
+                const tag = step.tagName ? step.tagName.toLowerCase() : "";
 
-                if (step.tagName && step.tagName.toLowerCase() === "if") {
+                if (tag === "else") {
+                    if (skipNextElse) {
+                        skipNextElse = false;
+                        continue;
+                    }
+                    const res = await engine._handleActionInternal(step, mergedContext);
+                    if (res !== undefined) invocationCtx.result = res;
+                    continue;
+                }
+
+                if (tag === "if") {
                     const cond = step.getAttribute("condition") || step.getAttribute("test");
-                    if (cond && engine && !engine.evalCondition(cond, mergedContext)) {
+                    const isTrue = !cond || !engine || engine.evalCondition(cond, mergedContext);
+
+                    if (isTrue) {
+                        skipNextElse = true;
+                        const res = await engine._handleActionInternal(step, mergedContext);
+                        if (res !== undefined) invocationCtx.result = res;
+                    } else {
+                        skipNextElse = false;
                         const elseNode = engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null);
                         if (elseNode) {
                             const elseRes = await engine._handleActionInternal(elseNode, mergedContext);
                             if (elseRes !== undefined) invocationCtx.result = elseRes;
+                            if (elseNode === step.nextElementSibling) {
+                                skipNextElse = true;
+                            }
                         }
-                        continue;
                     }
+                    continue;
                 }
 
+                skipNextElse = false;
                 const res = await engine._handleActionInternal(step, mergedContext);
                 if (res !== undefined) {
                     invocationCtx.result = res;
@@ -251,8 +274,9 @@ export class EUIXActionComposer {
             const endTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
             const durationMs = Math.round((endTime - startTime) * 100) / 100;
 
-            if (typeof window !== "undefined" && window.__EUIX_DEVTOOLS_LOG_ACTION__) {
-                window.__EUIX_DEVTOOLS_LOG_ACTION__({
+            const globalScope = typeof window !== "undefined" ? window : (typeof globalThis !== "undefined" ? globalThis : null);
+            if (globalScope && globalScope.__EUIX_DEVTOOLS_LOG_ACTION__) {
+                globalScope.__EUIX_DEVTOOLS_LOG_ACTION__({
                     type: "ACTION_COMPOUND",
                     actionName: actionDef.name,
                     args: invocationCtx.args,

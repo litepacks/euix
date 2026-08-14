@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import EUIXEnginePkg from '../src/EUIXEngine.js';
+import { EUIXApiPlugin } from '../src/plugins/EUIXApiPlugin.js';
 
 const EUIXEngine = EUIXEnginePkg.EUIXEngine || EUIXEnginePkg;
 
@@ -556,5 +557,30 @@ describe('EUIXEngine API Client Suite (BaseURL, Default Headers, Credentials, In
         
         // Should trigger POST + automatic refetch of /api/items
         expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should test EUIXApiPlugin metadata, install method, and handleXHR empty URL guards', () => {
+        expect(EUIXApiPlugin.name).toBe('api');
+        expect(typeof EUIXApiPlugin.install).toBe('function');
+
+        const registeredActions = new Map();
+        const mockEngineClass = function() {};
+        mockEngineClass.registerAction = function(name, handler) {
+            registeredActions.set(name, handler);
+        };
+
+        EUIXApiPlugin.install(mockEngineClass);
+
+        expect(typeof mockEngineClass.prototype.handleXHR).toBe('function');
+        expect(registeredActions.has('XHR')).toBe(true);
+        expect(registeredActions.has('REVALIDATE_API')).toBe(true);
+
+        const fakeEngine = new mockEngineClass();
+        fakeEngine.getChild = () => null;
+        fakeEngine.parseBindPath = (p) => p;
+
+        // handleXHR without URL attribute or node returns undefined
+        const noUrlNode = document.createElement('xhr');
+        expect(fakeEngine.handleXHR(noUrlNode)).toBeUndefined();
     });
 });

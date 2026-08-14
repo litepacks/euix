@@ -28,10 +28,11 @@ export class EUIXCancellationController {
     }
 
     get signal() {
+        const self = this;
         return {
-            isCancelled: this.isCancelled,
-            reason: this.reason,
-            abortSignal: this._abortController ? this._abortController.signal : null,
+            get isCancelled() { return self.isCancelled; },
+            get reason() { return self.reason; },
+            get abortSignal() { return self._abortController ? self._abortController.signal : null; },
             onCancel: (cb) => {
                 if (typeof cb !== "function") return () => {};
                 if (this.isCancelled) {
@@ -208,8 +209,9 @@ export const EUIXResiliencePlugin = {
             const scopeId = "timeout_" + Math.random().toString(36).substring(2, 9);
             const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
 
-            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                this._devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
+            const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
+            if (devtools && typeof devtools.logErrorScope === "function") {
+                devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
             }
 
             const timeoutError = new EUIXStructuredError({
@@ -232,8 +234,8 @@ export const EUIXResiliencePlugin = {
                     const elapsedMs = ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime;
                     timeoutError.elapsedMs = Math.round(elapsedMs);
                     controller.cancel(timeoutError);
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
+                    if (devtools && typeof devtools.logErrorScope === "function") {
+                        devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
                     }
                     reject(timeoutError);
                 }, duration);
@@ -257,8 +259,8 @@ export const EUIXResiliencePlugin = {
             try {
                 const result = await Promise.race([actionPromise, timerPromise]);
                 clearTimeout(timerId);
-                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                    this._devtools.logErrorScope("TIMEOUT_COMPLETED", {
+                if (devtools && typeof devtools.logErrorScope === "function") {
+                    devtools.logErrorScope("TIMEOUT_COMPLETED", {
                         scopeId,
                         durationMs: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
                     });
@@ -335,8 +337,9 @@ export const EUIXResiliencePlugin = {
             });
 
             const scopeId = "retry_" + Math.random().toString(36).substring(2, 9);
-            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                this._devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
+            const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
+            if (devtools && typeof devtools.logErrorScope === "function") {
+                devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
             }
 
             let lastError = null;
@@ -372,8 +375,8 @@ export const EUIXResiliencePlugin = {
                         result = await this._handleActionInternal(childNode, retryContext);
                     }
 
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
+                    if (devtools && typeof devtools.logErrorScope === "function") {
+                        devtools.logErrorScope("RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
                     }
                     return result;
                 } catch (rawErr) {
@@ -385,8 +388,8 @@ export const EUIXResiliencePlugin = {
                     lastError.maxAttempts = maxAttempts;
 
                     if (attempt === maxAttempts) {
-                        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                            this._devtools.logErrorScope("RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
+                        if (devtools && typeof devtools.logErrorScope === "function") {
+                            devtools.logErrorScope("RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
                         }
                         throw lastError;
                     }
@@ -396,15 +399,15 @@ export const EUIXResiliencePlugin = {
                         const statusMatch = lastError.status && errorFilters.includes(String(lastError.status));
                         const messageMatch = errorFilters.some(f => lastError.message.toUpperCase().includes(f));
                         if (!codeMatch && !statusMatch && !messageMatch) {
-                            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                                this._devtools.logErrorScope("RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
+                            if (devtools && typeof devtools.logErrorScope === "function") {
+                                devtools.logErrorScope("RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
                             }
                             throw lastError;
                         }
                     }
 
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
+                    if (devtools && typeof devtools.logErrorScope === "function") {
+                        devtools.logErrorScope("RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
                     }
 
                     if (nextDelay > 0) {
