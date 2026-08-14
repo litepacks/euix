@@ -260,15 +260,55 @@ class EUIXExpressionParser {
         return undefined;
     }
 
+    static _astCache = new Map();
+    static _astCacheMaxSize = 1000;
+    static _astCacheStats = { hits: 0, misses: 0 };
+
+    static parseExpressionToAst(exprString) {
+        if (this._astCache.has(exprString)) {
+            this._astCacheStats.hits++;
+            const cached = this._astCache.get(exprString);
+            this._astCache.delete(exprString);
+            this._astCache.set(exprString, cached);
+            return cached;
+        }
+
+        this._astCacheStats.misses++;
+        const tokens = this.tokenize(exprString);
+        const ast = this.parse(tokens);
+
+        if (this._astCache.size >= this._astCacheMaxSize) {
+            const firstKey = this._astCache.keys().next().value;
+            if (firstKey !== undefined) this._astCache.delete(firstKey);
+        }
+        this._astCache.set(exprString, ast);
+        return ast;
+    }
+
     static eval(exprString, resolveValueFn) {
         if (!exprString || !exprString.trim()) return undefined;
         try {
-            const tokens = this.tokenize(exprString);
-            const ast = this.parse(tokens);
+            const ast = this.parseExpressionToAst(exprString);
             return this.evaluate(ast, resolveValueFn);
         } catch (_) {
             return undefined;
         }
+    }
+
+    static clearExpressionCache() {
+        this._astCache.clear();
+        this._astCacheStats = { hits: 0, misses: 0 };
+    }
+
+    static getExpressionCacheStats() {
+        const total = this._astCacheStats.hits + this._astCacheStats.misses;
+        return {
+            size: this._astCache.size,
+            maxSize: this._astCacheMaxSize,
+            hits: this._astCacheStats.hits,
+            misses: this._astCacheStats.misses,
+            hitRatio: total > 0 ? Number((this._astCacheStats.hits / total).toFixed(4)) : 0
+        };
     }
 }
 
@@ -1602,8 +1642,71 @@ class EUIXEngineCore {
         return this.getState(path);
     }
 
+    batchUpdates(fn) {
+        if (typeof fn !== "function") return;
+        const wasBatching = this._isBatching;
+        this._isBatching = true;
+        try {
+            fn();
+        } finally {
+            this._isBatching = wasBatching;
+            if (!wasBatching) {
+                this.flushStateUpdates();
+            }
+        }
+    }
+
+    flushStateUpdates() {
+        if (!this._pendingBatchChanges || this._pendingBatchChanges.size === 0) return;
+        const pending = Array.from(this._pendingBatchChanges.values());
+        this._pendingBatchChanges.clear();
+
+        const allAffected = new Set();
+        const invalidateComputed = (changedKey) => {
+            const affected = this._depGraph ? this._depGraph.getAffectedComputed(changedKey) : new Set();
+            affected.forEach(cId => {
+                allAffected.add(cId);
+                const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
+                if (cNode && !cNode.isDirty) {
+                    cNode.isDirty = true;
+                    invalidateComputed(cId);
+                    invalidateComputed("computed." + cId);
+                }
+            });
+        };
+
+        pending.forEach(({ key, value, sourceEl }) => {
+            invalidateComputed(key);
+            this.syncBindings(key, value, sourceEl);
+            if (key.includes(".")) {
+                const rootKey = key.split(".")[0];
+                this.syncBindings(rootKey, this._rawState[rootKey], sourceEl);
+                this.syncBindings("data." + rootKey, this._rawState[rootKey], sourceEl);
+                this.syncBindings("data." + key, value, sourceEl);
+            }
+        });
+
+        allAffected.forEach(cId => {
+            const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
+            if (cNode) {
+                const cVal = cNode.evaluate();
+                this.syncBindings("computed." + cId, cVal, null);
+                this.syncBindings(cId, cVal, null);
+            }
+        });
+
+        pending.forEach(({ key, value, oldValue, silent, context }) => {
+            if (!silent) {
+                this.triggerStateWatchers(key, value, oldValue);
+                if (typeof this._triggerReactiveWatchers === "function") {
+                    this._triggerReactiveWatchers(key, value, oldValue, context);
+                }
+            }
+        });
+    }
+
     setState(key, value, options = {}) {
-        const { silent = false, sourceEl = null, context = null } = (typeof options === "boolean" ? { silent: options } : options);
+        const { silent = false, sourceEl = null, context = null, batch = false } = (typeof options === "boolean" ? { silent: options } : options);
         if (!this._rawState) return;
 
         if (this._isEvaluatingComputed) {
@@ -1670,6 +1773,19 @@ class EUIXEngineCore {
             this._savePersistedState(key, value);
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
+            }
+
+            if (this._isBatching || batch) {
+                this._pendingBatchChanges = this._pendingBatchChanges || new Map();
+                this._pendingBatchChanges.set(key, { key, value, oldValue, silent, sourceEl, context });
+                if (typeof queueMicrotask === "function" && !this._microtaskScheduled) {
+                    this._microtaskScheduled = true;
+                    queueMicrotask(() => {
+                        this._microtaskScheduled = false;
+                        this.flushStateUpdates();
+                    });
+                }
+                return;
             }
 
             const allAffected = new Set();
@@ -3062,12 +3178,60 @@ class EUIXEngineCore {
             listContainer.className = "euix-list-container";
             listContainer.style.display = "contents";
 
+            const delegatedEventTypes = ["click", "change", "keyup", "keydown", "submit", "input"];
+            delegatedEventTypes.forEach(eventType => {
+                listContainer.addEventListener(eventType, (e) => {
+                    if (e._euixHandled) return;
+                    let target = e.target;
+                    while (target && target !== listContainer) {
+                        if (target._euixEventMap && target._euixEventMap.has(eventType)) {
+                            e._euixHandled = true;
+                            const handlerNodes = target._euixEventMap.get(eventType);
+                            const itemContext = target._euixContext || context;
+                            this.executeEventHandlers(handlerNodes, eventType, e, target, itemContext);
+                            break;
+                        }
+                        target = target.parentElement;
+                    }
+                });
+            });
+
             const itemsAttr = xmlNode.getAttribute("items") || "";
             const itemsKey = this.parseBindPath(itemsAttr);
             const varName = xmlNode.getAttribute("var") || "item";
+            const keyAttr = xmlNode.getAttribute("key") || xmlNode.getAttribute("key_field") || xmlNode.getAttribute("item_key") || "";
+
+            const getItemKey = (item, idx) => {
+                if (keyAttr) {
+                    if (keyAttr.startsWith("{") && keyAttr.endsWith("}")) {
+                        const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey, _insideForEach: true };
+                        const res = this.interpolate(keyAttr, childContext);
+                        if (res !== undefined && res !== null && res !== "") return String(res);
+                    } else if (typeof item === "object" && item !== null && item[keyAttr] !== undefined && item[keyAttr] !== null) {
+                        return String(item[keyAttr]);
+                    }
+                }
+                if (typeof item === "object" && item !== null && item.id !== undefined && item.id !== null) {
+                    return String(item.id);
+                }
+                return `__idx_${idx}`;
+            };
+
+            const getItemHash = (item) => {
+                if (typeof item === "object" && item !== null) {
+                    const clone = { ...item };
+                    delete clone._index;
+                    delete clone.index;
+                    try {
+                        return JSON.stringify(clone);
+                    } catch (_) {
+                        return String(item);
+                    }
+                }
+                return String(item);
+            };
 
             const renderItems = () => {
-                listContainer.innerHTML = "";
                 let list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
                     ? this._rawState[itemsKey]
                     : null;
@@ -3080,6 +3244,12 @@ class EUIXEngineCore {
                     }
                 }
 
+                listContainer._keyedNodesMap = listContainer._keyedNodesMap || new Map();
+                const oldKeyedMap = listContainer._keyedNodesMap;
+                const newKeyedMap = new Map();
+                const activeKeys = new Set();
+                const itemNodesSequence = [];
+
                 list.forEach((item, idx) => {
                     if (typeof item === "object" && item !== null) {
                         try {
@@ -3087,15 +3257,67 @@ class EUIXEngineCore {
                             item.index = idx;
                         } catch (_) {}
                     }
-                    Array.from(xmlNode.children).forEach(child => {
-                        const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey };
-                        const el = this.createHTMLElement(child, childContext);
-                        if (el) {
-                            this.applyItemChildStyles(el, child, context);
-                            listContainer.appendChild(el);
+
+                    const key = getItemKey(item, idx);
+                    const hash = getItemHash(item);
+                    activeKeys.add(key);
+
+                    const existing = oldKeyedMap.get(key);
+                    let nodes;
+
+                    if (existing && existing.hash === hash && existing.nodes.length > 0) {
+                        // Reuse existing DOM nodes unchanged
+                        nodes = existing.nodes;
+                    } else {
+                        // Create or update DOM nodes for this item
+                        nodes = [];
+                        Array.from(xmlNode.children).forEach(child => {
+                            const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey, _insideForEach: true };
+                            const el = this.createHTMLElement(child, childContext);
+                            if (el) {
+                                this.applyItemChildStyles(el, child, context);
+                                nodes.push(el);
+                            }
+                        });
+
+                        // If old nodes existed for this key but data changed, remove old nodes
+                        if (existing && existing.nodes) {
+                            existing.nodes.forEach(oldNode => {
+                                if (oldNode && oldNode.parentNode === listContainer) {
+                                    listContainer.removeChild(oldNode);
+                                }
+                            });
                         }
-                    });
+                    }
+
+                    newKeyedMap.set(key, { nodes, hash, index: idx });
+                    itemNodesSequence.push(...nodes);
                 });
+
+                // Remove DOM nodes for keys no longer in list
+                oldKeyedMap.forEach((existing, key) => {
+                    if (!activeKeys.has(key) && existing.nodes) {
+                        existing.nodes.forEach(oldNode => {
+                            if (oldNode && oldNode.parentNode === listContainer) {
+                                listContainer.removeChild(oldNode);
+                            }
+                        });
+                    }
+                });
+
+                // Append / re-order DOM nodes in container sequence using DocumentFragment batching
+                const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+                itemNodesSequence.forEach(node => {
+                    if (node) {
+                        if (fragment) fragment.appendChild(node);
+                        else listContainer.appendChild(node);
+                    }
+                });
+                if (fragment) {
+                    listContainer.appendChild(fragment);
+                }
+
+                listContainer._keyedNodesMap = newKeyedMap;
             };
 
             renderItems();
@@ -3514,6 +3736,63 @@ class EUIXEngineCore {
         return this.applyRef(div, xmlNode, context);
     }
 
+    executeEventHandlers(handlerNodes, eventType, e, el, context = {}) {
+        if (typeof this.handleDragEvent === "function") {
+            this.handleDragEvent(eventType, e, el, context);
+        }
+        if (eventType === "submit") {
+            e.preventDefault();
+            const formEl = el.tagName === "FORM" ? el : el.closest("form");
+            if (formEl && typeof formEl.checkValidity === "function") {
+                if (!formEl.checkValidity()) {
+                    if (typeof formEl.reportValidity === "function") {
+                        formEl.reportValidity();
+                    }
+                    return;
+                }
+            }
+        }
+
+        if (eventType === "click" && (el.type === "submit" || (el.tagName === "BUTTON" && el.closest("form")))) {
+            const formEl = el.closest("form");
+            if (formEl && typeof formEl.checkValidity === "function") {
+                if (!formEl.checkValidity()) {
+                    if (typeof formEl.reportValidity === "function") {
+                        formEl.reportValidity();
+                    }
+                    e.preventDefault();
+                    return;
+                }
+            }
+        }
+
+        const eventContext = { ...context, _targetEl: el, _evt: e };
+
+        for (const node of handlerNodes) {
+            const targetKey = node.getAttribute("key") || node.getAttribute("code");
+            if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
+                continue;
+            }
+
+            if (!this.confirmAction(node, eventContext)) continue;
+
+            if (node.getAttribute("action")) {
+                const actType = node.getAttribute("action");
+                if (actType === "XHR") this.handleXHR(node, eventContext);
+                else this.handleAction(node, eventContext);
+            } else {
+                const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
+                if (childActions.length) {
+                    (async () => {
+                        for (const act of childActions) {
+                            await this.handleAction(act, eventContext);
+                        }
+                    })().catch(err => this.reportError(err, "Event Action Execution"));
+                }
+            }
+        }
+    }
+
     bindEvents(xmlNode, el, context = {}) {
         if (!el || xmlNode.nodeType !== Node.ELEMENT_NODE) return;
 
@@ -3547,62 +3826,16 @@ class EUIXEngineCore {
             this.setupDropListener(el, eventMap, context);
         }
 
+        if (eventMap.size === 0) return;
+
+        el._euixEventMap = eventMap;
+        el._euixContext = context;
+
         eventMap.forEach((handlerNodes, eventType) => {
             el.addEventListener(eventType, (e) => {
-                if (typeof this.handleDragEvent === "function") {
-                    this.handleDragEvent(eventType, e, el, context);
-                }
-                if (eventType === "submit") {
-                    e.preventDefault();
-                    const formEl = el.tagName === "FORM" ? el : el.closest("form");
-                    if (formEl && typeof formEl.checkValidity === "function") {
-                        if (!formEl.checkValidity()) {
-                            if (typeof formEl.reportValidity === "function") {
-                                formEl.reportValidity();
-                            }
-                            return;
-                        }
-                    }
-                }
-
-                if (eventType === "click" && (el.type === "submit" || (el.tagName === "BUTTON" && el.closest("form")))) {
-                    const formEl = el.closest("form");
-                    if (formEl && typeof formEl.checkValidity === "function") {
-                        if (!formEl.checkValidity()) {
-                            if (typeof formEl.reportValidity === "function") {
-                                formEl.reportValidity();
-                            }
-                            e.preventDefault();
-                            return;
-                        }
-                    }
-                }
-
-                const eventContext = { ...context, _targetEl: el, _evt: e };
-
-                for (const node of handlerNodes) {
-                    const targetKey = node.getAttribute("key") || node.getAttribute("code");
-                    if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
-                        continue;
-                    }
-
-                    if (!this.confirmAction(node, eventContext)) continue;
-
-                    if (node.getAttribute("action")) {
-                        const actType = node.getAttribute("action");
-                        if (actType === "XHR") this.handleXHR(node, eventContext);
-                        else this.handleAction(node, eventContext);
-                    } else {
-                        const childActions = Array.from(node.children).filter(c => c.tagName && c.tagName.toLowerCase() !== "confirm");
-                        if (childActions.length) {
-                            (async () => {
-                                for (const act of childActions) {
-                                    await this.handleAction(act, eventContext);
-                                }
-                            })().catch(err => this.reportError(err, "Event Action Execution"));
-                        }
-                    }
-                }
+                if (e._euixHandled) return;
+                e._euixHandled = true;
+                this.executeEventHandlers(handlerNodes, eventType, e, el, context);
             });
         });
     }

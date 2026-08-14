@@ -30,11 +30,12 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
   +--------------+                            +---------------+
 ```
 
-1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes.
-2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`). State declarations MUST use `id="..."`.
-3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) without imperative DOM event listeners.
+1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes with AST Caching (`_astCache`).
+2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`) with microtask state mutation batching (`queueMicrotask`).
+3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) with event delegation on `<for_each>` containers.
 4. **Modular Plugin System (`.use(plugin)`)**: Extend Lite Core (`EUIXEngineCore`) dynamically with tree-shakeable plugins (`euixjs/api`, `euixjs/composer`, `euixjs/dnd`, `euixjs/storage`, `euixjs/collapse`, `euixjs/dialog`).
 5. **Component Registry & Async Loader**: Loads modular XML components dynamically via `fetch()`, executing scoped state models and prop passing.
+6. **High Performance Primitives**: Expression AST LRU Caching (`EUIXExpressionParser`), Keyed Reconciliation (`key="id"`), and `DocumentFragment` DOM Batching.
 
 ---
 
@@ -139,9 +140,9 @@ Every UI is defined using a declarative `<uid_spec>` XML template:
     <!-- Form Inputs with Two-Way Binding -->
     <input bind="user_name" placeholder="Enter your name" class="input" />
 
-    <!-- Array Rendering & State Mutations -->
+    <!-- Array Rendering & Keyed Reconciliation (<for_each key="id">) -->
     <flex direction="column" gap="8">
-      <for_each items="{data.items}" var="item">
+      <for_each items="{data.items}" var="item" key="id">
         <flex direction="row" align="center" justify="between" class="item-row">
           <span>{item.title}</span>
           <button class="btn-danger">

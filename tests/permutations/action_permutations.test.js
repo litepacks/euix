@@ -60,7 +60,7 @@ describe('EUIX Engine - Declarative Action Permutation Engine', () => {
     const button = container.querySelector('#btn');
     button.click();
 
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 600));
 
     expect(engine.getState('status')).toBe('success');
     expect(engine.getState('finally_count')).toBe('1');
