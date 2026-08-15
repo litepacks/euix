@@ -432,7 +432,46 @@ Inline scripts inside `<on_mount>` or `action="RUN_SCRIPT"` execute inside an is
 
 ## 👪 10. Parent-Child Component Architecture & Slot Projection
 
-### 1. Prop Passing (Parent -> Child)
+### 1. Dual-Mode State Scoping: Component Isolation vs Global Shared Stores
+
+EUIX Engine supports both **Component-Scoped Isolation** (for multi-instance UI widgets like accordions, tabs, cards) and **Global Shared Stores** (for application-wide stores like `states.xml`):
+
+```xml
+<!-- 1. Component-Scoped Isolation (<component_def isolated="true">) -->
+<component_def name="accordion-card" isolated="true">
+  <data_model>
+    <!-- Private to each rendered card instance; will not leak or collide -->
+    <state id="isOpen" type="boolean">false</state>
+    <state id="clicks" type="number">0</state>
+  </data_model>
+
+  <div class="card">
+    <h4>{props.title}</h4>
+    <span>Status: {local.isOpen ? 'OPEN' : 'CLOSED'}</span>
+    <span>Clicks: {local.clicks}</span>
+
+    <button>
+      <on_click action="SET_STATE">
+        <path>local.isOpen</path>
+        <value>{local.isOpen ? 'false' : 'true'}</value>
+      </on_click>
+      Toggle Card
+    </button>
+  </div>
+</component_def>
+```
+
+```xml
+<!-- 2. Global Shared Store (<data_model scope="global"> or states.xml) -->
+<component_def name="app-theme-store">
+  <data_model scope="global">
+    <state id="theme">dark</state>
+    <state id="user_profile" type="object">{"name": "Ahmet"}</state>
+  </data_model>
+</component_def>
+```
+
+### 2. Prop Passing (Parent -> Child)
 ```xml
 <!-- Parent Specification -->
 <uid_spec>
@@ -459,7 +498,7 @@ Inline scripts inside `<on_mount>` or `action="RUN_SCRIPT"` execute inside an is
 </component_def>
 ```
 
-### 2. Children / Slot Content Projection (`<children />` or `<slot />`)
+### 3. Children / Slot Content Projection (`<children />` or `<slot />`)
 ```xml
 <!-- Parent passing nested content -->
 <component name="card-modal" src="./Modal.xml" title="Confirm Action">

@@ -265,16 +265,121 @@ const engine = await EUIXEngine.mountAsync(xml, '#app');
 
 ---
 
+## 🧩 Dual-Mode State Architecture: Component-Scoped Isolation & Global Stores
+
+EUIX Engine supports a versatile **Dual-Mode State System** that enables both **Application-Wide Shared Stores** and **Strict Component-Scoped Instance Isolation**:
+
+```
+                             +-----------------------------------+
+                             |     Central Global State Pool     |
+                             |  (data.*, global.*, states.xml)   |
+                             +-----------------------------------+
+                                               ^
+                                               | (reads / writes)
+                       +-----------------------+-----------------------+
+                       |                                               |
+                       v                                               v
+        +-----------------------------+                 +-----------------------------+
+        | Component Instance 1        |                 | Component Instance 2        |
+        | (e.g. <accordion-card />)   |                 | (e.g. <accordion-card />)   |
+        +-----------------------------+                 +-----------------------------+
+        | Private Local State         |                 | Private Local State         |
+        | (local.isOpen = true)       |                 | (local.isOpen = false)      |
+        +-----------------------------+                 +-----------------------------+
+```
+
+### 1. Global / Shared State Store (`states.xml` / `scope="global"`)
+When a component or external file (e.g. `states.xml`) defines global states or uses `<data_model scope="global">`, its states are merged into the central state pool and become accessible across the entire application:
+
+```xml
+<!-- components/states.xml -->
+<component_def name="app-store">
+  <data_model scope="global">
+    <state id="theme">dark</state>
+    <state id="user" type="object">{"name": "Ahmet", "role": "Admin"}</state>
+  </data_model>
+</component_def>
+```
+
+### 2. Component-Scoped Instance Isolation (`isolated="true"` / `scope="local"`)
+When a component is marked with `isolated="true"` (or `<data_model scope="local">` / `<state scope="local">`), each rendered instance of that component receives its own independent reactive state. Mutating local state on one instance does not affect any other instance:
+
+```xml
+<!-- components/AccordionCard.xml -->
+<component_def name="accordion-card" isolated="true">
+  <data_model>
+    <state id="isOpen" type="boolean">false</state>
+    <state id="clicks" type="number">0</state>
+  </data_model>
+
+  <div class="card-box">
+    <h3>{props.title}</h3>
+    <p>Status: {local.isOpen ? 'OPEN' : 'CLOSED'}</p>
+    <p>Clicks: {local.clicks}</p>
+
+    <!-- Mutates ONLY this component instance's state -->
+    <button class="btn">
+      <on_click action="SET_STATE">
+        <path>local.isOpen</path>
+        <value>{local.isOpen ? 'false' : 'true'}</value>
+      </on_click>
+      <on_click action="SET_STATE">
+        <path>local.clicks</path>
+        <value>{local.clicks} + 1</value>
+      </on_click>
+      Toggle Card
+    </button>
+  </div>
+</component_def>
+```
+
+### 3. Hybrid State Access (Local + Global in the Same Component)
+An isolated component can seamlessly access and mutate both its private local state (`local.*`) and application-wide global state (`global.*` or `data.*`):
+
+```xml
+<component_def name="user-panel" isolated="true">
+  <data_model>
+    <state id="panel_open" type="boolean">false</state>
+  </data_model>
+
+  <div class="panel {data.theme}">
+    <span>User: {data.user.name}</span>
+    <span>Panel: {local.panel_open ? 'Open' : 'Closed'}</span>
+
+    <!-- Mutates local instance state -->
+    <button>
+      <on_click action="SET_STATE">
+        <path>local.panel_open</path>
+        <value>{local.panel_open ? 'false' : 'true'}</value>
+      </on_click>
+      Toggle Panel
+    </button>
+
+    <!-- Mutates global application state -->
+    <button>
+      <on_click action="SET_STATE">
+        <path>global.theme</path>
+        <value>{data.theme == 'dark' ? 'light' : 'dark'}</value>
+      </on_click>
+      Switch Theme
+    </button>
+  </div>
+</component_def>
+```
+
+---
+
 ## 🔒 Component Isolation & Scoping Matrix
 
 Below is a reference of how metadata & configuration tags behave regarding component scoping vs global state:
 
 | Tag / Feature | Scope Level | Leakage Risk | Scoping Behavior & Precedence |
 | :--- | :--- | :--- | :--- |
+| **`isolated="true"` / `scope="local"`** | Component Instance | 🟢 **Zero Leakage** | Isolated state (`local.*`) is instantiated per rendered component instance. Multiple copies maintain completely separate state. |
+| **`states.xml` / `scope="global"`** | Global Reactive Store | 🟢 **By Design** | Shared stores merge their `<data_model>` into the global `data.*` pool, accessible by root and all components. |
 | **`<api_config>`** | Component & Global | 🟢 **Zero Leakage** | Component-level `<api_config>` overrides global config for all XHR calls within that component tree. |
 | **`<constants>` / `<vars>`** | Component & Global | 🟢 **Zero Leakage** | Component design tokens inherit from parent components and override parent/global constants locally. |
 | **`<on_mount>`, `<on_interval>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
-| **`<state>` / `<data_model>`** | Global Reactive Store | 🟡 **Shared State** | States reside in global reactive `_rawState`. Component props (`{props.key}`) allow passing isolated values. |
 
 ---
 
