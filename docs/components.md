@@ -378,3 +378,84 @@ Sequential steps automatically receive step evaluation results from prior steps 
 </action_def>
 ```
 
+---
+
+## 8. 🧩 Component Definition & Dual-Mode State Scoping (`<component_def>`, `<import>`, `<data_model>`)
+
+EUIX Engine features a modular component model supporting both **Application-Wide Shared State Stores** and **Component-Scoped Instance Isolation**.
+
+### 1. Declaring Modular Components (`<component_def>`)
+Components can be defined inline or in external `.xml` files and imported via `<import src="..." />`:
+
+```xml
+<!-- components/UserBadge.xml -->
+<component_def name="user-badge" isolated="true">
+    <data_model>
+        <state id="is_active" type="boolean">true</state>
+        <state id="view_count" type="number">0</state>
+    </data_model>
+
+    <div class="user-badge {local.is_active ? 'badge-active' : 'badge-inactive'}">
+        <span class="user-name">{props.name}</span>
+        <span class="user-role">Role: {props.role}</span>
+        <span class="views">Views: {local.view_count}</span>
+
+        <!-- Mutates only this instance's state -->
+        <button class="btn-sm">
+            <on_click action="SET_STATE">
+                <path>local.view_count</path>
+                <value>{local.view_count} + 1</value>
+            </on_click>
+            Increment View
+        </button>
+    </div>
+</component_def>
+```
+
+### 2. Importing & Using Components (`<import>`, `<component>`)
+```xml
+<uid_spec>
+    <!-- Import external component definitions -->
+    <import src="./components/states.xml" name="app-store" />
+    <import src="./components/UserBadge.xml" name="user-badge" />
+
+    <flex direction="column" gap="12">
+        <!-- Render Multiple Independent Instances -->
+        <user-badge name="Alice" role="Admin" />
+        <user-badge name="Bob" role="Editor" />
+    </flex>
+</uid_spec>
+```
+
+### 3. State Scoping Attributes & Resolution Reference
+
+| Scope Tag / Attribute | Target Scope | Expression Resolution |
+| :--- | :--- | :--- |
+| `<component_def isolated="true">` | Instance Private | `{local.key}`, `{$local.key}`, or `{data.key}` (resolves locally first) |
+| `<data_model scope="local">` | Instance Private | `{local.key}`, `{$local.key}` |
+| `<state scope="local">` | Instance Private | `{local.key}`, `{$local.key}` |
+| `<data_model scope="global">` | Global Application Pool | `{data.key}`, `{global.key}` |
+| `states.xml` (Default Headless Store) | Global Application Pool | `{data.key}`, `{global.key}` |
+| `props` (Attributes on usage tag) | Component Local Props | `{props.key}`, `{key}` |
+
+### 4. Children & Slot Content Projection (`<children />` / `<slot />`)
+Parent components can project nested child content directly into a child component definition:
+
+```xml
+<!-- Component Definition (ModalCard.xml) -->
+<component_def name="modal-card">
+    <div class="modal-wrapper">
+        <h3>{props.title}</h3>
+        <!-- Projected Children Elements -->
+        <children />
+    </div>
+</component_def>
+
+<!-- Parent Usage -->
+<modal-card title="Confirm Deletion">
+    <p>Are you sure you want to delete this record?</p>
+    <button class="btn-danger">Delete</button>
+</modal-card>
+```
+
+

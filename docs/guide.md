@@ -387,16 +387,122 @@ When an `XHR` action is triggered, options are resolved in the following priorit
 
 ---
 
+## 🧩 Dual-Mode State Architecture: Component-Scoped State Isolation & Global Stores
+
+EUIX Engine features an advanced **Dual-Mode State System** that balances application-wide state sharing with instance-level component encapsulation.
+
+```
+                             +-----------------------------------+
+                             |     Central Global State Pool     |
+                             |  (data.*, global.*, states.xml)   |
+                             +-----------------------------------+
+                                               ^
+                                               | (reads / writes)
+                       +-----------------------+-----------------------+
+                       |                                               |
+                       v                                               v
+        +-----------------------------+                 +-----------------------------+
+        | Component Instance 1        |                 | Component Instance 2        |
+        | (e.g. <accordion-card />)   |                 | (e.g. <accordion-card />)   |
+        +-----------------------------+                 +-----------------------------+
+        | Private Local State         |                 | Private Local State         |
+        | (local.isOpen = true)       |                 | (local.isOpen = false)      |
+        +-----------------------------+                 +-----------------------------+
+```
+
+### 1. Global / Shared State Stores (`states.xml`, `<data_model scope="global">`)
+When states are defined in an external headless component (e.g. `states.xml`), or marked explicitly with `<data_model scope="global">`, they are registered directly into the root reactive state store (`_rawState` / `state` Proxy). Any component across the entire DOM tree can read and mutate these states using `{data.key}` or `{global.key}`:
+
+```xml
+<!-- components/states.xml -->
+<component_def name="app-state-store">
+    <data_model scope="global">
+        <state id="theme">dark</state>
+        <state id="current_user" type="object">{"name": "Ahmet", "role": "Admin"}</state>
+        <state id="notifications" type="array"></state>
+    </data_model>
+</component_def>
+```
+
+### 2. Component-Scoped Instance Isolation (`isolated="true"` / `scope="local"`)
+When building reusable multi-instance components (such as dropdowns, accordion cards, or modal dialogs), state collision must be prevented. By marking a component definition with `isolated="true"` (or specifying `<data_model scope="local">` or `<state scope="local">`), EUIX Engine instantiates a dedicated private reactive state object (`localRawState`) for each rendered DOM instance:
+
+```xml
+<!-- components/AccordionCard.xml -->
+<component_def name="accordion-card" isolated="true">
+    <data_model>
+        <state id="isOpen" type="boolean">false</state>
+        <state id="clicks" type="number">0</state>
+    </data_model>
+
+    <div class="card-box">
+        <h4>{props.title}</h4>
+        <p>Status: {local.isOpen ? 'OPEN' : 'CLOSED'}</p>
+        <p>Clicks: {local.clicks}</p>
+
+        <!-- Mutates ONLY this component instance's state -->
+        <button class="btn">
+            <on_click action="SET_STATE">
+                <path>local.isOpen</path>
+                <value>{local.isOpen ? 'false' : 'true'}</value>
+            </on_click>
+            <on_click action="SET_STATE">
+                <path>local.clicks</path>
+                <value>{local.clicks} + 1</value>
+            </on_click>
+            Toggle Card
+        </button>
+    </div>
+</component_def>
+```
+
+### 3. Hybrid State Access (Local + Global in the Same Component)
+Inside an isolated component, expressions can seamlessly read and mutate both instance-private state (`local.*` or `$local.*`) and application-wide global state (`global.*` or `data.*`):
+
+```xml
+<component_def name="user-profile-panel" isolated="true">
+    <data_model>
+        <state id="panel_expanded" type="boolean">false</state>
+    </data_model>
+
+    <div class="profile-panel {data.theme}">
+        <span>User: {data.current_user.name}</span>
+        <span>Panel: {local.panel_expanded ? 'Expanded' : 'Collapsed'}</span>
+
+        <!-- Local Instance Mutation -->
+        <button>
+            <on_click action="SET_STATE">
+                <path>local.panel_expanded</path>
+                <value>{local.panel_expanded ? 'false' : 'true'}</value>
+            </on_click>
+            Toggle Panel
+        </button>
+
+        <!-- Global State Mutation -->
+        <button>
+            <on_click action="SET_STATE">
+                <path>global.theme</path>
+                <value>{data.theme == 'dark' ? 'light' : 'dark'}</value>
+            </on_click>
+            Switch Global Theme
+        </button>
+    </div>
+</component_def>
+```
+
+---
+
 ## 🔒 Element & Component Isolation Matrix
 
 Below is a reference of how various EUIX Engine metadata & configuration tags behave regarding component scoping vs global state:
 
 | Tag / Feature | Scope Level | Leakage Risk | Scoping Behavior & Precedence |
 | :--- | :--- | :--- | :--- |
+| **`isolated="true"` / `scope="local"`** | Component Instance | 🟢 **Zero Leakage** | Local state (`local.*`) is instantiated per rendered component instance. Multiple copies maintain completely separate state. |
+| **`states.xml` / `scope="global"`** | Global Reactive Store | 🟢 **By Design** | Shared stores merge their `<data_model>` into the global `data.*` pool, accessible by root and all components. |
 | **`<api_config>`** | Component & Global | 🟢 **Zero Leakage** | Component-level `<api_config>` overrides global config for all XHR calls within that component tree. |
 | **`<constants>` / `<vars>`** | Component & Global | 🟢 **Zero Leakage** | Component design tokens inherit from parent components and override parent/global constants locally. |
 | **`<on_mount>`, `<on_interval>`, `<on_unmount>`** | Component & Element | 🟢 **Zero Leakage** | Timers and lifecycle hooks are tied strictly to the lifecycle of the mounting component instance. |
-| **`<state>` / `<data_model>`** | Global Reactive Store | 🟡 **Shared State** | States reside in the global reactive `_rawState`. Component props (`{props.key}`) allow passing isolated values. |
 | **`<persistence>`** | State ID Level | 🟢 **Zero Leakage** | Explicitly targets designated state keys for LocalStorage / SessionStorage persistence. |
 | **`<action_def>`** | Component & Global | 🟢 **Zero Leakage** | Composed workflows registered in component specs override global action definitions locally. |
 

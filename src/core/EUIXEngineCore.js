@@ -1499,16 +1499,16 @@ class EUIXEngineCore {
         if (!expr) return "";
         return String(expr)
             .trim()
-            .replace(/^\{\s*data\.([a-zA-Z0-9_.]+)\s*\}$/, "$1")
-            .replace(/^data\./, "")
+            .replace(/^\{\s*(?:data|global|\$global|local|\$local|state)\.([a-zA-Z0-9_.]+)\s*\}$/, "$1")
+            .replace(/^(?:data|global|\$global|state)\./, "")
             .replace(/^\{\s*|\s*\}$/g, "");
     }
 
     extractStateKeys(expr) {
         if (!expr) return [];
         const keys = new Set();
-        const matches = expr.match(/data\.(\w+)/g) || [];
-        matches.forEach(m => keys.add(m.replace(/^data\./, "")));
+        const matches = expr.match(/(?:data|local|\$local)\.(\w+)/g) || [];
+        matches.forEach(m => keys.add(m.replace(/^(?:data|local|\$local)\./, "")));
         const plainMatches = expr.match(/\{(\w+)\}/g) || [];
         plainMatches.forEach(m => keys.add(m.replace(/^\{|\}$/g, "")));
         return Array.from(keys);
@@ -1593,8 +1593,25 @@ class EUIXEngineCore {
         if (this._computedRegistry && this._computedRegistry.has(path)) {
             return this.getComputed(path);
         }
+        if (path.startsWith("local.") || path.startsWith("$local.")) {
+            const key = path.replace(/^(\$local|local)\./, "");
+            if (context._localState && context._localState[key] !== undefined) {
+                return context._localState[key];
+            }
+            if (context.local && context.local[key] !== undefined) {
+                return context.local[key];
+            }
+        }
+        if (path.startsWith("global.") || path.startsWith("$global.")) {
+            const key = path.replace(/^(\$global|global)\.(data\.)?/, "");
+            return this.getState(key);
+        }
         if (path.startsWith("data.") || path.startsWith("state.")) {
-            return this.getState(path.replace(/^(data|state)\./, ""));
+            const cleanKey = path.replace(/^(data|state)\./, "");
+            if (context._localState && context._localState[cleanKey] !== undefined) {
+                return context._localState[cleanKey];
+            }
+            return this.getState(cleanKey);
         }
         if (path.startsWith("constants.") || path.startsWith("const.")) {
             const key = path.replace(/^(constants|const)\./, "");
@@ -2380,11 +2397,33 @@ class EUIXEngineCore {
                 }
             }
 
-            const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : doc.querySelectorAll("data_model > state");
+            const isDocIsolated = !isMainDoc && (
+                (typeof doc.getAttribute === "function" && (
+                    doc.getAttribute("isolated") === "true" ||
+                    doc.getAttribute("scoped") === "true" ||
+                    doc.getAttribute("scope") === "local" ||
+                    doc.getAttribute("scope") === "isolated"
+                )) ||
+                (dataModelNode && (
+                    dataModelNode.getAttribute("isolated") === "true" ||
+                    dataModelNode.getAttribute("scoped") === "true" ||
+                    dataModelNode.getAttribute("scope") === "local" ||
+                    dataModelNode.getAttribute("scope") === "isolated"
+                ))
+            );
+
+            const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : (doc.querySelectorAll ? Array.from(doc.querySelectorAll("data_model > state")) : []);
 
             stateNodes.forEach(node => {
                 const id = node.getAttribute("id");
                 if (!id) return;
+                const scope = node.getAttribute("scope");
+                const isStateIsolated = isDocIsolated || scope === "local" || scope === "isolated" || scope === "scoped";
+
+                if (isStateIsolated && !isMainDoc && scope !== "global") {
+                    return;
+                }
+
                 const type = node.getAttribute("type");
                 const src = node.getAttribute("src") || node.getAttribute("url");
                 const persistAttr = node.getAttribute("persist") || node.getAttribute("storage");
@@ -2668,6 +2707,16 @@ class EUIXEngineCore {
         document.head.appendChild(link);
     }
 
+    extractStateKeys(expr) {
+        if (!expr) return [];
+        const keys = new Set();
+        const matches = expr.match(/(?:data|local|\$local)\.(\w+)/g) || [];
+        matches.forEach(m => keys.add(m.replace(/^(?:data|local|\$local)\./, "")));
+        const plainMatches = expr.match(/\{(\w+)\}/g) || [];
+        plainMatches.forEach(m => keys.add(m.replace(/^\{|\}$/g, "")));
+        return Array.from(keys);
+    }
+
     interpolate(text, context = {}) {
         if (!text) return "";
 
@@ -2687,8 +2736,25 @@ class EUIXEngineCore {
             return match;
         });
 
-        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}
-        result = result.replace(/\{(args|params|result|err|error)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}
+        result = result.replace(/\{(args|params|result|err|error|local|\$local|global)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+            if (scope === "local" || scope === "$local") {
+                if (context._localState && prop) {
+                    return context._localState[prop] !== undefined ? String(context._localState[prop]) : "";
+                }
+                if (context.local && prop && context.local[prop] !== undefined) {
+                    return String(context.local[prop]);
+                }
+                return match;
+            }
+            if (scope === "global") {
+                if (prop) {
+                    const clean = prop.replace(/^data\./, "");
+                    const val = this.getState(clean);
+                    return val !== undefined && val !== null ? String(val) : "";
+                }
+                return match;
+            }
             if (scope === "args" || scope === "params") {
                 const argsObj = context.args || context.params;
                 if (argsObj && typeof argsObj === "object") {
@@ -2735,10 +2801,28 @@ class EUIXEngineCore {
                 return match;
             }
 
-            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.")) {
+            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.") || trimmed.includes("local.")) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(trimmed, (name) => {
+                        if (name.startsWith("local.") || name.startsWith("$local.")) {
+                            const lk = name.replace(/^(\$local|local)\./, "");
+                            if (context._localState && context._localState[lk] !== undefined) {
+                                return context._localState[lk];
+                            }
+                            if (context.local && context.local[lk] !== undefined) {
+                                return context.local[lk];
+                            }
+                        }
+                        if (name.startsWith("global.") || name.startsWith("$global.")) {
+                            const gk = name.replace(/^(\$global|global)\.(data\.)?/, "");
+                            return this.getState(gk);
+                        }
+
                         const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
+                        if (context._localState && context._localState[cleanKey] !== undefined) {
+                            return context._localState[cleanKey];
+                        }
+
                         const parts = name.split(".");
                         const firstPart = parts[0];
 
@@ -2778,8 +2862,24 @@ class EUIXEngineCore {
 
             if (/^(?:parent\.)?data\./.test(trimmed)) {
                 const cleanKey = trimmed.replace(/^(?:parent\.)?data\./, "");
+                if (context._localState && context._localState[cleanKey] !== undefined) {
+                    const val = context._localState[cleanKey];
+                    return val !== undefined && val !== null ? String(val) : "";
+                }
                 const val = this.getState(this.parseBindPath(cleanKey));
                 return val !== undefined && val !== null ? String(val) : "";
+            }
+
+            if (/^(?:local|\$local)\./.test(trimmed)) {
+                const cleanKey = trimmed.replace(/^(?:local|\$local)\./, "");
+                if (context._localState && context._localState[cleanKey] !== undefined) {
+                    const val = context._localState[cleanKey];
+                    return val !== undefined && val !== null ? String(val) : "";
+                }
+                if (context.local && context.local[cleanKey] !== undefined) {
+                    const val = context.local[cleanKey];
+                    return val !== undefined && val !== null ? String(val) : "";
+                }
             }
 
             if (context && context[trimmed] !== undefined && context[trimmed] !== null && typeof context[trimmed] !== "object") {
@@ -3020,11 +3120,15 @@ class EUIXEngineCore {
                 }
             }
 
-            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
+            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_]+)/g));
             if (matches.length > 0) {
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
-                    this.registerBinding(key, el, "attribute", { attrName, template: attrValue });
+                    const isLocal = context._localState && (context._localState[key] !== undefined || attrValue.includes(`local.${key}`) || attrValue.includes(`$local.${key}`));
+                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                    this.registerBinding(bindKey, el, "attribute", () => {
+                        this.updateAttributeBinding(el, attrName, attrValue, context);
+                    });
                 });
                 this.updateAttributeBinding(el, attrName, attrValue, context);
             }
@@ -3709,26 +3813,32 @@ class EUIXEngineCore {
 
         if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
-            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?data\.([a-zA-Z0-9_]+)/g));
+            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_]+)/g));
             if (matches.length > 0) {
                 div.dataset.euixMultiTemplate = rawContent;
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
-                    this.registerBinding(key, div, "multi_template");
-                    this.syncBindings(key, this.getState(key));
+                    const isLocal = context._localState && (context._localState[key] !== undefined || rawContent.includes(`local.${key}`) || rawContent.includes(`$local.${key}`));
+                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                    this.registerBinding(bindKey, div, "multi_template", () => {
+                        div.textContent = this.interpolate(rawContent, context);
+                    });
+                    this.syncBindings(bindKey, isLocal ? context._localState[key] : this.getState(key));
                 });
             } else {
                 const genericBindPath = this.resolveBindPath(xmlNode);
                 if (genericBindPath) {
+                    const isLocal = context._localState && (context._localState[genericBindPath] !== undefined || genericBindPath.startsWith("local."));
+                    const cleanPath = genericBindPath.replace(/^local\./, "");
+                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + cleanPath) : cleanPath;
                     const trimmed = rawContent.trim();
                     if (trimmed.includes("{value}")) {
                         div.dataset.euixTextTemplate = trimmed;
-                    } else if (trimmed.includes(`{data.${genericBindPath}}`)) {
-                        const escapedPath = this.escapeRegExp(genericBindPath);
-                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{data\\.${escapedPath}\\}`, "g"), "{value}");
+                    } else if (trimmed.includes(`{data.${cleanPath}}`) || trimmed.includes(`{local.${cleanPath}}`)) {
+                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{(?:data|local)\\.${cleanPath}\\}`, "g"), "{value}");
                     }
-                    this.registerBinding(genericBindPath, div, "text");
-                    this.syncBindings(genericBindPath, this.getState(genericBindPath));
+                    this.registerBinding(bindKey, div, "text");
+                    this.syncBindings(bindKey, isLocal ? context._localState[cleanPath] : this.getState(cleanPath));
                 }
             }
         }
@@ -3888,12 +3998,90 @@ class EUIXEngineCore {
             componentApiConfig = { baseUrl, credentials, timeout, headers };
         }
 
+        const dataModelNode = this.getChild(specNode, "data_model") || specNode.querySelector("data_model");
+        const isIsolated = (
+            (usageNode.getAttribute && (
+                usageNode.getAttribute("isolated") === "true" ||
+                usageNode.getAttribute("scoped") === "true" ||
+                usageNode.getAttribute("scope") === "local" ||
+                usageNode.getAttribute("scope") === "isolated"
+            )) ||
+            (specNode.getAttribute && (
+                specNode.getAttribute("isolated") === "true" ||
+                specNode.getAttribute("scoped") === "true" ||
+                specNode.getAttribute("scope") === "local" ||
+                specNode.getAttribute("scope") === "isolated"
+            )) ||
+            (dataModelNode && (
+                dataModelNode.getAttribute("isolated") === "true" ||
+                dataModelNode.getAttribute("scoped") === "true" ||
+                dataModelNode.getAttribute("scope") === "local" ||
+                dataModelNode.getAttribute("scope") === "isolated"
+            ))
+        );
+
+        const localRawState = {};
+        let hasLocalState = false;
+        const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : (specNode.querySelectorAll ? Array.from(specNode.querySelectorAll("data_model > state")) : []);
+        stateNodes.forEach(node => {
+            const id = node.getAttribute("id");
+            if (!id) return;
+            const scope = node.getAttribute("scope");
+            const isStateLocal = isIsolated || scope === "local" || scope === "isolated" || scope === "scoped";
+            if (isStateLocal && scope !== "global") {
+                hasLocalState = true;
+                const type = node.getAttribute("type");
+                if (type === "array") {
+                    const items = this.getChildren(node, "item").map(item => {
+                        const obj = {};
+                        Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
+                        return obj;
+                    });
+                    localRawState[id] = items;
+                } else if (type === "number" || type === "int" || type === "float") {
+                    const txt = node.textContent.trim();
+                    localRawState[id] = txt !== "" ? Number(txt) : 0;
+                } else if (type === "boolean" || type === "bool") {
+                    const txt = node.textContent.trim().toLowerCase();
+                    localRawState[id] = txt === "true";
+                } else if (type === "object" || type === "json") {
+                    const txt = node.textContent.trim();
+                    try {
+                        localRawState[id] = txt ? JSON.parse(txt) : {};
+                    } catch (_) {
+                        localRawState[id] = {};
+                    }
+                } else {
+                    localRawState[id] = node.textContent.trim() || "";
+                }
+            }
+        });
+
+        if (!EUIXEngineCore._instanceSeq) EUIXEngineCore._instanceSeq = 0;
+        const instanceId = "comp_inst_" + (++EUIXEngineCore._instanceSeq);
+        const self = this;
+
+        const reactiveLocalState = hasLocalState ? new Proxy(localRawState, {
+            get(target, prop, receiver) {
+                return Reflect.get(target, prop, receiver);
+            },
+            set(target, key, value) {
+                target[key] = value;
+                self.syncBindings(instanceId + ":" + key, value);
+                return true;
+            }
+        }) : null;
+
         const childContext = {
             ...context,
             parent: context,
             $parent: context,
             props,
             ...props,
+            _instanceId: instanceId,
+            _localState: reactiveLocalState,
+            local: reactiveLocalState,
+            $local: reactiveLocalState,
             _compDepth: compDepth,
             _componentApiConfig: componentApiConfig,
             constants: {
@@ -4640,12 +4828,23 @@ class EUIXEngineCore {
 
             const evalGetter = (key) => {
                 const cleanKey = this.parseBindPath(key);
+                if (key.startsWith("local.") && context._localState) {
+                    const lk = key.replace(/^local\./, "");
+                    const val = context._localState[lk];
+                    const num = parseFloat(val);
+                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+                }
+                if (context._localState && context._localState[cleanKey] !== undefined) {
+                    const val = context._localState[cleanKey];
+                    const num = parseFloat(val);
+                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+                }
                 const val = this.getState(cleanKey);
                 const num = parseFloat(val);
                 return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
             };
 
-            const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+            const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|local\.\w+|\$local\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
             const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
 
             if (hasBraces && (rawValue.includes("?") || /[\+\-\*\/]/.test(cleanExpr))) {
@@ -4659,6 +4858,24 @@ class EUIXEngineCore {
 
             if (nextValue === "") {
                 nextValue = this.interpolate(rawValue, context);
+            }
+
+            // Check if targeting local state
+            if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
+                const localKey = rawPath.replace(/^(\$local|local)\./, "");
+                if (context._localState) {
+                    context._localState[localKey] = nextValue;
+                    if (context._instanceId) {
+                        this.syncBindings(context._instanceId + ":" + localKey, nextValue);
+                    }
+                    return;
+                }
+            } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
+                context._localState[path] = nextValue;
+                if (context._instanceId) {
+                    this.syncBindings(context._instanceId + ":" + path, nextValue);
+                }
+                return;
             }
 
             this.setState(path, nextValue);
@@ -4682,6 +4899,27 @@ class EUIXEngineCore {
             const interpolatedPath = this.interpolate(rawPath, context);
             const path = this.parseBindPath(interpolatedPath);
             if (path) {
+                if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
+                    const localKey = rawPath.replace(/^(\$local|local)\./, "");
+                    if (context._localState) {
+                        const currentVal = context._localState[localKey];
+                        const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
+                        context._localState[localKey] = isTruthy ? "false" : "true";
+                        if (context._instanceId) {
+                            this.syncBindings(context._instanceId + ":" + localKey, context._localState[localKey]);
+                        }
+                        return;
+                    }
+                } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
+                    const currentVal = context._localState[path];
+                    const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
+                    context._localState[path] = isTruthy ? "false" : "true";
+                    if (context._instanceId) {
+                        this.syncBindings(context._instanceId + ":" + path, context._localState[path]);
+                    }
+                    return;
+                }
+
                 const currentVal = this.getState(path);
                 const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
                 this.setState(path, isTruthy ? "false" : "true");
@@ -4987,7 +5225,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
+        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
         
         let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {
