@@ -305,6 +305,100 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         expect(txtReq.getAttribute('placeholder')).toBe('Required field...');
         expect(img.getAttribute('src')).toBe('/avatar.png');
     });
+
+    it('should correctly format dynamic style objects/strings and support declarative event modifiers', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="themeColor">#3b82f6</state>
+                <state id="cardStyle" type="object">{"backgroundColor": "#1e293b", "padding": "20px", "borderRadius": "10px", "--accent-glow": "0 0 10px #3b82f6"}</state>
+                <state id="isSubmitted" type="boolean">false</state>
+            </data_model>
+            <div id="styled-card" style="{data.cardStyle}">
+                <form id="test-form">
+                    <button id="submit-btn" type="submit">
+                        <on_click action="RUN_SCRIPT" prevent="true" stop="true">
+                            $data.isSubmitted = true;
+                        </on_click>
+                        Submit
+                    </button>
+                </form>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const card = document.getElementById('styled-card');
+        const btn = document.getElementById('submit-btn');
+
+        // Style object verification
+        const styleAttr = card.getAttribute('style');
+        expect(styleAttr).toContain('background-color: #1e293b');
+        expect(styleAttr).toContain('padding: 20px');
+        expect(styleAttr).toContain('border-radius: 10px');
+        expect(styleAttr).toContain('--accent-glow: 0 0 10px #3b82f6');
+
+        // Update style state reactively
+        engine.setState('cardStyle', { backgroundColor: '#0f172a', padding: '30px', borderRadius: '16px' });
+        const updatedStyle = card.getAttribute('style');
+        expect(updatedStyle).toContain('background-color: #0f172a');
+        expect(updatedStyle).toContain('padding: 30px');
+        expect(updatedStyle).toContain('border-radius: 16px');
+
+        // Event modifier verification (prevent & stop on submit button inside form)
+        let defaultPrevented = false;
+        let propagationStopped = false;
+        const fakeEvent = new Event('click', { bubbles: true, cancelable: true });
+        const origPrevent = fakeEvent.preventDefault.bind(fakeEvent);
+        const origStop = fakeEvent.stopPropagation.bind(fakeEvent);
+        fakeEvent.preventDefault = () => { defaultPrevented = true; origPrevent(); };
+        fakeEvent.stopPropagation = () => { propagationStopped = true; origStop(); };
+
+        btn.dispatchEvent(fakeEvent);
+        expect(defaultPrevented).toBe(true);
+        expect(propagationStopped).toBe(true);
+        expect(engine.getState('isSubmitted')).toBe(true);
+    });
+
+    it('should support JSON array state initialization and deep static/dynamic bracket indexing with reactivity', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="users" type="array">[{"name": "Alice", "city": "Istanbul"}, {"name": "Bob", "city": "London"}]</state>
+                <state id="selectedIdx" type="number">1</state>
+            </data_model>
+            <div id="user-container">
+                <p id="first-user">{data.users[0].name} from {data.users[0].city}</p>
+                <p id="dynamic-user">{data.users[data.selectedIdx].name}</p>
+                <span id="user-badge" data-city="{data.users[data.selectedIdx].city}">Active User</span>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const firstUser = document.getElementById('first-user');
+        const dynamicUser = document.getElementById('dynamic-user');
+        const badge = document.getElementById('user-badge');
+
+        // Initial state
+        expect(firstUser.textContent).toBe('Alice from Istanbul');
+        expect(dynamicUser.textContent).toBe('Bob');
+        expect(badge.getAttribute('data-city')).toBe('London');
+
+        // Reactive index change
+        engine.setState('selectedIdx', 0);
+        expect(dynamicUser.textContent).toBe('Alice');
+        expect(badge.getAttribute('data-city')).toBe('Istanbul');
+
+        // Reactive array mutation
+        engine.setState('users', [
+            { name: 'Carol', city: 'Berlin' },
+            { name: 'Dave', city: 'Tokyo' }
+        ]);
+        expect(firstUser.textContent).toBe('Carol from Berlin');
+        expect(dynamicUser.textContent).toBe('Carol');
+        expect(badge.getAttribute('data-city')).toBe('Berlin');
+    });
 });
 
 
