@@ -345,6 +345,72 @@ const toNum = (val, defaultVal = 0) => {
     return isNaN(n) ? defaultVal : n;
 };
 
+const _templateTokensCache = new Map();
+
+function getCompiledTemplate(text) {
+    let compiled = _templateTokensCache.get(text);
+    if (compiled !== undefined) return compiled;
+
+    if (/[?!=><+\-*/(),]/.test(text)) {
+        if (_templateTokensCache.size > 1000) _templateTokensCache.clear();
+        _templateTokensCache.set(text, null);
+        return null;
+    }
+
+    const chunks = [];
+    let lastIdx = 0;
+    const len = text.length;
+    let isPureSimple = true;
+
+    for (let i = 0; i < len; i++) {
+        if (text.charCodeAt(i) === 123) { // '{'
+            const closeIdx = text.indexOf("}", i + 1);
+            if (closeIdx === -1) {
+                isPureSimple = false;
+                break;
+            }
+            if (i > lastIdx) {
+                chunks.push({ type: "static", val: text.slice(lastIdx, i) });
+            }
+            const rawInner = text.slice(i + 1, closeIdx).trim();
+            if (!rawInner || /[?!=><+\-*/(),\[\]]/.test(rawInner)) {
+                isPureSimple = false;
+                break;
+            }
+
+            const dotIdx = rawInner.indexOf(".");
+            if (dotIdx === -1) {
+                chunks.push({ type: "token", isSimple: true, scope: rawInner, prop: "" });
+            } else {
+                const scope = rawInner.slice(0, dotIdx);
+                const prop = rawInner.slice(dotIdx + 1);
+                chunks.push({
+                    type: "token",
+                    isSimple: false,
+                    scope,
+                    prop,
+                    parts: prop.includes(".") ? prop.split(".") : [prop]
+                });
+            }
+            i = closeIdx;
+            lastIdx = closeIdx + 1;
+        }
+    }
+
+    if (!isPureSimple) {
+        compiled = null;
+    } else {
+        if (lastIdx < len) {
+            chunks.push({ type: "static", val: text.slice(lastIdx) });
+        }
+        compiled = chunks;
+    }
+
+    if (_templateTokensCache.size > 1000) _templateTokensCache.clear();
+    _templateTokensCache.set(text, compiled);
+    return compiled;
+}
+
 const EVENT_TAGS = new Set(["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"]);
 
 const METADATA_AND_EVENT_TAGS = new Set([
@@ -994,6 +1060,7 @@ class EUIXEngineCore {
     }
 
     destroy() {
+        this._isMounted = false;
         if (this._activeIntervals && this._activeIntervals.length > 0) {
             this._activeIntervals.forEach(id => clearInterval(id));
             this._activeIntervals = [];
@@ -1998,20 +2065,21 @@ class EUIXEngineCore {
         const executedFns = new Set();
         const syncedPaths = new Set();
 
-        pending.forEach(({ key, value, sourceEl }) => {
+        for (let i = 0; i < pending.length; i++) {
+            const { key, value, sourceEl } = pending[i];
             invalidateComputed(key);
-            this.syncBindings(key, value, sourceEl);
+            this.syncBindings(key, value, sourceEl, executedFns);
             syncedPaths.add(key);
             if (key.includes(".")) {
                 const rootKey = key.split(".")[0];
                 if (!syncedPaths.has(rootKey)) {
-                    this.syncBindings(rootKey, this._rawState[rootKey], sourceEl);
-                    this.syncBindings("data." + rootKey, this._rawState[rootKey], sourceEl);
+                    this.syncBindings(rootKey, this._rawState[rootKey], sourceEl, executedFns);
+                    this.syncBindings("data." + rootKey, this._rawState[rootKey], sourceEl, executedFns);
                     syncedPaths.add(rootKey);
                 }
-                this.syncBindings("data." + key, value, sourceEl);
+                this.syncBindings("data." + key, value, sourceEl, executedFns);
             }
-        });
+        }
 
         allAffected.forEach(cId => {
             const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
@@ -2275,38 +2343,51 @@ class EUIXEngineCore {
         }
     }
 
-    syncBindings(path, value, sourceEl = null) {
-        const list = this._bindings.get(path) || [];
+    syncBindings(path, value, sourceEl = null, executedFns = null) {
+        const list = this._bindings.get(path);
+        if (!list || list.length === 0) return;
         const text = value === undefined || value === null ? "" : String(value);
 
-        list.forEach((item) => {
+        let hasDeadNodes = false;
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
             const { el, kind, updateFn } = item;
+
+            if (this._isMounted && el && el.isConnected === false) {
+                hasDeadNodes = true;
+                continue;
+            }
+
             if (isFn(updateFn)) {
+                if (executedFns) {
+                    if (executedFns.has(updateFn)) continue;
+                    executedFns.add(updateFn);
+                }
                 updateFn(value);
-                return;
+                continue;
             }
 
             if (kind === "attribute" && updateFn && typeof updateFn === "object") {
                 const { attrName, template } = updateFn;
                 this.updateAttributeBinding(el, attrName, template);
-                return;
+                continue;
             }
 
-            if (!el || el === sourceEl) return;
+            if (!el || el === sourceEl) continue;
 
             if (kind === "input") {
                 if (el.value !== text) el.value = text;
-                return;
+                continue;
             }
 
             if (kind === "checkbox") {
                 el.checked = this.isTruthy(text);
-                return;
+                continue;
             }
 
             if (kind === "radio") {
                 el.checked = (String(el.value || "") === text);
-                return;
+                continue;
             }
 
             if (kind === "multi_template") {
@@ -2314,7 +2395,7 @@ class EUIXEngineCore {
                 if (template) {
                     el.textContent = this.interpolate(template);
                 }
-                return;
+                continue;
             }
 
             if (kind === "text") {
@@ -2328,7 +2409,16 @@ class EUIXEngineCore {
                     el.textContent = text;
                 }
             }
-        });
+        }
+
+        if (hasDeadNodes) {
+            const alive = list.filter(item => !item.el || item.el.isConnected !== false);
+            if (alive.length === 0) {
+                this._bindings.delete(path);
+            } else {
+                this._bindings.set(path, alive);
+            }
+        }
     }
 
     applyLayoutStyles(el, xmlNode, context) {
@@ -2497,12 +2587,14 @@ class EUIXEngineCore {
                 this.initConstants();
                 this.initDataModel();
                 this.render();
+                this._isMounted = true;
                 this.runMountActions();
             });
             return this;
         }
 
         this.render();
+        this._isMounted = true;
         this.runMountActions();
         const mountEnd = getNow();
         this._mountDuration = parseFloat((mountEnd - mountStart).toFixed(2));
@@ -3096,6 +3188,120 @@ class EUIXEngineCore {
                     }
                 }
             }
+        }
+
+        // Fast-path 2: compiled tokenized template chunks (Multi-token without regex overhead)
+        const compiled = getCompiledTemplate(text);
+        if (compiled) {
+            let out = "";
+            for (let i = 0; i < compiled.length; i++) {
+                const c = compiled[i];
+                if (c.type === "static") {
+                    out += c.val;
+                } else if (c.isSimple) {
+                    if (context && context[c.scope] !== undefined) {
+                        const v = context[c.scope];
+                        out += (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+                    } else if (this.constants && this.constants.has(c.scope)) {
+                        out += this.constants.get(c.scope);
+                    } else if (EUIXEngineCore._globalConstants && EUIXEngineCore._globalConstants.has(c.scope)) {
+                        out += EUIXEngineCore._globalConstants.get(c.scope);
+                    } else {
+                        const v = this.getState(c.scope);
+                        out += (v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "");
+                    }
+                } else if (c.scope === "const" || c.scope === "constants" || c.scope === "var" || c.scope === "vars" || c.scope === "constant" || c.scope === "variable") {
+                    if (context && context.constants && context.constants[c.prop] !== undefined) {
+                        out += context.constants[c.prop];
+                    } else if (this.constants && this.constants.has(c.prop)) {
+                        out += this.constants.get(c.prop);
+                    } else if (EUIXEngineCore._globalConstants && EUIXEngineCore._globalConstants.has(c.prop)) {
+                        out += EUIXEngineCore._globalConstants.get(c.prop);
+                    }
+                } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
+                    const v = this.getState(c.prop);
+                    out += (v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "");
+                } else if (c.scope === "parent") {
+                    const clean = c.prop.replace(/^data\./, "");
+                    const v = this.getState(clean);
+                    out += (v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "");
+                } else if (c.scope === "props") {
+                    const propsObj = context ? (context.props || context) : null;
+                    if (propsObj && propsObj[c.prop] !== undefined) {
+                        const v = propsObj[c.prop];
+                        out += (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+                    }
+                } else if (c.scope === "local" || c.scope === "$local") {
+                    if (context && context._localState && context._localState[c.prop] !== undefined) {
+                        const v = context._localState[c.prop];
+                        out += (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+                    } else if (context && context.local && context.local[c.prop] !== undefined) {
+                        const v = context.local[c.prop];
+                        out += (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+                    }
+                } else if (c.scope === "api" || c.scope === "$api") {
+                    if (c.prop) {
+                        const parts = c.parts;
+                        const endpointId = parts[0];
+                        const epProp = parts.slice(1).join(".");
+                        const status = isFn(this.getApiStatus) ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+                        if (status) {
+                            if (!epProp) {
+                                out += typeof status === "object" ? JSON.stringify(status) : String(status);
+                            } else {
+                                const val = epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
+                                if (val !== undefined && val !== null) out += String(val);
+                            }
+                        }
+                    }
+                } else if (c.scope === "result") {
+                    if (!c.prop) {
+                        if (context && context.result !== undefined && context.result !== null) {
+                            out += typeof context.result === "object" ? JSON.stringify(context.result) : String(context.result);
+                        }
+                    } else if (context && context.result && typeof context.result === "object") {
+                        let curr = context.result;
+                        for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
+                            curr = curr[c.parts[p]];
+                        }
+                        if (curr !== undefined && curr !== null) out += String(curr);
+                    }
+                } else if (c.scope === "err" || c.scope === "error") {
+                    const errObj = context ? (context[c.scope] || context.err || context.error) : null;
+                    if (errObj) {
+                        if (!c.prop) {
+                            out += typeof errObj === "object" ? (errObj.message || JSON.stringify(errObj)) : String(errObj);
+                        } else {
+                            let curr = errObj;
+                            for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
+                                curr = curr[c.parts[p]];
+                            }
+                            if (curr !== undefined && curr !== null) out += String(curr);
+                        }
+                    }
+                } else if (c.scope === "args" || c.scope === "params") {
+                    const argsObj = context ? (context.args || context.params) : null;
+                    if (argsObj && typeof argsObj === "object") {
+                        let curr = argsObj;
+                        for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
+                            curr = curr[c.parts[p]];
+                        }
+                        if (curr !== undefined) {
+                            out += (typeof curr === "object" && curr !== null ? JSON.stringify(curr) : (curr ?? ""));
+                        }
+                    }
+                } else if (context && context[c.scope] !== undefined && context[c.scope] !== null) {
+                    let curr = context[c.scope];
+                    const parts = c.parts;
+                    for (let p = 0; p < parts.length && curr !== undefined && curr !== null; p++) {
+                        curr = curr[parts[p]];
+                    }
+                    if (curr !== undefined) {
+                        out += (typeof curr === "object" && curr !== null ? JSON.stringify(curr) : (curr ?? ""));
+                    }
+                }
+            }
+            return out;
         }
 
         let result = text;
@@ -3934,15 +4140,16 @@ class EUIXEngineCore {
             };
 
             const getItemHash = (item) => {
-                if (typeof item === "object" && item !== null) {
-                    const clone = { ...item };
-                    delete clone._index;
-                    delete clone.index;
-                    try {
-                        return JSON.stringify(clone);
-                    } catch (_) {
-                        return String(item);
+                if (isObj(item)) {
+                    if (item.__v !== undefined) return item.__v;
+                    let h = "";
+                    for (const k in item) {
+                        if (k !== "_index" && k !== "index") {
+                            const v = item[k];
+                            h += k + ":" + (isObj(v) ? (v.id ?? v.key ?? Object.keys(v).length) : v) + ";";
+                        }
                     }
+                    return h;
                 }
                 return String(item);
             };
@@ -3959,6 +4166,11 @@ class EUIXEngineCore {
                         list = [];
                     }
                 }
+
+                const templateChildren = Array.from(xmlNode.children);
+                const baseChildContext = Object.create(context);
+                baseChildContext._parentStateKey = itemsKey;
+                baseChildContext._insideForEach = true;
 
                 if (isVirtual) {
                     const totalItems = list.length;
@@ -3995,14 +4207,18 @@ class EUIXEngineCore {
                                 nodes = existing.nodes;
                             } else {
                                 nodes = [];
-                                Array.from(xmlNode.children).forEach(child => {
-                                    const childContext = { ...context, [varName]: item, _index: i, index: i, _parentStateKey: itemsKey, _insideForEach: true };
+                                const childContext = Object.create(baseChildContext);
+                                childContext[varName] = item;
+                                childContext._index = i;
+                                childContext.index = i;
+                                for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
+                                    const child = templateChildren[cIdx];
                                     const el = this.createHTMLElement(child, childContext);
                                     if (el) {
                                         this.applyItemChildStyles(el, child, context);
                                         nodes.push(el);
                                     }
-                                });
+                                }
                                 if (existing && existing.nodes) {
                                     existing.nodes.forEach(oldNode => {
                                         if (oldNode && oldNode.parentNode === contentWrapper) {
@@ -4026,12 +4242,13 @@ class EUIXEngineCore {
                         });
 
                         const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
-                        itemNodesSequence.forEach(node => {
+                        for (let nIdx = 0; nIdx < itemNodesSequence.length; nIdx++) {
+                            const node = itemNodesSequence[nIdx];
                             if (node) {
                                 if (fragment) fragment.appendChild(node);
                                 else contentWrapper.appendChild(node);
                             }
-                        });
+                        }
                         if (fragment) {
                             contentWrapper.appendChild(fragment);
                         }
@@ -4062,7 +4279,8 @@ class EUIXEngineCore {
                 const activeKeys = new Set();
                 const itemNodesSequence = [];
 
-                list.forEach((item, idx) => {
+                for (let idx = 0; idx < list.length; idx++) {
+                    const item = list[idx];
                     if (typeof item === "object" && item !== null) {
                         try {
                             item._index = idx;
@@ -4083,14 +4301,18 @@ class EUIXEngineCore {
                     } else {
                         // Create or update DOM nodes for this item
                         nodes = [];
-                        Array.from(xmlNode.children).forEach(child => {
-                            const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey, _insideForEach: true };
+                        const childContext = Object.create(baseChildContext);
+                        childContext[varName] = item;
+                        childContext._index = idx;
+                        childContext.index = idx;
+                        for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
+                            const child = templateChildren[cIdx];
                             const el = this.createHTMLElement(child, childContext);
                             if (el) {
                                 this.applyItemChildStyles(el, child, context);
                                 nodes.push(el);
                             }
-                        });
+                        }
 
                         // If old nodes existed for this key but data changed, remove old nodes
                         if (existing && existing.nodes) {
@@ -4103,8 +4325,10 @@ class EUIXEngineCore {
                     }
 
                     newKeyedMap.set(key, { nodes, hash, index: idx });
-                    itemNodesSequence.push(...nodes);
-                });
+                    for (let n = 0; n < nodes.length; n++) {
+                        itemNodesSequence.push(nodes[n]);
+                    }
+                }
 
                 // Remove DOM nodes for keys no longer in list
                 oldKeyedMap.forEach((existing, key) => {
@@ -4119,12 +4343,13 @@ class EUIXEngineCore {
 
                 // Append / re-order DOM nodes in container sequence using DocumentFragment batching
                 const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
-                itemNodesSequence.forEach(node => {
+                for (let nIdx = 0; nIdx < itemNodesSequence.length; nIdx++) {
+                    const node = itemNodesSequence[nIdx];
                     if (node) {
                         if (fragment) fragment.appendChild(node);
                         else listContainer.appendChild(node);
                     }
-                });
+                }
                 if (fragment) {
                     listContainer.appendChild(fragment);
                 }
