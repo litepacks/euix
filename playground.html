@@ -93,6 +93,9 @@
             <state id="composer_tasks" type="array"></state>
             <state id="action_logs" type="array"></state>
             <state id="last_notification" type="string">None</state>
+            <state id="virtual_list_open" type="string">true</state>
+            <state id="virtual_items" type="array"></state>
+            <state id="virtual_render_time" type="string">0.00</state>
         </data_model>
 
         <!-- Declarative State Change Hook Example -->
@@ -145,6 +148,7 @@
             <import name="kanban-section" src="components/KanbanSection.xml" />
             <import name="ecommerce-section" src="components/EcommerceSection.xml" />
             <import name="action-composer-section" src="components/ActionComposerSection.xml" />
+            <import name="virtual-list-section" src="components/VirtualListSection.xml" />
             <import name="help-modal" src="components/HelpModal.xml" />
             <import name="code-viewer-modal" src="components/CodeViewerModal.xml" />
         </imports>
@@ -156,7 +160,7 @@
                     <flex direction="row" align="center" gap="8" class="flex-wrap">
                         <span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 font-extrabold text-xs rounded-full border border-emerald-500/30 uppercase tracking-wider">🎮 Live Playground</span>
                         <span class="px-2.5 py-1 bg-blue-500/20 text-blue-300 font-extrabold text-xs rounded-full border border-blue-500/30 uppercase tracking-wider">⚡ AST Caching &amp; Batching Active</span>
-                        <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">13 Interactive Component Suites</span>
+                        <span class="text-xs text-slate-400 font-medium hidden sm:inline-block">14 Interactive Component Suites</span>
                     </flex>
                     <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">EUIX Engine Interactive Demos</h1>
                     <p class="text-xs text-slate-300">Explore real-world full-stack components built 100% with Vanilla .EUIX Engine.</p>
@@ -182,6 +186,7 @@
             <animation-section />
             <action-composer-section />
             <ecommerce-section />
+            <virtual-list-section />
             <kanban-section />
             <crypto-portfolio-section />
             <table-section />

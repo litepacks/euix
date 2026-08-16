@@ -35,7 +35,7 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
 3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) with event delegation on `<for_each>` containers.
 4. **Modular Plugin System (`.use(plugin)`)**: Extend Lite Core (`EUIXEngineCore`) dynamically with tree-shakeable plugins (`euixjs/api`, `euixjs/composer`, `euixjs/dnd`, `euixjs/storage`, `euixjs/collapse`, `euixjs/dialog`).
 5. **Component Registry & Async Loader**: Loads modular XML components dynamically via `fetch()`, executing scoped state models and prop passing.
-6. **High Performance Primitives**: Expression AST LRU Caching (`EUIXExpressionParser`), Keyed Reconciliation (`key="id"`), and `DocumentFragment` DOM Batching.
+6. **High Performance Primitives**: Single-Pass Zero-Allocation JIT Expression Transpiler (`EUIXExpressionParser.parseToJs`), Virtual Scrolling (`<for_each virtual="true">`), Keyed Reconciliation (`key="id"`), Container Event Delegation, Static Layout Pre-calculation (`_staticLayoutStyle`), and `DocumentFragment` DOM Batching.
 
 ---
 

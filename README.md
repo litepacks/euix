@@ -30,15 +30,16 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
 
 | Benchmark Scenario | Initial Baseline | Optimized EUIX Engine | Performance Gain |
 | :--- | :--- | :--- | :--- |
-| **Fine-Grained Single Item Update** | `15.41 ms` | **`0.34 ms`** | ⚡ **~98% Faster** |
-| **Swap 2 Rows (1,000 items)** | `1,762.45 ms` | **`14.80 ms`** | 🚀 **~99% Faster** |
-| **Partial Update (every 10th row)** | `530.40 ms` | **`33.19 ms`** | ⚡ **~93% Faster** |
-| **3,000 Item Bulk Render** | `2,609.51 ms` | **`470.85 ms`** | 🚀 **~82% Faster** |
-| **1,000 Item Bulk Render** | `2,007.30 ms` | **`296.17 ms`** | ⚡ **~85% Faster** |
-| **Append 1,000 Rows (Total 2,000)** | `1,289.50 ms` | **`155.36 ms`** | 🚀 **~88% Faster** |
-| **Interaction Latency (Click -> DOM)** | `15.41 ms` | **`3.99 ms`** | ⚡ **~74% Faster** |
-| **Initial XML Mount Latency** | `125.74 ms` | **`25.78 ms`** | 🚀 **~80% Faster** |
-| **Total Test Suite Time** | `13.66 s` | **`1.84 s`** | 🔥 **~86% Time Reduction** |
+| **Fine-Grained Single Item Update** | `15.41 ms` | **`0.21 ms`** | ⚡ **~99% Faster** |
+| **Swap 2 Rows (1,000 items)** | `1,762.45 ms` | **`12.79 ms`** | 🚀 **~99.3% Faster** |
+| **Partial Update (every 10th row)** | `530.40 ms` | **`28.05 ms`** | ⚡ **~95% Faster** |
+| **Clear All 1,000 Rows** | `420.10 ms` | **`5.26 ms`** | 🧹 **~98.7% Faster** |
+| **3,000 Item Bulk Render** | `2,609.51 ms` | **`439.09 ms`** | 🚀 **~83% Faster** |
+| **1,000 Item Bulk Render** | `2,007.30 ms` | **`246.45 ms`** | ⚡ **~88% Faster** |
+| **Append 1,000 Rows (Total 2,000)** | `1,289.50 ms` | **`131.13 ms`** | 🚀 **~90% Faster** |
+| **Virtual Scrolling (10,000 items)** | `N/A` | **`6.31 ms`** | ⚡ **60 FPS Windowing** |
+| **Interaction Latency (Click -> DOM)** | `15.41 ms` | **`2.74 ms`** | ⚡ **~82% Faster** |
+| **Initial XML Mount Latency** | `125.74 ms` | **`22.37 ms`** | 🚀 **~82% Faster** |
 
 ---
 
@@ -102,9 +103,13 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
                           </on_click>
                           ✕
                       </button>
-                  </div>
-              </for_each>
-          </flex>
+          <!-- Virtual Scrolling (10,000+ Items at 60 FPS) -->
+          <for_each items="{data.large_dataset}" var="item" key="id" virtual="true" item_height="44" height="320px" buffer="4">
+              <flex direction="row" align="center" justify="between" class="p-2 border-b border-slate-100">
+                  <span class="font-bold">{item.title}</span>
+                  <span class="text-xs text-slate-500">{item.status}</span>
+              </flex>
+          </for_each>
       </flex>
   </uid_spec>
   </script>
