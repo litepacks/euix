@@ -149,8 +149,8 @@
                     </if>
 
                     <if condition="{data.virtual_items.length} > 0">
-                        <for_each items="{data.virtual_items}" var="item" key="id" virtual="true" item_height="44" height="340px" buffer="4" class="custom-scrollbar">
-                            <flex direction="row" align="center" justify="between" class="px-3 py-2 border-b border-slate-800/60 hover:bg-slate-800/50 transition-colors text-xs">
+                        <for_each items="{data.virtual_items}" var="item" key="id" virtual="true" item_height="40" height="340px" buffer="4" class="custom-scrollbar">
+                            <flex direction="row" align="center" justify="between" class="h-[40px] max-h-[40px] px-3 border-b border-slate-800/60 hover:bg-slate-800/50 transition-colors text-xs box-border overflow-hidden" style="height: 40px; box-sizing: border-box;">
                                 <flex direction="row" align="center" gap="8" class="w-32 shrink-0">
                                     <span class="font-mono text-[11px] font-black text-purple-400">#{item.id}</span>
                                     <span class="font-mono text-[11px] text-slate-400">{item.code}</span>
