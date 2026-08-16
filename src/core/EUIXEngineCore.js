@@ -3530,7 +3530,11 @@ class EUIXEngineCore {
                 if (el.namespaceURI === SVG_NAMESPACE) {
                     el.setAttribute("class", interpolatedVal);
                 } else {
-                    el.className = interpolatedVal;
+                    if (el.className && el.className !== interpolatedVal && !el.className.split(" ").includes(interpolatedVal)) {
+                        el.className = [el.className, interpolatedVal].filter(Boolean).join(" ");
+                    } else if (!el.className) {
+                        el.className = interpolatedVal;
+                    }
                 }
             } else if (attrName === "style") {
                 let interpolatedVal = this.interpolate(attrValue, context);
