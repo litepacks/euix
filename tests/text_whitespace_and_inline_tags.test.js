@@ -554,6 +554,48 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         const profilerData = engine.getProfilerData();
         expect(profilerData).toEqual(metrics);
     });
+
+    it('should cache parsed component AST and avoid reparsing identical component specifications', () => {
+        EUIXEngineCore.clearComponentCache();
+
+        const compXml = `
+        <component_def name="user-tag" isolated="true">
+            <data_model>
+                <state id="status">online</state>
+            </data_model>
+            <div class="user-tag-box">
+                <span>{props.name}: {local.status}</span>
+            </div>
+        </component_def>
+        `;
+
+        // Register component first time
+        const name1 = EUIXEngineCore.registerComponentSpec('user-tag', compXml);
+        expect(name1).toBe('user-tag');
+        expect(EUIXEngineCore._componentAstCache.size).toBe(1);
+
+        // Register same string again - should hit AST cache
+        const name2 = EUIXEngineCore.registerComponentSpec('user-tag', compXml);
+        expect(name2).toBe('user-tag');
+        expect(EUIXEngineCore._componentAstCache.size).toBe(1);
+
+        const hostXml = `
+        <uid_spec>
+            <div>
+                <component name="user-tag" name="Alice" />
+            </div>
+        </uid_spec>
+        `;
+        const engine = EUIXEngineCore.mount(hostXml, '#app');
+        const metrics = engine.getPerformanceMetrics();
+        expect(metrics.componentCache).toBeDefined();
+        expect(metrics.componentCache.astCount).toBeGreaterThanOrEqual(1);
+
+        // Clear component cache
+        EUIXEngineCore.clearComponentCache();
+        expect(EUIXEngineCore._componentAstCache.size).toBe(0);
+        expect(EUIXEngineCore._componentUrlCache.size).toBe(0);
+    });
 });
 
 

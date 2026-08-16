@@ -5,6 +5,8 @@
 
 import { EUIXStructuredError, EUIXExpressionParser } from "../core/EUIXEngineCore.js";
 
+const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
+
 /**
  * EUIXDependencyGraph
  * Fine-grained reactive path dependency mapping for computed properties and watchers.
@@ -189,7 +191,7 @@ export class EUIXComputedNode {
  */
 export class EUIXWatchNode {
     constructor({ id, path, handler, engine = null, component = null, options = {} }) {
-        this.id = id || "watch_" + Math.random().toString(36).substring(2, 9);
+        this.id = id || genId("watch_");
         this.path = path;
         this.handler = handler;
         this.engine = engine;
@@ -320,7 +322,7 @@ export const EUIXReactivePlugin = {
             if (!this._depGraph) this._depGraph = new EUIXDependencyGraph();
             if (!this._watchRegistry) this._watchRegistry = new Map();
 
-            const watchId = (component ? component + ":" : "") + "watch_" + Math.random().toString(36).substring(2, 9);
+            const watchId = (component ? component + ":" : "") + genId("watch_");
             const paths = Array.isArray(path) ? path : (typeof path === "string" ? path.split(",").map(s => s.trim()).filter(Boolean) : []);
 
             const node = new EUIXWatchNode({

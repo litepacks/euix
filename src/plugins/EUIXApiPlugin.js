@@ -345,20 +345,20 @@ export const EUIXApiPlugin = {
 
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
-                        if (errorPath) this.setState(errorPath, structuredErr.message || "Ağ hatası", { silent: true });
+                        if (errorPath) this.setState(errorPath, structuredErr.message || "Network error", { silent: true });
                         if (epId) {
                             if (!this._apiStatus) this._apiStatus = {};
                             this._apiStatus[epId] = {
                                 loading: false,
-                                error: structuredErr.message || "Ağ hatası",
+                                error: structuredErr.message || "Network error",
                                 status: status || 0,
                                 data: null,
                                 timestamp: Date.now()
                             };
                             this.syncBindings(`api:${epId}:loading`, false);
                             this.syncBindings(`api.${epId}.loading`, false);
-                            this.syncBindings(`api:${epId}:error`, structuredErr.message || "Ağ hatası");
-                            this.syncBindings(`api.${epId}.error`, structuredErr.message || "Ağ hatası");
+                            this.syncBindings(`api:${epId}:error`, structuredErr.message || "Network error");
+                            this.syncBindings(`api.${epId}.error`, structuredErr.message || "Network error");
                             this.syncBindings(`api:${epId}:status`, status || 0);
                             this.syncBindings(`api.${epId}.status`, status || 0);
                             this.syncBindings(`api:${epId}`, this._apiStatus[epId]);

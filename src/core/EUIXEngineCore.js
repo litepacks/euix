@@ -312,6 +312,39 @@ class EUIXExpressionParser {
     }
 }
 
+// Pure internal helpers for tree-shaking and minification optimization
+const isObj = (v) => v !== null && typeof v === "object";
+const isFn = (v) => typeof v === "function";
+const isStr = (v) => typeof v === "string";
+const isBool = (v) => typeof v === "boolean";
+const isElem = (n) => n && n.nodeType === 1;
+const isTxtNode = (n) => n && (n.nodeType === 3 || n.nodeType === 4);
+const trimStr = (s) => typeof s === "string" ? s.trim() : (s && s.textContent ? s.textContent.trim() : "");
+const splitPath = (p) => String(p || "").replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean);
+const getRootKey = (p) => String(p || "").split(/[.[]/)[0];
+const getTagName = (n) => (n && n.tagName ? n.tagName.toLowerCase() : "");
+const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
+const getNow = () => (typeof performance !== "undefined" && isFn(performance.now) ? performance.now() : Date.now());
+const getAttr = (n, ...names) => {
+    if (!n || !n.getAttribute) return "";
+    for (const name of names) {
+        const val = n.getAttribute(name);
+        if (val !== null && val !== undefined && val !== "") return val;
+    }
+    return "";
+};
+const getChildNodes = (n) => (n && n.childNodes ? Array.from(n.childNodes) : []);
+const getChildrenList = (n) => (n && n.children ? Array.from(n.children) : []);
+const isScoped = (n) => {
+    if (!n || !n.getAttribute) return false;
+    const s = n.getAttribute("scope");
+    return n.getAttribute("isolated") === "true" || n.getAttribute("scoped") === "true" || s === "local" || s === "isolated" || s === "scoped";
+};
+const toNum = (val, defaultVal = 0) => {
+    const n = Number(val);
+    return isNaN(n) ? defaultVal : n;
+};
+
 const EVENT_TAGS = new Set(["event", "on", "on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave"]);
 
 const METADATA_AND_EVENT_TAGS = new Set([
@@ -535,13 +568,13 @@ class EUIXActionRegistry {
     }
 
     register(name, xmlNodeOrObj) {
-        if (!name || typeof name !== "string") return null;
+        if (!name || !isStr(name)) return null;
         const normalizedName = name.trim();
 
         let actionDef;
         if (xmlNodeOrObj && (xmlNodeOrObj.nodeType === 1 || xmlNodeOrObj.nodeType === 9)) {
             actionDef = EUIXActionRegistry.parseXmlActionDef(normalizedName, xmlNodeOrObj);
-        } else if (xmlNodeOrObj && typeof xmlNodeOrObj === "object") {
+        } else if (isObj(xmlNodeOrObj)) {
             actionDef = {
                 name: normalizedName,
                 params: xmlNodeOrObj.params || [],
@@ -590,14 +623,14 @@ class EUIXActionRegistry {
             }
         });
 
-        const returnNode = Array.from(xmlNode.childNodes).find(n => n.nodeType === 1 && n.tagName && n.tagName.toLowerCase() === "return");
+        const returnNode = getChildNodes(xmlNode).find(n => isElem(n) && getTagName(n) === "return");
         if (returnNode) {
-            returnExpr = returnNode.textContent.trim() || returnNode.getAttribute("value") || returnNode.getAttribute("expr") || "";
+            returnExpr = trimStr(returnNode) || getAttr(returnNode, "value", "expr");
         }
 
-        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === 1);
+        const childNodes = getChildNodes(xmlNode).filter(isElem);
         childNodes.forEach(child => {
-            const tag = child.tagName.toLowerCase();
+            const tag = getTagName(child);
             if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
             steps.push(child);
         });
@@ -618,7 +651,7 @@ class EUIXActionRegistry {
  */
 class EUIXActionComposer {
     static async execute(actionDef, rawArgs = {}, engine = null, parentEventContext = {}) {
-        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        const startTime = getNow();
 
         // 1. Resolve arguments in caller context & apply param defaults
         const evaluatedArgs = {};
@@ -736,7 +769,7 @@ class EUIXActionComposer {
         } finally {
             if (engine) engine._currentActionContext = prevContext;
 
-            const endTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+            const endTime = getNow();
             const durationMs = Math.round((endTime - startTime) * 100) / 100;
 
             // DevTools logger hook
@@ -762,15 +795,22 @@ class EUIXActionComposer {
 class EUIXEngineCore {
     static _installedPlugins = new Set();
     static _globalActionHandlers = new Map();
+    static _componentAstCache = new Map();
+    static _componentUrlCache = new Map();
+
+    static clearComponentCache() {
+        if (EUIXEngineCore._componentAstCache) EUIXEngineCore._componentAstCache.clear();
+        if (EUIXEngineCore._componentUrlCache) EUIXEngineCore._componentUrlCache.clear();
+    }
 
     static use(plugin) {
         if (!plugin) return EUIXEngineCore;
         if (EUIXEngineCore._installedPlugins.has(plugin)) return EUIXEngineCore;
         EUIXEngineCore._installedPlugins.add(plugin);
 
-        if (typeof plugin === "function") {
+        if (isFn(plugin)) {
             plugin(EUIXEngineCore);
-        } else if (plugin && typeof plugin.install === "function") {
+        } else if (plugin && isFn(plugin.install)) {
             plugin.install(EUIXEngineCore);
         }
         return EUIXEngineCore;
@@ -778,7 +818,7 @@ class EUIXEngineCore {
 
     static registerAction(actionType, handler) {
         if (!EUIXEngineCore._globalActionHandlers) EUIXEngineCore._globalActionHandlers = new Map();
-        if (actionType && typeof handler === "function") {
+        if (actionType && isFn(handler)) {
             EUIXEngineCore._globalActionHandlers.set(String(actionType).toUpperCase(), handler);
         }
     }
@@ -1037,6 +1077,10 @@ class EUIXEngineCore {
             activeBindingsCount: bindingsStats.totalBindings,
             boundElementsCount: bindingsStats.uniqueElements,
             astCache: EUIXEngineCore.getAstCacheStats(),
+            componentCache: {
+                astCount: EUIXEngineCore._componentAstCache ? EUIXEngineCore._componentAstCache.size : 0,
+                urlCount: EUIXEngineCore._componentUrlCache ? EUIXEngineCore._componentUrlCache.size : 0
+            },
             expressionCacheSize: EUIXExpressionParser._cache ? EUIXExpressionParser._cache.size : 0,
             componentsCount: this._componentSpecs ? this._componentSpecs.size : 0,
             rawStateKeysCount: this._rawState ? Object.keys(this._rawState).length : 0,
@@ -1054,14 +1098,14 @@ class EUIXEngineCore {
     }
 
     configureApi(options = {}) {
-        if (!options || typeof options !== "object") return this;
+        if (!isObj(options)) return this;
         if (options.baseUrl !== undefined) this._apiConfig.baseUrl = String(options.baseUrl).trim();
         if (options.credentials !== undefined) this._apiConfig.credentials = options.credentials;
         if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
-        if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
-        if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
+        if (isFn(options.onRequest)) this._apiConfig.onRequest = options.onRequest;
+        if (isFn(options.onResponse)) this._apiConfig.onResponse = options.onResponse;
         
-        if (options.headers && typeof options.headers === "object") {
+        if (isObj(options.headers)) {
             Object.entries(options.headers).forEach(([k, v]) => {
                 this.setApiHeader(k, v);
             });
@@ -1094,7 +1138,7 @@ class EUIXEngineCore {
     _savePersistedState(key, value) {}
 
     watch(key, callback) {
-        if (!key || typeof callback !== "function") return () => {};
+        if (!key || !isFn(callback)) return () => {};
         const parsedKey = this.parseBindPath(key);
         if (!this._stateWatchers.has(parsedKey)) this._stateWatchers.set(parsedKey, []);
         this._stateWatchers.get(parsedKey).push(callback);
@@ -1105,7 +1149,7 @@ class EUIXEngineCore {
     }
 
     onStateChange(callback) {
-        if (typeof callback !== "function") return () => {};
+        if (!isFn(callback)) return () => {};
         this._globalStateWatchers.push(callback);
         return () => {
             this._globalStateWatchers = this._globalStateWatchers.filter(cb => cb !== callback);
@@ -1177,7 +1221,7 @@ class EUIXEngineCore {
     enableDevTools(autoOpen = false) {
         if (typeof window !== "undefined") {
             const devToolsClass = window.EUIXDevTools || (typeof EUIXDevTools !== "undefined" ? EUIXDevTools : null);
-            if (devToolsClass && typeof devToolsClass.init === "function") {
+            if (devToolsClass && isFn(devToolsClass.init)) {
                 const devtools = devToolsClass.init(this);
                 if (devtools && autoOpen) devtools.toggle(true);
             }
@@ -1197,7 +1241,7 @@ class EUIXEngineCore {
         if (typeof console !== "undefined" && !EUIXEngineCore.silent && (typeof process === "undefined" || !process.env || process.env.NODE_ENV !== "test")) {
             console.warn(`[EUIXEngine Fallback] ${contextInfo ? contextInfo + ": " : ""}${msg}`);
         }
-        if (typeof this.onError === "function") {
+        if (isFn(this.onError)) {
             try {
                 this.onError(error, contextInfo);
             } catch (_) {}
@@ -1211,7 +1255,7 @@ class EUIXEngineCore {
     static _cloneDocument(doc) {
         if (!doc) return null;
         try {
-            if (typeof document !== "undefined" && document.implementation && typeof document.implementation.createDocument === "function") {
+            if (typeof document !== "undefined" && document.implementation && isFn(document.implementation.createDocument)) {
                 const cloned = document.implementation.createDocument(null, null, null);
                 if (doc.documentElement) {
                     cloned.appendChild(cloned.importNode(doc.documentElement, true));
@@ -1428,15 +1472,23 @@ class EUIXEngineCore {
 
     static async loadComponent(name, url, options = {}) {
         try {
+            if (!EUIXEngineCore._componentUrlCache) EUIXEngineCore._componentUrlCache = new Map();
+            if (EUIXEngineCore._componentUrlCache.has(url)) {
+                const cachedDoc = EUIXEngineCore._componentUrlCache.get(url);
+                return EUIXEngineCore.registerComponentSpec(name, cachedDoc, options);
+            }
             if (typeof fetch === "undefined") {
                 console.error("[EUIXEngine] fetch is not available in this environment.");
                 return null;
             }
             const isDev = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
             const res = await fetch(url, isDev ? { cache: "no-cache" } : undefined);
-            const xmlText = typeof res.text === "function" ? await res.text() : (typeof res === "string" ? res : String(res));
+            const xmlText = isFn(res.text) ? await res.text() : (typeof res === "string" ? res : String(res));
             
             const doc = EUIXEngineCore.parseXmlToAst(xmlText, options);
+            if (EUIXEngineCore._componentUrlCache.size < 200) {
+                EUIXEngineCore._componentUrlCache.set(url, doc);
+            }
 
             const nestedImports = Array.from(doc.querySelectorAll("import"));
             for (const imp of nestedImports) {
@@ -1457,7 +1509,16 @@ class EUIXEngineCore {
     static registerComponentSpec(name, xmlStringOrNode, options = {}) {
         let node;
         if (typeof xmlStringOrNode === "string") {
-            const doc = EUIXEngineCore.parseXmlToAst(xmlStringOrNode, options);
+            if (!EUIXEngineCore._componentAstCache) EUIXEngineCore._componentAstCache = new Map();
+            let doc;
+            if (EUIXEngineCore._componentAstCache.has(xmlStringOrNode)) {
+                doc = EUIXEngineCore._componentAstCache.get(xmlStringOrNode);
+            } else {
+                doc = EUIXEngineCore.parseXmlToAst(xmlStringOrNode, options);
+                if (EUIXEngineCore._componentAstCache.size < 200) {
+                    EUIXEngineCore._componentAstCache.set(xmlStringOrNode, doc);
+                }
+            }
 
             const nestedDefs = Array.from(doc.querySelectorAll("component_def"));
             nestedDefs.forEach(def => {
@@ -1648,29 +1709,29 @@ class EUIXEngineCore {
         if (!node) return null;
         const tag = tagName.toLowerCase();
         const list = (node.children && node.children.length > 0) 
-            ? Array.from(node.children) 
-            : Array.from(node.childNodes || []).filter(n => n.nodeType === 1);
-        return list.find(c => c.tagName && c.tagName.toLowerCase() === tag) || null;
+            ? getChildrenList(node)
+            : getChildNodes(node).filter(isElem);
+        return list.find(c => getTagName(c) === tag) || null;
     }
 
     getChildren(node, tagName) {
         if (!node) return [];
         const list = (node.children && node.children.length > 0) 
-            ? Array.from(node.children) 
-            : Array.from(node.childNodes || []).filter(n => n.nodeType === 1);
+            ? getChildrenList(node)
+            : getChildNodes(node).filter(isElem);
         if (!tagName) return list;
         const tag = tagName.toLowerCase();
-        return list.filter(c => c.tagName && c.tagName.toLowerCase() === tag);
+        return list.filter(c => getTagName(c) === tag);
     }
 
     registerComponent(type, handler) {
-        if (typeof type === "string" && typeof handler === "function") {
+        if (isStr(type) && isFn(handler)) {
             this._customComponents.set(type, handler);
         }
     }
 
     registerAction(actionType, handler) {
-        if (typeof actionType === "string" && typeof handler === "function") {
+        if (isStr(actionType) && isFn(handler)) {
             this._customActions.set(actionType, handler);
         }
     }
@@ -1716,7 +1777,7 @@ class EUIXEngineCore {
         const matches = expr.match(/(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g) || [];
         matches.forEach(m => {
             const clean = m.replace(/^(?:data|local|\$local|api|\$api)\./, "");
-            const rootKey = clean.split(/[.[]/)[0];
+            const rootKey = getRootKey(clean);
             keys.add(clean);
             if (rootKey) keys.add(rootKey);
             const innerBracketMatches = clean.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
@@ -1805,8 +1866,9 @@ class EUIXEngineCore {
             return this.getComputed(cleanKey);
         }
         let val = (this._rawState && this._rawState[cleanKey] !== undefined) ? this._rawState[cleanKey] : (this._rawState ? this._rawState[key] : undefined);
-        if (val === undefined && typeof cleanKey === "string" && (cleanKey.includes(".") || cleanKey.includes("["))) {
-            const parts = cleanKey.replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean);
+        const parsedKey = this.parseBindPath(key);
+        if (val === undefined && (parsedKey.includes(".") || parsedKey.includes("["))) {
+            const parts = splitPath(parsedKey);
             let curr = this._rawState ? this._rawState[parts[0]] : undefined;
             for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
                 curr = curr[parts[i]];
@@ -1842,7 +1904,7 @@ class EUIXEngineCore {
             const parts = clean.split(".");
             const endpointId = parts[0];
             const prop = parts.slice(1).join(".");
-            const status = (typeof this.getApiStatus === "function") ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+            const status = isFn(this.getApiStatus) ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
             if (!status) return undefined;
             if (!prop) return status;
             return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
@@ -1901,7 +1963,7 @@ class EUIXEngineCore {
     }
 
     batchUpdates(fn) {
-        if (typeof fn !== "function") return;
+        if (!isFn(fn)) return;
         const wasBatching = this._isBatching;
         this._isBatching = true;
         try {
@@ -1963,7 +2025,7 @@ class EUIXEngineCore {
         pending.forEach(({ key, value, oldValue, silent, context }) => {
             if (!silent) {
                 this.triggerStateWatchers(key, value, oldValue);
-                if (typeof this._triggerReactiveWatchers === "function") {
+                if (isFn(this._triggerReactiveWatchers)) {
                     this._triggerReactiveWatchers(key, value, oldValue, context);
                 }
             }
@@ -1984,9 +2046,9 @@ class EUIXEngineCore {
             return;
         }
 
-        const opts = (typeof options === "boolean" ? { silent: options } : options) || {};
+        const opts = (isBool(options) ? { silent: options } : options) || {};
         const { silent = false, sourceEl = null, context = null, batch = false } = opts;
-        if (!key || typeof key !== "string") return;
+        if (!key || !isStr(key)) return;
         if (!this._rawState) return;
 
         if (this._isEvaluatingComputed) {
@@ -2033,7 +2095,7 @@ class EUIXEngineCore {
             this._rawState[key] = value;
 
             if (key.includes(".") || key.includes("[")) {
-                const parts = key.replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean);
+                const parts = splitPath(key);
                 const firstPart = parts[0];
                 let curr = this._rawState[firstPart];
                 if (typeof curr !== "object" || curr === null) {
@@ -2104,7 +2166,7 @@ class EUIXEngineCore {
 
             if (!silent) {
                 this.triggerStateWatchers(key, value, oldValue);
-                if (typeof this._triggerReactiveWatchers === "function") {
+                if (isFn(this._triggerReactiveWatchers)) {
                     this._triggerReactiveWatchers(key, value, oldValue, context);
                 }
             }
@@ -2219,7 +2281,7 @@ class EUIXEngineCore {
 
         list.forEach((item) => {
             const { el, kind, updateFn } = item;
-            if (typeof updateFn === "function") {
+            if (isFn(updateFn)) {
                 updateFn(value);
                 return;
             }
@@ -2361,7 +2423,7 @@ class EUIXEngineCore {
     }
 
     applyItemChildStyles(childEl, childXmlNode, context) {
-        if (!childEl || !childXmlNode || childXmlNode.nodeType !== Node.ELEMENT_NODE) return;
+        if (!childEl || !isElem(childXmlNode)) return;
 
         const flex = childXmlNode.getAttribute("flex");
         if (flex) {
@@ -2382,7 +2444,7 @@ class EUIXEngineCore {
     }
 
     mount(appXmlString, options = {}) {
-        const mountStart = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+        const mountStart = getNow();
         this.xmlDoc = EUIXEngineCore.parseXmlToAst(appXmlString, { ...options, silent: true });
 
         const parserError = this.xmlDoc.querySelector("parsererror");
@@ -2442,7 +2504,7 @@ class EUIXEngineCore {
 
         this.render();
         this.runMountActions();
-        const mountEnd = (typeof performance !== "undefined" && typeof performance.now === "function") ? performance.now() : Date.now();
+        const mountEnd = getNow();
         this._mountDuration = parseFloat((mountEnd - mountStart).toFixed(2));
         return this;
     }
@@ -2461,7 +2523,7 @@ class EUIXEngineCore {
     }
 
     processLifecycleHooks(xmlNode, domEl, context = {}) {
-        if (!xmlNode || !domEl || domEl.nodeType !== (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1)) return;
+        if (!xmlNode || !isElem(domEl)) return;
         const contextWithEl = { ...context, _targetEl: domEl };
 
         // 1. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
@@ -2672,20 +2734,7 @@ class EUIXEngineCore {
                 }
             }
 
-            const isDocIsolated = !isMainDoc && (
-                (typeof doc.getAttribute === "function" && (
-                    doc.getAttribute("isolated") === "true" ||
-                    doc.getAttribute("scoped") === "true" ||
-                    doc.getAttribute("scope") === "local" ||
-                    doc.getAttribute("scope") === "isolated"
-                )) ||
-                (dataModelNode && (
-                    dataModelNode.getAttribute("isolated") === "true" ||
-                    dataModelNode.getAttribute("scoped") === "true" ||
-                    dataModelNode.getAttribute("scope") === "local" ||
-                    dataModelNode.getAttribute("scope") === "isolated"
-                ))
-            );
+            let isDocIsolated = !isMainDoc && (isScoped(doc) || isScoped(dataModelNode));
 
             const stateNodes = dataModelNode ? this.getChildren(dataModelNode, "state") : (doc.querySelectorAll ? Array.from(doc.querySelectorAll("data_model > state")) : []);
 
@@ -2766,7 +2815,7 @@ class EUIXEngineCore {
                 const id = node.getAttribute("id") || node.getAttribute("name");
                 const deps = node.getAttribute("deps") || node.getAttribute("watch");
                 const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
-                if (id && typeof this.computed === "function") {
+                if (id && isFn(this.computed)) {
                     this.computed(id, getter, deps);
                 }
             });
@@ -2774,7 +2823,7 @@ class EUIXEngineCore {
             const watchNodes = doc.querySelectorAll ? Array.from(doc.querySelectorAll("watch")) : Array.from(doc.getElementsByTagName("watch"));
             watchNodes.forEach(node => {
                 const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
-                if (path && typeof this.watch === "function") {
+                if (path && isFn(this.watch)) {
                     this.watch(path, node);
                 }
             });
@@ -2782,7 +2831,7 @@ class EUIXEngineCore {
             const animDefNodes = [...Array.from(doc.getElementsByTagName("animation_def")), ...Array.from(doc.getElementsByTagName("keyframe_def"))];
             animDefNodes.forEach(node => {
                 const name = node.getAttribute("name") || node.getAttribute("id");
-                if (name && typeof this.registerAnimationDef === "function") {
+                if (name && isFn(this.registerAnimationDef)) {
                     this.registerAnimationDef(name, node);
                 }
             });
@@ -2928,7 +2977,7 @@ class EUIXEngineCore {
 
         this._proxyState = this.state;
 
-        if (typeof this.handleXHR === "function" && pendingEndpoints.length > 0) {
+        if (isFn(this.handleXHR) && pendingEndpoints.length > 0) {
             pendingEndpoints.forEach(({ node, autoFetch }) => {
                 if (autoFetch) {
                     this.handleXHR(node);
@@ -3032,8 +3081,10 @@ class EUIXEngineCore {
                     const scope = inner.slice(0, dotIdx);
                     const prop = inner.slice(dotIdx + 1);
                     if (scope === "data" || scope === "state" || scope === "global" || scope === "$global") {
-                        const v = this.getState(prop);
-                        if (v !== undefined) return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                        if (!prop.includes("[")) {
+                            const v = this.getState(prop);
+                            if (v !== undefined) return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                        }
                     } else if (context && context[scope] !== undefined && context[scope] !== null) {
                         let curr = context[scope];
                         const parts = prop.split(".");
@@ -3070,7 +3121,7 @@ class EUIXEngineCore {
                     const parts = prop.split(".");
                     const endpointId = parts[0];
                     const epProp = parts.slice(1).join(".");
-                    const status = typeof this.getApiStatus === "function" ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+                    const status = isFn(this.getApiStatus) ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
                     if (!status) return "";
                     if (!epProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
                     const val = epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
@@ -3141,15 +3192,24 @@ class EUIXEngineCore {
                 return match;
             }
 
-            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.") || trimmed.includes("local.") || trimmed.includes("api.")) {
+            let resolvedExpr = trimmed;
+            if (resolvedExpr.includes("[") && resolvedExpr.includes("]")) {
+                resolvedExpr = resolvedExpr.replace(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g, (m, key) => {
+                    if (/^\d+$/.test(key)) return m;
+                    const idxVal = (context && context[key] !== undefined) ? context[key] : this.getState(key);
+                    return idxVal !== undefined ? `[${idxVal}]` : m;
+                });
+            }
+
+            if (/[?!=><+\-*/]/.test(resolvedExpr) || resolvedExpr.includes(".") || resolvedExpr.includes("data.") || resolvedExpr.includes("local.") || resolvedExpr.includes("api.")) {
                 try {
-                    const evaluated = EUIXExpressionParser.eval(trimmed, (name) => {
+                    const evaluated = EUIXExpressionParser.eval(resolvedExpr, (name) => {
                         if (name.startsWith("api.") || name.startsWith("$api.")) {
                             const clean = name.replace(/^(\$api|api)\./, "");
                             const parts = clean.split(".");
                             const endpointId = parts[0];
                             const prop = parts.slice(1).join(".");
-                            const status = typeof this.getApiStatus === "function" ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+                            const status = isFn(this.getApiStatus) ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
                             if (!status) return undefined;
                             if (!prop) return status;
                             return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
@@ -3210,8 +3270,8 @@ class EUIXEngineCore {
                 } catch (_) {}
             }
 
-            if (/^(?:parent\.)?data\./.test(trimmed)) {
-                const cleanKey = trimmed.replace(/^(?:parent\.)?data\./, "");
+            if (/^(?:parent\.)?data\./.test(resolvedExpr)) {
+                const cleanKey = resolvedExpr.replace(/^(?:parent\.)?data\./, "");
                 if (context._localState && context._localState[cleanKey] !== undefined) {
                     const val = context._localState[cleanKey];
                     return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
@@ -3499,7 +3559,7 @@ class EUIXEngineCore {
                 if (attrName === "draggable") {
                     try {
                         const isDraggable = (interpolatedVal === "true");
-                        if (typeof this.enableDraggable === "function") {
+                        if (isFn(this.enableDraggable)) {
                             this.enableDraggable(el, isDraggable, context);
                         } else {
                             el.draggable = isDraggable;
@@ -3525,7 +3585,7 @@ class EUIXEngineCore {
                             this.updateAttributeBinding(el, attrName, attrValue, context);
                         });
                     } else {
-                        const rootKey = key.split(/[.[]/)[0];
+                        const rootKey = getRootKey(key);
                         const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || attrValue.includes(`local.${key}`) || attrValue.includes(`$local.${key}`));
                         const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
                         const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
@@ -3637,7 +3697,7 @@ class EUIXEngineCore {
     }
 
     _createHTMLElementInternal(xmlNode, context = {}) {
-        if (xmlNode.nodeType === 3) {
+        if (isTxtNode(xmlNode)) {
             let parent = xmlNode.parentNode;
             let isCodeBlock = false;
             while (parent) {
@@ -3673,7 +3733,7 @@ class EUIXEngineCore {
                         }
                         this.registerBinding(`api:${epId}`, textNode, "text_node", updateFn);
                     } else {
-                        const rootKey = key.split(/[.[]/)[0];
+                        const rootKey = getRootKey(key);
                         const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || txt.includes(`local.${key}`) || txt.includes(`$local.${key}`));
                         const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
                         const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
@@ -3731,8 +3791,8 @@ class EUIXEngineCore {
 
             if (projectedNodes.length > 0) {
                 projectedNodes.forEach(pNode => {
-                    if (pNode.tagName && pNode.tagName.toLowerCase() === "slot") {
-                        Array.from(pNode.childNodes).forEach(c => {
+                    if (getTagName(pNode) === "slot") {
+                        getChildNodes(pNode).forEach(c => {
                             const el = this.createHTMLElement(c, slots.parentContext || context);
                             if (el) frag.appendChild(el);
                         });
@@ -3742,7 +3802,7 @@ class EUIXEngineCore {
                     }
                 });
             } else {
-                Array.from(xmlNode.childNodes).forEach(c => {
+                getChildNodes(xmlNode).forEach(c => {
                     const el = this.createHTMLElement(c, context);
                     if (el) frag.appendChild(el);
                 });
@@ -4246,11 +4306,11 @@ class EUIXEngineCore {
         }
 
         if (tagName === "collapse") {
-            return typeof this.renderCollapse === "function" ? this.renderCollapse(xmlNode, context) : null;
+            return isFn(this.renderCollapse) ? this.renderCollapse(xmlNode, context) : null;
         }
 
         if (tagName === "dialog") {
-            return typeof this.renderDialog === "function" ? this.renderDialog(xmlNode, context) : null;
+            return isFn(this.renderDialog) ? this.renderDialog(xmlNode, context) : null;
         }
 
         if (tagName === "component") {
@@ -4370,7 +4430,7 @@ class EUIXEngineCore {
             if (type === "text" && bindPath) {
                 const templateNode = this.getChild(xmlNode, "template");
                 const inlineTemplate = Array.from(xmlNode.childNodes)
-                    .filter(n => n.nodeType === Node.TEXT_NODE)
+                    .filter(isTxtNode)
                     .map(n => n.textContent)
                     .join("")
                     .trim();
@@ -4394,7 +4454,7 @@ class EUIXEngineCore {
                     ["on_click", "on_change", "on_submit", "on_keyup", "on_keydown", "on_mouseenter", "on_mouseleave", "event", "on", "value", "template"].includes(child.tagName.toLowerCase())) {
                     return;
                 }
-                if (type === "text" && bindPath && child.nodeType === Node.TEXT_NODE) {
+                if (type === "text" && bindPath && isTxtNode(child)) {
                     return;
                 }
                 const childEl = this.createHTMLElement(child, context);
@@ -4429,8 +4489,8 @@ class EUIXEngineCore {
 
         const childContext = isSvg ? { ...context, isSvg: true } : context;
 
-        Array.from(xmlNode.childNodes).forEach(child => {
-            if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && (EVENT_TAGS.has(child.tagName.toLowerCase()) || METADATA_AND_EVENT_TAGS.has(child.tagName.toLowerCase()))) {
+        getChildNodes(xmlNode).forEach(child => {
+            if (isElem(child) && (EVENT_TAGS.has(getTagName(child)) || METADATA_AND_EVENT_TAGS.has(getTagName(child)))) {
                 return;
             }
             const childEl = this.createHTMLElement(child, childContext);
@@ -4440,8 +4500,8 @@ class EUIXEngineCore {
             }
         });
 
-        const childElementNodes = Array.from(xmlNode.childNodes).filter(n =>
-            n.nodeType === Node.ELEMENT_NODE && !EVENT_TAGS.has(n.tagName.toLowerCase())
+        const childElementNodes = getChildNodes(xmlNode).filter(n =>
+            isElem(n) && !EVENT_TAGS.has(getTagName(n))
         );
 
         let isInsideCodeOrPre = false;
@@ -4509,15 +4569,15 @@ class EUIXEngineCore {
     }
 
     executeEventHandlers(handlerNodes, eventType, e, el, context = {}) {
-        if (typeof this.handleDragEvent === "function") {
+        if (isFn(this.handleDragEvent)) {
             this.handleDragEvent(eventType, e, el, context);
         }
         if (eventType === "submit") {
             e.preventDefault();
             const formEl = el.tagName === "FORM" ? el : el.closest("form");
-            if (formEl && typeof formEl.checkValidity === "function") {
+            if (formEl && isFn(formEl.checkValidity)) {
                 if (!formEl.checkValidity()) {
-                    if (typeof formEl.reportValidity === "function") {
+                    if (isFn(formEl.reportValidity)) {
                         formEl.reportValidity();
                     }
                     return;
@@ -4527,9 +4587,9 @@ class EUIXEngineCore {
 
         if (eventType === "click" && (el.type === "submit" || (el.tagName === "BUTTON" && el.closest("form")))) {
             const formEl = el.closest("form");
-            if (formEl && typeof formEl.checkValidity === "function") {
+            if (formEl && isFn(formEl.checkValidity)) {
                 if (!formEl.checkValidity()) {
-                    if (typeof formEl.reportValidity === "function") {
+                    if (isFn(formEl.reportValidity)) {
                         formEl.reportValidity();
                     }
                     e.preventDefault();
@@ -4547,10 +4607,10 @@ class EUIXEngineCore {
             }
 
             if (node.getAttribute("prevent_default") === "true" || node.getAttribute("prevent") === "true" || node.getAttribute("prevent_default") === "") {
-                if (e && typeof e.preventDefault === "function") e.preventDefault();
+                if (e && isFn(e.preventDefault)) e.preventDefault();
             }
             if (node.getAttribute("stop_propagation") === "true" || node.getAttribute("stop") === "true" || node.getAttribute("stop_propagation") === "") {
-                if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+                if (e && isFn(e.stopPropagation)) e.stopPropagation();
             }
 
             if (!this.confirmAction(node, eventContext)) continue;
@@ -4622,13 +4682,13 @@ class EUIXEngineCore {
     renderComponentSpec(specNode, usageNode, context = {}) {
         if (!specNode) return null;
 
-        const rawChildren = Array.from(usageNode.childNodes || []).filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent.trim() !== ""));
+        const rawChildren = getChildNodes(usageNode).filter(n => isElem(n) || (isTxtNode(n) && trimStr(n) !== ""));
         const namedSlots = new Map();
         const defaultSlots = [];
 
         rawChildren.forEach(child => {
-            if (child.nodeType === 1) {
-                const slotName = child.getAttribute("slot") || (child.tagName.toLowerCase() === "slot" ? child.getAttribute("name") : null);
+            if (isElem(child)) {
+                const slotName = child.getAttribute("slot") || (getTagName(child) === "slot" ? child.getAttribute("name") : null);
                 if (slotName) {
                     if (!namedSlots.has(slotName)) namedSlots.set(slotName, []);
                     namedSlots.get(slotName).push(child);
@@ -4654,7 +4714,7 @@ class EUIXEngineCore {
         });
 
         const compDepth = (context._compDepth || 0) + 1;
-        const compName = specNode.getAttribute("name") || specNode.getAttribute("id") || (usageNode.tagName ? usageNode.tagName.toLowerCase() : "component");
+        const compName = getAttr(specNode, "name", "id") || getTagName(usageNode) || "component";
         if (compDepth > 20) {
             const err = new Error(`[EUIXEngine Infinite Loop Guard] Maximum component recursion depth (20) exceeded for component <${compName}>`);
             this.reportError(err, "Infinite Component Loop Guard");
@@ -4667,16 +4727,16 @@ class EUIXEngineCore {
         let componentApiConfig = context._componentApiConfig ? { ...context._componentApiConfig } : null;
         const apiNode = this.getChild(specNode, "api_config") || specNode.querySelector("api_config, api_client, api");
         if (apiNode) {
-            const baseUrl = apiNode.getAttribute("base_url") || apiNode.getAttribute("baseUrl") || apiNode.getAttribute("url") || "";
+            const baseUrl = getAttr(apiNode, "base_url", "baseUrl", "url");
             const credentials = apiNode.getAttribute("credentials") || undefined;
-            const timeout = parseInt(apiNode.getAttribute("timeout") || "0", 10) || 0;
+            const timeout = toNum(apiNode.getAttribute("timeout"));
             const headers = new Map(componentApiConfig?.headers || []);
             
             const headersNode = this.getChild(apiNode, "headers");
             if (headersNode) {
                 this.getChildren(headersNode, "header").forEach(h => {
                     const name = h.getAttribute("name");
-                    if (name) headers.set(name, h.textContent.trim());
+                    if (name) headers.set(name, trimStr(h));
                 });
             }
 
@@ -4684,26 +4744,7 @@ class EUIXEngineCore {
         }
 
         const dataModelNode = this.getChild(specNode, "data_model") || specNode.querySelector("data_model");
-        const isIsolated = (
-            (usageNode.getAttribute && (
-                usageNode.getAttribute("isolated") === "true" ||
-                usageNode.getAttribute("scoped") === "true" ||
-                usageNode.getAttribute("scope") === "local" ||
-                usageNode.getAttribute("scope") === "isolated"
-            )) ||
-            (specNode.getAttribute && (
-                specNode.getAttribute("isolated") === "true" ||
-                specNode.getAttribute("scoped") === "true" ||
-                specNode.getAttribute("scope") === "local" ||
-                specNode.getAttribute("scope") === "isolated"
-            )) ||
-            (dataModelNode && (
-                dataModelNode.getAttribute("isolated") === "true" ||
-                dataModelNode.getAttribute("scoped") === "true" ||
-                dataModelNode.getAttribute("scope") === "local" ||
-                dataModelNode.getAttribute("scope") === "isolated"
-            ))
-        );
+        const isIsolated = isScoped(usageNode) || isScoped(specNode) || isScoped(dataModelNode);
 
         const localRawState = {};
         let hasLocalState = false;
@@ -4791,7 +4832,7 @@ class EUIXEngineCore {
             specNode;
 
         const rendered = this.createHTMLElement(templateNode, childContext);
-        if (rendered && rendered.nodeType === Node.ELEMENT_NODE) {
+        if (isElem(rendered)) {
             rendered.dataset.xuiComponent = compName;
             this.processLifecycleHooks(specNode, rendered, childContext);
         }
@@ -4821,10 +4862,10 @@ class EUIXEngineCore {
             const condition = confirmNode.getAttribute("condition");
             if (condition && !this.evalCondition(condition, context)) return true;
             const message = this.interpolate(confirmNode.textContent.trim(), context);
-            return window.confirm(message || "Emin misiniz?");
+            return window.confirm(message || "Are you sure?");
         }
 
-        return window.confirm(this.interpolate(confirmAttr, context) || "Emin misiniz?");
+        return window.confirm(this.interpolate(confirmAttr, context) || "Are you sure?");
     }
 
     handleAction(actionNode, context = {}) {
@@ -4846,7 +4887,7 @@ class EUIXEngineCore {
 
         try {
             const res = this._handleActionInternal(actionNode, context);
-            if (res && typeof res.then === "function") {
+            if (res && isFn(res.then)) {
                 return res.catch(onError);
             }
             return res;
@@ -4886,10 +4927,10 @@ class EUIXEngineCore {
             return tag !== "catch" && tag !== "finally";
         });
 
-        const scopeId = "try_" + Math.random().toString(36).substring(2, 9);
-        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        const scopeId = genId("try_");
+        const startTime = getNow();
 
-        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+        if (this._devtools && isFn(this._devtools.logErrorScope)) {
             this._devtools.logErrorScope("TRY_ENTER", { scopeId, component: context._componentName });
         }
 
@@ -4905,10 +4946,10 @@ class EUIXEngineCore {
             for (const childNode of tryActionNodes) {
                 tryResult = await this._handleActionInternal(childNode, tryContext);
             }
-            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            if (this._devtools && isFn(this._devtools.logErrorScope)) {
                 this._devtools.logErrorScope("TRY_SUCCESS", {
                     scopeId,
-                    duration: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
+                    duration: getNow() - startTime
                 });
             }
         } catch (rawErr) {
@@ -4917,7 +4958,7 @@ class EUIXEngineCore {
                 component: context._componentName
             });
 
-            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            if (this._devtools && isFn(this._devtools.logErrorScope)) {
                 this._devtools.logErrorScope("ACTION_ERROR", { scopeId, error: caughtError.toJSON() });
             }
 
@@ -4994,7 +5035,7 @@ class EUIXEngineCore {
 
         try {
             const res = this._executeActionInternalBody(actionNode, context);
-            if (res && typeof res.then === "function") {
+            if (res && isFn(res.then)) {
                 return res.finally(() => {
                     this._currentActionContext = prevContext;
                 });
@@ -5047,8 +5088,8 @@ class EUIXEngineCore {
             signal.throwIfCancelled();
         }
 
-        const scopeId = "delay_" + Math.random().toString(36).substring(2, 9);
-        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+        const scopeId = genId("delay_");
+        if (this._devtools && isFn(this._devtools.logErrorScope)) {
             this._devtools.logErrorScope("DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
         }
 
@@ -5117,10 +5158,10 @@ class EUIXEngineCore {
         const customMsg = timeoutNode.getAttribute("message") || timeoutNode.getAttribute("msg") || this.getChild(timeoutNode, "message")?.textContent.trim();
         const interpolatedMsg = customMsg ? this.interpolate(customMsg, context) : `Execution timed out after ${duration}ms`;
 
-        const scopeId = "timeout_" + Math.random().toString(36).substring(2, 9);
-        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        const scopeId = genId("timeout_");
+        const startTime = getNow();
 
-        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+        if (this._devtools && isFn(this._devtools.logErrorScope)) {
             this._devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
         }
 
@@ -5141,10 +5182,10 @@ class EUIXEngineCore {
         let timerId = null;
         const timerPromise = new Promise((_, reject) => {
             timerId = setTimeout(() => {
-                const elapsedMs = ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime;
+                const elapsedMs = getNow() - startTime;
                 timeoutError.elapsedMs = Math.round(elapsedMs);
                 controller.cancel(timeoutError);
-                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+                if (this._devtools && isFn(this._devtools.logErrorScope)) {
                     this._devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
                 }
                 reject(timeoutError);
@@ -5169,10 +5210,10 @@ class EUIXEngineCore {
         try {
             const result = await Promise.race([actionPromise, timerPromise]);
             clearTimeout(timerId);
-            if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+            if (this._devtools && isFn(this._devtools.logErrorScope)) {
                 this._devtools.logErrorScope("TIMEOUT_COMPLETED", {
                     scopeId,
-                    durationMs: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
+                    durationMs: getNow() - startTime
                 });
             }
             return result;
@@ -5245,8 +5286,8 @@ class EUIXEngineCore {
             return !["delay", "ms", "attempts", "filter"].includes(tag);
         });
 
-        const scopeId = "retry_" + Math.random().toString(36).substring(2, 9);
-        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
+        const scopeId = genId("retry_");
+        if (this._devtools && isFn(this._devtools.logErrorScope)) {
             this._devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
         }
 
@@ -5378,7 +5419,7 @@ class EUIXEngineCore {
 
         // Declarative Resilience Primitives (Delay, Timeout, Retry)
         const isAnimate = actionAttr === "ANIMATE" || actionAttr === "TRANSITION" || tagNameLower === "animate" || tagNameLower === "transition";
-        if (isAnimate && typeof this._handleAnimateAction === "function") {
+        if (isAnimate && isFn(this._handleAnimateAction)) {
             return this._handleAnimateAction(actionNode, context);
         }
 
@@ -5515,11 +5556,11 @@ class EUIXEngineCore {
             const valueNode = this.getChild(actionNode, "value");
             if (!pathNode) return;
 
-            const rawPath = pathNode ? pathNode.textContent.trim() : "";
+            const rawPath = trimStr(pathNode);
             const interpolatedPath = this.interpolate(rawPath, context);
             const path = this.parseBindPath(interpolatedPath);
 
-            const rawValue = valueNode ? valueNode.textContent.trim() : "";
+            const rawValue = trimStr(valueNode);
             let nextValue = "";
 
             const evalGetter = (key) => {
@@ -5580,7 +5621,7 @@ class EUIXEngineCore {
             if (focusNode) {
                 const targetStr = focusNode.textContent.trim();
                 const resolved = this.interpolate(targetStr, context).replace(/^ref:/, '');
-                if (this.refs[resolved] && typeof this.refs[resolved].focus === "function") {
+                if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
                     this.refs[resolved].focus();
                 } else {
                     this._pendingFocusKey = this.parseBindPath(targetStr);
@@ -5627,11 +5668,11 @@ class EUIXEngineCore {
             const target = actionNode.getAttribute("target") || actionNode.getAttribute("ref") || this.getChild(actionNode, "target")?.textContent || this.getChild(actionNode, "ref")?.textContent;
             if (target) {
                 const resolved = this.interpolate(target, context).replace(/^ref:/, '');
-                if (this.refs[resolved] && typeof this.refs[resolved].focus === "function") {
+                if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
                     this.refs[resolved].focus();
                 } else {
                     const el = document.querySelector(`[data-euix-ref="${resolved}"], #${resolved}`);
-                    if (el && typeof el.focus === "function") el.focus();
+                    if (el && isFn(el.focus)) el.focus();
                 }
             }
             return;
@@ -5640,10 +5681,10 @@ class EUIXEngineCore {
         if (actionType === "MUTATE_STATE") {
             const pathNode = this.getChild(actionNode, "path");
             const opNode = this.getChild(actionNode, "operation");
-            const rawPath = pathNode ? pathNode.textContent.trim() : (actionNode.getAttribute("path") || "");
+            const rawPath = trimStr(pathNode) || (actionNode.getAttribute("path") || "");
             const interpolatedPath = this.interpolate(rawPath, context);
             const path = this.parseBindPath(interpolatedPath);
-            const operation = (opNode ? opNode.textContent.trim() : actionNode.getAttribute("operation") || "").toUpperCase();
+            const operation = (trimStr(opNode) || actionNode.getAttribute("operation") || "").toUpperCase();
 
             if (!path || !operation) return;
 

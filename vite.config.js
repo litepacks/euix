@@ -23,7 +23,15 @@ export default defineConfig({
         unsafe: true,
         unsafe_comps: true,
         unsafe_math: true,
-        unsafe_proto: true
+        unsafe_proto: true,
+        booleans: true,
+        collapse_vars: true,
+        reduce_vars: true,
+        reduce_funcs: true,
+        keep_fargs: false,
+        evaluate: true,
+        hoist_funs: true,
+        pure_funcs: ['isObj', 'isFn', 'isStr', 'isBool', 'isElem', 'isTxtNode', 'trimStr', 'splitPath', 'getRootKey', 'getTagName', 'getAttr', 'getChildNodes', 'getChildrenList', 'isScoped', 'toNum', 'genId', 'getNow']
       },
       mangle: {
         toplevel: true,

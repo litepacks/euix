@@ -1,10 +1,7 @@
-/**
- * EUIXResiliencePlugin
- * Declarative Retry, Timeout, Delay execution primitives, cancellation signal controller,
- * backoff strategies, and race-condition guards for EUIX Engine.
- */
-
 import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
+
+const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
+const getNow = () => (typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now());
 
 /**
  * EUIXCancellationController
@@ -120,7 +117,7 @@ export function handleDelayDirect(engine, ms, context = {}) {
         signal.throwIfCancelled();
     }
 
-    const scopeId = "delay_" + Math.random().toString(36).substring(2, 9);
+    const scopeId = genId("delay_");
     if (engine && engine._devtools && typeof engine._devtools.logErrorScope === "function") {
         engine._devtools.logErrorScope("DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
     }
@@ -206,8 +203,8 @@ export const EUIXResiliencePlugin = {
             const customMsg = actionNode.getAttribute("message") || actionNode.getAttribute("msg") || this.getChild(actionNode, "message")?.textContent.trim();
             const interpolatedMsg = customMsg ? this.interpolate(customMsg, context) : `Execution timed out after ${duration}ms`;
 
-            const scopeId = "timeout_" + Math.random().toString(36).substring(2, 9);
-            const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+            const scopeId = genId("timeout_");
+            const startTime = getNow();
 
             const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
             if (devtools && typeof devtools.logErrorScope === "function") {
@@ -231,7 +228,7 @@ export const EUIXResiliencePlugin = {
             let timerId = null;
             const timerPromise = new Promise((_, reject) => {
                 timerId = setTimeout(() => {
-                    const elapsedMs = ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime;
+                    const elapsedMs = getNow() - startTime;
                     timeoutError.elapsedMs = Math.round(elapsedMs);
                     controller.cancel(timeoutError);
                     if (devtools && typeof devtools.logErrorScope === "function") {
@@ -262,7 +259,7 @@ export const EUIXResiliencePlugin = {
                 if (devtools && typeof devtools.logErrorScope === "function") {
                     devtools.logErrorScope("TIMEOUT_COMPLETED", {
                         scopeId,
-                        durationMs: ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime
+                        durationMs: getNow() - startTime
                     });
                 }
                 return result;
@@ -336,7 +333,7 @@ export const EUIXResiliencePlugin = {
                 return !["delay", "ms", "attempts", "filter"].includes(tag);
             });
 
-            const scopeId = "retry_" + Math.random().toString(36).substring(2, 9);
+            const scopeId = genId("retry_");
             const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
             if (devtools && typeof devtools.logErrorScope === "function") {
                 devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
