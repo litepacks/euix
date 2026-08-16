@@ -276,4 +276,35 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(duration).toBeLessThan(500); // Must fit within budget under parallel test runner CPU contention
         console.log(`[Vitest Bench] Interaction Latency (Click -> DOM Mutation): ${duration.toFixed(2)} ms`);
     }, 15000);
+
+    it('should benchmark Virtual Scrolling with 10,000 items in <for_each virtual="true">', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="cryptos" type="array"></state>
+            </data_model>
+            <for_each items="{data.cryptos}" var="coin" key="id" virtual="true" item_height="40" height="400px">
+                <div class="row" style="height: 40px;">
+                    <span>{coin.symbol} - {coin.price}</span>
+                </div>
+            </for_each>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const items10k = Array.from({ length: 10000 }, (_, i) => ({ id: `${i}`, symbol: `COIN_${i}`, price: `$${(i * 1.5).toFixed(2)}` }));
+
+        const start = performance.now();
+        engine.setState('cryptos', items10k);
+        const duration = performance.now() - start;
+
+        const spacer = document.querySelector('.euix-virtual-spacer');
+        const renderedRows = document.querySelectorAll('.row');
+
+        expect(spacer).toBeDefined();
+        expect(spacer.style.height).toBe('400000px');
+        expect(renderedRows.length).toBeLessThan(30); // Only visible rows rendered
+        expect(engine.getState('cryptos').length).toBe(10000);
+        console.log(`[Vitest Bench] Virtual Scrolling (10,000 items): ${duration.toFixed(2)} ms (Rendered ${renderedRows.length} DOM rows)`);
+    }, 15000);
 });

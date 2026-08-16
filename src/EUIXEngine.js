@@ -4,7 +4,7 @@
  * Automatically bundles EUIXEngineCore with built-in API, Action Composer, and Drag-and-Drop plugins.
  */
 
-import { EUIXEngineCore, EUIXExpressionParser, EUIXStructuredError } from "./core/EUIXEngineCore.js";
+import { EUIXEngineCore, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError } from "./core/EUIXEngineCore.js";
 import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
 import {
     EUIXComposerPlugin,
@@ -66,6 +66,7 @@ export {
     EUIXEngineCore,
     EUIXExpressionParser,
     EUIXStructuredError,
+    EUIXXMLParseError,
     EUIXCancellationController,
     EUIXApiPlugin,
     EUIXComposerPlugin,

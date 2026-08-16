@@ -399,6 +399,161 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         expect(dynamicUser.textContent).toBe('Carol');
         expect(badge.getAttribute('data-city')).toBe('Berlin');
     });
+
+    it('should support atomic object multi-state updates and deep bracket state mutations', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="users" type="array">[{"name": "Alice", "city": "Istanbul"}]</state>
+                <state id="profile" type="object">{"first": "John", "last": "Doe"}</state>
+                <state id="score" type="number">10</state>
+            </data_model>
+            <div id="stats">
+                <span id="fullname">{data.profile.first} {data.profile.last}</span>
+                <strong id="points">{data.score}</strong>
+                <p id="first-user-name">{data.users[0].name}</p>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const fullname = document.getElementById('fullname');
+        const points = document.getElementById('points');
+        const firstUserName = document.getElementById('first-user-name');
+
+        expect(fullname.textContent).toBe('John Doe');
+        expect(points.textContent).toBe('10');
+        expect(firstUserName.textContent).toBe('Alice');
+
+        // 1. Atomic object setState
+        engine.setState({
+            'profile.first': 'Jane',
+            'profile.last': 'Smith',
+            'score': 100
+        });
+
+        expect(fullname.textContent).toBe('Jane Smith');
+        expect(points.textContent).toBe('100');
+
+        // 2. setStates helper
+        engine.setStates({
+            'score': 250
+        });
+        expect(points.textContent).toBe('250');
+
+        // 3. Deep bracket indexing mutation
+        engine.setState('users[0].name', 'Zeynep');
+        expect(firstUserName.textContent).toBe('Zeynep');
+    });
+
+    it('should support named/default slots, two-way contenteditable binding, and deep state watchers', () => {
+        const xml = `
+        <uid_spec>
+            <component_def name="modal-box">
+                <div class="modal-card">
+                    <div class="header">
+                        <slot name="header"><h2>Default Title</h2></slot>
+                    </div>
+                    <div class="body">
+                        <children />
+                    </div>
+                    <div class="footer">
+                        <slot name="footer"><button class="btn-close">Close</button></slot>
+                    </div>
+                </div>
+            </component_def>
+
+            <data_model>
+                <state id="docTitle">My Document</state>
+                <state id="editorHtml"><strong>Hello World</strong></state>
+                <state id="user" type="object">{"name": "Ahmet", "address": {"city": "Istanbul"}}</state>
+            </data_model>
+
+            <div id="main-container">
+                <component type="modal-box">
+                    <slot name="header">
+                        <h1>Custom Header: {data.docTitle}</h1>
+                    </slot>
+                    <div contenteditable="true" bind="editorHtml" class="rich-editor"></div>
+                    <slot name="footer">
+                        <button id="save-btn">Save Document</button>
+                    </slot>
+                </component>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const header = document.querySelector('.header');
+        const footer = document.querySelector('.footer');
+        const editor = document.querySelector('.rich-editor');
+
+        // 1. Slot projection verification
+        expect(header.textContent.trim()).toBe('Custom Header: My Document');
+        expect(footer.textContent.trim()).toBe('Save Document');
+        expect(editor.innerHTML).toBe('<strong>Hello World</strong>');
+
+        // Slot reactivity
+        engine.setState('docTitle', 'Project Alpha');
+        expect(header.textContent.trim()).toBe('Custom Header: Project Alpha');
+
+        // 2. Two-way contenteditable verification
+        editor.innerHTML = '<em>Edited by user</em>';
+        editor.dispatchEvent(new Event('input'));
+        expect(engine.getState('editorHtml')).toBe('<em>Edited by user</em>');
+
+        engine.setState('editorHtml', '<span>New Remote Content</span>');
+        expect(editor.innerHTML).toBe('<span>New Remote Content</span>');
+
+        // 3. Deep state watcher verification
+        let deepChangeReceived = null;
+        engine.watch('user', (newVal, oldVal, changedPath) => {
+            deepChangeReceived = { newVal, changedPath };
+        });
+
+        engine.setState('user.address.city', 'Izmir');
+        expect(deepChangeReceived).toEqual({
+            newVal: 'Izmir',
+            changedPath: 'user.address.city'
+        });
+    });
+
+    it('should generate accurate XML error code frames and return performance profiler metrics', () => {
+        // 1. Code Frame Generator test
+        const sampleXml = `<uid_spec>\n  <data_model>\n    <state id="x">0</state>\n  </data_model>\n  <unclosed>\n</uid_spec>`;
+        const frame = EUIXEngineCore.generateCodeFrame(sampleXml, 5, 3);
+        expect(frame).toContain('> 5 |   <unclosed>');
+        expect(frame).toContain('^');
+
+        // 2. XML Parse Error throwing
+        const invalidXml = `<uid_spec>\n  <data_model>\n    <state id="a">1</state>\n  </data_model>\n  <broken_tag attr="val"\n</uid_spec>`;
+        expect(() => {
+            EUIXEngineCore.parseXmlToAst(invalidXml);
+        }).toThrow();
+
+        // 3. Performance & Profiler Metrics API
+        const validXml = `
+        <uid_spec>
+            <data_model>
+                <state id="counter">10</state>
+            </data_model>
+            <div>
+                <span>Count: {data.counter}</span>
+            </div>
+        </uid_spec>
+        `;
+        const engine = EUIXEngine.mount(validXml, '#app');
+        const metrics = engine.getPerformanceMetrics();
+        expect(metrics).toBeDefined();
+        expect(typeof metrics.mountDuration).toBe('number');
+        expect(metrics.activeBindingsCount).toBeGreaterThanOrEqual(1);
+        expect(metrics.astCache).toBeDefined();
+        expect(metrics.astCache.hits).toBeDefined();
+        expect(metrics.rawStateKeysCount).toBeGreaterThanOrEqual(1);
+
+        const profilerData = engine.getProfilerData();
+        expect(profilerData).toEqual(metrics);
+    });
 });
 
 

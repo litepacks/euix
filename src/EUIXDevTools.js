@@ -243,28 +243,35 @@ export class EUIXDevTools {
 
     renderTabContent(stateData) {
         if (this.activeTab === "perf") {
-            const bindingsCount = this.engine && this.engine._bindings ? this.engine._bindings.size : 0;
-            const watchersCount = this.engine && this.engine._stateWatchers ? this.engine._stateWatchers.size : 0;
-            const heapMb = (typeof performance !== "undefined" && performance.memory && performance.memory.usedJSHeapSize)
-                ? `${(performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(1)} MB`
-                : "N/A (Browser Restricted)";
-            const measuresCount = (typeof performance !== "undefined" && performance.getEntriesByType)
-                ? performance.getEntriesByType("measure").length
-                : 0;
+            const metrics = (this.engine && typeof this.engine.getPerformanceMetrics === "function") 
+                ? this.engine.getPerformanceMetrics()
+                : null;
+            const mountMs = metrics ? metrics.mountDuration : (this.engine?._mountDuration || 0);
+            const bindingsCount = metrics ? metrics.activeBindingsCount : (this.engine?._bindings?.size || 0);
+            const boundEls = metrics ? metrics.boundElementsCount : 0;
+            const watchersCount = metrics ? metrics.activeWatchersCount : (this.engine?._stateWatchers?.size || 0);
+            const astHits = metrics ? metrics.astCache.hits : 0;
+            const astMisses = metrics ? metrics.astCache.misses : 0;
+            const astHitRatio = metrics ? (metrics.astCache.hitRatio * 100).toFixed(1) : "0.0";
+            const heapMb = (metrics?.memory?.usedJSHeapSize) || "N/A (Browser Restricted)";
 
             return `
                 <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #38bdf8;">
+                        <div style="color:#94a3b8;font-size:10px;">🚀 Initial Mount Time</div>
+                        <div style="color:#38bdf8;font-size:16px;font-weight:bold;">${mountMs} ms</div>
+                    </div>
                     <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #10b981;">
                         <div style="color:#94a3b8;font-size:10px;">⚡ Reactive DOM Bindings</div>
-                        <div style="color:#34d399;font-size:16px;font-weight:bold;">${bindingsCount} active nodes</div>
+                        <div style="color:#34d399;font-size:16px;font-weight:bold;">${bindingsCount} bindings (${boundEls} unique elements)</div>
+                    </div>
+                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #8b5cf6;">
+                        <div style="color:#94a3b8;font-size:10px;">🧠 AST Cache Efficiency</div>
+                        <div style="color:#c084fc;font-size:16px;font-weight:bold;">${astHitRatio}% (${astHits} hits, ${astMisses} misses)</div>
                     </div>
                     <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #3b82f6;">
                         <div style="color:#94a3b8;font-size:10px;">👁️ Active State Watchers</div>
                         <div style="color:#60a5fa;font-size:16px;font-weight:bold;">${watchersCount} watchers</div>
-                    </div>
-                    <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #8b5cf6;">
-                        <div style="color:#94a3b8;font-size:10px;">⏱️ User Timing MeasuresRecorded</div>
-                        <div style="color:#c084fc;font-size:16px;font-weight:bold;">${measuresCount} measures</div>
                     </div>
                     <div style="padding:8px;background:#1e293b;border-radius:8px;border-left:3px solid #f59e0b;">
                         <div style="color:#94a3b8;font-size:10px;">💾 JS Heap Memory Usage</div>

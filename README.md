@@ -582,12 +582,14 @@ EUIX Engine provides a complete keyframe animation engine with enter and deferre
 
 ---
 
-## 🛠️ EUIX DevTools
+## 🛠️ EUIX DevTools & Performance Profiler
 
 Enable DevTools inspect overlay and floating drawer panel by pressing **`Alt + Shift + I`** or clicking the **`📊 State & Logs`** button:
 
-- **📊 State Inspector:** Live real-time inspection of all reactive states (`$state`).
+- **📊 State Inspector:** Live real-time inspection and search across all reactive states (`$state`).
 - **📜 Action Logs:** Real-time stream of all executed actions (`SET_STATE`, `MUTATE_STATE`, `XHR`).
+- **⚡ Performance Profiler (`engine.getPerformanceMetrics()`):** Live monitoring of initial mount time (ms), active reactive DOM bindings, unique elements count, AST cache hit ratio, state watchers, and JS heap memory.
+- **🛡️ Visual XML Error Code Frames (`EUIXXMLParseError`):** Precise line and column error reporting with visual code snippet pointers on malformed XML specifications.
 - **💻 Console Exposure:** Access `window.$state` and `window.$engine` directly in browser dev console.
 
 ---
