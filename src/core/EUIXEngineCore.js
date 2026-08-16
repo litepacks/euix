@@ -54,7 +54,7 @@ class EUIXExpressionParser {
 
             // Single-character operators & punctuation
             if ([">", "<", "!", "+", "-", "*", "/", "%", "(", ")", ",", "?", ":"].includes(char)) {
-                if (char === "(" || char === ")" || char === ",") {
+                if (char === "(" || char === ")" || char === "," || char === "?" || char === ":") {
                     tokens.push({ type: char, value: char });
                 } else {
                     tokens.push({ type: "OPERATOR", value: char });
@@ -85,30 +85,41 @@ class EUIXExpressionParser {
         return tokens;
     }
 
-    static parse(tokens) {
+    static parseToJs(tokens) {
         let current = 0;
-
         function peek() { return tokens[current]; }
         function consume() { return tokens[current++]; }
 
         function parsePrimary() {
             const token = peek();
-            if (!token) return { type: "Literal", value: undefined };
+            if (!token) return "undefined";
 
-            if (token.type === "NUMBER" || token.type === "STRING" || token.type === "BOOLEAN" || token.type === "NULL") {
+            if (token.type === "STRING") {
                 consume();
-                return { type: "Literal", value: token.value };
+                return JSON.stringify(token.value);
             }
-
+            if (token.type === "NUMBER") {
+                consume();
+                return String(token.value);
+            }
+            if (token.type === "BOOLEAN") {
+                consume();
+                return token.value ? "true" : "false";
+            }
+            if (token.type === "NULL") {
+                consume();
+                return "null";
+            }
             if (token.type === "(") {
                 consume();
-                const expr = parseExpression();
+                const inner = parseExpression();
                 if (peek() && peek().type === ")") consume();
-                return expr;
+                return `(${inner})`;
             }
-
             if (token.type === "IDENTIFIER") {
                 consume();
+                const id = token.value;
+                const lower = id.toLowerCase();
                 if (peek() && peek().type === "(") {
                     consume();
                     const args = [];
@@ -120,54 +131,94 @@ class EUIXExpressionParser {
                         }
                     }
                     if (peek() && peek().type === ")") consume();
-                    return { type: "CallExpression", callee: token.value, arguments: args };
+                    if (lower === "length") {
+                        return `((Array.isArray(${args[0]}) || typeof (${args[0]}) === "string") ? (${args[0]}).length : 0)`;
+                    }
+                    if (lower === "contains" || lower === "includes") {
+                        return `((Array.isArray(${args[0]})) ? (${args[0]}).includes(${args[1]}) : (typeof (${args[0]}) === "string" ? (${args[0]}).includes(String(${args[1]})) : false))`;
+                    }
+                    if (lower === "not") {
+                        return `(!(${args[0]}) || (${args[0]}) === "false")`;
+                    }
+                    return "undefined";
                 }
-                return { type: "Identifier", name: token.value };
+                if (id.includes(".") || id.startsWith("data.") || id.startsWith("parent.") || id.startsWith("local.") || id.startsWith("props.")) {
+                    return `($r(${JSON.stringify(id)}))`;
+                }
+                return `(($r(${JSON.stringify(id)})) !== undefined ? ($r(${JSON.stringify(id)})) : ${JSON.stringify(id)})`;
             }
-
             if (token.type === "OPERATOR" && token.value === "!") {
                 consume();
-                return { type: "UnaryExpression", operator: "!", argument: parseUnary() };
+                return `(!${parseUnary()} || ${parseUnary()} === "false")`;
             }
-
             consume();
-            return { type: "Literal", value: undefined };
-        }
-
-        function parseBinary(nextLevelParser, operators) {
-            let left = nextLevelParser();
-            while (peek() && peek().type === "OPERATOR" && operators.includes(peek().value)) {
-                const op = consume().value;
-                const right = nextLevelParser();
-                left = { type: "BinaryExpression", operator: op, left, right };
-            }
-            return left;
+            return "undefined";
         }
 
         function parseUnary() {
             if (peek() && peek().type === "OPERATOR" && (peek().value === "!" || peek().value === "-")) {
                 const op = consume().value;
-                return { type: "UnaryExpression", operator: op, argument: parseUnary() };
+                if (op === "!") return `(!(${parseUnary()}) || (${parseUnary()}) === "false")`;
+                if (op === "-") return `(-Number(${parseUnary()}))`;
             }
             return parsePrimary();
         }
 
-        function parseMultiplicative() { return parseBinary(parseUnary, ["*", "/", "%"]); }
-        function parseAdditive() { return parseBinary(parseMultiplicative, ["+", "-"]); }
-        function parseRelational() { return parseBinary(parseAdditive, [">", "<", ">=", "<="]); }
-        function parseEquality() { return parseBinary(parseRelational, ["==", "!="]); }
-        function parseLogicalAnd() { return parseBinary(parseEquality, ["&&"]); }
-        function parseLogicalOr() { return parseBinary(parseLogicalAnd, ["||"]); }
+        function parseBinary(nextLevel, ops, codeGen) {
+            let left = nextLevel();
+            while (peek() && peek().type === "OPERATOR" && ops.includes(peek().value)) {
+                const op = consume().value;
+                const right = nextLevel();
+                left = codeGen(op, left, right);
+            }
+            return left;
+        }
+
+        function parseMultiplicative() {
+            return parseBinary(parseUnary, ["*", "/", "%"], (op, l, r) => {
+                if (op === "*") return `(Number(${l}) * Number(${r}))`;
+                if (op === "/") return `(Number(${r}) !== 0 ? Number(${l}) / Number(${r}) : 0)`;
+                if (op === "%") return `(Number(${r}) !== 0 ? Number(${l}) % Number(${r}) : 0)`;
+            });
+        }
+
+        function parseAdditive() {
+            return parseBinary(parseMultiplicative, ["+", "-"], (op, l, r) => {
+                if (op === "+") return `((typeof (${l}) === "string" || typeof (${r}) === "string") ? String((${l}) ?? "") + String((${r}) ?? "") : Number(${l}) + Number(${r}))`;
+                if (op === "-") return `(Number(${l}) - Number(${r}))`;
+            });
+        }
+
+        function parseRelational() {
+            return parseBinary(parseAdditive, [">", "<", ">=", "<="], (op, l, r) => {
+                return `(Number(${l}) ${op} Number(${r}))`;
+            });
+        }
+
+        function parseEquality() {
+            return parseBinary(parseRelational, ["==", "!="], (op, l, r) => {
+                if (op === "==") return `(String((${l}) ?? "").trim() === String((${r}) ?? "").trim())`;
+                if (op === "!=") return `(String((${l}) ?? "").trim() !== String((${r}) ?? "").trim())`;
+            });
+        }
+
+        function parseLogicalAnd() {
+            return parseBinary(parseEquality, ["&&"], (op, l, r) => `(Boolean(${l}) && Boolean(${r}))`);
+        }
+
+        function parseLogicalOr() {
+            return parseBinary(parseLogicalAnd, ["||"], (op, l, r) => `(Boolean(${l}) || Boolean(${r}))`);
+        }
 
         function parseTernary() {
             let test = parseLogicalOr();
-            if (peek() && peek().type === "OPERATOR" && peek().value === "?") {
+            if (peek() && peek().type === "?" || (peek() && peek().type === "OPERATOR" && peek().value === "?")) {
                 consume();
-                let consequent = parseExpression();
-                if (peek() && peek().type === "OPERATOR" && peek().value === ":") {
+                let cons = parseExpression();
+                if (peek() && peek().type === ":" || (peek() && peek().type === "OPERATOR" && peek().value === ":")) {
                     consume();
-                    let alternate = parseExpression();
-                    return { type: "ConditionalExpression", test, consequent, alternate };
+                    let alt = parseExpression();
+                    return `(((${test}) !== false && (${test}) !== "false" && (${test}) !== 0 && (${test}) !== null && (${test}) !== undefined && (${test}) !== "") ? (${cons}) : (${alt}))`;
                 }
             }
             return test;
@@ -178,136 +229,58 @@ class EUIXExpressionParser {
         return parseExpression();
     }
 
-    static evaluate(ast, resolveValueFn) {
-        if (!ast) return undefined;
+    static _compiledFnCache = new Map();
+    static _compiledFnCacheMaxSize = 1000;
+    static _cacheStats = { hits: 0, misses: 0 };
 
-        switch (ast.type) {
-            case "Literal":
-                return ast.value;
-
-            case "UnaryExpression": {
-                const arg = this.evaluate(ast.argument, resolveValueFn);
-                if (ast.operator === "-") return -Number(arg);
-                if (ast.operator === "!") return !arg;
-                return arg;
-            }
-
-            case "ConditionalExpression": {
-                const testVal = this.evaluate(ast.test, resolveValueFn);
-                const isTrue = testVal !== false && testVal !== "false" && testVal !== 0 && testVal !== null && testVal !== undefined && testVal !== "";
-                return isTrue ? this.evaluate(ast.consequent, resolveValueFn) : this.evaluate(ast.alternate, resolveValueFn);
-            }
-
-            case "Identifier": {
-                const val = resolveValueFn(ast.name);
-                if (val !== undefined) return val;
-                if (ast.name.includes(".") || ast.name.startsWith("data.") || ast.name.startsWith("parent.data.")) return undefined;
-                return ast.name;
-            }
-
-            case "UnaryExpression": {
-                const val = this.evaluate(ast.argument, resolveValueFn);
-                if (ast.operator === "!") return !val || val === "false";
-                if (ast.operator === "-") return -val;
-                return val;
-            }
-
-            case "BinaryExpression": {
-                const left = this.evaluate(ast.left, resolveValueFn);
-                const right = this.evaluate(ast.right, resolveValueFn);
-
-                switch (ast.operator) {
-                    case "==": return String(left ?? "").trim() === String(right ?? "").trim();
-                    case "!=": return String(left ?? "").trim() !== String(right ?? "").trim();
-                    case ">": return Number(left) > Number(right);
-                    case "<": return Number(left) < Number(right);
-                    case ">=": return Number(left) >= Number(right);
-                    case "<=": return Number(left) <= Number(right);
-                    case "&&": return Boolean(left) && Boolean(right);
-                    case "||": return Boolean(left) || Boolean(right);
-                    case "*": return Number(left) * Number(right);
-                    case "/": return Number(right) !== 0 ? Number(left) / Number(right) : 0;
-                    case "%": return Number(right) !== 0 ? Number(left) % Number(right) : 0;
-                    case "+": return (typeof left === "string" || typeof right === "string") ? String(left ?? "") + String(right ?? "") : Number(left) + Number(right);
-                    case "-": return Number(left) - Number(right);
-                    default: return false;
-                }
-            }
-
-            case "CallExpression": {
-                const args = ast.arguments.map(arg => this.evaluate(arg, resolveValueFn));
-                const fnName = ast.callee.toLowerCase();
-
-                if (fnName === "length") {
-                    const target = args[0];
-                    if (Array.isArray(target)) return target.length;
-                    if (typeof target === "string") return target.length;
-                    return 0;
-                }
-                if (fnName === "contains" || fnName === "includes") {
-                    const target = args[0];
-                    const search = args[1];
-                    if (Array.isArray(target)) return target.includes(search);
-                    if (typeof target === "string") return target.includes(String(search));
-                    return false;
-                }
-                if (fnName === "not") {
-                    return !args[0] || args[0] === "false";
-                }
-                return undefined;
-            }
-        }
-        return undefined;
-    }
-
-    static _astCache = new Map();
-    static _astCacheMaxSize = 1000;
-    static _astCacheStats = { hits: 0, misses: 0 };
-
-    static parseExpressionToAst(exprString) {
-        if (this._astCache.has(exprString)) {
-            this._astCacheStats.hits++;
-            const cached = this._astCache.get(exprString);
-            this._astCache.delete(exprString);
-            this._astCache.set(exprString, cached);
-            return cached;
+    static compileExpression(exprString) {
+        let fn = this._compiledFnCache.get(exprString);
+        if (fn !== undefined) {
+            this._cacheStats.hits++;
+            return fn;
         }
 
-        this._astCacheStats.misses++;
-        const tokens = this.tokenize(exprString);
-        const ast = this.parse(tokens);
-
-        if (this._astCache.size >= this._astCacheMaxSize) {
-            const firstKey = this._astCache.keys().next().value;
-            if (firstKey !== undefined) this._astCache.delete(firstKey);
+        this._cacheStats.misses++;
+        try {
+            const tokens = this.tokenize(exprString);
+            const jsCode = this.parseToJs(tokens);
+            fn = new Function("$r", `try { return (${jsCode}); } catch (_) { return undefined; }`);
+        } catch (_) {
+            fn = null;
         }
-        this._astCache.set(exprString, ast);
-        return ast;
+
+        if (this._compiledFnCache.size >= this._compiledFnCacheMaxSize) {
+            const firstKey = this._compiledFnCache.keys().next().value;
+            if (firstKey !== undefined) this._compiledFnCache.delete(firstKey);
+        }
+        this._compiledFnCache.set(exprString, fn);
+        return fn;
     }
 
     static eval(exprString, resolveValueFn) {
         if (!exprString || !exprString.trim()) return undefined;
         try {
-            const ast = this.parseExpressionToAst(exprString);
-            return this.evaluate(ast, resolveValueFn);
-        } catch (_) {
-            return undefined;
-        }
+            const compiled = this.compileExpression(exprString);
+            if (compiled) {
+                return compiled(resolveValueFn);
+            }
+        } catch (_) {}
+        return undefined;
     }
 
     static clearExpressionCache() {
-        this._astCache.clear();
-        this._astCacheStats = { hits: 0, misses: 0 };
+        this._compiledFnCache.clear();
+        this._cacheStats = { hits: 0, misses: 0 };
     }
 
     static getExpressionCacheStats() {
-        const total = this._astCacheStats.hits + this._astCacheStats.misses;
+        const total = this._cacheStats.hits + this._cacheStats.misses;
         return {
-            size: this._astCache.size,
-            maxSize: this._astCacheMaxSize,
-            hits: this._astCacheStats.hits,
-            misses: this._astCacheStats.misses,
-            hitRatio: total > 0 ? Number((this._astCacheStats.hits / total).toFixed(4)) : 0
+            size: this._compiledFnCache.size,
+            maxSize: this._compiledFnCacheMaxSize,
+            hits: this._cacheStats.hits,
+            misses: this._cacheStats.misses,
+            hitRatio: total > 0 ? Number((this._cacheStats.hits / total).toFixed(4)) : 0
         };
     }
 }
@@ -344,6 +317,16 @@ const toNum = (val, defaultVal = 0) => {
     const n = Number(val);
     return isNaN(n) ? defaultVal : n;
 };
+
+const ALLOWED_HTML_TAGS = new Set([
+    "button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th",
+    "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6",
+    "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption",
+    "mark", "small", "sub", "sup", "code", "pre", "blockquote", "br", "hr", "b", "i", "u", "s",
+    "ul", "ol", "li", "kbd", "details", "summary", "svg", "path", "circle", "rect", "line",
+    "polyline", "polygon", "ellipse", "g", "defs", "use", "clippath", "mask", "pattern",
+    "lineargradient", "radialgradient", "stop", "symbol", "marker", "tspan"
+]);
 
 const _templateTokensCache = new Map();
 
@@ -2422,11 +2405,36 @@ class EUIXEngineCore {
     }
 
     applyLayoutStyles(el, xmlNode, context) {
+        if (xmlNode._staticLayoutStyle !== undefined) {
+            if (xmlNode._staticLayoutStyle) {
+                const s = xmlNode._staticLayoutStyle;
+                if (s.flexDirection) el.style.flexDirection = s.flexDirection;
+                if (s.alignItems) el.style.alignItems = s.alignItems;
+                if (s.justifyContent) el.style.justifyContent = s.justifyContent;
+                if (s.gap) el.style.gap = s.gap;
+                if (s.columnGap) el.style.columnGap = s.columnGap;
+                if (s.rowGap) el.style.rowGap = s.rowGap;
+                if (s.flexWrap) el.style.flexWrap = s.flexWrap;
+                if (s.gridTemplateColumns) el.style.gridTemplateColumns = s.gridTemplateColumns;
+                if (s.gridTemplateRows) el.style.gridTemplateRows = s.gridTemplateRows;
+                if (s.cssText) el.style.cssText += ";" + s.cssText;
+            }
+            return;
+        }
+
         const isFlex = el.style.display === "flex";
+        let isDynamic = false;
+        const staticStyle = {};
 
         const dir = xmlNode.getAttribute("direction") || xmlNode.getAttribute("dir");
         if (dir) {
-            el.style.flexDirection = dir.includes("{") ? this.interpolate(dir, context).trim() : dir;
+            if (dir.includes("{")) {
+                isDynamic = true;
+                el.style.flexDirection = this.interpolate(dir, context).trim();
+            } else {
+                el.style.flexDirection = dir;
+                staticStyle.flexDirection = dir;
+            }
         }
 
         const alignMap = {
@@ -2438,8 +2446,16 @@ class EUIXEngineCore {
         };
         const align = xmlNode.getAttribute("align");
         if (align) {
-            const val = (align.includes("{") ? this.interpolate(align, context).trim() : align).toLowerCase();
-            el.style.alignItems = alignMap[val] || val;
+            if (align.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(align, context).trim().toLowerCase();
+                el.style.alignItems = alignMap[val] || val;
+            } else {
+                const val = align.toLowerCase();
+                const v = alignMap[val] || val;
+                el.style.alignItems = v;
+                staticStyle.alignItems = v;
+            }
         }
 
         const justifyMap = {
@@ -2453,62 +2469,114 @@ class EUIXEngineCore {
         };
         const justify = xmlNode.getAttribute("justify");
         if (justify) {
-            const val = (justify.includes("{") ? this.interpolate(justify, context).trim() : justify).toLowerCase();
-            el.style.justifyContent = justifyMap[val] || val;
+            if (justify.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(justify, context).trim().toLowerCase();
+                el.style.justifyContent = justifyMap[val] || val;
+            } else {
+                const val = justify.toLowerCase();
+                const v = justifyMap[val] || val;
+                el.style.justifyContent = v;
+                staticStyle.justifyContent = v;
+            }
         }
 
         const gap = xmlNode.getAttribute("gap");
         if (gap) {
-            const val = gap.includes("{") ? this.interpolate(gap, context).trim() : gap;
-            el.style.gap = /^\d+$/.test(val) ? val + "px" : val;
+            if (gap.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(gap, context).trim();
+                el.style.gap = /^\d+$/.test(val) ? val + "px" : val;
+            } else {
+                const v = /^\d+$/.test(gap) ? gap + "px" : gap;
+                el.style.gap = v;
+                staticStyle.gap = v;
+            }
         }
 
         const gapX = xmlNode.getAttribute("gap_x") || xmlNode.getAttribute("col_gap");
         if (gapX) {
-            const val = gapX.includes("{") ? this.interpolate(gapX, context).trim() : gapX;
-            el.style.columnGap = /^\d+$/.test(val) ? val + "px" : val;
+            if (gapX.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(gapX, context).trim();
+                el.style.columnGap = /^\d+$/.test(val) ? val + "px" : val;
+            } else {
+                const v = /^\d+$/.test(gapX) ? gapX + "px" : gapX;
+                el.style.columnGap = v;
+                staticStyle.columnGap = v;
+            }
         }
 
         const gapY = xmlNode.getAttribute("gap_y") || xmlNode.getAttribute("row_gap");
         if (gapY) {
-            const val = gapY.includes("{") ? this.interpolate(gapY, context).trim() : gapY;
-            el.style.rowGap = /^\d+$/.test(val) ? val + "px" : val;
+            if (gapY.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(gapY, context).trim();
+                el.style.rowGap = /^\d+$/.test(val) ? val + "px" : val;
+            } else {
+                const v = /^\d+$/.test(gapY) ? gapY + "px" : gapY;
+                el.style.rowGap = v;
+                staticStyle.rowGap = v;
+            }
         }
 
         const wrap = xmlNode.getAttribute("wrap");
         if (wrap) {
-            const val = wrap.includes("{") ? this.interpolate(wrap, context).trim() : wrap;
-            if (isFlex) {
-                el.style.flexWrap = (val === "true" || val === "wrap") ? "wrap" : "nowrap";
+            if (wrap.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(wrap, context).trim();
+                if (isFlex) {
+                    el.style.flexWrap = (val === "true" || val === "wrap") ? "wrap" : "nowrap";
+                }
+            } else {
+                if (isFlex) {
+                    const v = (wrap === "true" || wrap === "wrap") ? "wrap" : "nowrap";
+                    el.style.flexWrap = v;
+                    staticStyle.flexWrap = v;
+                }
             }
         }
 
         const cols = xmlNode.getAttribute("cols") || xmlNode.getAttribute("columns");
         if (cols) {
-            const val = cols.includes("{") ? this.interpolate(cols, context).trim() : cols;
-            if (/^\d+$/.test(val)) {
-                el.style.gridTemplateColumns = `repeat(${val}, minmax(0, 1fr))`;
+            if (cols.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(cols, context).trim();
+                el.style.gridTemplateColumns = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
             } else {
-                el.style.gridTemplateColumns = val;
+                const v = /^\d+$/.test(cols) ? `repeat(${cols}, minmax(0, 1fr))` : cols;
+                el.style.gridTemplateColumns = v;
+                staticStyle.gridTemplateColumns = v;
             }
         }
 
         const rows = xmlNode.getAttribute("rows");
         if (rows) {
-            const val = rows.includes("{") ? this.interpolate(rows, context).trim() : rows;
-            if (/^\d+$/.test(val)) {
-                el.style.gridTemplateRows = `repeat(${val}, minmax(0, 1fr))`;
+            if (rows.includes("{")) {
+                isDynamic = true;
+                const val = this.interpolate(rows, context).trim();
+                el.style.gridTemplateRows = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
             } else {
-                el.style.gridTemplateRows = val;
+                const v = /^\d+$/.test(rows) ? `repeat(${rows}, minmax(0, 1fr))` : rows;
+                el.style.gridTemplateRows = v;
+                staticStyle.gridTemplateRows = v;
             }
         }
 
         const customStyle = xmlNode.getAttribute("style");
         if (customStyle) {
-            const styleStr = customStyle.includes("{") ? this.interpolate(customStyle, context).trim() : customStyle;
-            if (styleStr) {
-                el.style.cssText += ";" + styleStr;
+            if (customStyle.includes("{")) {
+                isDynamic = true;
+                const styleStr = this.interpolate(customStyle, context).trim();
+                if (styleStr) el.style.cssText += ";" + styleStr;
+            } else {
+                el.style.cssText += ";" + customStyle;
+                staticStyle.cssText = customStyle;
             }
+        }
+
+        if (!isDynamic) {
+            xmlNode._staticLayoutStyle = staticStyle;
         }
     }
 
@@ -4070,6 +4138,31 @@ class EUIXEngineCore {
             listContainer.className = "euix-list-container";
             listContainer.style.display = "contents";
 
+            const setupDelegation = (containerTarget) => {
+                if (!containerTarget || containerTarget._delegatedBound) return;
+                containerTarget._delegatedBound = true;
+                const events = ["click", "change", "input", "submit", "keyup", "keydown"];
+                for (let eIdx = 0; eIdx < events.length; eIdx++) {
+                    const evtType = events[eIdx];
+                    containerTarget.addEventListener(evtType, (e) => {
+                        let target = e.target;
+                        while (target && target !== containerTarget) {
+                            if (target._euixEventMap && target._euixEventMap.has(evtType)) {
+                                if (e._euixHandled) return;
+                                e._euixHandled = true;
+                                const handlerNodes = target._euixEventMap.get(evtType);
+                                const targetContext = target._euixContext || {};
+                                this.executeEventHandlers(handlerNodes, evtType, e, target, targetContext);
+                                break;
+                            }
+                            target = target.parentNode;
+                        }
+                    });
+                }
+            };
+
+            setupDelegation(listContainer);
+
             const isVirtual = xmlNode.getAttribute("virtual") === "true" || xmlNode.getAttribute("virtual_scroll") === "true";
             const itemHeight = parseInt(xmlNode.getAttribute("item_height") || xmlNode.getAttribute("row_height") || "40", 10);
             const containerHeight = xmlNode.getAttribute("height") || xmlNode.getAttribute("max_height") || "400px";
@@ -4697,8 +4790,7 @@ class EUIXEngineCore {
         }
 
         const isSvg = tagName === "svg" || context.isSvg || SVG_TAGS.has(tagName);
-        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote", "br", "hr", "b", "i", "u", "s", "ul", "ol", "li", "kbd", "details", "summary", "svg", "path", "circle", "rect", "line", "polyline", "polygon", "ellipse", "g", "defs", "use", "clippath", "mask", "pattern", "lineargradient", "radialgradient", "stop", "symbol", "marker", "tspan"];
-        const elementTagName = (isSvg || allowedTags.includes(tagName)) ? tagName : "div";
+        const elementTagName = (isSvg || ALLOWED_HTML_TAGS.has(tagName)) ? tagName : "div";
         const div = isSvg 
             ? document.createElementNS(SVG_NAMESPACE, xmlNode.tagName || tagName)
             : document.createElement(elementTagName);
@@ -4716,7 +4808,11 @@ class EUIXEngineCore {
 
         this.bindEvents(xmlNode, div, context);
 
-        const childContext = isSvg ? { ...context, isSvg: true } : context;
+        const isCodeOrPreTag = tagName === "code" || tagName === "pre";
+        const isInsideCodeOrPre = context._isInsideCodeOrPre || isCodeOrPreTag;
+        const childContext = isSvg 
+            ? (isInsideCodeOrPre ? { ...context, isSvg: true, _isInsideCodeOrPre: true } : { ...context, isSvg: true })
+            : (isInsideCodeOrPre && !context._isInsideCodeOrPre ? { ...context, _isInsideCodeOrPre: true } : context);
 
         getChildNodes(xmlNode).forEach(child => {
             if (isElem(child) && (EVENT_TAGS.has(getTagName(child)) || METADATA_AND_EVENT_TAGS.has(getTagName(child)))) {
@@ -4733,22 +4829,10 @@ class EUIXEngineCore {
             isElem(n) && !EVENT_TAGS.has(getTagName(n))
         );
 
-        let isInsideCodeOrPre = false;
-        let pCheck = xmlNode;
-        while (pCheck) {
-            if (pCheck.tagName) {
-                const t = pCheck.tagName.toLowerCase();
-                if (t === "code" || t === "pre") {
-                    isInsideCodeOrPre = true;
-                    break;
-                }
-            }
-            pCheck = pCheck.parentNode;
-        }
-
-        let hasCodeOrPreDescendant = false;
-        if (xmlNode.querySelector) {
-            hasCodeOrPreDescendant = !!(xmlNode.querySelector("code") || xmlNode.querySelector("pre"));
+        let hasCodeOrPreDescendant = xmlNode._hasCodeOrPre;
+        if (hasCodeOrPreDescendant === undefined) {
+            hasCodeOrPreDescendant = xmlNode.querySelector ? !!(xmlNode.querySelector("code") || xmlNode.querySelector("pre")) : false;
+            xmlNode._hasCodeOrPre = hasCodeOrPreDescendant;
         }
 
         if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
@@ -4863,12 +4947,13 @@ class EUIXEngineCore {
 
     bindEvents(xmlNode, el, context = {}) {
         if (!el || xmlNode.nodeType !== Node.ELEMENT_NODE) return;
+        if (xmlNode._hasEventTags === false) return;
 
         const eventMap = new Map();
+        const childNodes = xmlNode.children || [];
 
-        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === Node.ELEMENT_NODE);
-
-        childNodes.forEach(child => {
+        for (let i = 0; i < childNodes.length; i++) {
+            const child = childNodes[i];
             const tagName = child.tagName.toLowerCase();
             let eventType = null;
 
@@ -4888,14 +4973,18 @@ class EUIXEngineCore {
                 if (!eventMap.has(eventType)) eventMap.set(eventType, []);
                 eventMap.get(eventType).push(child);
             }
-        });
+        }
 
         if (typeof this.setupDropListener === "function") {
             this.setupDropListener(el, eventMap, context);
         }
 
-        if (eventMap.size === 0) return;
+        if (eventMap.size === 0) {
+            xmlNode._hasEventTags = false;
+            return;
+        }
 
+        xmlNode._hasEventTags = true;
         el._euixEventMap = eventMap;
         el._euixContext = context;
 

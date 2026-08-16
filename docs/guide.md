@@ -148,6 +148,27 @@ Custom JavaScript snippets can be executed safely inside lifecycle hooks or even
 
 ---
 
+## ⚡ High-Performance Rendering & Virtual Scrolling
+
+EUIX Engine includes built-in viewport virtualization (`virtual="true"`) for smoothly rendering massive datasets (1,000 to 100,000+ items) at a constant 60 FPS:
+
+```xml
+<for_each items="{data.telemetry_packets}" var="packet" key="id" virtual="true" item_height="44" height="400px" buffer="4">
+    <flex direction="row" align="center" justify="between" class="p-2 border-b">
+        <span>#{packet.id} {packet.title}</span>
+        <span>{packet.latency}</span>
+    </flex>
+</for_each>
+```
+
+### Performance Primitives:
+1. **Viewport Windowing:** Only the ~12–15 currently visible DOM items are mounted into the DOM tree, keeping memory consumption flat regardless of list size.
+2. **Container Event Delegation:** Child events are captured at the list container level, avoiding thousands of individual `addEventListener` allocations.
+3. **Static Layout Pre-calculation (`_staticLayoutStyle`):** Non-interpolated CSS and Flex/Grid rules are computed once per template node and cached for all list instances.
+4. **Single-Pass JIT Transpiler:** Expression evaluations (`{data.counter + 1}`) compile directly to safe, zero-allocation JavaScript functions.
+
+---
+
 ## 🔗 Parent State Access & Reactive Props
 
 Child components in EUIX Engine have fine-grained reactive access to parent states and props passed from parent components:

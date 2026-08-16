@@ -163,6 +163,14 @@ Fine-grained dynamic list rendering with Keyed DOM Reconciliation (`key="..."`).
     </flex>
 </for_each>
 
+<!-- Virtual Scrolling (10,000+ items with viewport windowing) -->
+<for_each items="{data.logs}" var="log" key="id" virtual="true" item_height="44" height="400px" buffer="4">
+    <flex direction="row" justify="between" class="p-2 border-b border-slate-800">
+        <span>#{log.id} {log.title}</span>
+        <span>{log.latency}</span>
+    </flex>
+</for_each>
+
 <!-- Interpolated dynamic key expression -->
 <for_each items="{data.users}" var="usr" key="{usr.uuid}">
     <span>{usr.name}</span>
@@ -170,13 +178,16 @@ Fine-grained dynamic list rendering with Keyed DOM Reconciliation (`key="..."`).
 ```
 
 #### Keyed Reconciliation & Performance Optimization:
-- **`key="id"` / `key_field="uuid"`**: Specifies the unique item property used for DOM reconciliation.
-- **`key="{item.uuid}"`**: Supports dynamic interpolated key expressions.
-- **DOM Element Reuse**: Reordering (`SWAP`), insertion, and deletion reuse existing DOM nodes via `insertBefore` without clearing `innerHTML`, preserving input focus, draft form text, and active CSS transitions.
-- **`DocumentFragment` DOM Batching**: Bulk list rendering batches insertions into off-screen fragments, reducing DOM mutations to 1 single operation.
-- **Event Delegation**: Child listeners (`<on_click>`, `<on_change>`, etc.) are automatically delegated to `listContainer`, reducing memory footprint by ~70%.
-- **State Mutation Batching**: Rapid consecutive `setState` calls are coalesced into a single microtask flush via `queueMicrotask()`.
-- **Expression AST LRU Cache**: String expressions (`{data.counter + 1}`) are parsed into AST once and cached in `EUIXExpressionParser._astCache` with O(1) lookup speed.
+- **`virtual="true"` / `virtual_scroll="true"`**: Enables 60 FPS viewport virtualization for lists with 1,000 to 100,000+ items.
+- **`item_height="44"`**: Height in pixels of each row item (used for scroll transform calculation).
+- **`height="400px"`**: Viewport container height.
+- **`buffer="4"`**: Extra rows rendered above and below the visible viewport window to prevent flicker during high-speed scrolling.
+- **`key="id"` / `key_field="uuid"`**: Specifies the unique item property used for keyed DOM reconciliation.
+- **DOM Element Reuse & LIS Reordering**: Keyed diffing reuses existing DOM nodes via `insertBefore` without clearing `innerHTML`, preserving input focus, draft form text, and active CSS transitions.
+- **Container Event Delegation**: Child event listeners (`<on_click>`, `<on_change>`, etc.) are automatically delegated to `listContainer`, eliminating individual `addEventListener` overhead on thousands of row items.
+- **Static Layout Caching (`_staticLayoutStyle`)**: Non-dynamic flex/grid attributes are pre-calculated once and cached on template XML AST nodes.
+- **Single-Pass JIT Transpiler**: String expressions (`{data.counter + 1}`) are transpiled directly into compiled JavaScript functions with zero AST node allocation overhead.
+- **`DocumentFragment` DOM Batching**: Bulk item appends are batched off-screen before container insertion.
 
 ---
 

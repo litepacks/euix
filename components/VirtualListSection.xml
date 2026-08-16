@@ -1,0 +1,176 @@
+<component_def name="virtual-list-section">
+    <constants>
+        <const id="badge_virtual">px-2.5 py-1 bg-purple-50 text-purple-700 font-extrabold text-xs rounded-lg border border-purple-200/60 inline-flex items-center gap-1.5</const>
+        <const id="metric_card">flex-1 p-3 bg-white border border-slate-200/80 rounded-xl flex flex-col justify-center items-start shadow-sm</const>
+    </constants>
+
+    <flex direction="column" gap="12" class="w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+        <!-- Section Header -->
+        <flex direction="row" align="center" justify="between" class="cursor-pointer select-none">
+            <on_click action="SET_STATE">
+                <path>data.virtual_list_open</path>
+                <value>{data.virtual_list_open === 'true' ? 'false' : 'true'}</value>
+            </on_click>
+            <flex direction="row" align="center" gap="10">
+                <span class="p-2 bg-purple-500/10 text-purple-600 rounded-xl text-lg">⚡</span>
+                <flex direction="column">
+                    <flex direction="row" align="center" gap="6">
+                        <h2 class="text-base font-black text-slate-800 tracking-tight">Virtual Scrolling &amp; Bulk DOM Benchmark</h2>
+                        <span class="{const.badge_virtual}">virtual="true"</span>
+                    </flex>
+                    <p class="text-xs text-slate-400 font-medium">Scroll through 10,000+ items smoothly with 60 FPS viewport windowing.</p>
+                </flex>
+            </flex>
+            <flex direction="row" align="center" gap="8">
+                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_title</path>
+                        <value>Virtual List Component (components/VirtualListSection.xml)</value>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_lines</path>
+                        <value>120</value>
+                    </on_click>
+                    <on_click action="XHR">
+                        <method>GET</method>
+                        <url>./components/VirtualListSection.xml</url>
+                        <target>data.code_modal_content</target>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                        <path>data.code_modal_open</path>
+                        <value>true</value>
+                    </on_click>
+                    🔍 View XML Code
+                </button>
+                <span class="text-slate-400 font-bold">{data.virtual_list_open === 'true' ? '▲' : '▼'}</span>
+            </flex>
+        </flex>
+
+        <if condition="{data.virtual_list_open} == 'true'">
+            <flex direction="column" gap="16" class="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <!-- Action Controls & Generator Bar -->
+                <flex direction="row" align="center" justify="between" wrap="true" gap="10" class="w-full">
+                    <flex direction="row" align="center" gap="8" wrap="true">
+                        <button class="px-3.5 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-purple-600/20 cursor-pointer flex items-center gap-1.5">
+                            <on_click action="RUN_SCRIPT">
+                                const t0 = performance.now();
+                                const items = Array.from({ length: 1000 }, (_, i) => ({
+                                    id: `item-${i + 1}`,
+                                    code: `LOG-${1000 + i}`,
+                                    title: `High-Frequency Telemetry Packet #${i + 1}`,
+                                    category: i % 3 === 0 ? 'Network' : (i % 3 === 1 ? 'Database' : 'Security'),
+                                    latency: `${(Math.random() * 20 + 2).toFixed(1)}ms`,
+                                    status: i % 4 === 0 ? 'Warning' : 'Healthy'
+                                }));
+                                $data.virtual_items = items;
+                                $data.virtual_render_time = (performance.now() - t0).toFixed(2);
+                            </on_click>
+                            🚀 Load 1,000 Items
+                        </button>
+
+                        <button class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/20 cursor-pointer flex items-center gap-1.5">
+                            <on_click action="RUN_SCRIPT">
+                                const t0 = performance.now();
+                                const items = Array.from({ length: 5000 }, (_, i) => ({
+                                    id: `item-${i + 1}`,
+                                    code: `LOG-${1000 + i}`,
+                                    title: `High-Frequency Telemetry Packet #${i + 1}`,
+                                    category: i % 3 === 0 ? 'Network' : (i % 3 === 1 ? 'Database' : 'Security'),
+                                    latency: `${(Math.random() * 20 + 2).toFixed(1)}ms`,
+                                    status: i % 4 === 0 ? 'Warning' : 'Healthy'
+                                }));
+                                $data.virtual_items = items;
+                                $data.virtual_render_time = (performance.now() - t0).toFixed(2);
+                            </on_click>
+                            ⚡ Load 5,000 Items
+                        </button>
+
+                        <button class="px-3.5 py-2 bg-gradient-to-r from-purple-700 to-pink-600 hover:opacity-95 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-pink-600/20 cursor-pointer flex items-center gap-1.5">
+                            <on_click action="RUN_SCRIPT">
+                                const t0 = performance.now();
+                                const items = Array.from({ length: 10000 }, (_, i) => ({
+                                    id: `item-${i + 1}`,
+                                    code: `LOG-${1000 + i}`,
+                                    title: `High-Frequency Telemetry Packet #${i + 1}`,
+                                    category: i % 3 === 0 ? 'Network' : (i % 3 === 1 ? 'Database' : 'Security'),
+                                    latency: `${(Math.random() * 20 + 2).toFixed(1)}ms`,
+                                    status: i % 4 === 0 ? 'Warning' : 'Healthy'
+                                }));
+                                $data.virtual_items = items;
+                                $data.virtual_render_time = (performance.now() - t0).toFixed(2);
+                            </on_click>
+                            🔥 Load 10,000 Items
+                        </button>
+
+                        <button class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1">
+                            <on_click action="MUTATE_STATE" operation="CLEAR">
+                                <path>virtual_items</path>
+                            </on_click>
+                            <on_click action="SET_STATE">
+                                <path>data.virtual_render_time</path>
+                                <value>0.00</value>
+                            </on_click>
+                            🧹 Clear List
+                        </button>
+                    </flex>
+                </flex>
+
+                <!-- Live Benchmark Metrics Cards -->
+                <flex direction="row" gap="10" wrap="true" class="w-full">
+                    <div class="{const.metric_card}">
+                        <span class="text-[10px] uppercase tracking-wider font-extrabold text-slate-400">Total In-Memory Dataset</span>
+                        <span class="text-lg font-black text-slate-800">{data.virtual_items.length} records</span>
+                    </div>
+                    <div class="{const.metric_card}">
+                        <span class="text-[10px] uppercase tracking-wider font-extrabold text-purple-500">Active Viewport DOM Nodes</span>
+                        <span class="text-lg font-black text-purple-700">~12 - 14 elements (Windowed)</span>
+                    </div>
+                    <div class="{const.metric_card}">
+                        <span class="text-[10px] uppercase tracking-wider font-extrabold text-emerald-500">Generation + Mount Time</span>
+                        <span class="text-lg font-black text-emerald-700">{data.virtual_render_time} ms</span>
+                    </div>
+                </flex>
+
+                <!-- Virtual Scroll Viewport -->
+                <div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-inner">
+                    <flex direction="row" align="center" justify="between" class="px-3 py-2 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 border-b border-slate-800 mb-2">
+                        <span class="w-32">Index &amp; Code</span>
+                        <span class="flex-1">Event / Description</span>
+                        <span class="w-24 text-center">Category</span>
+                        <span class="w-20 text-center">Latency</span>
+                        <span class="w-24 text-right">Health</span>
+                    </flex>
+
+                    <if condition="{data.virtual_items.length} == 0">
+                        <flex direction="column" align="center" justify="center" class="py-12 text-slate-500 gap-2">
+                            <span class="text-2xl">⚡</span>
+                            <span class="text-xs font-semibold">Virtual list is empty. Click one of the "Load Items" buttons above.</span>
+                        </flex>
+                    </if>
+
+                    <if condition="{data.virtual_items.length} > 0">
+                        <for_each items="{data.virtual_items}" var="item" key="id" virtual="true" item_height="44" height="340px" buffer="4" class="custom-scrollbar">
+                            <flex direction="row" align="center" justify="between" class="px-3 py-2 border-b border-slate-800/60 hover:bg-slate-800/50 transition-colors text-xs">
+                                <flex direction="row" align="center" gap="8" class="w-32 shrink-0">
+                                    <span class="font-mono text-[11px] font-black text-purple-400">#{item.id}</span>
+                                    <span class="font-mono text-[11px] text-slate-400">{item.code}</span>
+                                </flex>
+                                <span class="text-slate-200 font-medium flex-1 truncate pr-4">{item.title}</span>
+                                <span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded font-semibold text-[10px] w-24 shrink-0 text-center">{item.category}</span>
+                                <span class="font-mono text-slate-400 text-[11px] w-20 shrink-0 text-center">{item.latency}</span>
+                                <div class="w-24 shrink-0 text-right">
+                                    <if condition="{item.status} == 'Healthy'">
+                                        <span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-bold text-[10px]">● {item.status}</span>
+                                    </if>
+                                    <if condition="{item.status} != 'Healthy'">
+                                        <span class="px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded font-bold text-[10px]">▲ {item.status}</span>
+                                    </if>
+                                </div>
+                            </flex>
+                        </for_each>
+                    </if>
+                </div>
+            </flex>
+        </if>
+    </flex>
+</component_def>
