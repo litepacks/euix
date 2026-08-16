@@ -3856,7 +3856,7 @@ class EUIXEngineCore {
                 }
             });
 
-            return el;
+            return this.applyRef(el, xmlNode, context);
         }
 
         if (tagName === "for_each") {
@@ -4527,20 +4527,20 @@ class EUIXEngineCore {
         }
 
         if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
-            const rawContent = xmlNode.textContent;
-            const genericBindPath = this.resolveBindPath(xmlNode);
-            if (genericBindPath) {
-                const isLocal = context._localState && (context._localState[genericBindPath] !== undefined || genericBindPath.startsWith("local."));
-                const cleanPath = genericBindPath.replace(/^local\./, "");
-                const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + cleanPath) : cleanPath;
-                const trimmed = rawContent.trim();
-                if (trimmed.includes("{value}")) {
-                    div.dataset.euixTextTemplate = trimmed;
-                } else if (trimmed.includes(`{data.${cleanPath}}`) || trimmed.includes(`{local.${cleanPath}}`)) {
-                    div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{(?:data|local)\\.${cleanPath}\\}`, "g"), "{value}");
+            const bindAttr = xmlNode.getAttribute("bind");
+            if (bindAttr) {
+                const genericBindPath = this.resolveBindPath(xmlNode);
+                if (genericBindPath) {
+                    const isLocal = context._localState && (context._localState[genericBindPath] !== undefined || genericBindPath.startsWith("local."));
+                    const cleanPath = genericBindPath.replace(/^local\./, "");
+                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + cleanPath) : cleanPath;
+                    const trimmed = xmlNode.textContent ? xmlNode.textContent.trim() : "";
+                    if (trimmed.includes("{value}")) {
+                        div.dataset.euixTextTemplate = trimmed;
+                    }
+                    this.registerBinding(bindKey, div, "text");
+                    this.syncBindings(bindKey, isLocal ? context._localState[cleanPath] : this.getState(cleanPath));
                 }
-                this.registerBinding(bindKey, div, "text");
-                this.syncBindings(bindKey, isLocal ? context._localState[cleanPath] : this.getState(cleanPath));
             }
         }
 
