@@ -1962,8 +1962,10 @@ class EUIXEngineCore {
         if (!path || !el) return;
         if (!this._bindings.has(path)) this._bindings.set(path, []);
         this._bindings.get(path).push({ el, kind, updateFn });
-        el.dataset.xuiKey = path;
-        el.dataset.xuiBind = kind;
+        if (el.dataset) {
+            el.dataset.xuiKey = path;
+            el.dataset.xuiBind = kind;
+        }
     }
 
     syncBindings(path, value, sourceEl = null) {
@@ -3280,8 +3282,41 @@ class EUIXEngineCore {
             if (isCodeBlock) {
                 return txt ? document.createTextNode(txt) : null;
             }
-            const trimmed = txt.trim();
-            return trimmed ? document.createTextNode(this.interpolate(trimmed, context)) : null;
+            if (!txt || txt.trim() === "") return null;
+            const textNode = document.createTextNode(this.interpolate(txt, context));
+
+            const matches = Array.from(txt.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
+            if (matches.length > 0) {
+                const uniqueKeys = new Set(matches.map(m => m[1]));
+                uniqueKeys.forEach(key => {
+                    if (txt.includes("api." + key) || txt.includes("$api." + key)) {
+                        const parts = key.split(".");
+                        const epId = parts[0];
+                        const epProp = parts[1];
+                        const updateFn = () => {
+                            textNode.textContent = this.interpolate(txt, context);
+                        };
+                        if (epProp) {
+                            this.registerBinding(`api:${epId}:${epProp}`, textNode, "text_node", updateFn);
+                        }
+                        this.registerBinding(`api:${epId}`, textNode, "text_node", updateFn);
+                    } else {
+                        const rootKey = key.split(".")[0];
+                        const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || txt.includes(`local.${key}`) || txt.includes(`$local.${key}`));
+                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                        const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
+                        const updateFn = () => {
+                            textNode.textContent = this.interpolate(txt, context);
+                        };
+                        this.registerBinding(bindKey, textNode, "text_node", updateFn);
+                        if (rootBindKey !== bindKey) {
+                            this.registerBinding(rootBindKey, textNode, "text_node", updateFn);
+                        }
+                    }
+                });
+            }
+
+            return textNode;
         }
 
         if (xmlNode.nodeType !== 1) return null;
@@ -3832,7 +3867,7 @@ class EUIXEngineCore {
             return this.applyRef(el, xmlNode, context);
         }
 
-        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote"];
+        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote", "br", "hr", "b", "i", "u", "s", "ul", "ol", "li", "kbd", "details", "summary", "svg", "path", "circle"];
         const elementTagName = allowedTags.includes(tagName) ? tagName : "div";
         const div = document.createElement(elementTagName);
         const xmlClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
@@ -3882,53 +3917,19 @@ class EUIXEngineCore {
 
         if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
-            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
-            if (matches.length > 0) {
-                div.dataset.euixMultiTemplate = rawContent;
-                const uniqueKeys = new Set(matches.map(m => m[1]));
-                uniqueKeys.forEach(key => {
-                    if (rawContent.includes("api." + key) || rawContent.includes("$api." + key)) {
-                        const parts = key.split(".");
-                        const epId = parts[0];
-                        const epProp = parts[1];
-                        if (epProp) {
-                            this.registerBinding(`api:${epId}:${epProp}`, div, "multi_template", () => {
-                                div.textContent = this.interpolate(rawContent, context);
-                            });
-                        }
-                        this.registerBinding(`api:${epId}`, div, "multi_template", () => {
-                            div.textContent = this.interpolate(rawContent, context);
-                        });
-                    } else {
-                        const rootKey = key.split(".")[0];
-                        const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || rawContent.includes(`local.${key}`) || rawContent.includes(`$local.${key}`));
-                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
-                        const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
-                        const updateFn = () => {
-                            div.textContent = this.interpolate(rawContent, context);
-                        };
-                        this.registerBinding(bindKey, div, "multi_template", updateFn);
-                        if (rootBindKey !== bindKey) {
-                            this.registerBinding(rootBindKey, div, "multi_template", updateFn);
-                        }
-                    }
-                });
-                div.textContent = this.interpolate(rawContent, context);
-            } else {
-                const genericBindPath = this.resolveBindPath(xmlNode);
-                if (genericBindPath) {
-                    const isLocal = context._localState && (context._localState[genericBindPath] !== undefined || genericBindPath.startsWith("local."));
-                    const cleanPath = genericBindPath.replace(/^local\./, "");
-                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + cleanPath) : cleanPath;
-                    const trimmed = rawContent.trim();
-                    if (trimmed.includes("{value}")) {
-                        div.dataset.euixTextTemplate = trimmed;
-                    } else if (trimmed.includes(`{data.${cleanPath}}`) || trimmed.includes(`{local.${cleanPath}}`)) {
-                        div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{(?:data|local)\\.${cleanPath}\\}`, "g"), "{value}");
-                    }
-                    this.registerBinding(bindKey, div, "text");
-                    this.syncBindings(bindKey, isLocal ? context._localState[cleanPath] : this.getState(cleanPath));
+            const genericBindPath = this.resolveBindPath(xmlNode);
+            if (genericBindPath) {
+                const isLocal = context._localState && (context._localState[genericBindPath] !== undefined || genericBindPath.startsWith("local."));
+                const cleanPath = genericBindPath.replace(/^local\./, "");
+                const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + cleanPath) : cleanPath;
+                const trimmed = rawContent.trim();
+                if (trimmed.includes("{value}")) {
+                    div.dataset.euixTextTemplate = trimmed;
+                } else if (trimmed.includes(`{data.${cleanPath}}`) || trimmed.includes(`{local.${cleanPath}}`)) {
+                    div.dataset.euixTextTemplate = trimmed.replace(new RegExp(`\\{(?:data|local)\\.${cleanPath}\\}`, "g"), "{value}");
                 }
+                this.registerBinding(bindKey, div, "text");
+                this.syncBindings(bindKey, isLocal ? context._localState[cleanPath] : this.getState(cleanPath));
             }
         }
 
