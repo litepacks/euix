@@ -27,7 +27,14 @@ export default defineConfig({
     terserOptions: {
       compress: {
         drop_debugger: true,
-        passes: 3
+        passes: 3,
+        booleans: true,
+        collapse_vars: true,
+        reduce_vars: true,
+        reduce_funcs: true,
+        keep_fargs: false,
+        evaluate: true,
+        hoist_funs: true
       },
       format: {
         comments: false

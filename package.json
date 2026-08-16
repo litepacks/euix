@@ -48,10 +48,9 @@
   },
   "files": [
     "dist",
-    "src",
-    "components",
-    "docs",
-    "README.md"
+    "!dist/**/*.map",
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "dev": "vite",
