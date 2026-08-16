@@ -4063,11 +4063,16 @@ class EUIXEngineCore {
                     }
 
                     if (dNode._euixEventMap && dNode._euixEventMap.size > 0) {
+                        const eventsObj = Object.create(null);
+                        dNode._euixEventMap.forEach((handlers, evType) => {
+                            eventsObj[evType] = handlers;
+                        });
                         dynamicSlots.push({
                             childIndex: cIdx,
                             path: [...path],
                             type: "event",
-                            eventMap: new Map(dNode._euixEventMap)
+                            eventMap: new Map(dNode._euixEventMap),
+                            eventsObj
                         });
                     }
 
@@ -4296,10 +4301,10 @@ class EUIXEngineCore {
                     containerTarget.addEventListener(evtType, (e) => {
                         let target = e.target;
                         while (target && target !== containerTarget) {
-                            if (target._euixEventMap && target._euixEventMap.has(evtType)) {
+                            const handlerNodes = target.__euixEvents ? target.__euixEvents[evtType] : (target._euixEventMap ? target._euixEventMap.get(evtType) : null);
+                            if (handlerNodes) {
                                 if (e._euixHandled) return;
                                 e._euixHandled = true;
-                                const handlerNodes = target._euixEventMap.get(evtType);
                                 const targetContext = target._euixContext || {};
                                 this.executeEventHandlers(handlerNodes, evtType, e, target, targetContext);
                                 break;
@@ -4341,24 +4346,6 @@ class EUIXEngineCore {
                 contentWrapper.style.right = "0";
                 listContainer.appendChild(contentWrapper);
             }
-
-            const delegatedEventTypes = ["click", "change", "keyup", "keydown", "submit", "input"];
-            delegatedEventTypes.forEach(eventType => {
-                listContainer.addEventListener(eventType, (e) => {
-                    if (e._euixHandled) return;
-                    let target = e.target;
-                    while (target && target !== listContainer) {
-                        if (target._euixEventMap && target._euixEventMap.has(eventType)) {
-                            e._euixHandled = true;
-                            const handlerNodes = target._euixEventMap.get(eventType);
-                            const itemContext = target._euixContext || context;
-                            this.executeEventHandlers(handlerNodes, eventType, e, target, itemContext);
-                            break;
-                        }
-                        target = target.parentElement;
-                    }
-                });
-            });
 
             const itemsAttr = xmlNode.getAttribute("items") || "";
             const itemsKey = this.parseBindPath(itemsAttr);
@@ -4461,6 +4448,7 @@ class EUIXEngineCore {
                                 }
                             } else if (slot.type === "event") {
                                 targetNode._euixEventMap = slot.eventMap;
+                                targetNode.__euixEvents = slot.eventsObj;
                                 targetNode._euixContext = childContext;
                             }
                         }
@@ -5190,6 +5178,12 @@ class EUIXEngineCore {
         xmlNode._hasEventTags = true;
         el._euixEventMap = eventMap;
         el._euixContext = context;
+
+        const eventsObj = Object.create(null);
+        eventMap.forEach((handlerNodes, eventType) => {
+            eventsObj[eventType] = handlerNodes;
+        });
+        el.__euixEvents = eventsObj;
 
         eventMap.forEach((handlerNodes, eventType) => {
             el.addEventListener(eventType, (e) => {
