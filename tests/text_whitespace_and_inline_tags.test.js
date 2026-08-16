@@ -98,5 +98,21 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         expect(p.innerHTML).toBe('Hello Bob, you have 12 <strong class="badge">unread</strong> alerts!');
         expect(p.textContent).toBe('Hello Bob, you have 12 unread alerts!');
     });
+
+    it('should correctly decode HTML named entities into Unicode symbols', () => {
+        const xml = `
+        <uid_spec>
+            <footer class="site-footer">
+                <p>Copyright &copy; 2026 &nbsp; &mdash; Litepacks &rarr; &check; &euro;50 &times; 2 &plusmn; 1 &bull; Star: &star;</p>
+            </footer>
+        </uid_spec>
+        `;
+
+        EUIXEngine.mount(xml, '#app');
+        const footer = document.querySelector('.site-footer p');
+        expect(footer).toBeTruthy();
+        expect(footer.textContent).toBe('Copyright © 2026 \u00A0 — Litepacks → ✓ €50 × 2 ± 1 • Star: ☆');
+    });
 });
+
 
