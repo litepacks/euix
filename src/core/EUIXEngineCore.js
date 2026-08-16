@@ -4269,6 +4269,13 @@ class EUIXEngineCore {
                     const totalItems = list.length;
                     spacer.style.height = `${totalItems * itemHeight}px`;
 
+                    if (totalItems === 0) {
+                        contentWrapper.innerHTML = "";
+                        contentWrapper.style.transform = "translateY(0px)";
+                        contentWrapper._keyedNodesMap = new Map();
+                        return;
+                    }
+
                     const renderSlice = () => {
                         const scrollTop = listContainer.scrollTop || 0;
                         const clientHeight = listContainer.clientHeight || parseInt(containerHeight, 10) || 400;
@@ -6066,7 +6073,7 @@ class EUIXEngineCore {
                 if (valItem && valItem.attributes) {
                     Array.from(valItem.attributes).forEach(attr => {
                         const interpolatedVal = this.interpolate(attr.value, context);
-                        if (interpolatedVal && !interpolatedVal.includes("undefined")) {
+                        if (interpolatedVal !== undefined && interpolatedVal !== null && !interpolatedVal.includes("undefined")) {
                             newItem[attr.name] = interpolatedVal;
                         }
                     });
@@ -6081,7 +6088,8 @@ class EUIXEngineCore {
                 if (!parsedObj && !newItem.title && textValue) newItem.title = textValue;
                 if (!newItem.quantity) newItem.quantity = 1;
 
-                const titleVal = newItem.title || newItem.text || newItem.name || "";
+                const hasCustomAttributes = Object.keys(newItem).some(k => k !== "id" && k !== "quantity" && String(newItem[k]).trim() !== "");
+                const titleVal = newItem.title || newItem.text || newItem.name || (hasCustomAttributes ? "valid" : "");
                 if (!String(titleVal).trim()) return;
 
                 const whereNode = this.getChild(actionNode, "where");
@@ -6101,12 +6109,14 @@ class EUIXEngineCore {
                     return;
                 }
 
-                if (!newItem.status || !["todo", "in_progress", "done"].includes(newItem.status)) {
+                if (newItem.status === undefined || newItem.status === null || newItem.status === "") {
                     const selCol = this.getState("new_kanban_col");
-                    newItem.status = (selCol && ["todo", "in_progress", "done"].includes(selCol)) ? selCol : "todo";
+                    if (selCol && ["todo", "in_progress", "done"].includes(selCol)) {
+                        newItem.status = selCol;
+                    }
                 }
-                if (!newItem.category) newItem.category = "General";
-                if (newItem.completed === undefined && !newItem.status) newItem.completed = "false";
+                if (!newItem.category && path === "tasks") newItem.category = "General";
+                if (newItem.completed === undefined && (path === "todos" || path === "tasks")) newItem.completed = "false";
 
                 this.batch(() => {
                     const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
