@@ -3981,6 +3981,129 @@ class EUIXEngineCore {
         return el;
     }
 
+    _getCompiledForEachTemplate(xmlNode, varName, baseChildContext, fallbackContext) {
+        if (xmlNode._templatePrototype) {
+            return xmlNode._templatePrototype;
+        }
+
+        const templateChildren = Array.from(xmlNode.children || []);
+        const isComplexOrInput = (node) => {
+            if (!node || node.nodeType !== 1) return false;
+            const tag = (node.tagName || "").toLowerCase();
+            if (
+                tag === "input" || tag === "select" || tag === "textarea" ||
+                tag === "component" || tag === "for_each" || tag === "slot" ||
+                tag === "children" || tag.startsWith("on_") || tag.includes("-") ||
+                tag === "if" || tag === "else" || tag === "collapse" || tag === "dialog" ||
+                (this._componentDefs && this._componentDefs[tag]) ||
+                (this._componentRegistry && this._componentRegistry[tag])
+            ) {
+                return true;
+            }
+            return Array.from(node.children || []).some(isComplexOrInput);
+        };
+
+        const hasComplexChild = templateChildren.some(isComplexOrInput);
+        if (hasComplexChild || templateChildren.length === 0) {
+            xmlNode._templatePrototype = { canClone: false };
+            return xmlNode._templatePrototype;
+        }
+
+        const sampleContext = Object.create(baseChildContext);
+        sampleContext[varName] = {};
+        sampleContext._index = 0;
+        sampleContext.index = 0;
+
+        const prototypes = [];
+        const dynamicSlots = [];
+
+        for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
+            const xmlChild = templateChildren[cIdx];
+            const domChild = this.createHTMLElement(xmlChild, sampleContext);
+            if (!domChild) continue;
+            this.applyItemChildStyles(domChild, xmlChild, fallbackContext);
+
+            const recordSlots = (xNode, dNode, path) => {
+                if (!xNode || !dNode) return;
+
+                if (xNode.nodeType === 3) {
+                    const txt = xNode.textContent;
+                    if (txt && txt.includes("{")) {
+                        dynamicSlots.push({ childIndex: cIdx, path: [...path], type: "text", rawExpr: txt });
+                    }
+                    return;
+                }
+
+                if (xNode.nodeType === 1) {
+                    if (xNode.attributes) {
+                        for (let a = 0; a < xNode.attributes.length; a++) {
+                            const attr = xNode.attributes[a];
+                            const attrName = attr.name;
+                            const attrVal = attr.value;
+                            if (attrVal && attrVal.includes("{") && !attrName.startsWith("on_")) {
+                                dynamicSlots.push({
+                                    childIndex: cIdx,
+                                    path: [...path],
+                                    type: "attr",
+                                    name: attrName,
+                                    rawExpr: attrVal
+                                });
+                            }
+                        }
+                    }
+
+                    const bindAttr = xNode.getAttribute("bind");
+                    if (bindAttr) {
+                        dynamicSlots.push({
+                            childIndex: cIdx,
+                            path: [...path],
+                            type: "bind",
+                            bindPath: bindAttr
+                        });
+                    }
+
+                    if (dNode._euixEventMap && dNode._euixEventMap.size > 0) {
+                        dynamicSlots.push({
+                            childIndex: cIdx,
+                            path: [...path],
+                            type: "event",
+                            eventMap: new Map(dNode._euixEventMap)
+                        });
+                    }
+
+                    const xChildren = Array.from(xNode.childNodes).filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent && n.textContent.trim() !== ""));
+                    const dChildren = Array.from(dNode.childNodes);
+
+                    const len = Math.min(xChildren.length, dChildren.length);
+                    for (let i = 0; i < len; i++) {
+                        recordSlots(xChildren[i], dChildren[i], [...path, i]);
+                    }
+                }
+            };
+
+            recordSlots(xmlChild, domChild, []);
+            prototypes.push(domChild);
+        }
+
+        const getNodeAtPath = (root, path) => {
+            let curr = root;
+            for (let i = 0; i < path.length; i++) {
+                if (!curr || !curr.childNodes) return null;
+                curr = curr.childNodes[path[i]];
+            }
+            return curr;
+        };
+
+        xmlNode._templatePrototype = {
+            canClone: true,
+            prototypes,
+            dynamicSlots,
+            getNodeAtPath
+        };
+
+        return xmlNode._templatePrototype;
+    }
+
     createHTMLElement(xmlNode, context = {}) {
         if (!xmlNode) return null;
         try {
@@ -4291,6 +4414,71 @@ class EUIXEngineCore {
                 baseChildContext._parentStateKey = itemsKey;
                 baseChildContext._insideForEach = true;
 
+                const compiled = this._getCompiledForEachTemplate(xmlNode, varName, baseChildContext, context);
+
+                const createItemNodes = (item, idx) => {
+                    const childContext = Object.create(baseChildContext);
+                    childContext[varName] = item;
+                    childContext._index = idx;
+                    childContext.index = idx;
+
+                    if (compiled && compiled.canClone) {
+                        const nodes = [];
+                        for (let pIdx = 0; pIdx < compiled.prototypes.length; pIdx++) {
+                            const proto = compiled.prototypes[pIdx];
+                            const clone = proto.cloneNode(true);
+                            nodes.push(clone);
+                        }
+
+                        for (let sIdx = 0; sIdx < compiled.dynamicSlots.length; sIdx++) {
+                            const slot = compiled.dynamicSlots[sIdx];
+                            const rootNode = nodes[slot.childIndex];
+                            if (!rootNode) continue;
+                            const targetNode = slot.path.length === 0 ? rootNode : compiled.getNodeAtPath(rootNode, slot.path);
+                            if (!targetNode) continue;
+
+                            if (slot.type === "text") {
+                                const txt = this.interpolate(slot.rawExpr, childContext);
+                                if (targetNode.nodeType === 3) {
+                                    targetNode.data = txt;
+                                } else {
+                                    targetNode.textContent = txt;
+                                }
+                            } else if (slot.type === "attr") {
+                                const val = this.interpolate(slot.rawExpr, childContext);
+                                if (slot.name === "class") {
+                                    targetNode.className = val;
+                                } else {
+                                    targetNode.setAttribute(slot.name, val);
+                                }
+                            } else if (slot.type === "bind") {
+                                const resolvedBind = this.resolveBindPath(slot.bindPath, childContext);
+                                const currentVal = this.getState(resolvedBind) ?? this.resolveValueFromPath(slot.bindPath, childContext);
+                                if (targetNode.type === "checkbox") {
+                                    targetNode.checked = this.isTruthy(currentVal);
+                                } else {
+                                    targetNode.value = currentVal ?? "";
+                                }
+                            } else if (slot.type === "event") {
+                                targetNode._euixEventMap = slot.eventMap;
+                                targetNode._euixContext = childContext;
+                            }
+                        }
+                        return nodes;
+                    }
+
+                    const nodes = [];
+                    for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
+                        const child = templateChildren[cIdx];
+                        const el = this.createHTMLElement(child, childContext);
+                        if (el) {
+                            this.applyItemChildStyles(el, child, context);
+                            nodes.push(el);
+                        }
+                    }
+                    return nodes;
+                };
+
                 if (isVirtual) {
                     const totalItems = list.length;
                     spacer.style.height = `${totalItems * itemHeight}px`;
@@ -4332,19 +4520,7 @@ class EUIXEngineCore {
                             if (existing && existing.hash === hash && existing.nodes.length > 0) {
                                 nodes = existing.nodes;
                             } else {
-                                nodes = [];
-                                const childContext = Object.create(baseChildContext);
-                                childContext[varName] = item;
-                                childContext._index = i;
-                                childContext.index = i;
-                                for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
-                                    const child = templateChildren[cIdx];
-                                    const el = this.createHTMLElement(child, childContext);
-                                    if (el) {
-                                        this.applyItemChildStyles(el, child, context);
-                                        nodes.push(el);
-                                    }
-                                }
+                                nodes = createItemNodes(item, i);
                                 if (existing && existing.nodes) {
                                     existing.nodes.forEach(oldNode => {
                                         if (oldNode && oldNode.parentNode === contentWrapper) {
@@ -4425,21 +4601,7 @@ class EUIXEngineCore {
                         // Reuse existing DOM nodes unchanged
                         nodes = existing.nodes;
                     } else {
-                        // Create or update DOM nodes for this item
-                        nodes = [];
-                        const childContext = Object.create(baseChildContext);
-                        childContext[varName] = item;
-                        childContext._index = idx;
-                        childContext.index = idx;
-                        for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
-                            const child = templateChildren[cIdx];
-                            const el = this.createHTMLElement(child, childContext);
-                            if (el) {
-                                this.applyItemChildStyles(el, child, context);
-                                nodes.push(el);
-                            }
-                        }
-
+                        nodes = createItemNodes(item, idx);
                         // If old nodes existed for this key but data changed, remove old nodes
                         if (existing && existing.nodes) {
                             existing.nodes.forEach(oldNode => {
