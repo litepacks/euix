@@ -33,7 +33,7 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
 1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes with AST Caching (`_astCache`).
 2. **Reactive Data Model (`<data_model>`)**: Centralized reactive state store supporting primitives (`string`, `number`, `boolean`) and complex types (`array`, `object`) with microtask state mutation batching (`queueMicrotask`).
 3. **Declarative Event Action Dispatcher**: Evaluates actions (`SET_STATE`, `MUTATE_STATE`, `REVALIDATE_API`, `RUN_SCRIPT`) declaratively via child action tags (`<on_click action="...">`) with event delegation on `<for_each>` containers.
-4. **Modular Plugin System (`.use(plugin)`)**: Extend Lite Core (`EUIXEngineCore`) dynamically with tree-shakeable plugins (`euixjs/api`, `euixjs/composer`, `euixjs/dnd`, `euixjs/storage`, `euixjs/collapse`, `euixjs/dialog`).
+4. **Modular Plugin System (`.use(plugin)`)**: Extend Lite Core (`EUIXEngineCore`) dynamically with tree-shakeable plugins (`euixjs/api`, `euixjs/composer`, `euixjs/dnd`, `euixjs/storage`, `euixjs/collapse`, `euixjs/dialog`, `euixjs/head`).
 5. **Component Registry & Async Loader**: Loads modular XML components dynamically via `fetch()`, executing scoped state models and prop passing.
 6. **High Performance Primitives**: Single-Pass Zero-Allocation JIT Expression Transpiler (`EUIXExpressionParser.parseToJs`), Virtual Scrolling (`<for_each virtual="true">`), Keyed Reconciliation (`key="id"`), Container Event Delegation, Static Layout Pre-calculation (`_staticLayoutStyle`), and `DocumentFragment` DOM Batching.
 

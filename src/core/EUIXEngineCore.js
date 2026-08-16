@@ -443,7 +443,8 @@ const ACTION_DISPATCH_TABLE = {
     "RETHROW": "_handleRethrowAction",
     "THROW": "_handleThrowAction",
     "ANIMATE": "_handleAnimateAction",
-    "TRANSITION": "_handleAnimateAction"
+    "TRANSITION": "_handleAnimateAction",
+    "SET_TITLE": "_handleSetTitleAction"
 };
 
 /**
@@ -4667,6 +4668,14 @@ class EUIXEngineCore {
             return isFn(this.renderDialog) ? this.renderDialog(xmlNode, context) : null;
         }
 
+        if (tagName === "head" || tagName === "helmet") {
+            return isFn(this.renderHead) ? this.renderHead(xmlNode, context) : null;
+        }
+
+        if (tagName === "title" && isFn(this.renderHeadTitle)) {
+            return this.renderHeadTitle(xmlNode, context);
+        }
+
         if (tagName === "component") {
             const type = xmlNode.getAttribute("type");
             const bindPath = this.resolveBindPath(xmlNode);
@@ -5171,7 +5180,7 @@ class EUIXEngineCore {
             }
         };
 
-        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def"];
+        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def", "head", "helmet", "title"];
         const templateNode = this.getChild(specNode, "template") ||
             this.getChild(specNode, "flex") ||
             this.getChild(specNode, "grid") ||
@@ -5863,6 +5872,15 @@ class EUIXEngineCore {
         this.revalidateApi(tag);
     }
 
+    _handleSetTitleAction(actionNode, context = {}) {
+        const valNode = this.getChild(actionNode, "value") || this.getChild(actionNode, "title");
+        const rawVal = valNode ? valNode.textContent.trim() : (actionNode.getAttribute("value") || actionNode.getAttribute("title") || "");
+        const title = this.interpolate(rawVal, context);
+        if (typeof document !== "undefined") {
+            document.title = title;
+        }
+    }
+
     _handleThrowAction(actionNode, context = {}) {
         const msg = actionNode.getAttribute("message") || actionNode.getAttribute("msg") || this.getChild(actionNode, "message")?.textContent || "Explicit throw triggered";
         const code = actionNode.getAttribute("code") || "ACTION_EXECUTION_ERROR";
@@ -6271,8 +6289,12 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed"];
+        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
         
+        if (isFn(this.parseHeadMetadata)) {
+            this.parseHeadMetadata(root);
+        }
+
         let layout = Array.from(root.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()));
         if (!layout) {
             layout = Array.from(root.querySelectorAll("*")).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()) && !c.closest("component_def"));
