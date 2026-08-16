@@ -323,6 +323,15 @@ const METADATA_AND_EVENT_TAGS = new Set([
     "actions", "action_def", "workflow_def", "animations", "animation_def", "keyframe_def", "keyframe", "animate", "transition"
 ]);
 
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+const SVG_TAGS = new Set([
+    "svg", "path", "g", "circle", "rect", "line", "polyline", "polygon", "ellipse", 
+    "text", "tspan", "use", "defs", "clippath", "clipPath", "mask", "pattern", "image", 
+    "foreignobject", "foreignObject", "lineargradient", "linearGradient", "radialgradient", 
+    "radialGradient", "stop", "symbol", "marker"
+]);
+
 /**
  * Action Composer Errors
  */
@@ -3173,10 +3182,10 @@ class EUIXEngineCore {
                         el.setAttribute(attrName, "");
                         try { el[attrName] = true; } catch (_) {}
                     }
-                } else if (!attrValue.includes("data.")) {
+                } else if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
                     el.setAttribute(attrName, this.interpolate(attrValue, context));
                 }
-            } else if (attrName.startsWith("data-") || attrName.startsWith("aria-") || generalAttrs.includes(attrName)) {
+            } else {
                 const interpolatedVal = this.interpolate(attrValue, context);
                 el.setAttribute(attrName, interpolatedVal);
                 if (attrName === "draggable") {
@@ -3242,9 +3251,9 @@ class EUIXEngineCore {
             return;
         }
 
-        if (attrName === "value" && ("value" in el)) {
+        if (attrName === "value" && ("value" in el) && el.namespaceURI !== SVG_NAMESPACE) {
             el.value = newAttrVal;
-        } else if (attrName === "class") {
+        } else if (attrName === "class" && el.namespaceURI !== SVG_NAMESPACE) {
             el.className = newAttrVal;
         } else {
             el.setAttribute(attrName, newAttrVal);
@@ -3887,11 +3896,17 @@ class EUIXEngineCore {
             return this.applyRef(el, xmlNode, context);
         }
 
-        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote", "br", "hr", "b", "i", "u", "s", "ul", "ol", "li", "kbd", "details", "summary", "svg", "path", "circle"];
-        const elementTagName = allowedTags.includes(tagName) ? tagName : "div";
-        const div = document.createElement(elementTagName);
+        const isSvg = tagName === "svg" || context.isSvg || SVG_TAGS.has(tagName);
+        const allowedTags = ["button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th", "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6", "section", "article", "header", "footer", "nav", "aside", "main", "figure", "figcaption", "mark", "small", "sub", "sup", "code", "pre", "blockquote", "br", "hr", "b", "i", "u", "s", "ul", "ol", "li", "kbd", "details", "summary", "svg", "path", "circle", "rect", "line", "polyline", "polygon", "ellipse", "g", "defs", "use", "clippath", "mask", "pattern", "lineargradient", "radialgradient", "stop", "symbol", "marker", "tspan"];
+        const elementTagName = (isSvg || allowedTags.includes(tagName)) ? tagName : "div";
+        const div = isSvg 
+            ? document.createElementNS(SVG_NAMESPACE, xmlNode.tagName || tagName)
+            : document.createElement(elementTagName);
         const xmlClass = this.interpolate(xmlNode.getAttribute("class") || "", context);
-        if (xmlClass) div.className = xmlClass;
+        if (xmlClass) {
+            if (isSvg) div.setAttribute("class", xmlClass);
+            else div.className = xmlClass;
+        }
 
         if (tagName === "layout") {
             const layoutType = xmlNode.getAttribute("type") || "";
@@ -3902,13 +3917,15 @@ class EUIXEngineCore {
         this.applyNodeAttributes(div, xmlNode, context);
         this.bindEvents(xmlNode, div, context);
 
+        const childContext = isSvg ? { ...context, isSvg: true } : context;
+
         Array.from(xmlNode.childNodes).forEach(child => {
-            if (child.nodeType === Node.ELEMENT_NODE && (EVENT_TAGS.has(child.tagName.toLowerCase()) || METADATA_AND_EVENT_TAGS.has(child.tagName.toLowerCase()))) {
+            if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && (EVENT_TAGS.has(child.tagName.toLowerCase()) || METADATA_AND_EVENT_TAGS.has(child.tagName.toLowerCase()))) {
                 return;
             }
-            const childEl = this.createHTMLElement(child, context);
+            const childEl = this.createHTMLElement(child, childContext);
             if (childEl) {
-                this.applyItemChildStyles(childEl, child, context);
+                this.applyItemChildStyles(childEl, child, childContext);
                 div.appendChild(childEl);
             }
         });

@@ -113,6 +113,48 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         expect(footer).toBeTruthy();
         expect(footer.textContent).toBe('Copyright © 2026 \u00A0 — Litepacks → ✓ €50 × 2 ± 1 • Star: ☆');
     });
+
+    it('should create SVG and its child tags in the SVG namespace with full attribute support', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="iconColor">#ef4444</state>
+                <state id="radius">10</state>
+            </data_model>
+            <div class="icon-wrapper">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="{data.iconColor}" stroke-width="2">
+                    <circle cx="12" cy="12" r="{data.radius}" fill="#3b82f6" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const svg = document.querySelector('.icon-wrapper svg');
+        const circle = svg.querySelector('circle');
+        const path = svg.querySelector('path');
+
+        expect(svg).toBeTruthy();
+        expect(svg.namespaceURI).toBe('http://www.w3.org/2000/svg');
+        expect(circle.namespaceURI).toBe('http://www.w3.org/2000/svg');
+        expect(path.namespaceURI).toBe('http://www.w3.org/2000/svg');
+
+        expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
+        expect(svg.getAttribute('stroke')).toBe('#ef4444');
+        expect(svg.getAttribute('stroke-width')).toBe('2');
+        expect(circle.getAttribute('cx')).toBe('12');
+        expect(circle.getAttribute('r')).toBe('10');
+        expect(path.getAttribute('d')).toBe('M5 13l4 4L19 7');
+
+        // Test reactive SVG attribute update
+        engine.setState('iconColor', '#10b981');
+        expect(svg.getAttribute('stroke')).toBe('#10b981');
+
+        engine.setState('radius', 14);
+        expect(circle.getAttribute('r')).toBe('14');
+    });
 });
+
 
 
