@@ -154,7 +154,82 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         engine.setState('radius', 14);
         expect(circle.getAttribute('r')).toBe('14');
     });
+
+    it('should correctly handle static and reactive boolean attributes without false-positives', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="isSaving" type="boolean">false</state>
+                <state id="isHidden" type="boolean">false</state>
+                <state id="isAgree" type="boolean">true</state>
+                <state id="isDetailsOpen" type="boolean">false</state>
+            </data_model>
+            <div class="form-container">
+                <button id="btn1" disabled="false">Normal Button</button>
+                <button id="btn2" disabled="true">Disabled Button</button>
+                <button id="btn3" disabled="{data.isSaving}">Saving Button</button>
+                <div id="box1" hidden="false">Visible Box</div>
+                <div id="box2" hidden="{data.isHidden}">Toggle Box</div>
+                <input id="chk1" type="checkbox" checked="{data.isAgree}" />
+                <details id="det1" open="{data.isDetailsOpen}">
+                    <summary>More Info</summary>
+                    <p>Details text</p>
+                </details>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+
+        const btn1 = document.getElementById('btn1');
+        const btn2 = document.getElementById('btn2');
+        const btn3 = document.getElementById('btn3');
+        const box1 = document.getElementById('box1');
+        const box2 = document.getElementById('box2');
+        const chk1 = document.getElementById('chk1');
+        const det1 = document.getElementById('det1');
+
+        // Initial checks
+        expect(btn1.hasAttribute('disabled')).toBe(false);
+        expect(btn1.disabled).toBe(false);
+
+        expect(btn2.hasAttribute('disabled')).toBe(true);
+        expect(btn2.disabled).toBe(true);
+
+        expect(btn3.hasAttribute('disabled')).toBe(false);
+        expect(btn3.disabled).toBe(false);
+
+        expect(box1.hasAttribute('hidden')).toBe(false);
+        expect(box1.hidden).toBe(false);
+
+        expect(box2.hasAttribute('hidden')).toBe(false);
+        expect(box2.hidden).toBe(false);
+
+        expect(chk1.hasAttribute('checked')).toBe(true);
+        expect(chk1.checked).toBe(true);
+
+        expect(det1.hasAttribute('open')).toBe(false);
+        expect(det1.open).toBe(false);
+
+        // Reactive state updates
+        engine.setState('isSaving', true);
+        expect(btn3.hasAttribute('disabled')).toBe(true);
+        expect(btn3.disabled).toBe(true);
+
+        engine.setState('isHidden', true);
+        expect(box2.hasAttribute('hidden')).toBe(true);
+        expect(box2.hidden).toBe(true);
+
+        engine.setState('isAgree', false);
+        expect(chk1.hasAttribute('checked')).toBe(false);
+        expect(chk1.checked).toBe(false);
+
+        engine.setState('isDetailsOpen', true);
+        expect(det1.hasAttribute('open')).toBe(true);
+        expect(det1.open).toBe(true);
+    });
 });
+
 
 
 

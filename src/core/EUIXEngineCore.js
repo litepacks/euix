@@ -332,6 +332,13 @@ const SVG_TAGS = new Set([
     "radialGradient", "stop", "symbol", "marker"
 ]);
 
+const BOOLEAN_ATTRS = new Set([
+    "disabled", "checked", "readonly", "required", "autofocus", "hidden", 
+    "selected", "multiple", "open", "novalidate", "reversed", "inert", 
+    "allowfullscreen", "playsinline", "async", "defer", "loop", "muted", 
+    "autoplay", "controls", "default", "ismap"
+]);
+
 /**
  * Action Composer Errors
  */
@@ -3148,22 +3155,21 @@ class EUIXEngineCore {
     applyNodeAttributes(el, xmlNode, context = {}) {
         if (!el || !xmlNode || xmlNode.nodeType !== 1 || !xmlNode.attributes) return;
 
-        const validationAttrs = ["required", "pattern", "minlength", "maxlength", "min", "max", "step", "title", "autocomplete", "disabled", "readonly", "autofocus"];
+        const validationAttrs = ["pattern", "minlength", "maxlength", "min", "max", "step", "title", "autocomplete"];
 
         Array.from(xmlNode.attributes).forEach(attr => {
             const attrName = attr.name;
             const attrValue = attr.value;
-            if (!attrValue) return;
+            if (attrValue === undefined || attrValue === null) return;
+            if (attrName === "class" || attrName === "type") return;
+
+            const lowerAttrName = attrName.toLowerCase();
 
             if (attrName === "id") {
                 const idVal = this.interpolate(attrValue, context);
                 el.id = idVal;
                 el.setAttribute("id", idVal);
-            }
-
-            const generalAttrs = ["draggable", "tabindex", "role", "title", "style", "src", "alt", "href", "target", "rel", "data-id", "data-key", "data-value", "leave_animation", "enter_animation", "on_leave_preset", "on_enter_preset", "on_leave", "on_enter"];
-
-            if (attrName.startsWith("on") && attrName.length > 2 && !attrName.startsWith("on_")) {
+            } else if (attrName.startsWith("on") && attrName.length > 2 && !attrName.startsWith("on_")) {
                 const eventName = attrName.toLowerCase();
                 const handlerCode = this.interpolate(attrValue, context);
                 try {
@@ -3175,14 +3181,26 @@ class EUIXEngineCore {
                 } catch (_) {
                     el.setAttribute(attrName, handlerCode);
                 }
-            } else if (validationAttrs.includes(attrName)) {
-                if (["required", "disabled", "readonly", "autofocus"].includes(attrName)) {
-                    const isBoolTrue = this.isTruthy(attrValue) || attrValue === "" || attrValue.toLowerCase() === attrName;
-                    if (isBoolTrue) {
-                        el.setAttribute(attrName, "");
-                        try { el[attrName] = true; } catch (_) {}
-                    }
-                } else if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
+            } else if (BOOLEAN_ATTRS.has(lowerAttrName)) {
+                const interpolated = this.interpolate(attrValue, context);
+                const lower = String(interpolated).trim().toLowerCase();
+                const isExplicitFalse = lower === "false" || lower === "0" || lower === "null" || lower === "undefined";
+                const isBoolTrue = !isExplicitFalse && (
+                    lower === "true" ||
+                    lower === "1" ||
+                    lower === lowerAttrName ||
+                    (attrValue === "" && !String(attrValue).includes("{"))
+                );
+
+                if (isBoolTrue) {
+                    el.setAttribute(attrName, "");
+                    try { el[attrName] = true; } catch (_) {}
+                } else {
+                    el.removeAttribute(attrName);
+                    try { el[attrName] = false; } catch (_) {}
+                }
+            } else if (validationAttrs.includes(lowerAttrName)) {
+                if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
                     el.setAttribute(attrName, this.interpolate(attrValue, context));
                 }
             } else {
@@ -3238,9 +3256,18 @@ class EUIXEngineCore {
     updateAttributeBinding(el, attrName, template, context = {}) {
         if (!el || !attrName || !template) return;
         const newAttrVal = this.interpolate(template, context);
+        const lowerAttrName = attrName.toLowerCase();
 
-        if (["disabled", "required", "readonly", "checked", "autofocus"].includes(attrName)) {
-            const isBoolTrue = this.isTruthy(newAttrVal) && newAttrVal !== "false" && newAttrVal !== "0";
+        if (BOOLEAN_ATTRS.has(lowerAttrName)) {
+            const lower = String(newAttrVal).trim().toLowerCase();
+            const isExplicitFalse = lower === "false" || lower === "0" || lower === "null" || lower === "undefined" || lower === "";
+            const isBoolTrue = !isExplicitFalse && (
+                lower === "true" ||
+                lower === "1" ||
+                lower === lowerAttrName ||
+                this.isTruthy(newAttrVal)
+            );
+
             if (isBoolTrue) {
                 el.setAttribute(attrName, "");
                 try { el[attrName] = true; } catch (_) {}
