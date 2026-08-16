@@ -1600,7 +1600,7 @@ class EUIXEngineCore {
         if (!expr) return "";
         return String(expr)
             .trim()
-            .replace(/^\{\s*(?:data|global|\$global|local|\$local|state)\.([a-zA-Z0-9_.]+)\s*\}$/, "$1")
+            .replace(/^\{\s*(?:data|global|\$global|local|\$local|state)\.([a-zA-Z0-9_.[\]]+)\s*\}$/, "$1")
             .replace(/^(?:data|global|\$global|state)\./, "")
             .replace(/^\{\s*|\s*\}$/g, "");
     }
@@ -1608,10 +1608,17 @@ class EUIXEngineCore {
     extractStateKeys(expr) {
         if (!expr) return [];
         const keys = new Set();
-        const matches = expr.match(/(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g) || [];
+        const matches = expr.match(/(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g) || [];
         matches.forEach(m => {
             const clean = m.replace(/^(?:data|local|\$local|api|\$api)\./, "");
+            const rootKey = clean.split(/[.[]/)[0];
             keys.add(clean);
+            if (rootKey) keys.add(rootKey);
+            const innerBracketMatches = clean.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
+            innerBracketMatches.forEach(bm => {
+                const innerKey = bm.replace(/[[\]]|data\./g, "");
+                if (!/^\d+$/.test(innerKey)) keys.add(innerKey);
+            });
             if (m.startsWith("api.") || m.startsWith("$api.")) {
                 const parts = clean.split(".");
                 const epId = parts[0];
@@ -1680,13 +1687,21 @@ class EUIXEngineCore {
 
     getState(key) {
         if (!key || !this._rawState) return undefined;
-        const cleanKey = String(key).replace(/^(data|state|computed)\./, "");
+        let strKey = String(key);
+        if (strKey.includes("[") && strKey.includes("]")) {
+            strKey = strKey.replace(/\[\s*(?:data\.)?([a-zA-Z0-9_]+)\s*\]/g, (m, k) => {
+                if (/^\d+$/.test(k)) return `[${k}]`;
+                const v = this._rawState ? this._rawState[k] : undefined;
+                return v !== undefined ? `[${v}]` : m;
+            });
+        }
+        const cleanKey = strKey.replace(/^(data|state|computed)\./, "");
         if (this._computedRegistry && this._computedRegistry.has(cleanKey)) {
             return this.getComputed(cleanKey);
         }
         let val = (this._rawState && this._rawState[cleanKey] !== undefined) ? this._rawState[cleanKey] : (this._rawState ? this._rawState[key] : undefined);
-        if (val === undefined && typeof cleanKey === "string" && cleanKey.includes(".")) {
-            const parts = cleanKey.split(".");
+        if (val === undefined && typeof cleanKey === "string" && (cleanKey.includes(".") || cleanKey.includes("["))) {
+            const parts = cleanKey.replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean);
             let curr = this._rawState ? this._rawState[parts[0]] : undefined;
             for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
                 curr = curr[parts[i]];
@@ -2562,12 +2577,26 @@ class EUIXEngineCore {
                         .catch(err => this.reportError(err, `Failed to load external state '${id}' from '${src}'`));
                     if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
                 } else if (type === "array") {
-                    const items = this.getChildren(node, "item").map(item => {
-                        const obj = {};
-                        Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
-                        return obj;
-                    });
-                    rawState[id] = items;
+                    const childItems = this.getChildren(node, "item");
+                    if (childItems && childItems.length > 0) {
+                        const items = childItems.map(item => {
+                            const obj = {};
+                            Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
+                            return obj;
+                        });
+                        rawState[id] = items;
+                    } else {
+                        const txt = node.textContent.trim();
+                        if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
+                            try {
+                                rawState[id] = JSON.parse(txt);
+                            } catch (_) {
+                                rawState[id] = [];
+                            }
+                        } else {
+                            rawState[id] = [];
+                        }
+                    }
                 } else if (type === "number" || type === "int" || type === "float") {
                     const txt = node.textContent.trim();
                     rawState[id] = txt !== "" ? Number(txt) : 0;
@@ -3016,21 +3045,21 @@ class EUIXEngineCore {
                 const cleanKey = trimmed.replace(/^(?:parent\.)?data\./, "");
                 if (context._localState && context._localState[cleanKey] !== undefined) {
                     const val = context._localState[cleanKey];
-                    return val !== undefined && val !== null ? String(val) : "";
+                    return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
                 }
                 const val = this.getState(this.parseBindPath(cleanKey));
-                return val !== undefined && val !== null ? String(val) : "";
+                return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
             }
 
             if (/^(?:local|\$local)\./.test(trimmed)) {
                 const cleanKey = trimmed.replace(/^(?:local|\$local)\./, "");
                 if (context._localState && context._localState[cleanKey] !== undefined) {
                     const val = context._localState[cleanKey];
-                    return val !== undefined && val !== null ? String(val) : "";
+                    return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
                 }
                 if (context.local && context.local[cleanKey] !== undefined) {
                     const val = context.local[cleanKey];
-                    return val !== undefined && val !== null ? String(val) : "";
+                    return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
                 }
             }
 
@@ -3274,6 +3303,25 @@ class EUIXEngineCore {
                 } else {
                     el.className = interpolatedVal;
                 }
+            } else if (attrName === "style") {
+                let interpolatedVal = this.interpolate(attrValue, context);
+                if (typeof interpolatedVal === "string" && interpolatedVal.trim().startsWith("{") && interpolatedVal.trim().endsWith("}")) {
+                    try {
+                        const parsed = JSON.parse(interpolatedVal);
+                        if (typeof parsed === "object" && parsed !== null) {
+                            interpolatedVal = Object.entries(parsed)
+                                .filter(([k, v]) => v !== undefined && v !== null && v !== "")
+                                .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
+                                .join(" ");
+                        }
+                    } catch (_) {}
+                } else if (interpolatedVal && typeof interpolatedVal === "object") {
+                    interpolatedVal = Object.entries(interpolatedVal)
+                        .filter(([k, v]) => v !== undefined && v !== null && v !== "")
+                        .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
+                        .join(" ");
+                }
+                el.setAttribute("style", interpolatedVal);
             } else if (attrName === "type") {
                 el.setAttribute("type", this.interpolate(attrValue, context));
             } else {
@@ -3291,7 +3339,7 @@ class EUIXEngineCore {
                 }
             }
 
-            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
+            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g));
             if (matches.length > 0) {
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
@@ -3308,7 +3356,7 @@ class EUIXEngineCore {
                             this.updateAttributeBinding(el, attrName, attrValue, context);
                         });
                     } else {
-                        const rootKey = key.split(".")[0];
+                        const rootKey = key.split(/[.[]/)[0];
                         const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || attrValue.includes(`local.${key}`) || attrValue.includes(`$local.${key}`));
                         const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
                         const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
@@ -3319,6 +3367,13 @@ class EUIXEngineCore {
                         if (rootBindKey !== bindKey) {
                             this.registerBinding(rootBindKey, el, "attribute", updateFn);
                         }
+                        const innerBracketMatches = key.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
+                        innerBracketMatches.forEach(bm => {
+                            const innerKey = bm.replace(/[[\]]|data\./g, "");
+                            if (!/^\d+$/.test(innerKey)) {
+                                this.registerBinding(innerKey, el, "attribute", updateFn);
+                            }
+                        });
                     }
                 });
                 this.updateAttributeBinding(el, attrName, attrValue, context);
@@ -3355,6 +3410,25 @@ class EUIXEngineCore {
             el.value = newAttrVal;
         } else if (attrName === "class" && el.namespaceURI !== SVG_NAMESPACE) {
             el.className = newAttrVal;
+        } else if (attrName === "style") {
+            let styleVal = newAttrVal;
+            if (typeof styleVal === "string" && styleVal.trim().startsWith("{") && styleVal.trim().endsWith("}")) {
+                try {
+                    const parsed = JSON.parse(styleVal);
+                    if (typeof parsed === "object" && parsed !== null) {
+                        styleVal = Object.entries(parsed)
+                            .filter(([k, v]) => v !== undefined && v !== null && v !== "")
+                            .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
+                            .join(" ");
+                    }
+                } catch (_) {}
+            } else if (styleVal && typeof styleVal === "object") {
+                styleVal = Object.entries(styleVal)
+                    .filter(([k, v]) => v !== undefined && v !== null && v !== "")
+                    .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
+                    .join(" ");
+            }
+            el.setAttribute("style", styleVal);
         } else {
             el.setAttribute(attrName, newAttrVal);
         }
@@ -3414,7 +3488,7 @@ class EUIXEngineCore {
             if (!txt || txt.trim() === "") return null;
             const textNode = document.createTextNode(this.interpolate(txt, context));
 
-            const matches = Array.from(txt.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
+            const matches = Array.from(txt.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g));
             if (matches.length > 0) {
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
@@ -3430,7 +3504,7 @@ class EUIXEngineCore {
                         }
                         this.registerBinding(`api:${epId}`, textNode, "text_node", updateFn);
                     } else {
-                        const rootKey = key.split(".")[0];
+                        const rootKey = key.split(/[.[]/)[0];
                         const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || txt.includes(`local.${key}`) || txt.includes(`$local.${key}`));
                         const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
                         const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
@@ -3441,6 +3515,13 @@ class EUIXEngineCore {
                         if (rootBindKey !== bindKey) {
                             this.registerBinding(rootBindKey, textNode, "text_node", updateFn);
                         }
+                        const innerBracketMatches = key.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
+                        innerBracketMatches.forEach(bm => {
+                            const innerKey = bm.replace(/[[\]]|data\./g, "");
+                            if (!/^\d+$/.test(innerKey)) {
+                                this.registerBinding(innerKey, textNode, "text_node", updateFn);
+                            }
+                        });
                     }
                 });
             }
@@ -4107,6 +4188,13 @@ class EUIXEngineCore {
             const targetKey = node.getAttribute("key") || node.getAttribute("code");
             if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
                 continue;
+            }
+
+            if (node.getAttribute("prevent_default") === "true" || node.getAttribute("prevent") === "true" || node.getAttribute("prevent_default") === "") {
+                if (e && typeof e.preventDefault === "function") e.preventDefault();
+            }
+            if (node.getAttribute("stop_propagation") === "true" || node.getAttribute("stop") === "true" || node.getAttribute("stop_propagation") === "") {
+                if (e && typeof e.stopPropagation === "function") e.stopPropagation();
             }
 
             if (!this.confirmAction(node, eventContext)) continue;
