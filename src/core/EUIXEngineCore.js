@@ -1507,8 +1507,18 @@ class EUIXEngineCore {
     extractStateKeys(expr) {
         if (!expr) return [];
         const keys = new Set();
-        const matches = expr.match(/(?:data|local|\$local)\.(\w+)/g) || [];
-        matches.forEach(m => keys.add(m.replace(/^(?:data|local|\$local)\./, "")));
+        const matches = expr.match(/(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g) || [];
+        matches.forEach(m => {
+            const clean = m.replace(/^(?:data|local|\$local|api|\$api)\./, "");
+            keys.add(clean);
+            if (m.startsWith("api.") || m.startsWith("$api.")) {
+                const parts = clean.split(".");
+                const epId = parts[0];
+                const epProp = parts[1];
+                if (epProp) keys.add(`api:${epId}:${epProp}`);
+                keys.add(`api:${epId}`);
+            }
+        });
         const plainMatches = expr.match(/\{(\w+)\}/g) || [];
         plainMatches.forEach(m => keys.add(m.replace(/^\{|\}$/g, "")));
         return Array.from(keys);
@@ -1605,6 +1615,16 @@ class EUIXEngineCore {
         if (path.startsWith("global.") || path.startsWith("$global.")) {
             const key = path.replace(/^(\$global|global)\.(data\.)?/, "");
             return this.getState(key);
+        }
+        if (path.startsWith("api.") || path.startsWith("$api.")) {
+            const clean = path.replace(/^(\$api|api)\./, "");
+            const parts = clean.split(".");
+            const endpointId = parts[0];
+            const prop = parts.slice(1).join(".");
+            const status = (typeof this.getApiStatus === "function") ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+            if (!status) return undefined;
+            if (!prop) return status;
+            return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
         }
         if (path.startsWith("data.") || path.startsWith("state.")) {
             const cleanKey = path.replace(/^(data|state)\./, "");
@@ -2384,6 +2404,7 @@ class EUIXEngineCore {
 
     initDataModel() {
         const rawState = {};
+        const pendingEndpoints = [];
 
         const collectStatesFromDoc = (doc, isMainDoc = false) => {
             if (!doc) return;
@@ -2539,13 +2560,7 @@ class EUIXEngineCore {
             apiEndpoints.forEach(node => {
                 const autoFetchAttr = node.getAttribute("auto_fetch");
                 const autoFetch = autoFetchAttr !== "false";
-                if (typeof this.handleXHR === "function") {
-                    if (autoFetch) {
-                        this.handleXHR(node);
-                    } else {
-                        this.handleXHR(node, { _registerOnly: true });
-                    }
-                }
+                pendingEndpoints.push({ node, autoFetch });
             });
 
             if (isMainDoc) {
@@ -2642,6 +2657,17 @@ class EUIXEngineCore {
         });
 
         this._proxyState = this.state;
+
+        if (typeof this.handleXHR === "function" && pendingEndpoints.length > 0) {
+            pendingEndpoints.forEach(({ node, autoFetch }) => {
+                if (autoFetch) {
+                    this.handleXHR(node);
+                } else {
+                    this.handleXHR(node, { _registerOnly: true });
+                }
+            });
+        }
+
         return this.state;
     }
 
@@ -2736,8 +2762,21 @@ class EUIXEngineCore {
             return match;
         });
 
-        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}
-        result = result.replace(/\{(args|params|result|err|error|local|\$local|global)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {api.name}, {$api.name}
+        result = result.replace(/\{(args|params|result|err|error|local|\$local|global|api|\$api)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+            if (scope === "api" || scope === "$api") {
+                if (prop) {
+                    const parts = prop.split(".");
+                    const endpointId = parts[0];
+                    const epProp = parts.slice(1).join(".");
+                    const status = typeof this.getApiStatus === "function" ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+                    if (!status) return "";
+                    if (!epProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
+                    const val = epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
+                    return val !== undefined && val !== null ? String(val) : "";
+                }
+                return match;
+            }
             if (scope === "local" || scope === "$local") {
                 if (context._localState && prop) {
                     return context._localState[prop] !== undefined ? String(context._localState[prop]) : "";
@@ -2801,9 +2840,19 @@ class EUIXEngineCore {
                 return match;
             }
 
-            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.") || trimmed.includes("local.")) {
+            if (/[?!=><+\-*/]/.test(trimmed) || trimmed.includes(".") || trimmed.includes("data.") || trimmed.includes("local.") || trimmed.includes("api.")) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(trimmed, (name) => {
+                        if (name.startsWith("api.") || name.startsWith("$api.")) {
+                            const clean = name.replace(/^(\$api|api)\./, "");
+                            const parts = clean.split(".");
+                            const endpointId = parts[0];
+                            const prop = parts.slice(1).join(".");
+                            const status = typeof this.getApiStatus === "function" ? this.getApiStatus(endpointId) : (this._apiStatus && this._apiStatus[endpointId]);
+                            if (!status) return undefined;
+                            if (!prop) return status;
+                            return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
+                        }
                         if (name.startsWith("local.") || name.startsWith("$local.")) {
                             const lk = name.replace(/^(\$local|local)\./, "");
                             if (context._localState && context._localState[lk] !== undefined) {
@@ -3120,15 +3169,35 @@ class EUIXEngineCore {
                 }
             }
 
-            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_]+)/g));
+            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
             if (matches.length > 0) {
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
-                    const isLocal = context._localState && (context._localState[key] !== undefined || attrValue.includes(`local.${key}`) || attrValue.includes(`$local.${key}`));
-                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
-                    this.registerBinding(bindKey, el, "attribute", () => {
-                        this.updateAttributeBinding(el, attrName, attrValue, context);
-                    });
+                    if (attrValue.includes("api." + key) || attrValue.includes("$api." + key)) {
+                        const parts = key.split(".");
+                        const epId = parts[0];
+                        const epProp = parts[1];
+                        if (epProp) {
+                            this.registerBinding(`api:${epId}:${epProp}`, el, "attribute", () => {
+                                this.updateAttributeBinding(el, attrName, attrValue, context);
+                            });
+                        }
+                        this.registerBinding(`api:${epId}`, el, "attribute", () => {
+                            this.updateAttributeBinding(el, attrName, attrValue, context);
+                        });
+                    } else {
+                        const rootKey = key.split(".")[0];
+                        const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || attrValue.includes(`local.${key}`) || attrValue.includes(`$local.${key}`));
+                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                        const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
+                        const updateFn = () => {
+                            this.updateAttributeBinding(el, attrName, attrValue, context);
+                        };
+                        this.registerBinding(bindKey, el, "attribute", updateFn);
+                        if (rootBindKey !== bindKey) {
+                            this.registerBinding(rootBindKey, el, "attribute", updateFn);
+                        }
+                    }
                 });
                 this.updateAttributeBinding(el, attrName, attrValue, context);
             }
@@ -3813,18 +3882,38 @@ class EUIXEngineCore {
 
         if (!isInsideCodeOrPre && !hasCodeOrPreDescendant && childElementNodes.length === 0 && !["input", "select", "textarea", "form", "code", "pre"].includes(tagName) && !["text_input", "checkbox", "radio", "textarea", "number_input", "range_input", "date_input", "color_input", "file_input"].includes(typeAttr)) {
             const rawContent = xmlNode.textContent;
-            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_]+)/g));
+            const matches = Array.from(rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.]+)/g));
             if (matches.length > 0) {
                 div.dataset.euixMultiTemplate = rawContent;
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
-                    const isLocal = context._localState && (context._localState[key] !== undefined || rawContent.includes(`local.${key}`) || rawContent.includes(`$local.${key}`));
-                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
-                    this.registerBinding(bindKey, div, "multi_template", () => {
-                        div.textContent = this.interpolate(rawContent, context);
-                    });
-                    this.syncBindings(bindKey, isLocal ? context._localState[key] : this.getState(key));
+                    if (rawContent.includes("api." + key) || rawContent.includes("$api." + key)) {
+                        const parts = key.split(".");
+                        const epId = parts[0];
+                        const epProp = parts[1];
+                        if (epProp) {
+                            this.registerBinding(`api:${epId}:${epProp}`, div, "multi_template", () => {
+                                div.textContent = this.interpolate(rawContent, context);
+                            });
+                        }
+                        this.registerBinding(`api:${epId}`, div, "multi_template", () => {
+                            div.textContent = this.interpolate(rawContent, context);
+                        });
+                    } else {
+                        const rootKey = key.split(".")[0];
+                        const isLocal = context._localState && (context._localState[key] !== undefined || context._localState[rootKey] !== undefined || rawContent.includes(`local.${key}`) || rawContent.includes(`$local.${key}`));
+                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                        const rootBindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + rootKey) : rootKey;
+                        const updateFn = () => {
+                            div.textContent = this.interpolate(rawContent, context);
+                        };
+                        this.registerBinding(bindKey, div, "multi_template", updateFn);
+                        if (rootBindKey !== bindKey) {
+                            this.registerBinding(rootBindKey, div, "multi_template", updateFn);
+                        }
+                    }
                 });
+                div.textContent = this.interpolate(rawContent, context);
             } else {
                 const genericBindPath = this.resolveBindPath(xmlNode);
                 if (genericBindPath) {

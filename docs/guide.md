@@ -325,7 +325,21 @@ EUIX Engine supports centralized API Client configuration for relative HTTP endp
 #### `<api_endpoint>` Capabilities & Attributes:
 - **`auto_fetch="true"`** *(default)*: Fetches automatically upon component or document mount.
 - **`auto_fetch="false"`**: Pre-registers the endpoint in `_registeredXhrs` without making an initial HTTP call, allowing on-demand execution via `<on_click action="REVALIDATE_API" tag="...">` or `<watch>`.
-- **Attribute & Child Node Support**: Endpoint parameters (`url`, `method`, `target`/`bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`) can be specified directly as XML attributes or nested child elements.
+- **`loading="state_key"`**: Automatically binds request in-flight status (`true`/`false`) to the specified `<data_model>` state key.
+- **`error="state_key"`**: Automatically binds request failure error message to the specified `<data_model>` state key (cleared upon new request).
+- **Automatic ID-based Reactive Status (`{api.<id>.<prop>}` / `{$api.<id>.<prop>}`):** 
+  Every `<api_endpoint id="...">` or `tag="..."` exposes automatic reactive tracking properties accessible directly in templates and expressions without requiring explicit state bindings:
+  - `{api.<id>.loading}`: Boolean `true` while request is active, `false` when finished.
+  - `{api.<id>.error}`: Error string if request failed, `null` on success.
+  - `{api.<id>.status}`: HTTP status code integer (e.g. `200`, `404`, `500`).
+  - `{api.<id>.data}`: The latest parsed JSON response data.
+  - `{api.<id>.timestamp}`: Epoch timestamp of the last request completion.
+- **Programmatic Endpoint Status (`engine.getApiStatus(id)`):**
+  ```javascript
+  const status = engine.getApiStatus('get_posts');
+  console.log(status.loading, status.error, status.status, status.data);
+  ```
+- **Attribute & Child Node Support**: Endpoint parameters (`url`, `method`, `target`/`bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`, `loading`, `error`) can be specified directly as XML attributes or nested child elements.
 - **Reentrancy Guard**: `revalidateApi` includes a reentrancy guard (`_isRevalidating`) preventing infinite loops when mutation `POST` endpoints trigger group revalidations.
 
 ### 2. Programmatic JS API

@@ -223,7 +223,11 @@ Use `<api_config>` and `<api_endpoint>` to manage HTTP endpoints with reactive b
 ### `<api_endpoint>` Attributes & Behavior
 - **`auto_fetch="true"`** *(default)*: Fetches automatically when component/app mounts.
 - **`auto_fetch="false"`**: Pre-registers endpoint into engine's `_registeredXhrs` registry without fetching immediately, enabling on-demand execution via `<on_click action="REVALIDATE_API" tag="...">` or `<watch>`.
-- **Method & Attribute Support**: Endpoint attributes (`url`, `method`, `target`, `bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`) can be specified directly as attributes or nested child elements.
+- **`loading="state_key"`**: Automatically binds request in-flight status (`true`/`false`) to the specified `<data_model>` state key.
+- **`error="state_key"`**: Automatically binds request failure error message to the specified `<data_model>` state key.
+- **Automatic ID-based Reactive Status (`{api.<id>.<prop>}` / `{$api.<id>.<prop>}`):** Access `{api.<id>.loading}`, `{api.<id>.error}`, `{api.<id>.status}`, `{api.<id>.data}`, and `{api.<id>.timestamp}` directly in templates and expressions.
+- **Programmatic Status (`engine.getApiStatus(endpointId)`):** Returns `{ loading, error, status, data, timestamp }`.
+- **Method & Attribute Support**: Endpoint attributes (`url`, `method`, `target`, `bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`, `loading`, `error`) can be specified directly as attributes or nested child elements.
 - **Reentrancy Safeguard**: Built-in `_isRevalidating` guard prevents infinite loops when mutation `POST` endpoints trigger `REVALIDATE_API`.
 
 ---
