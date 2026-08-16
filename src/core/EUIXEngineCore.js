@@ -1182,8 +1182,20 @@ class EUIXEngineCore {
             }
         }
 
-        // 2. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry")
-        const sanitizedXml = processedXml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+        // 2. Escape < inside attribute values: ="..." or ='\''...'\''
+        let sanitizedXml = processedXml.replace(/=("[^"]*"|'[^']*')/g, (match) => {
+            return match.replace(/</g, "&lt;");
+        });
+
+        // 3. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry", URLs)
+        sanitizedXml = sanitizedXml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+
+        // 4. Auto-wrap raw script/action tags in CDATA if they contain unescaped code
+        sanitizedXml = sanitizedXml.replace(/(<(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)[^>]*action=["']RUN_SCRIPT["'][^>]*>)([\s\S]*?)(<\/(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)>)/gi, (m, openTag, content, closeTag) => {
+            if (content.includes("<![CDATA[")) return m;
+            return openTag + "<![CDATA[" + content + "]]>" + closeTag;
+        });
+
         const bypassCache = options && options.bypassCache === true;
 
         if (!bypassCache && EUIXEngineCore._astCache.has(sanitizedXml)) {
@@ -3161,7 +3173,6 @@ class EUIXEngineCore {
             const attrName = attr.name;
             const attrValue = attr.value;
             if (attrValue === undefined || attrValue === null) return;
-            if (attrName === "class" || attrName === "type") return;
 
             const lowerAttrName = attrName.toLowerCase();
 
@@ -3203,6 +3214,15 @@ class EUIXEngineCore {
                 if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
                     el.setAttribute(attrName, this.interpolate(attrValue, context));
                 }
+            } else if (attrName === "class") {
+                const interpolatedVal = this.interpolate(attrValue, context);
+                if (el.namespaceURI === SVG_NAMESPACE) {
+                    el.setAttribute("class", interpolatedVal);
+                } else {
+                    el.className = interpolatedVal;
+                }
+            } else if (attrName === "type") {
+                el.setAttribute("type", this.interpolate(attrValue, context));
             } else {
                 const interpolatedVal = this.interpolate(attrValue, context);
                 el.setAttribute(attrName, interpolatedVal);
@@ -3423,7 +3443,6 @@ class EUIXEngineCore {
             el.style.display = isFlex ? "flex" : "grid";
             el.className = [isFlex ? "euix-flex" : "euix-grid", this.interpolate(xmlNode.getAttribute("class") || "", context)].filter(Boolean).join(" ");
             this.applyLayoutStyles(el, xmlNode, context);
-            this.applyNodeAttributes(el, xmlNode, context);
             this.bindEvents(xmlNode, el, context);
 
             Array.from(xmlNode.childNodes).forEach(child => {
@@ -3941,7 +3960,6 @@ class EUIXEngineCore {
             this.applyLayoutStyles(div, xmlNode, context);
         }
 
-        this.applyNodeAttributes(div, xmlNode, context);
         this.bindEvents(xmlNode, div, context);
 
         const childContext = isSvg ? { ...context, isSvg: true } : context;
@@ -4938,7 +4956,13 @@ class EUIXEngineCore {
         if (isScriptAction) {
             const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
             if (!code) return;
-            const interpolatedCode = code.replace(/\{(?:data|props|state|constants|const|vars|args|params|result)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
+            const decodedCode = code
+                .replace(/&lt;/g, "<")
+                .replace(/&gt;/g, ">")
+                .replace(/&quot;/g, "\"")
+                .replace(/&apos;/g, "'")
+                .replace(/&amp;/g, "&");
+            const interpolatedCode = decodedCode.replace(/\{(?:data|props|state|constants|const|vars|args|params|result)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
                 const val = this.resolveValueFromPath(match.slice(1, -1), context);
                 return val !== undefined ? JSON.stringify(val) : match;
             });

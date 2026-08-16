@@ -228,7 +228,52 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         expect(det1.hasAttribute('open')).toBe(true);
         expect(det1.open).toBe(true);
     });
+
+    it('should cleanly parse and evaluate unescaped operators in attributes and scripts', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="count" type="number">3</state>
+                <state id="clicked" type="boolean">false</state>
+            </data_model>
+            <div id="test-div" class="{data.count < 5 ? 'under-limit' : 'over-limit'}">
+                <button id="test-btn" disabled="{data.count < 5 && data.count > 0}">
+                    <on_click action="RUN_SCRIPT">
+                        if ($data.count <= 10 && $data.count > 0) {
+                            $data.clicked = true;
+                        }
+                    </on_click>
+                    Check
+                </button>
+                <a id="test-link" href="/items?page=1&limit=20&sort=desc">Items</a>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const div = document.getElementById('test-div');
+        const btn = document.getElementById('test-btn');
+        const link = document.getElementById('test-link');
+
+        // Initial state
+        expect(div.className).toBe('under-limit');
+        expect(btn.hasAttribute('disabled')).toBe(true);
+        expect(btn.disabled).toBe(true);
+        expect(link.getAttribute('href')).toBe('/items?page=1&limit=20&sort=desc');
+
+        // State update changing class and enabling button
+        engine.setState('count', 10);
+        expect(div.className).toBe('over-limit');
+        expect(btn.hasAttribute('disabled')).toBe(false);
+        expect(btn.disabled).toBe(false);
+
+        // Script execution with < and && operators on enabled button
+        btn.click();
+        expect(engine.getState('clicked')).toBe(true);
+    });
 });
+
+
 
 
 
