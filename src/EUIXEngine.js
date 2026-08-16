@@ -22,6 +22,7 @@ import { EUIXDialogPlugin } from "./plugins/EUIXDialogPlugin.js";
 import { EUIXResiliencePlugin, EUIXCancellationController } from "./plugins/EUIXResiliencePlugin.js";
 import { EUIXReactivePlugin, EUIXDependencyGraph, EUIXComputedNode, EUIXWatchNode } from "./plugins/EUIXReactivePlugin.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
+import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -33,6 +34,7 @@ EUIXEngineCore.use(EUIXDialogPlugin);
 EUIXEngineCore.use(EUIXResiliencePlugin);
 EUIXEngineCore.use(EUIXReactivePlugin);
 EUIXEngineCore.use(EUIXAnimationPlugin);
+EUIXEngineCore.use(EUIXHeadPlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -53,6 +55,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXAnimationPlugin = EUIXAnimationPlugin;
     window.EUIXAnimationPresets = EUIXAnimationPresets;
     window.EUIXAnimationRegistry = EUIXAnimationRegistry;
+    window.EUIXHeadPlugin = EUIXHeadPlugin;
+    window.EUIXHelmetPlugin = EUIXHelmetPlugin;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());

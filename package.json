@@ -41,6 +41,12 @@
     "./animation": {
       "import": "./dist/plugins/EUIXAnimationPlugin.es.js"
     },
+    "./head": {
+      "import": "./dist/plugins/EUIXHeadPlugin.es.js"
+    },
+    "./helmet": {
+      "import": "./dist/plugins/EUIXHeadPlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"
