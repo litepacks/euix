@@ -271,6 +271,40 @@ describe('Text Node Whitespace Preservation & Inline Tag Rendering Suite', () =>
         btn.click();
         expect(engine.getState('clicked')).toBe(true);
     });
+
+    it('should cleanly parse and render unclosed HTML5 void tags and bare valueless attributes', () => {
+        const xml = `
+        <uid_spec>
+            <div class="card">
+                <p id="msg">Line 1<br>Line 2<hr>Footer Note</p>
+                <button id="b-disabled" disabled>Disabled</button>
+                <input id="chk-checked" type="checkbox" checked />
+                <details id="det-open" open>
+                    <summary>More Info</summary>
+                    <input id="txt-req" autofocus placeholder="Required field..." required>
+                </details>
+                <img id="avatar" src="/avatar.png">
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const p = document.getElementById('msg');
+        const bDisabled = document.getElementById('b-disabled');
+        const chkChecked = document.getElementById('chk-checked');
+        const detOpen = document.getElementById('det-open');
+        const txtReq = document.getElementById('txt-req');
+        const img = document.getElementById('avatar');
+
+        expect(p.querySelectorAll('br').length).toBe(1);
+        expect(p.querySelectorAll('hr').length).toBe(1);
+        expect(bDisabled.disabled).toBe(true);
+        expect(chkChecked.checked).toBe(true);
+        expect(detOpen.open).toBe(true);
+        expect(txtReq.hasAttribute('required')).toBe(true);
+        expect(txtReq.getAttribute('placeholder')).toBe('Required field...');
+        expect(img.getAttribute('src')).toBe('/avatar.png');
+    });
 });
 
 

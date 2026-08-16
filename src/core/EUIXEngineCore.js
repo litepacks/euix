@@ -1182,15 +1182,68 @@ class EUIXEngineCore {
             }
         }
 
-        // 2. Escape < inside attribute values: ="..." or ='\''...'\''
+        // 2. Remove stray closing tags for void elements & ensure self-closing for unclosed void tags
+        processedXml = processedXml.replace(/<\/(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)>/gi, "");
+        processedXml = processedXml.replace(/<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*?)?(?<!\/)>/gi, "<$1$2 />");
+
+        // 3. Normalize bare/valueless boolean attributes inside tags (e.g. <button disabled> -> <button disabled="">)
+        processedXml = processedXml.replace(/<([a-zA-Z0-9_\-]+)([^>]*?)(\/?)>/g, (match, tagName, attrsStr, selfClose) => {
+            if (!attrsStr || !attrsStr.trim()) return match;
+            let inQuotes = false;
+            let quoteChar = "";
+            let newAttrs = "";
+            let i = 0;
+
+            while (i < attrsStr.length) {
+                const char = attrsStr[i];
+                if (inQuotes) {
+                    newAttrs += char;
+                    if (char === quoteChar) inQuotes = false;
+                    i++;
+                    continue;
+                }
+                if (char === "\"" || char === "'") {
+                    inQuotes = true;
+                    quoteChar = char;
+                    newAttrs += char;
+                    i++;
+                    continue;
+                }
+                if (/\s/.test(char)) {
+                    newAttrs += char;
+                    i++;
+                    continue;
+                }
+                if (/[a-zA-Z0-9_\-:]/.test(char)) {
+                    let name = "";
+                    while (i < attrsStr.length && /[a-zA-Z0-9_\-:]/.test(attrsStr[i])) {
+                        name += attrsStr[i];
+                        i++;
+                    }
+                    let j = i;
+                    while (j < attrsStr.length && /\s/.test(attrsStr[j])) j++;
+                    if (j < attrsStr.length && attrsStr[j] === "=") {
+                        newAttrs += name;
+                    } else {
+                        newAttrs += name + "=\"\"";
+                    }
+                    continue;
+                }
+                newAttrs += char;
+                i++;
+            }
+            return "<" + tagName + newAttrs + (selfClose ? (newAttrs.endsWith(" ") ? "/>" : " />") : ">");
+        });
+
+        // 4. Escape < inside attribute values: ="..." or ='\''...'\''
         let sanitizedXml = processedXml.replace(/=("[^"]*"|'[^']*')/g, (match) => {
             return match.replace(/</g, "&lt;");
         });
 
-        // 3. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry", URLs)
+        // 5. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry", URLs)
         sanitizedXml = sanitizedXml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
 
-        // 4. Auto-wrap raw script/action tags in CDATA if they contain unescaped code
+        // 6. Auto-wrap raw script/action tags in CDATA if they contain unescaped code
         sanitizedXml = sanitizedXml.replace(/(<(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)[^>]*action=["']RUN_SCRIPT["'][^>]*>)([\s\S]*?)(<\/(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)>)/gi, (m, openTag, content, closeTag) => {
             if (content.includes("<![CDATA[")) return m;
             return openTag + "<![CDATA[" + content + "]]>" + closeTag;
