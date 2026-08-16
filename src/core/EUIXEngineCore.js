@@ -421,6 +421,31 @@ const BOOLEAN_ATTRS = new Set([
     "autoplay", "controls", "default", "ismap"
 ]);
 
+const ACTION_DISPATCH_TABLE = {
+    "SET_STATE": "_handleSetStateAction",
+    "TOGGLE_STATE": "_handleToggleStateAction",
+    "TOGGLE": "_handleToggleStateAction",
+    "MUTATE_STATE": "_handleMutateStateAction",
+    "REVALIDATE_API": "_handleRevalidateAction",
+    "REVALIDATE": "_handleRevalidateAction",
+    "FOCUS": "_handleFocusAction",
+    "XHR": "handleXHR",
+    "RUN_SCRIPT": "_handleRunScriptAction",
+    "EVAL_JS": "_handleRunScriptAction",
+    "EXEC_JS": "_handleRunScriptAction",
+    "SCRIPT": "_handleRunScriptAction",
+    "DELAY": "_handleDelay",
+    "WAIT": "_handleDelay",
+    "SLEEP": "_handleDelay",
+    "TIMEOUT": "_handleTimeout",
+    "RETRY": "_handleRetry",
+    "TRY": "_handleTryCatchFinally",
+    "RETHROW": "_handleRethrowAction",
+    "THROW": "_handleThrowAction",
+    "ANIMATE": "_handleAnimateAction",
+    "TRANSITION": "_handleAnimateAction"
+};
+
 /**
  * Action Composer Errors
  */
@@ -5716,9 +5741,465 @@ class EUIXEngineCore {
         }
     }
 
+    _setScopedState(rawPath, path, nextValue, context = {}) {
+        if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
+            const localKey = rawPath.replace(/^(\$local|local)\./, "");
+            if (context._localState) {
+                context._localState[localKey] = nextValue;
+                if (context._instanceId) {
+                    this.syncBindings(context._instanceId + ":" + localKey, nextValue);
+                }
+                return true;
+            }
+        } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
+            context._localState[path] = nextValue;
+            if (context._instanceId) {
+                this.syncBindings(context._instanceId + ":" + path, nextValue);
+            }
+            return true;
+        }
+        this.setState(path, nextValue);
+        return false;
+    }
+
+    _handleSetStateAction(actionNode, context = {}) {
+        const pathNode = this.getChild(actionNode, "path");
+        const valueNode = this.getChild(actionNode, "value");
+        if (!pathNode) return;
+
+        const rawPath = trimStr(pathNode);
+        const interpolatedPath = this.interpolate(rawPath, context);
+        const path = this.parseBindPath(interpolatedPath);
+
+        const rawValue = trimStr(valueNode);
+        let nextValue = "";
+
+        const evalGetter = (key) => {
+            const cleanKey = this.parseBindPath(key);
+            if (key.startsWith("local.") && context._localState) {
+                const lk = key.replace(/^local\./, "");
+                const val = context._localState[lk];
+                const num = parseFloat(val);
+                return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+            }
+            if (context._localState && context._localState[cleanKey] !== undefined) {
+                const val = context._localState[cleanKey];
+                const num = parseFloat(val);
+                return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+            }
+            const val = this.getState(cleanKey);
+            const num = parseFloat(val);
+            return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
+        };
+
+        const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|local\.\w+|\$local\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+        const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
+
+        if (hasBraces && (rawValue.includes("?") || /[\+\-\*\/]/.test(cleanExpr))) {
+            try {
+                const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
+                if (evaluated !== undefined && typeof evaluated === "number" && !isNaN(evaluated)) {
+                    nextValue = String(evaluated);
+                }
+            } catch (_) {}
+        }
+
+        if (nextValue === "") {
+            nextValue = this.interpolate(rawValue, context);
+        }
+
+        this._setScopedState(rawPath, path, nextValue, context);
+
+        const focusNode = this.getChild(actionNode, "focus");
+        if (focusNode) {
+            const targetStr = focusNode.textContent.trim();
+            const resolved = this.interpolate(targetStr, context).replace(/^ref:/, '');
+            if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
+                this.refs[resolved].focus();
+            } else {
+                this._pendingFocusKey = this.parseBindPath(targetStr);
+            }
+        }
+    }
+
+    _handleToggleStateAction(actionNode, context = {}) {
+        const pathNode = this.getChild(actionNode, "path");
+        const rawPath = pathNode ? pathNode.textContent.trim() : (actionNode.getAttribute("path") || actionNode.getAttribute("target") || actionNode.getAttribute("bind") || "");
+        const interpolatedPath = this.interpolate(rawPath, context);
+        const path = this.parseBindPath(interpolatedPath);
+        if (!path) return;
+
+        let currentVal;
+        if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
+            const localKey = rawPath.replace(/^(\$local|local)\./, "");
+            currentVal = context._localState ? context._localState[localKey] : undefined;
+        } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
+            currentVal = context._localState[path];
+        } else {
+            currentVal = this.getState(path);
+        }
+
+        const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
+        const nextValue = isTruthy ? "false" : "true";
+        this._setScopedState(rawPath, path, nextValue, context);
+    }
+
+    _handleFocusAction(actionNode, context = {}) {
+        const target = actionNode.getAttribute("target") || actionNode.getAttribute("ref") || this.getChild(actionNode, "target")?.textContent || this.getChild(actionNode, "ref")?.textContent;
+        if (!target) return;
+        const resolved = this.interpolate(target, context).replace(/^ref:/, '');
+        if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
+            this.refs[resolved].focus();
+        } else {
+            const el = document.querySelector(`[data-euix-ref="${resolved}"], #${resolved}`);
+            if (el && isFn(el.focus)) el.focus();
+        }
+    }
+
+    _handleRevalidateAction(actionNode, context = {}) {
+        const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url");
+        const rawTag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "");
+        const tag = this.interpolate(rawTag, context);
+        this.revalidateApi(tag);
+    }
+
+    _handleThrowAction(actionNode, context = {}) {
+        const msg = actionNode.getAttribute("message") || actionNode.getAttribute("msg") || this.getChild(actionNode, "message")?.textContent || "Explicit throw triggered";
+        const code = actionNode.getAttribute("code") || "ACTION_EXECUTION_ERROR";
+        const interpolatedMsg = this.interpolate(msg, context);
+        throw new EUIXStructuredError({
+            message: interpolatedMsg,
+            code,
+            originatingAction: "THROW",
+            component: context._componentName
+        });
+    }
+
+    _handleRethrowAction(actionNode, context = {}) {
+        const errToThrow = context.err || context.error || context._lastError || new EUIXStructuredError({ message: "Explicit rethrow triggered", code: "ACTION_EXECUTION_ERROR" });
+        throw errToThrow;
+    }
+
+    _handleRunScriptAction(actionNode, context = {}) {
+        const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
+        if (!code) return;
+        const decodedCode = code
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, "\"")
+            .replace(/&apos;/g, "'")
+            .replace(/&amp;/g, "&");
+        const interpolatedCode = decodedCode.replace(/\{(?:data|props|state|constants|const|vars|args|params|result)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
+            const val = this.resolveValueFromPath(match.slice(1, -1), context);
+            return val !== undefined ? JSON.stringify(val) : match;
+        });
+        const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
+        try {
+            const isAsync = interpolatedCode.includes("await ");
+            const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+            const fn = isAsync
+                ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode)
+                : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode);
+            const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
+            const pVal = context.$prevValue !== undefined ? context.$prevValue : (context.prevValue !== undefined ? context.prevValue : context.oldValue);
+            const oVal = context.$oldValue !== undefined ? context.$oldValue : context.oldValue;
+            const pPath = context.$path || context.path || "";
+            const errVal = context.err || context.error || context._lastError || null;
+            return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath, errVal);
+        } catch (err) {
+            this.reportError(err, "Action Execution (RUN_SCRIPT)");
+            throw err;
+        }
+    }
+
+    _handleMutateStateAction(actionNode, context = {}) {
+        const pathNode = this.getChild(actionNode, "path");
+        const opNode = this.getChild(actionNode, "operation");
+        const rawPath = trimStr(pathNode) || (actionNode.getAttribute("path") || "");
+        const interpolatedPath = this.interpolate(rawPath, context);
+        const path = this.parseBindPath(interpolatedPath);
+        const operation = (trimStr(opNode) || actionNode.getAttribute("operation") || "").toUpperCase();
+
+        if (!path || !operation) return;
+
+        if (operation === "CLEAR" || operation === "EMPTY" || operation === "RESET") {
+            this.batch(() => {
+                this.setState(path, []);
+                this.applyResets(actionNode);
+            });
+            return;
+        }
+
+        if (operation === "INCREMENT" || operation === "DECREMENT") {
+            const rawVal = this.getState(path);
+            if (!Array.isArray(rawVal)) {
+                let num = parseInt(rawVal ?? "0", 10);
+                if (isNaN(num)) num = 0;
+                num = operation === "INCREMENT" ? num + 1 : num - 1;
+                this.setState(path, String(num));
+                return;
+            }
+
+            const idxNode = this.getChild(actionNode, "index");
+            const fieldNode = this.getChild(actionNode, "field");
+            const rawIdx = idxNode ? idxNode.textContent.trim() : (actionNode.getAttribute("index") || "");
+            const fieldName = fieldNode ? fieldNode.textContent.trim() : (actionNode.getAttribute("field") || "quantity");
+            const index = parseInt(this.interpolate(rawIdx, context), 10);
+
+            const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+            if (!isNaN(index) && index >= 0 && index < currentList.length) {
+                const item = { ...currentList[index] };
+                let currVal = parseInt(item[fieldName] || 1, 10);
+                if (operation === "INCREMENT") {
+                    currVal += 1;
+                    item[fieldName] = currVal;
+                    currentList[index] = item;
+                } else {
+                    currVal -= 1;
+                    if (currVal <= 0) {
+                        currentList.splice(index, 1);
+                    } else {
+                        item[fieldName] = currVal;
+                        currentList[index] = item;
+                    }
+                }
+                this.setState(path, currentList);
+            }
+            return;
+        }
+
+        if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
+            const valNode = this.getChild(actionNode, "value");
+            const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
+            const rawText = valItem ? ((typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) || valItem.textContent?.trim() || "") : "";
+            const textValue = this.interpolate(rawText, context);
+
+            let parsedObj = null;
+            if (textValue && textValue.startsWith("{") && textValue.endsWith("}")) {
+                try { parsedObj = JSON.parse(textValue); } catch (e) {}
+            }
+
+            const itemId = (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) || (parsedObj && parsedObj.id) || `task-${Date.now()}`;
+            const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId };
+            if (valItem && valItem.attributes) {
+                Array.from(valItem.attributes).forEach(attr => {
+                    const interpolatedVal = this.interpolate(attr.value, context);
+                    if (interpolatedVal !== undefined && interpolatedVal !== null && !interpolatedVal.includes("undefined")) {
+                        newItem[attr.name] = interpolatedVal;
+                    }
+                });
+            }
+            if (valItem && typeof valItem.getAttribute === "function") {
+                const textAttr = valItem.getAttribute("text");
+                if (textAttr && !newItem.text) newItem.text = this.interpolate(textAttr, context);
+                const titleAttr = valItem.getAttribute("title");
+                if (titleAttr && !newItem.title) newItem.title = this.interpolate(titleAttr, context);
+            }
+            if (!parsedObj && !newItem.text && textValue) newItem.text = textValue;
+            if (!parsedObj && !newItem.title && textValue) newItem.title = textValue;
+            if (!newItem.quantity) newItem.quantity = 1;
+
+            const hasCustomAttributes = Object.keys(newItem).some(k => k !== "id" && k !== "quantity" && String(newItem[k]).trim() !== "");
+            const titleVal = newItem.title || newItem.text || newItem.name || (hasCustomAttributes ? "valid" : "");
+            if (!String(titleVal).trim()) return;
+
+            const whereNode = this.getChild(actionNode, "where");
+            const rawWhereEquals = whereNode ? whereNode.getAttribute("equals") : null;
+            const targetId = rawWhereEquals ? this.interpolate(rawWhereEquals, context) : newItem.id;
+
+            const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+            const existingIdx = currentList.findIndex(it => String(it.id) === String(targetId));
+
+            if (existingIdx >= 0 && targetId) {
+                const existing = { ...currentList[existingIdx] };
+                const currentQty = parseInt(existing.quantity || 1, 10);
+                existing.quantity = currentQty + 1;
+                currentList[existingIdx] = existing;
+                this.setState(path, currentList);
+                this.applyResets(actionNode);
+                return;
+            }
+
+            if (newItem.status === undefined || newItem.status === null || newItem.status === "") {
+                const selCol = this.getState("new_kanban_col");
+                if (selCol && ["todo", "in_progress", "done"].includes(selCol)) {
+                    newItem.status = selCol;
+                }
+            }
+            if (!newItem.category && path === "tasks") newItem.category = "General";
+            if (newItem.completed === undefined && (path === "todos" || path === "tasks")) newItem.completed = "false";
+
+            this.batch(() => {
+                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+                if (operation === "UNSHIFT" || operation === "PREPEND") {
+                    this.setState(path, [newItem, ...currentList]);
+                } else {
+                    this.setState(path, [...currentList, newItem]);
+                }
+                this.applyResets(actionNode);
+                if (!this.getChild(actionNode, "reset") && "new_todo_input" in this._rawState) {
+                    this.setState("new_todo_input", "", { silent: true });
+                }
+            });
+            return;
+        }
+
+        if (operation === "REMOVE") {
+            const indexNode = this.getChild(actionNode, "index");
+            const whereNode = this.getChild(actionNode, "where");
+            const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+
+            if (indexNode) {
+                const rawIdx = indexNode.textContent.trim();
+                const interpolatedIdx = this.interpolate(rawIdx, context);
+                const idx = parseInt(interpolatedIdx, 10);
+                if (!isNaN(idx) && idx >= 0 && idx < list.length) {
+                    list.splice(idx, 1);
+                    this.batch(() => {
+                        this.setState(path, list);
+                        this.applyResets(actionNode);
+                    });
+                    return;
+                }
+            }
+
+            if (whereNode) {
+                const field = whereNode.getAttribute("field") || "id";
+                const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                const matchValue = this.interpolate(rawMatch, context);
+
+                this.batch(() => {
+                    const nextList = list.filter(item => String(item[field]) !== String(matchValue));
+                    this.setState(path, nextList);
+                    this.applyResets(actionNode);
+                    if (String(this._rawState.editing_id) === String(matchValue)) {
+                        if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
+                        if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                    }
+                });
+            }
+            return;
+        }
+
+        if (operation === "MOVE_UP" || operation === "MOVE_DOWN") {
+            const indexNode = this.getChild(actionNode, "index");
+            const whereNode = this.getChild(actionNode, "where");
+            const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+
+            let targetIdx = -1;
+            if (indexNode) {
+                targetIdx = parseInt(this.interpolate(indexNode.textContent.trim(), context), 10);
+            } else if (whereNode) {
+                const field = whereNode.getAttribute("field") || "id";
+                const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                const expected = this.interpolate(rawMatch, context);
+                targetIdx = list.findIndex(item => String(item[field]) === String(expected));
+            }
+
+            if (targetIdx !== -1) {
+                const swapIdx = operation === "MOVE_UP" ? targetIdx - 1 : targetIdx + 1;
+                if (swapIdx >= 0 && swapIdx < list.length) {
+                    const temp = list[targetIdx];
+                    list[targetIdx] = list[swapIdx];
+                    list[swapIdx] = temp;
+                    this.batch(() => {
+                        this.setState(path, list);
+                        this.applyResets(actionNode);
+                    });
+                }
+            }
+            return;
+        }
+
+        if (operation === "SWAP") {
+            const whereNode = this.getChild(actionNode, "where");
+            const targetWhereNode = this.getChild(actionNode, "target_where") || this.getChild(actionNode, "target");
+            const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+
+            if (whereNode && targetWhereNode) {
+                const field1 = whereNode.getAttribute("field") || "id";
+                const rawMatch1 = whereNode.getAttribute("equals") || whereNode.textContent.trim();
+                const id1 = this.interpolate(rawMatch1, context);
+
+                const field2 = targetWhereNode.getAttribute("field") || "id";
+                const rawMatch2 = targetWhereNode.getAttribute("equals") || targetWhereNode.textContent.trim();
+                const id2 = this.interpolate(rawMatch2, context);
+
+                const idx1 = list.findIndex(item => String(item[field1]) === String(id1));
+                const idx2 = list.findIndex(item => String(item[field2]) === String(id2));
+
+                if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
+                    const temp = list[idx1];
+                    list[idx1] = list[idx2];
+                    list[idx2] = temp;
+
+                    if (list[idx1].status && list[idx2].status) {
+                        const tempStatus = list[idx1].status;
+                        list[idx1].status = list[idx2].status;
+                        list[idx2].status = tempStatus;
+                    }
+
+                    this.batch(() => {
+                        this.setState(path, list);
+                        this.applyResets(actionNode);
+                    });
+                }
+            }
+            return;
+        }
+
+        if (operation === "UPDATE") {
+            const whereNode = this.getChild(actionNode, "where");
+            const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || this.getChild(actionNode, "value") || actionNode;
+            if (!fieldsNode) return;
+
+            const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
+            const updates = {};
+            Array.from(fieldsNode.attributes).forEach(attr => {
+                updates[attr.name] = this.interpolate(attr.value, context);
+            });
+
+            if (updates.text !== undefined && !String(updates.text).trim()) return;
+
+            const matchesWhere = (item) => {
+                if (!whereNode) return true;
+                const field = whereNode.getAttribute("field") || "id";
+                const op = (whereNode.getAttribute("op") || "eq").toLowerCase();
+                const rawMatch = whereNode.getAttribute("equals")
+                    ?? whereNode.getAttribute("value")
+                    ?? whereNode.textContent.trim();
+                const expected = this.interpolate(rawMatch, context);
+                const actual = item[field];
+
+                if (op === "neq" || op === "!=" || op === "ne") {
+                    return String(actual) !== String(expected);
+                }
+                return String(actual) === String(expected);
+            };
+
+            const touchedIds = [];
+            this.batch(() => {
+                const nextList = list.map(item => {
+                    if (!matchesWhere(item)) return item;
+                    touchedIds.push(item.id);
+                    return { ...item, ...updates };
+                });
+                this.setState(path, nextList);
+                this.applyResets(actionNode);
+
+                if (
+                    touchedIds.length === 1 &&
+                    String(this._rawState.editing_id) === String(touchedIds[0])
+                ) {
+                    if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
+                    if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
+                }
+            });
+        }
+    }
+
     _executeActionInternalBody(actionNode, context = {}) {
         const actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
-        const actionType = actionAttr;
         const tagNameLower = actionNode.tagName ? actionNode.tagName.toLowerCase() : "";
 
         if (this._devtools && this._devtools.enabled) {
@@ -5742,75 +6223,26 @@ class EUIXEngineCore {
             }
         }
 
-        // Declarative Resilience Primitives (Delay, Timeout, Retry)
-        const isAnimate = actionAttr === "ANIMATE" || actionAttr === "TRANSITION" || tagNameLower === "animate" || tagNameLower === "transition";
-        if (isAnimate && isFn(this._handleAnimateAction)) {
-            return this._handleAnimateAction(actionNode, context);
-        }
-
-        const isDelay = actionAttr === "DELAY" || actionAttr === "WAIT" || actionAttr === "SLEEP" || tagNameLower === "delay" || tagNameLower === "wait" || tagNameLower === "sleep";
-        if (isDelay) {
-            return this._handleDelay(actionNode, context);
-        }
-
-        const isTimeout = actionAttr === "TIMEOUT" || tagNameLower === "timeout";
-        if (isTimeout) {
-            return this._handleTimeout(actionNode, context);
-        }
-
-        const isRetry = actionAttr === "RETRY" || tagNameLower === "retry";
-        if (isRetry) {
-            return this._handleRetry(actionNode, context);
-        }
-
-        // Declarative Try / Catch / Finally Error Handling Primitives
-        const isTryBlock = actionAttr === "TRY" || tagNameLower === "try";
-        if (isTryBlock) {
-            return this._handleTryCatchFinally(actionNode, context);
-        }
-
-        const isRethrow = actionAttr === "RETHROW" || tagNameLower === "rethrow";
-        if (isRethrow) {
-            const errToThrow = context.err || context.error || context._lastError || new EUIXStructuredError({ message: "Explicit rethrow triggered", code: "ACTION_EXECUTION_ERROR" });
-            throw errToThrow;
-        }
-
-        const isThrow = actionAttr === "THROW" || tagNameLower === "throw";
-        if (isThrow) {
-            const msg = actionNode.getAttribute("message") || actionNode.getAttribute("msg") || this.getChild(actionNode, "message")?.textContent || "Explicit throw triggered";
-            const code = actionNode.getAttribute("code") || "ACTION_EXECUTION_ERROR";
-            const interpolatedMsg = this.interpolate(msg, context);
-            throw new EUIXStructuredError({
-                message: interpolatedMsg,
-                code,
-                originatingAction: "THROW",
-                component: context._componentName
-            });
-        }
-
-        if (tagNameLower === "catch") {
+        if (tagNameLower === "catch" || tagNameLower === "finally") {
             const err = new EUIXStructuredError({
-                message: "Orphan <catch> tag encountered without a parent <try> block",
+                message: `Orphan <${tagNameLower}> tag encountered without a parent <try> block`,
                 code: "VALIDATION_ERROR",
-                originatingAction: "CATCH",
+                originatingAction: tagNameLower.toUpperCase(),
                 component: context._componentName
             });
             this.reportError(err, "Syntax Validation");
             throw err;
         }
 
-        if (tagNameLower === "finally") {
-            const err = new EUIXStructuredError({
-                message: "Orphan <finally> tag encountered without a parent <try> block",
-                code: "VALIDATION_ERROR",
-                originatingAction: "FINALLY",
-                component: context._componentName
-            });
-            this.reportError(err, "Syntax Validation");
-            throw err;
+        const primaryKey = (actionAttr || tagNameLower).toUpperCase();
+
+        // 1. Direct O(1) Action Dispatch via Table
+        const handlerName = ACTION_DISPATCH_TABLE[primaryKey];
+        if (handlerName && typeof this[handlerName] === "function") {
+            return this[handlerName](actionNode, context);
         }
 
-        // Action Composer Resolution
+        // 2. Action Composer Subroutine Resolution
         const isComposedCallTag = ["execute_action", "call_action", "run_workflow", "action", "step"].includes(tagNameLower);
         const isComposedCallAttr = actionAttr === "EXECUTE_ACTION" || actionAttr === "CALL_ACTION" || actionAttr === "RUN_WORKFLOW";
         const targetComposedName = (isComposedCallAttr || isComposedCallTag)
@@ -5823,464 +6255,13 @@ class EUIXEngineCore {
             return EUIXActionComposer.execute(actionDef, args, this, context);
         }
 
+        // 3. Custom Action Handlers
         const customHandler = (actionAttr && this._customActions.get(actionAttr)) ||
             (actionAttr && EUIXEngineCore._globalActionHandlers && EUIXEngineCore._globalActionHandlers.get(actionAttr.toUpperCase())) ||
             (tagNameLower && EUIXEngineCore._globalActionHandlers && EUIXEngineCore._globalActionHandlers.get(tagNameLower.toUpperCase()));
 
         if (customHandler) {
             return customHandler.call(this, actionNode, context, this);
-        }
-
-        if (actionAttr === "XHR" || tagNameLower === "xhr") {
-            return this.handleXHR(actionNode, context);
-        }
-
-        const isScriptAction = actionAttr === "RUN_SCRIPT" || actionAttr === "EVAL_JS" || actionAttr === "EXEC_JS" || tagNameLower === "run_script" || tagNameLower === "script";
-
-        if (isScriptAction) {
-            const code = actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
-            if (!code) return;
-            const decodedCode = code
-                .replace(/&lt;/g, "<")
-                .replace(/&gt;/g, ">")
-                .replace(/&quot;/g, "\"")
-                .replace(/&apos;/g, "'")
-                .replace(/&amp;/g, "&");
-            const interpolatedCode = decodedCode.replace(/\{(?:data|props|state|constants|const|vars|args|params|result)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
-                const val = this.resolveValueFromPath(match.slice(1, -1), context);
-                return val !== undefined ? JSON.stringify(val) : match;
-            });
-            const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
-            try {
-                const isAsync = interpolatedCode.includes("await ");
-                const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-                const fn = isAsync
-                    ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode)
-                    : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode);
-                const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
-                const pVal = context.$prevValue !== undefined ? context.$prevValue : (context.prevValue !== undefined ? context.prevValue : context.oldValue);
-                const oVal = context.$oldValue !== undefined ? context.$oldValue : context.oldValue;
-                const pPath = context.$path || context.path || "";
-                const errVal = context.err || context.error || context._lastError || null;
-                return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath, errVal);
-            } catch (err) {
-                this.reportError(err, "Action Execution (RUN_SCRIPT)");
-                throw err;
-            }
-        }
-
-        if (actionType === "REVALIDATE_API" || actionType === "REVALIDATE") {
-            const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url");
-            const tag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "");
-            this.revalidateApi(tag);
-            return;
-        }
-
-        if (actionType === "SET_STATE") {
-            const pathNode = this.getChild(actionNode, "path");
-            const valueNode = this.getChild(actionNode, "value");
-            if (!pathNode) return;
-
-            const rawPath = trimStr(pathNode);
-            const interpolatedPath = this.interpolate(rawPath, context);
-            const path = this.parseBindPath(interpolatedPath);
-
-            const rawValue = trimStr(valueNode);
-            let nextValue = "";
-
-            const evalGetter = (key) => {
-                const cleanKey = this.parseBindPath(key);
-                if (key.startsWith("local.") && context._localState) {
-                    const lk = key.replace(/^local\./, "");
-                    const val = context._localState[lk];
-                    const num = parseFloat(val);
-                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
-                }
-                if (context._localState && context._localState[cleanKey] !== undefined) {
-                    const val = context._localState[cleanKey];
-                    const num = parseFloat(val);
-                    return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
-                }
-                const val = this.getState(cleanKey);
-                const num = parseFloat(val);
-                return (!isNaN(num) && val !== "" && val !== null) ? num : (val ?? 0);
-            };
-
-            const cleanExpr = rawValue.replace(/\{\s*(data\.\w+|local\.\w+|\$local\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
-            const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
-
-            if (hasBraces && (rawValue.includes("?") || /[\+\-\*\/]/.test(cleanExpr))) {
-                try {
-                    const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
-                    if (evaluated !== undefined && typeof evaluated === "number" && !isNaN(evaluated)) {
-                        nextValue = String(evaluated);
-                    }
-                } catch (_) {}
-            }
-
-            if (nextValue === "") {
-                nextValue = this.interpolate(rawValue, context);
-            }
-
-            // Check if targeting local state
-            if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
-                const localKey = rawPath.replace(/^(\$local|local)\./, "");
-                if (context._localState) {
-                    context._localState[localKey] = nextValue;
-                    if (context._instanceId) {
-                        this.syncBindings(context._instanceId + ":" + localKey, nextValue);
-                    }
-                    return;
-                }
-            } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
-                context._localState[path] = nextValue;
-                if (context._instanceId) {
-                    this.syncBindings(context._instanceId + ":" + path, nextValue);
-                }
-                return;
-            }
-
-            this.setState(path, nextValue);
-
-            const focusNode = this.getChild(actionNode, "focus");
-            if (focusNode) {
-                const targetStr = focusNode.textContent.trim();
-                const resolved = this.interpolate(targetStr, context).replace(/^ref:/, '');
-                if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
-                    this.refs[resolved].focus();
-                } else {
-                    this._pendingFocusKey = this.parseBindPath(targetStr);
-                }
-            }
-            return;
-        }
-
-        if (actionType === "TOGGLE_STATE" || actionType === "TOGGLE") {
-            const pathNode = this.getChild(actionNode, "path");
-            const rawPath = pathNode ? pathNode.textContent.trim() : (actionNode.getAttribute("path") || actionNode.getAttribute("target") || actionNode.getAttribute("bind") || "");
-            const interpolatedPath = this.interpolate(rawPath, context);
-            const path = this.parseBindPath(interpolatedPath);
-            if (path) {
-                if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
-                    const localKey = rawPath.replace(/^(\$local|local)\./, "");
-                    if (context._localState) {
-                        const currentVal = context._localState[localKey];
-                        const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
-                        context._localState[localKey] = isTruthy ? "false" : "true";
-                        if (context._instanceId) {
-                            this.syncBindings(context._instanceId + ":" + localKey, context._localState[localKey]);
-                        }
-                        return;
-                    }
-                } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
-                    const currentVal = context._localState[path];
-                    const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
-                    context._localState[path] = isTruthy ? "false" : "true";
-                    if (context._instanceId) {
-                        this.syncBindings(context._instanceId + ":" + path, context._localState[path]);
-                    }
-                    return;
-                }
-
-                const currentVal = this.getState(path);
-                const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
-                this.setState(path, isTruthy ? "false" : "true");
-            }
-            return;
-        }
-
-        if (actionType === "FOCUS") {
-            const target = actionNode.getAttribute("target") || actionNode.getAttribute("ref") || this.getChild(actionNode, "target")?.textContent || this.getChild(actionNode, "ref")?.textContent;
-            if (target) {
-                const resolved = this.interpolate(target, context).replace(/^ref:/, '');
-                if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
-                    this.refs[resolved].focus();
-                } else {
-                    const el = document.querySelector(`[data-euix-ref="${resolved}"], #${resolved}`);
-                    if (el && isFn(el.focus)) el.focus();
-                }
-            }
-            return;
-        }
-
-        if (actionType === "MUTATE_STATE") {
-            const pathNode = this.getChild(actionNode, "path");
-            const opNode = this.getChild(actionNode, "operation");
-            const rawPath = trimStr(pathNode) || (actionNode.getAttribute("path") || "");
-            const interpolatedPath = this.interpolate(rawPath, context);
-            const path = this.parseBindPath(interpolatedPath);
-            const operation = (trimStr(opNode) || actionNode.getAttribute("operation") || "").toUpperCase();
-
-            if (!path || !operation) return;
-
-            if (operation === "CLEAR" || operation === "EMPTY" || operation === "RESET") {
-                this.batch(() => {
-                    this.setState(path, []);
-                    this.applyResets(actionNode);
-                });
-            }
-
-            if (operation === "INCREMENT" || operation === "DECREMENT") {
-                const rawVal = this.getState(path);
-                if (!Array.isArray(rawVal)) {
-                    let num = parseInt(rawVal ?? "0", 10);
-                    if (isNaN(num)) num = 0;
-                    num = operation === "INCREMENT" ? num + 1 : num - 1;
-                    this.setState(path, String(num));
-                    return;
-                }
-
-                const idxNode = this.getChild(actionNode, "index");
-                const fieldNode = this.getChild(actionNode, "field");
-                const rawIdx = idxNode ? idxNode.textContent.trim() : (actionNode.getAttribute("index") || "");
-                const fieldName = fieldNode ? fieldNode.textContent.trim() : (actionNode.getAttribute("field") || "quantity");
-                const index = parseInt(this.interpolate(rawIdx, context), 10);
-
-                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-                if (!isNaN(index) && index >= 0 && index < currentList.length) {
-                    const item = { ...currentList[index] };
-                    let currVal = parseInt(item[fieldName] || 1, 10);
-                    if (operation === "INCREMENT") {
-                        currVal += 1;
-                        item[fieldName] = currVal;
-                        currentList[index] = item;
-                    } else {
-                        currVal -= 1;
-                        if (currVal <= 0) {
-                            currentList.splice(index, 1);
-                        } else {
-                            item[fieldName] = currVal;
-                            currentList[index] = item;
-                        }
-                    }
-                    this.setState(path, currentList);
-                }
-            }
-
-            if (operation === "PUSH" || operation === "UNSHIFT" || operation === "PREPEND") {
-                const valNode = this.getChild(actionNode, "value");
-                const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
-                const rawText = valItem ? ((typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) || valItem.textContent?.trim() || "") : "";
-                const textValue = this.interpolate(rawText, context);
-
-                let parsedObj = null;
-                if (textValue && textValue.startsWith("{") && textValue.endsWith("}")) {
-                    try { parsedObj = JSON.parse(textValue); } catch (e) {}
-                }
-
-                const itemId = (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) || (parsedObj && parsedObj.id) || `task-${Date.now()}`;
-                const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId };
-                if (valItem && valItem.attributes) {
-                    Array.from(valItem.attributes).forEach(attr => {
-                        const interpolatedVal = this.interpolate(attr.value, context);
-                        if (interpolatedVal !== undefined && interpolatedVal !== null && !interpolatedVal.includes("undefined")) {
-                            newItem[attr.name] = interpolatedVal;
-                        }
-                    });
-                }
-                if (valItem && typeof valItem.getAttribute === "function") {
-                    const textAttr = valItem.getAttribute("text");
-                    if (textAttr && !newItem.text) newItem.text = this.interpolate(textAttr, context);
-                    const titleAttr = valItem.getAttribute("title");
-                    if (titleAttr && !newItem.title) newItem.title = this.interpolate(titleAttr, context);
-                }
-                if (!parsedObj && !newItem.text && textValue) newItem.text = textValue;
-                if (!parsedObj && !newItem.title && textValue) newItem.title = textValue;
-                if (!newItem.quantity) newItem.quantity = 1;
-
-                const hasCustomAttributes = Object.keys(newItem).some(k => k !== "id" && k !== "quantity" && String(newItem[k]).trim() !== "");
-                const titleVal = newItem.title || newItem.text || newItem.name || (hasCustomAttributes ? "valid" : "");
-                if (!String(titleVal).trim()) return;
-
-                const whereNode = this.getChild(actionNode, "where");
-                const rawWhereEquals = whereNode ? whereNode.getAttribute("equals") : null;
-                const targetId = rawWhereEquals ? this.interpolate(rawWhereEquals, context) : newItem.id;
-
-                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-                const existingIdx = currentList.findIndex(it => String(it.id) === String(targetId));
-
-                if (existingIdx >= 0 && targetId) {
-                    const existing = { ...currentList[existingIdx] };
-                    const currentQty = parseInt(existing.quantity || 1, 10);
-                    existing.quantity = currentQty + 1;
-                    currentList[existingIdx] = existing;
-                    this.setState(path, currentList);
-                    this.applyResets(actionNode);
-                    return;
-                }
-
-                if (newItem.status === undefined || newItem.status === null || newItem.status === "") {
-                    const selCol = this.getState("new_kanban_col");
-                    if (selCol && ["todo", "in_progress", "done"].includes(selCol)) {
-                        newItem.status = selCol;
-                    }
-                }
-                if (!newItem.category && path === "tasks") newItem.category = "General";
-                if (newItem.completed === undefined && (path === "todos" || path === "tasks")) newItem.completed = "false";
-
-                this.batch(() => {
-                    const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-                    if (operation === "UNSHIFT" || operation === "PREPEND") {
-                        this.setState(path, [newItem, ...currentList]);
-                    } else {
-                        this.setState(path, [...currentList, newItem]);
-                    }
-                    this.applyResets(actionNode);
-                    if (!this.getChild(actionNode, "reset") && "new_todo_input" in this._rawState) {
-                        this.setState("new_todo_input", "", { silent: true });
-                    }
-                });
-            }
-
-            if (operation === "REMOVE") {
-                const indexNode = this.getChild(actionNode, "index");
-                const whereNode = this.getChild(actionNode, "where");
-                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-
-                if (indexNode) {
-                    const rawIdx = indexNode.textContent.trim();
-                    const interpolatedIdx = this.interpolate(rawIdx, context);
-                    const idx = parseInt(interpolatedIdx, 10);
-                    if (!isNaN(idx) && idx >= 0 && idx < list.length) {
-                        list.splice(idx, 1);
-                        this.batch(() => {
-                            this.setState(path, list);
-                            this.applyResets(actionNode);
-                        });
-                        return;
-                    }
-                }
-
-                if (whereNode) {
-                    const field = whereNode.getAttribute("field") || "id";
-                    const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-                    const matchValue = this.interpolate(rawMatch, context);
-
-                    this.batch(() => {
-                        const nextList = list.filter(item => String(item[field]) !== String(matchValue));
-                        this.setState(path, nextList);
-                        this.applyResets(actionNode);
-                        if (String(this._rawState.editing_id) === String(matchValue)) {
-                            if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
-                            if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
-                        }
-                    });
-                }
-            }
-
-            if (operation === "MOVE_UP" || operation === "MOVE_DOWN") {
-                const indexNode = this.getChild(actionNode, "index");
-                const whereNode = this.getChild(actionNode, "where");
-                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-
-                let targetIdx = -1;
-                if (indexNode) {
-                    targetIdx = parseInt(this.interpolate(indexNode.textContent.trim(), context), 10);
-                } else if (whereNode) {
-                    const field = whereNode.getAttribute("field") || "id";
-                    const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-                    const expected = this.interpolate(rawMatch, context);
-                    targetIdx = list.findIndex(item => String(item[field]) === String(expected));
-                }
-
-                if (targetIdx !== -1) {
-                    const swapIdx = operation === "MOVE_UP" ? targetIdx - 1 : targetIdx + 1;
-                    if (swapIdx >= 0 && swapIdx < list.length) {
-                        const temp = list[targetIdx];
-                        list[targetIdx] = list[swapIdx];
-                        list[swapIdx] = temp;
-                        this.batch(() => {
-                            this.setState(path, list);
-                            this.applyResets(actionNode);
-                        });
-                    }
-                }
-            }
-
-            if (operation === "SWAP") {
-                const whereNode = this.getChild(actionNode, "where");
-                const targetWhereNode = this.getChild(actionNode, "target_where") || this.getChild(actionNode, "target");
-                const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
-
-                if (whereNode && targetWhereNode) {
-                    const field1 = whereNode.getAttribute("field") || "id";
-                    const rawMatch1 = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-                    const id1 = this.interpolate(rawMatch1, context);
-
-                    const field2 = targetWhereNode.getAttribute("field") || "id";
-                    const rawMatch2 = targetWhereNode.getAttribute("equals") || targetWhereNode.textContent.trim();
-                    const id2 = this.interpolate(rawMatch2, context);
-
-                    const idx1 = list.findIndex(item => String(item[field1]) === String(id1));
-                    const idx2 = list.findIndex(item => String(item[field2]) === String(id2));
-
-                    if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
-                        const temp = list[idx1];
-                        list[idx1] = list[idx2];
-                        list[idx2] = temp;
-
-                        if (list[idx1].status && list[idx2].status) {
-                            const tempStatus = list[idx1].status;
-                            list[idx1].status = list[idx2].status;
-                            list[idx2].status = tempStatus;
-                        }
-
-                        this.batch(() => {
-                            this.setState(path, list);
-                            this.applyResets(actionNode);
-                        });
-                    }
-                }
-            }
-
-            if (operation === "UPDATE") {
-                const whereNode = this.getChild(actionNode, "where");
-                const fieldsNode = this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || this.getChild(actionNode, "value") || actionNode;
-                if (!fieldsNode) return;
-
-                const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
-                const updates = {};
-                Array.from(fieldsNode.attributes).forEach(attr => {
-                    updates[attr.name] = this.interpolate(attr.value, context);
-                });
-
-                if (updates.text !== undefined && !String(updates.text).trim()) return;
-
-                const matchesWhere = (item) => {
-                    if (!whereNode) return true;
-                    const field = whereNode.getAttribute("field") || "id";
-                    const op = (whereNode.getAttribute("op") || "eq").toLowerCase();
-                    const rawMatch = whereNode.getAttribute("equals")
-                        ?? whereNode.getAttribute("value")
-                        ?? whereNode.textContent.trim();
-                    const expected = this.interpolate(rawMatch, context);
-                    const actual = item[field];
-
-                    if (op === "neq" || op === "!=" || op === "ne") {
-                        return String(actual) !== String(expected);
-                    }
-                    return String(actual) === String(expected);
-                };
-
-                const touchedIds = [];
-                this.batch(() => {
-                    const nextList = list.map(item => {
-                        if (!matchesWhere(item)) return item;
-                        touchedIds.push(item.id);
-                        return { ...item, ...updates };
-                    });
-                    this.setState(path, nextList);
-                    this.applyResets(actionNode);
-
-                    if (
-                        touchedIds.length === 1 &&
-                        String(this._rawState.editing_id) === String(touchedIds[0])
-                    ) {
-                        if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
-                        if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
-                    }
-                });
-            }
         }
     }
 
