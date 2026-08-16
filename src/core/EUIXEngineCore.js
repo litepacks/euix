@@ -1147,7 +1147,27 @@ class EUIXEngineCore {
     static parseXmlToAst(xmlString, options = {}) {
         if (!xmlString || typeof xmlString !== "string") return null;
 
-        const sanitizedXml = xmlString.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
+        // 1. Decode HTML named entities dynamically using native DOMParser text/html (zero dictionary / zero bundle bloat)
+        let processedXml = xmlString;
+        const entityMatches = Array.from(new Set(xmlString.match(/&([a-zA-Z0-9]+);/g) || []));
+        if (entityMatches.length > 0 && typeof DOMParser !== "undefined") {
+            const nonXmlEntities = entityMatches.filter(e => !["&amp;", "&lt;", "&gt;", "&quot;", "&apos;"].includes(e));
+            if (nonXmlEntities.length > 0) {
+                try {
+                    const htmlDoc = new DOMParser().parseFromString(nonXmlEntities.join("___EUIX_ENT___"), "text/html");
+                    const decodedList = (htmlDoc.body ? htmlDoc.body.textContent : "").split("___EUIX_ENT___");
+                    nonXmlEntities.forEach((entity, idx) => {
+                        const decoded = decodedList[idx];
+                        if (decoded && decoded !== entity) {
+                            processedXml = processedXml.replaceAll(entity, decoded);
+                        }
+                    });
+                } catch (_) {}
+            }
+        }
+
+        // 2. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry")
+        const sanitizedXml = processedXml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
         const bypassCache = options && options.bypassCache === true;
 
         if (!bypassCache && EUIXEngineCore._astCache.has(sanitizedXml)) {
