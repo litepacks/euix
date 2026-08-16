@@ -9,6 +9,20 @@ export const EUIXApiPlugin = {
     install(engineClass) {
         const proto = engineClass.prototype;
 
+        proto.getApiStatus = function(endpointId) {
+            if (!this._apiStatus) this._apiStatus = {};
+            if (!this._apiStatus[endpointId]) {
+                this._apiStatus[endpointId] = {
+                    loading: false,
+                    error: null,
+                    status: null,
+                    data: null,
+                    timestamp: 0
+                };
+            }
+            return this._apiStatus[endpointId];
+        };
+
         proto.handleXHR = function(actionNode, context = {}) {
             const compApiConfig = context._componentApiConfig || {};
 
@@ -97,6 +111,22 @@ export const EUIXApiPlugin = {
                 return;
             }
 
+            const epId = idAttr || tagAttr;
+            if (epId) {
+                if (!this._apiStatus) this._apiStatus = {};
+                this._apiStatus[epId] = {
+                    loading: true,
+                    error: null,
+                    status: null,
+                    data: this._apiStatus[epId]?.data || null,
+                    timestamp: this._apiStatus[epId]?.timestamp || 0
+                };
+                this.syncBindings(`api:${epId}:loading`, true);
+                this.syncBindings(`api.${epId}.loading`, true);
+                this.syncBindings(`api:${epId}`, this._apiStatus[epId]);
+                this.syncBindings(`api.${epId}`, this._apiStatus[epId]);
+            }
+
             // Stale-While-Revalidate Caching Check
             if (cacheTtlMs > 0 && (method === "GET" || method === "HEAD")) {
                 if (!this._xhrCache) this._xhrCache = new Map();
@@ -105,6 +135,11 @@ export const EUIXApiPlugin = {
                 if (cached && (now - cached.timestamp < cacheTtlMs)) {
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                        if (epId && this._apiStatus) {
+                            this._apiStatus[epId].loading = false;
+                            this.syncBindings(`api:${epId}:loading`, false);
+                            this.syncBindings(`api.${epId}.loading`, false);
+                        }
                         let data = cached.data;
                         if (select) data = this.getJsonPath(data, select);
                         if (Array.isArray(data)) {
@@ -222,6 +257,24 @@ export const EUIXApiPlugin = {
                     }
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                        if (epId) {
+                            if (!this._apiStatus) this._apiStatus = {};
+                            this._apiStatus[epId] = {
+                                loading: false,
+                                error: null,
+                                status: 200,
+                                data,
+                                timestamp: Date.now()
+                            };
+                            this.syncBindings(`api:${epId}:loading`, false);
+                            this.syncBindings(`api.${epId}.loading`, false);
+                            this.syncBindings(`api:${epId}:status`, 200);
+                            this.syncBindings(`api.${epId}.status`, 200);
+                            this.syncBindings(`api:${epId}:data`, data);
+                            this.syncBindings(`api.${epId}.data`, data);
+                            this.syncBindings(`api:${epId}`, this._apiStatus[epId]);
+                            this.syncBindings(`api.${epId}`, this._apiStatus[epId]);
+                        }
                         if (select) data = this.getJsonPath(data, select);
                         if (Array.isArray(data)) {
                             data = this.mapResponseItems(data, itemMapNode);
@@ -293,6 +346,24 @@ export const EUIXApiPlugin = {
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
                         if (errorPath) this.setState(errorPath, structuredErr.message || "Ağ hatası", { silent: true });
+                        if (epId) {
+                            if (!this._apiStatus) this._apiStatus = {};
+                            this._apiStatus[epId] = {
+                                loading: false,
+                                error: structuredErr.message || "Ağ hatası",
+                                status: status || 0,
+                                data: null,
+                                timestamp: Date.now()
+                            };
+                            this.syncBindings(`api:${epId}:loading`, false);
+                            this.syncBindings(`api.${epId}.loading`, false);
+                            this.syncBindings(`api:${epId}:error`, structuredErr.message || "Ağ hatası");
+                            this.syncBindings(`api.${epId}.error`, structuredErr.message || "Ağ hatası");
+                            this.syncBindings(`api:${epId}:status`, status || 0);
+                            this.syncBindings(`api.${epId}.status`, status || 0);
+                            this.syncBindings(`api:${epId}`, this._apiStatus[epId]);
+                            this.syncBindings(`api.${epId}`, this._apiStatus[epId]);
+                        }
                     });
                     const inTryScope = context._inTryScope || (this._currentActionContext && this._currentActionContext._inTryScope);
                     if (inTryScope) {
