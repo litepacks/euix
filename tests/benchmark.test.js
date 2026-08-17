@@ -307,4 +307,50 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(engine.getState('cryptos').length).toBe(10000);
         console.log(`[Vitest Bench] Virtual Scrolling (10,000 items): ${duration.toFixed(2)} ms (Rendered ${renderedRows.length} DOM rows)`);
     }, 15000);
+
+    it('should benchmark mutateState incremental PUSH and fine-grained REMOVE in 1,000 items list', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="list" type="array"></state>
+            </data_model>
+            <flex direction="column">
+                <for_each items="{data.list}" var="item" key="id">
+                    <flex direction="row">
+                        <span>{item.title}</span>
+                    </flex>
+                </for_each>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const initial = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, title: `Item ${i}` }));
+        engine.setState('list', initial);
+
+        // 1. Benchmark REMOVE single item via mutateState
+        const startRemove = performance.now();
+        engine.mutateState('list', 'REMOVE', { where: { field: 'id', equals: '500' } });
+        const removeDuration = performance.now() - startRemove;
+
+        expect(engine.getState('list').length).toBe(999);
+        console.log(`[Vitest Bench] mutateState REMOVE (out of 1,000 items): ${removeDuration.toFixed(2)} ms`);
+
+        // 2. Benchmark UPDATE item via mutateState
+        const startUpdate = performance.now();
+        engine.mutateState('list', 'UPDATE', { where: { field: 'id', equals: '100' }, value: { title: 'Updated Title' } });
+        const updateDuration = performance.now() - startUpdate;
+
+        expect(engine.getState('list').find(i => i.id === '100').title).toBe('Updated Title');
+        console.log(`[Vitest Bench] mutateState UPDATE (in 1,000 items): ${updateDuration.toFixed(2)} ms`);
+
+        // 3. Benchmark PUSH item via mutateState
+        const startPush = performance.now();
+        engine.mutateState('list', 'PUSH', { id: 'new_item_9999', title: 'New Item' });
+        const pushDuration = performance.now() - startPush;
+
+        expect(engine.getState('list').length).toBe(1000);
+        console.log(`[Vitest Bench] mutateState PUSH: ${pushDuration.toFixed(2)} ms`);
+    });
 });
+

@@ -2432,7 +2432,8 @@ class EUIXEngineCore {
         const cleanKey = String(key || "").replace(/^(data|state)\./, "");
         if (!cleanKey || !operation) return;
         const op = String(operation).toUpperCase();
-        const current = Array.isArray(this.getState(cleanKey)) ? [...this.getState(cleanKey)] : [];
+        const raw = this._rawState ? this._rawState[cleanKey] : null;
+        const current = Array.isArray(raw) ? raw.slice() : (Array.isArray(this.getState(cleanKey)) ? this.getState(cleanKey).slice() : []);
 
         if (op === "CLEAR" || op === "EMPTY" || op === "RESET") {
             this.setState(cleanKey, []);
@@ -2461,17 +2462,32 @@ class EUIXEngineCore {
             return current;
         }
         if (op === "REMOVE" || op === "DELETE") {
-            let updated;
-            if (payload && payload.where) {
+            if (payload && payload.index !== undefined) {
+                const idx = Number(payload.index);
+                if (idx >= 0 && idx < current.length) current.splice(idx, 1);
+            } else if (payload && payload.where) {
                 const { field, equals } = payload.where;
-                updated = current.filter(item => item && String(item[field]) !== String(equals));
-            } else if (payload && payload.index !== undefined) {
-                updated = current.filter((_, idx) => idx !== Number(payload.index));
+                const eqStr = String(equals);
+                let w = 0;
+                for (let r = 0; r < current.length; r++) {
+                    const item = current[r];
+                    if (!item || String(item[field]) !== eqStr) {
+                        current[w++] = item;
+                    }
+                }
+                current.length = w;
             } else {
-                updated = current.filter(item => item !== payload);
+                let w = 0;
+                for (let r = 0; r < current.length; r++) {
+                    const item = current[r];
+                    if (item !== payload) {
+                        current[w++] = item;
+                    }
+                }
+                current.length = w;
             }
-            this.setState(cleanKey, updated);
-            return updated;
+            this.setState(cleanKey, current);
+            return current;
         }
         if (op === "INSERT") {
             const idx = Number(payload.index || 0);
@@ -2483,20 +2499,22 @@ class EUIXEngineCore {
         if (op === "UPDATE") {
             if (payload && payload.where) {
                 const { field, equals } = payload.where;
-                const updated = current.map(item => {
-                    if (item && String(item[field]) === String(equals)) {
-                        return (typeof payload.value === "object") ? { ...item, ...payload.value } : payload.value;
+                const eqStr = String(equals);
+                const isObjVal = typeof payload.value === "object" && payload.value !== null;
+                for (let i = 0; i < current.length; i++) {
+                    const item = current[i];
+                    if (item && String(item[field]) === eqStr) {
+                        current[i] = isObjVal ? Object.assign({}, item, payload.value) : payload.value;
                     }
-                    return item;
-                });
-                this.setState(cleanKey, updated);
-                return updated;
+                }
+                this.setState(cleanKey, current);
+                return current;
             }
         }
         if (op === "SWAP") {
             const idx1 = Number(payload.index1);
             const idx2 = Number(payload.index2);
-            if (!isNaN(idx1) && !isNaN(idx2) && idx1 >= 0 && idx2 >= 0 && idx1 < current.length && idx2 < current.length) {
+            if (!isNaN(idx1) && !isNaN(idx2) && idx1 >= 0 && idx2 >= 0 && idx1 < current.length && idx2 < current.length && idx1 !== idx2) {
                 const temp = current[idx1];
                 current[idx1] = current[idx2];
                 current[idx2] = temp;
