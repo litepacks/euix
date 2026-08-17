@@ -3325,22 +3325,19 @@ class EUIXEngineCore {
                 pendingEndpoints.push({ node, autoFetch });
             });
 
-            if (isMainDoc) {
-                const useScriptNodes = Array.from(doc.querySelectorAll("use_script, script_loader, load_script"));
-                useScriptNodes.forEach(node => {
-                    const src = node.getAttribute("src") || node.getAttribute("url");
-                    if (src) {
-                        const p = this.loadScript(src, { async: node.getAttribute("async") !== "false" });
-                        if (this._pendingAsyncLoads) this._pendingAsyncLoads.push(p);
-                    }
-                });
+            const useScriptNodes = Array.from(doc.querySelectorAll ? doc.querySelectorAll("use_script, script_loader, load_script") : (doc.getElementsByTagName ? doc.getElementsByTagName("use_script") : []));
+            useScriptNodes.forEach(node => {
+                const src = node.getAttribute("src") || node.getAttribute("url");
+                if (src) {
+                    this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+                }
+            });
 
-                const useStyleNodes = Array.from(doc.querySelectorAll("use_style, style_loader, load_style"));
-                useStyleNodes.forEach(node => {
-                    const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
-                    if (href) this.loadStyle(href);
-                });
-            }
+            const useStyleNodes = Array.from(doc.querySelectorAll ? doc.querySelectorAll("use_style, style_loader, load_style") : (doc.getElementsByTagName ? doc.getElementsByTagName("use_style") : []));
+            useStyleNodes.forEach(node => {
+                const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+                if (href) this.loadStyle(href);
+            });
         };
 
         if (EUIXEngineCore._globalComponentSpecs) {
@@ -4745,6 +4742,13 @@ class EUIXEngineCore {
             return this.applyRef(res, xmlNode, context);
         }
 
+        const nameAttr = (xmlNode.getAttribute("name") || "").toLowerCase();
+        if (nameAttr && (this._componentSpecs.has(nameAttr) || (EUIXEngineCore._globalComponentSpecs && EUIXEngineCore._globalComponentSpecs.has(nameAttr)))) {
+            const specNode = this._componentSpecs.get(nameAttr) || EUIXEngineCore._globalComponentSpecs.get(nameAttr);
+            const res = this.renderComponentSpec(specNode, xmlNode, context);
+            return this.applyRef(res, xmlNode, context);
+        }
+
         if (typeAttr && (this._componentSpecs.has(typeAttr) || (EUIXEngineCore._globalComponentSpecs && EUIXEngineCore._globalComponentSpecs.has(typeAttr)))) {
             const specNode = this._componentSpecs.get(typeAttr) || EUIXEngineCore._globalComponentSpecs.get(typeAttr);
             const res = this.renderComponentSpec(specNode, xmlNode, context);
@@ -5808,14 +5812,31 @@ class EUIXEngineCore {
             }
         };
 
-        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def", "head", "helmet", "title"];
+        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "script_loader", "style_loader", "load_script", "load_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
+        
+        // Trigger external script / style loaders declared inside component
+        const compScripts = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("use_script, script_loader, load_script") : []);
+        compScripts.forEach(node => {
+            const src = node.getAttribute("src") || node.getAttribute("url");
+            if (src) this.loadScript(src, { async: node.getAttribute("async") !== "false" });
+        });
+        const compStyles = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("use_style, style_loader, load_style") : []);
+        compStyles.forEach(node => {
+            const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+            if (href) this.loadStyle(href);
+        });
+
+        const specChildElems = (specNode.children && specNode.children.length > 0)
+            ? Array.from(specNode.children)
+            : getChildNodes(specNode).filter(isElem);
+
         const templateNode = this.getChild(specNode, "template") ||
             this.getChild(specNode, "flex") ||
             this.getChild(specNode, "grid") ||
             this.getChild(specNode, "layout") ||
             this.getChild(specNode, "collapse") ||
             this.getChild(specNode, "dialog") ||
-            Array.from(specNode.children || []).find(c => c.tagName && !metadataTags.includes(c.tagName.toLowerCase())) ||
+            specChildElems.find(c => isElem(c) && !metadataTags.includes(getTagName(c))) ||
             specNode;
 
         const rendered = this.createHTMLElement(templateNode, childContext);
