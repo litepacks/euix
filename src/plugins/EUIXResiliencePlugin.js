@@ -1,5 +1,6 @@
 import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
 
+const noop = () => {};
 const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
 const getNow = () => (typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now());
 
@@ -31,10 +32,10 @@ export class EUIXCancellationController {
             get reason() { return self.reason; },
             get abortSignal() { return self._abortController ? self._abortController.signal : null; },
             onCancel: (cb) => {
-                if (typeof cb !== "function") return () => {};
+                if (typeof cb !== "function") return noop;
                 if (this.isCancelled) {
                     try { cb(this.reason); } catch (_) {}
-                    return () => {};
+                    return noop;
                 }
                 this.listeners.add(cb);
                 return () => this.listeners.delete(cb);
