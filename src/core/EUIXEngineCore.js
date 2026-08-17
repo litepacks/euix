@@ -4346,7 +4346,22 @@ class EUIXEngineCore {
                 if (xNode.nodeType === 3) {
                     const txt = xNode.textContent;
                     if (txt && txt.includes("{")) {
-                        dynamicSlots.push({ childIndex: cIdx, path: [...path], type: "text", rawExpr: txt });
+                        let getter = null;
+                        const match = txt.trim().match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
+                        if (match) {
+                            const [_, scope, prop] = match;
+                            if (scope === varName) {
+                                getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
+                            }
+                        }
+                        const pLen = path.length;
+                        const p0 = path[0];
+                        const p1 = path[1];
+                        const resolver = pLen === 0 ? (r) => r :
+                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
+                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
+                                         (r) => getNodeAtPath(r, path);
+                        dynamicSlots.push({ childIndex: cIdx, path: [...path], type: "text", rawExpr: txt, getter, resolver });
                     }
                     return;
                 }
@@ -4358,12 +4373,29 @@ class EUIXEngineCore {
                             const attrName = attr.name;
                             const attrVal = attr.value;
                             if (attrVal && attrVal.includes("{") && !attrName.startsWith("on_")) {
+                                let getter = null;
+                                const match = attrVal.trim().match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
+                                if (match) {
+                                    const [_, scope, prop] = match;
+                                    if (scope === varName) {
+                                        getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
+                                    }
+                                }
+                                const pLen = path.length;
+                                const p0 = path[0];
+                                const p1 = path[1];
+                                const resolver = pLen === 0 ? (r) => r :
+                                                 pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
+                                                 pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
+                                                 (r) => getNodeAtPath(r, path);
                                 dynamicSlots.push({
                                     childIndex: cIdx,
                                     path: [...path],
                                     type: "attr",
                                     name: attrName,
-                                    rawExpr: attrVal
+                                    rawExpr: attrVal,
+                                    getter,
+                                    resolver
                                 });
                             }
                         }
@@ -4371,11 +4403,19 @@ class EUIXEngineCore {
 
                     const bindAttr = xNode.getAttribute("bind");
                     if (bindAttr) {
+                        const pLen = path.length;
+                        const p0 = path[0];
+                        const p1 = path[1];
+                        const resolver = pLen === 0 ? (r) => r :
+                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
+                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
+                                         (r) => getNodeAtPath(r, path);
                         dynamicSlots.push({
                             childIndex: cIdx,
                             path: [...path],
                             type: "bind",
-                            bindPath: bindAttr
+                            bindPath: bindAttr,
+                            resolver
                         });
                     }
 
@@ -4384,12 +4424,20 @@ class EUIXEngineCore {
                         dNode._euixEventMap.forEach((handlers, evType) => {
                             eventsObj[evType] = handlers;
                         });
+                        const pLen = path.length;
+                        const p0 = path[0];
+                        const p1 = path[1];
+                        const resolver = pLen === 0 ? (r) => r :
+                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
+                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
+                                         (r) => getNodeAtPath(r, path);
                         dynamicSlots.push({
                             childIndex: cIdx,
                             path: [...path],
                             type: "event",
                             eventMap: new Map(dNode._euixEventMap),
-                            eventsObj
+                            eventsObj,
+                            resolver
                         });
                     }
 
@@ -4727,29 +4775,30 @@ class EUIXEngineCore {
                     childContext.index = idx;
 
                     if (compiled && compiled.canClone) {
-                        const nodes = [];
-                        for (let pIdx = 0; pIdx < compiled.prototypes.length; pIdx++) {
-                            const proto = compiled.prototypes[pIdx];
-                            const clone = proto.cloneNode(true);
-                            nodes.push(clone);
+                        const protoLen = compiled.prototypes.length;
+                        const nodes = new Array(protoLen);
+                        for (let pIdx = 0; pIdx < protoLen; pIdx++) {
+                            nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
                         }
 
-                        for (let sIdx = 0; sIdx < compiled.dynamicSlots.length; sIdx++) {
-                            const slot = compiled.dynamicSlots[sIdx];
+                        const slots = compiled.dynamicSlots;
+                        const slotLen = slots.length;
+                        for (let sIdx = 0; sIdx < slotLen; sIdx++) {
+                            const slot = slots[sIdx];
                             const rootNode = nodes[slot.childIndex];
                             if (!rootNode) continue;
-                            const targetNode = slot.path.length === 0 ? rootNode : compiled.getNodeAtPath(rootNode, slot.path);
+                            const targetNode = slot.resolver ? slot.resolver(rootNode) : (slot.path.length === 0 ? rootNode : compiled.getNodeAtPath(rootNode, slot.path));
                             if (!targetNode) continue;
 
                             if (slot.type === "text") {
-                                const txt = this.interpolate(slot.rawExpr, childContext);
+                                const txt = slot.getter ? slot.getter(item) : this.interpolate(slot.rawExpr, childContext);
                                 if (targetNode.nodeType === 3) {
                                     targetNode.data = txt;
                                 } else {
                                     targetNode.textContent = txt;
                                 }
                             } else if (slot.type === "attr") {
-                                const val = this.interpolate(slot.rawExpr, childContext);
+                                const val = slot.getter ? slot.getter(item) : this.interpolate(slot.rawExpr, childContext);
                                 if (slot.name === "class") {
                                     targetNode.className = val;
                                 } else {
@@ -4896,28 +4945,33 @@ class EUIXEngineCore {
                     }
 
                     const key = getItemKey(item, idx);
-                    const hash = getItemHash(item);
                     newKeys.push(key);
 
                     const existing = oldKeyedMap.get(key);
                     let nodes;
 
-                    if (existing && existing.hash === hash && existing.nodes.length > 0) {
-                        nodes = existing.nodes;
-                    } else {
-                        nodes = createItemNodes(item, idx);
-                        if (existing && existing.nodes && existing.nodes.length > 0) {
-                            const firstOld = existing.nodes[0];
-                            if (firstOld && firstOld.parentNode === listContainer) {
-                                for (let n = 0; n < nodes.length; n++) {
-                                    listContainer.insertBefore(nodes[n], firstOld);
-                                }
-                                existing.nodes.forEach(oldNode => {
-                                    if (oldNode && oldNode.parentNode === listContainer) {
-                                        listContainer.removeChild(oldNode);
-                                    }
-                                });
+                    if (existing) {
+                        const hash = getItemHash(item);
+                        if (existing.hash === hash && existing.nodes.length > 0) {
+                            nodes = existing.nodes;
+                            newKeyedMap.set(key, { nodes, hash, index: idx });
+                            continue;
+                        }
+                    }
+
+                    const hash = getItemHash(item);
+                    nodes = createItemNodes(item, idx);
+                    if (existing && existing.nodes && existing.nodes.length > 0) {
+                        const firstOld = existing.nodes[0];
+                        if (firstOld && firstOld.parentNode === listContainer) {
+                            for (let n = 0; n < nodes.length; n++) {
+                                listContainer.insertBefore(nodes[n], firstOld);
                             }
+                            existing.nodes.forEach(oldNode => {
+                                if (oldNode && oldNode.parentNode === listContainer) {
+                                    listContainer.removeChild(oldNode);
+                                }
+                            });
                         }
                     }
 
