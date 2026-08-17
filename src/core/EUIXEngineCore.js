@@ -230,7 +230,8 @@ class EUIXExpressionParser {
     }
 
     static _compiledFnCache = new Map();
-    static _compiledFnCacheMaxSize = 1000;
+    static _compiledTemplateFnCache = new Map();
+    static _compiledFnCacheMaxSize = 2000;
     static _cacheStats = { hits: 0, misses: 0 };
 
     static compileExpression(exprString) {
@@ -257,6 +258,95 @@ class EUIXExpressionParser {
         return fn;
     }
 
+    static compileTemplateFunction(templateString) {
+        if (!templateString || typeof templateString !== "string" || !templateString.includes("{")) {
+            return null;
+        }
+
+        let cached = this._compiledTemplateFnCache.get(templateString);
+        if (cached !== undefined) {
+            this._cacheStats.hits++;
+            return cached;
+        }
+
+        this._cacheStats.misses++;
+        try {
+            const parts = [];
+            let lastIdx = 0;
+            let i = 0;
+            const len = templateString.length;
+
+            while (i < len) {
+                if (templateString.charCodeAt(i) === 123) { // '{'
+                    const nextChar = templateString.charAt(i + 1).trim();
+                    if (nextChar === '"' || nextChar === "'") {
+                        const nextColon = templateString.indexOf(":", i + 1);
+                        const nextClose = templateString.indexOf("}", i + 1);
+                        if (nextColon !== -1 && (nextClose === -1 || nextColon < nextClose)) {
+                            i++;
+                            continue;
+                        }
+                    }
+
+                    let closeIdx = -1;
+                    let inQuote = null;
+                    for (let j = i + 1; j < len; j++) {
+                        const ch = templateString.charAt(j);
+                        if (inQuote) {
+                            if (ch === inQuote && templateString.charAt(j - 1) !== "\\") {
+                                inQuote = null;
+                            }
+                        } else if (ch === '"' || ch === "'") {
+                            inQuote = ch;
+                        } else if (ch === "{") {
+                            break;
+                        } else if (ch === "}") {
+                            closeIdx = j;
+                            break;
+                        }
+                    }
+
+                    if (closeIdx === -1) {
+                        i++;
+                        continue;
+                    }
+
+                    const expr = templateString.slice(i + 1, closeIdx).trim();
+                    if (expr && !expr.startsWith('"') && !expr.includes('":') && !expr.includes("':")) {
+                        if (i > lastIdx) {
+                            parts.push(JSON.stringify(templateString.slice(lastIdx, i)));
+                        }
+                        const tokens = this.tokenize(expr);
+                        const jsExpr = this.parseToJs(tokens);
+                        parts.push(`((${jsExpr}) ?? "")`);
+                        i = closeIdx;
+                        lastIdx = closeIdx + 1;
+                    }
+                }
+                i++;
+            }
+
+            if (parts.length === 0) {
+                cached = null;
+            } else {
+                if (lastIdx < len) {
+                    parts.push(JSON.stringify(templateString.slice(lastIdx)));
+                }
+                const code = parts.length === 1 ? parts[0] : parts.join(" + ");
+                cached = new Function("$engine", "$ctx", "$r", `try { return String(${code}); } catch (_) { return ""; }`);
+            }
+        } catch (_) {
+            cached = null;
+        }
+
+        if (this._compiledTemplateFnCache.size >= this._compiledFnCacheMaxSize) {
+            const firstKey = this._compiledTemplateFnCache.keys().next().value;
+            if (firstKey !== undefined) this._compiledTemplateFnCache.delete(firstKey);
+        }
+        this._compiledTemplateFnCache.set(templateString, cached);
+        return cached;
+    }
+
     static eval(exprString, resolveValueFn) {
         if (!exprString || !exprString.trim()) return undefined;
         try {
@@ -270,6 +360,7 @@ class EUIXExpressionParser {
 
     static clearExpressionCache() {
         this._compiledFnCache.clear();
+        this._compiledTemplateFnCache.clear();
         this._cacheStats = { hits: 0, misses: 0 };
     }
 
@@ -277,6 +368,7 @@ class EUIXExpressionParser {
         const total = this._cacheStats.hits + this._cacheStats.misses;
         return {
             size: this._compiledFnCache.size,
+            templateSize: this._compiledTemplateFnCache.size,
             maxSize: this._compiledFnCacheMaxSize,
             hits: this._cacheStats.hits,
             misses: this._cacheStats.misses,
@@ -1956,6 +2048,16 @@ class EUIXEngineCore {
 
     resolveValueFromPath(path, context = {}) {
         if (!path) return undefined;
+
+        if (typeof path === "string" && path.includes("[")) {
+            path = path.replace(/\[\s*([^\]]+)\s*\]/g, (m, innerKey) => {
+                const trimmed = innerKey.trim().replace(/^['"]|['"]$/g, "");
+                if (/^\d+$/.test(trimmed)) return `.${trimmed}`;
+                const innerVal = this.resolveValueFromPath(trimmed, context);
+                return innerVal !== undefined ? `.${innerVal}` : m;
+            });
+        }
+
         if (path.startsWith("computed.")) {
             return this.getComputed(path.slice(9));
         }
@@ -1994,10 +2096,16 @@ class EUIXEngineCore {
         }
         if (path.startsWith("constants.") || path.startsWith("const.")) {
             const key = path.replace(/^(constants|const)\./, "");
+            if (context && context.constants && context.constants[key] !== undefined) {
+                return context.constants[key];
+            }
             return this.getConstant(key);
         }
         if (path.startsWith("vars.")) {
             const key = path.replace(/^vars\./, "");
+            if (context && context.constants && context.constants[key] !== undefined) {
+                return context.constants[key];
+            }
             return this.getConstant(key);
         }
         if (path.startsWith("args.") || path.startsWith("params.")) {
@@ -2035,6 +2143,11 @@ class EUIXEngineCore {
                 return context[scope];
             }
         }
+        if (context && context.constants && context.constants[path] !== undefined) {
+            return context.constants[path];
+        }
+        const constVal = this.getConstant(path);
+        if (constVal !== undefined) return constVal;
         return this.getState(path);
     }
 
@@ -3398,6 +3511,13 @@ class EUIXEngineCore {
             return out;
         }
 
+        // Fast-path 3: JIT compiled template function for complex expressions/ternaries/math
+        const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
+        if (jitFn) {
+            const res = jitFn(this, context, (p) => this.resolveValueFromPath(p, context));
+            if (res !== undefined && res !== null) return res;
+        }
+
         let result = text;
 
         // 1. Resolve {const.name}, {var.name}, {constants.name}, {vars.name}
@@ -3979,6 +4099,179 @@ class EUIXEngineCore {
             }
         }
         return el;
+    }
+
+    _getLongestIncreasingSubsequence(arr) {
+        const p = Array.from(arr);
+        const result = [0];
+        let i, j, u, v, c;
+        const len = arr.length;
+        for (i = 0; i < len; i++) {
+            const arrI = arr[i];
+            if (arrI !== -1) {
+                j = result[result.length - 1];
+                if (arr[j] < arrI) {
+                    p[i] = j;
+                    result.push(i);
+                    continue;
+                }
+                u = 0;
+                v = result.length - 1;
+                while (u < v) {
+                    c = (u + v) >> 1;
+                    if (arr[result[c]] < arrI) {
+                        u = c + 1;
+                    } else {
+                        v = c;
+                    }
+                }
+                if (arrI < arr[result[u]]) {
+                    if (u > 0) {
+                        p[i] = result[u - 1];
+                    }
+                    result[u] = i;
+                }
+            }
+        }
+        u = result.length;
+        v = result[u - 1];
+        while (u-- > 0) {
+            result[u] = v;
+            v = p[v];
+        }
+        return result;
+    }
+
+    _reconcileKeyedDOM(container, oldKeyedMap, newKeyedMap, oldKeys, newKeys) {
+        if (!oldKeys || oldKeys.length === 0) {
+            const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+            for (let i = 0; i < newKeys.length; i++) {
+                const entry = newKeyedMap.get(newKeys[i]);
+                if (entry && entry.nodes) {
+                    for (let n = 0; n < entry.nodes.length; n++) {
+                        if (fragment) fragment.appendChild(entry.nodes[n]);
+                        else container.appendChild(entry.nodes[n]);
+                    }
+                }
+            }
+            if (fragment) container.appendChild(fragment);
+            return;
+        }
+
+        if (!newKeys || newKeys.length === 0) {
+            oldKeyedMap.forEach(entry => {
+                if (entry && entry.nodes) {
+                    entry.nodes.forEach(n => {
+                        if (n && n.parentNode === container) container.removeChild(n);
+                    });
+                }
+            });
+            return;
+        }
+
+        // 1. Head matching
+        let start = 0;
+        const oldLen = oldKeys.length;
+        const newLen = newKeys.length;
+        while (start < oldLen && start < newLen && oldKeys[start] === newKeys[start]) {
+            start++;
+        }
+
+        // 2. Tail matching
+        let oldEnd = oldLen - 1;
+        let newEnd = newLen - 1;
+        while (oldEnd >= start && newEnd >= start && oldKeys[oldEnd] === newKeys[newEnd]) {
+            oldEnd--;
+            newEnd--;
+        }
+
+        // 3. Remove deleted old nodes
+        const activeNewKeys = new Set(newKeys);
+        for (let i = start; i <= oldEnd; i++) {
+            const oldKey = oldKeys[i];
+            if (!activeNewKeys.has(oldKey)) {
+                const oldEntry = oldKeyedMap.get(oldKey);
+                if (oldEntry && oldEntry.nodes) {
+                    oldEntry.nodes.forEach(n => {
+                        if (n && n.parentNode === container) container.removeChild(n);
+                    });
+                }
+            }
+        }
+
+        // 4. Fast Path: Pure Append / Insert
+        if (start > oldEnd) {
+            const anchorKey = (newEnd + 1 < newLen) ? newKeys[newEnd + 1] : null;
+            const anchorEntry = anchorKey ? newKeyedMap.get(anchorKey) : null;
+            const anchorNode = (anchorEntry && anchorEntry.nodes && anchorEntry.nodes[0]) || null;
+            const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+            for (let i = start; i <= newEnd; i++) {
+                const entry = newKeyedMap.get(newKeys[i]);
+                if (entry && entry.nodes) {
+                    for (let n = 0; n < entry.nodes.length; n++) {
+                        if (fragment) fragment.appendChild(entry.nodes[n]);
+                        else container.appendChild(entry.nodes[n]);
+                    }
+                }
+            }
+            if (fragment) {
+                if (anchorNode && anchorNode.parentNode === container) {
+                    container.insertBefore(fragment, anchorNode);
+                } else {
+                    container.appendChild(fragment);
+                }
+            }
+            return;
+        }
+
+        // 5. Fast Path: Pure Removal
+        if (start > newEnd) {
+            return;
+        }
+
+        // 6. Middle sub-array reordering (LIS / Minimal insertBefore)
+        const oldKeyToIndex = new Map();
+        for (let i = start; i <= oldEnd; i++) {
+            oldKeyToIndex.set(oldKeys[i], i);
+        }
+
+        const count = newEnd - start + 1;
+        const sourceIndices = new Int32Array(count);
+        sourceIndices.fill(-1);
+
+        for (let i = 0; i < count; i++) {
+            const newIndex = start + i;
+            const newKey = newKeys[newIndex];
+            if (oldKeyToIndex.has(newKey)) {
+                sourceIndices[i] = oldKeyToIndex.get(newKey);
+            }
+        }
+
+        const lis = this._getLongestIncreasingSubsequence(sourceIndices);
+        let lisIdx = lis.length - 1;
+
+        for (let i = count - 1; i >= 0; i--) {
+            const newIndex = start + i;
+            const newKey = newKeys[newIndex];
+            const entry = newKeyedMap.get(newKey);
+            const anchorKey = (newIndex + 1 < newLen) ? newKeys[newIndex + 1] : null;
+            const anchorEntry = anchorKey ? newKeyedMap.get(anchorKey) : null;
+            const anchorNode = (anchorEntry && anchorEntry.nodes && anchorEntry.nodes[0]) || null;
+
+            if (sourceIndices[i] === -1 || lisIdx < 0 || i !== lis[lisIdx]) {
+                if (entry && entry.nodes) {
+                    for (let n = 0; n < entry.nodes.length; n++) {
+                        if (anchorNode && anchorNode.parentNode === container) {
+                            container.insertBefore(entry.nodes[n], anchorNode);
+                        } else {
+                            container.appendChild(entry.nodes[n]);
+                        }
+                    }
+                }
+            } else {
+                lisIdx--;
+            }
+        }
     }
 
     _getCompiledForEachTemplate(xmlNode, varName, baseChildContext, fallbackContext) {
@@ -4565,9 +4858,9 @@ class EUIXEngineCore {
 
                 listContainer._keyedNodesMap = listContainer._keyedNodesMap || new Map();
                 const oldKeyedMap = listContainer._keyedNodesMap;
+                const oldKeys = listContainer._oldKeysSequence || [];
                 const newKeyedMap = new Map();
-                const activeKeys = new Set();
-                const itemNodesSequence = [];
+                const newKeys = [];
 
                 for (let idx = 0; idx < list.length; idx++) {
                     const item = list[idx];
@@ -4580,57 +4873,38 @@ class EUIXEngineCore {
 
                     const key = getItemKey(item, idx);
                     const hash = getItemHash(item);
-                    activeKeys.add(key);
+                    newKeys.push(key);
 
                     const existing = oldKeyedMap.get(key);
                     let nodes;
 
                     if (existing && existing.hash === hash && existing.nodes.length > 0) {
-                        // Reuse existing DOM nodes unchanged
                         nodes = existing.nodes;
                     } else {
                         nodes = createItemNodes(item, idx);
-                        // If old nodes existed for this key but data changed, remove old nodes
-                        if (existing && existing.nodes) {
-                            existing.nodes.forEach(oldNode => {
-                                if (oldNode && oldNode.parentNode === listContainer) {
-                                    listContainer.removeChild(oldNode);
+                        if (existing && existing.nodes && existing.nodes.length > 0) {
+                            const firstOld = existing.nodes[0];
+                            if (firstOld && firstOld.parentNode === listContainer) {
+                                for (let n = 0; n < nodes.length; n++) {
+                                    listContainer.insertBefore(nodes[n], firstOld);
                                 }
-                            });
+                                existing.nodes.forEach(oldNode => {
+                                    if (oldNode && oldNode.parentNode === listContainer) {
+                                        listContainer.removeChild(oldNode);
+                                    }
+                                });
+                            }
                         }
                     }
 
                     newKeyedMap.set(key, { nodes, hash, index: idx });
-                    for (let n = 0; n < nodes.length; n++) {
-                        itemNodesSequence.push(nodes[n]);
-                    }
                 }
 
-                // Remove DOM nodes for keys no longer in list
-                oldKeyedMap.forEach((existing, key) => {
-                    if (!activeKeys.has(key) && existing.nodes) {
-                        existing.nodes.forEach(oldNode => {
-                            if (oldNode && oldNode.parentNode === listContainer) {
-                                listContainer.removeChild(oldNode);
-                            }
-                        });
-                    }
-                });
-
-                // Append / re-order DOM nodes in container sequence using DocumentFragment batching
-                const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
-                for (let nIdx = 0; nIdx < itemNodesSequence.length; nIdx++) {
-                    const node = itemNodesSequence[nIdx];
-                    if (node) {
-                        if (fragment) fragment.appendChild(node);
-                        else listContainer.appendChild(node);
-                    }
-                }
-                if (fragment) {
-                    listContainer.appendChild(fragment);
-                }
+                // Reconcile DOM with minimal LIS mutations
+                this._reconcileKeyedDOM(listContainer, oldKeyedMap, newKeyedMap, oldKeys, newKeys);
 
                 listContainer._keyedNodesMap = newKeyedMap;
+                listContainer._oldKeysSequence = newKeys;
             };
 
             renderItems();
