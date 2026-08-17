@@ -70,4 +70,98 @@ describe('EUIXDialogPlugin Test Suite', () => {
     expect(engine.getState('isOpen')).toBe(false);
     expect(document.querySelector('.dialog-backdrop')).toBeNull();
   });
+
+  it('should test plugin metadata and install method', () => {
+    expect(EUIXDialogPlugin.name).toBe('dialog');
+    expect(typeof EUIXDialogPlugin.install).toBe('function');
+  });
+
+  it('should render dialog with summary title, actions footer, and custom classes', () => {
+    const xml = `<uid_spec>
+      <data_model>
+        <state id="showModal" type="string">true</state>
+        <state id="dynamicTitle">Delete Item</state>
+      </data_model>
+      <flex>
+        <dialog bind="showModal" class="my-dialog-custom" header_class="my-hdr" body_class="my-bdy" footer_class="my-ftr" panel_class="my-pnl" backdrop_class="my-bg">
+          <summary>{data.dynamicTitle} Confirm</summary>
+          <p id="msg">Are you sure?</p>
+          <actions>
+            <button id="cancel_btn">Cancel</button>
+            <button id="confirm_btn">Confirm</button>
+          </actions>
+        </dialog>
+      </flex>
+    </uid_spec>`;
+
+    const engine = EUIXEngineCore.mount(xml, container);
+    const backdrop = document.querySelector('.my-bg');
+    const panel = document.querySelector('.my-pnl');
+    const title = document.querySelector('.dialog-title');
+    const footer = document.querySelector('.my-ftr');
+    const cancelBtn = document.querySelector('#cancel_btn');
+
+    expect(backdrop).not.toBeNull();
+    expect(panel).not.toBeNull();
+    expect(title.textContent).toBe('Delete Item Confirm');
+    expect(footer).not.toBeNull();
+    expect(cancelBtn).not.toBeNull();
+
+    // Click inside panel should stop propagation and NOT close dialog
+    panel.click();
+    expect(engine.getState('showModal')).toBe('true');
+    expect(document.querySelector('.my-bg')).not.toBeNull();
+
+    // Click on backdrop should close dialog
+    backdrop.click();
+    expect(engine.getState('showModal')).toBe('false');
+    expect(document.querySelector('.my-bg')).toBeNull();
+  });
+
+  it('should handle Escape keypress on backdrop and close_on_backdrop=false', () => {
+    const xml = `<uid_spec>
+      <data_model>
+        <state id="isModalOpen" type="boolean">true</state>
+      </data_model>
+      <flex>
+        <dialog bind="isModalOpen" close_on_backdrop="false" title="No Backdrop Close">
+          <p>Locked dialog</p>
+        </dialog>
+      </flex>
+    </uid_spec>`;
+
+    const engine = EUIXEngineCore.mount(xml, container);
+    const backdrop = document.querySelector('.dialog-backdrop');
+
+    // Click backdrop with close_on_backdrop="false" should NOT close
+    backdrop.click();
+    expect(engine.getState('isModalOpen')).toBe(true);
+
+    // Escape keydown should close dialog
+    const escapeEvent = new window.KeyboardEvent('keydown', { key: 'Escape' });
+    backdrop.dispatchEvent(escapeEvent);
+    expect(engine.getState('isModalOpen')).toBe(false);
+  });
+
+  it('should support open/is_open attributes and default fallback title', () => {
+    const xml = `<uid_spec>
+      <data_model>
+        <state id="statusOpen">true</state>
+      </data_model>
+      <flex>
+        <dialog is_open="statusOpen">
+          <p>Dialog with default title</p>
+        </dialog>
+        <dialog>
+          <p>Static dialog without bind</p>
+        </dialog>
+      </flex>
+    </uid_spec>`;
+
+    const engine = EUIXEngineCore.mount(xml, container);
+    const title = document.querySelector('.dialog-title');
+    expect(title.textContent).toBe('Dialog');
+  });
 });
+
+

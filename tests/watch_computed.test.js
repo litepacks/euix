@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from "vitest";
 import { EUIXEngine } from "../src/EUIXEngine.js";
 import { EUIXEngineCore } from "../src/core/EUIXEngineCore.js";
-import { EUIXReactivePlugin } from "../src/plugins/EUIXReactivePlugin.js";
+import { EUIXReactivePlugin, EUIXDependencyGraph } from "../src/plugins/EUIXReactivePlugin.js";
 
 let container;
 
@@ -341,5 +341,30 @@ describe("EUIX Engine - Watch & Computed State Test Suite", () => {
             expect(engine.getState("sum")).toBe(5);
             expect(container.textContent).toContain("5");
         });
+
+        test("should test EUIXDependencyGraph fine-grained dependency tracking directly", () => {
+            const graph = new EUIXDependencyGraph();
+            expect(EUIXReactivePlugin.name).toBe("EUIXReactivePlugin");
+            expect(typeof EUIXReactivePlugin.install).toBe("function");
+
+            // 1. Add computed and watcher dependencies
+            graph.addComputedDep("data.user.name", "compUser");
+            graph.addWatcherDep("data.user", "watchUser");
+            graph.addWatcherDep("data.count", "watchCount");
+
+            // 2. Empty paths should return early
+            graph.addComputedDep("", "none");
+            graph.addWatcherDep(null, "none");
+
+            // 3. Check affected computed and watchers
+            expect(graph.getAffectedComputed("user.name").has("compUser")).toBe(true);
+            expect(graph.getAffectedWatchers("user").has("watchUser")).toBe(true);
+            expect(graph.getAffectedWatchers("count").has("watchCount")).toBe(true);
+
+            // 4. Remove component deps
+            graph.removeComponentDeps("");
+            graph.removeComponentDeps("MyComp");
+        });
     });
 });
+

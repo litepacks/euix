@@ -522,7 +522,7 @@ export const EUIXAnimationPlugin = {
         // Lifecycle Leave Transition Hook for Deferred Removal
         proto._runLeaveTransitionThenRemove = function(element, callback) {
             if (!element || element.nodeType !== 1) {
-                if (typeof callback === "function") callback();
+                callback?.();
                 return;
             }
 
@@ -541,7 +541,7 @@ export const EUIXAnimationPlugin = {
             const targetEl = findTargetWithLeave(element);
 
             if (!targetEl) {
-                if (typeof callback === "function") callback();
+                callback?.();
                 return;
             }
 
@@ -555,33 +555,32 @@ export const EUIXAnimationPlugin = {
                 animPromise = this.animate(targetEl, leaveAnimName, {}, { _targetEl: targetEl });
             }
 
-            if (animPromise && typeof animPromise.then === "function") {
-                animPromise.then(() => {
-                    if (typeof callback === "function") callback();
-                }).catch(() => {
-                    if (typeof callback === "function") callback();
+            if (animPromise?.then) {
+                animPromise.finally(() => {
+                    callback?.();
                 });
             } else {
-                if (typeof callback === "function") callback();
+                callback?.();
             }
         };
+
+function safeCancelAnimation(record) {
+    try {
+        record?.animation?.cancel?.();
+    } catch (_) {}
+}
 
         proto.disposeComponentAnimations = function(componentNameOrEl) {
             if (!this._activeAnimations) return;
             if (componentNameOrEl && componentNameOrEl.nodeType === 1) {
                 if (this._activeAnimations.has(componentNameOrEl)) {
-                    const record = this._activeAnimations.get(componentNameOrEl);
-                    if (record && record.animation && typeof record.animation.cancel === "function") {
-                        try { record.animation.cancel(); } catch (_) {}
-                    }
+                    safeCancelAnimation(this._activeAnimations.get(componentNameOrEl));
                     this._activeAnimations.delete(componentNameOrEl);
                 }
                 return;
             }
             for (const [el, record] of this._activeAnimations.entries()) {
-                if (record.animation && typeof record.animation.cancel === "function") {
-                    try { record.animation.cancel(); } catch (_) {}
-                }
+                safeCancelAnimation(record);
                 this._activeAnimations.delete(el);
             }
         };

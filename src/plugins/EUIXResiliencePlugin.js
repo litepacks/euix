@@ -4,6 +4,11 @@ const noop = () => {};
 const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
 const getNow = () => (typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now());
 
+const logScope = (engine, context, event, payload) => {
+    const devtools = engine?._devtools || context?._engine?._devtools || context?.$engine?._devtools;
+    if (devtools?.logErrorScope) devtools.logErrorScope(event, payload);
+};
+
 /**
  * EUIXCancellationController
  * Cancellation signal propagation and token management for EUIX Engine actions.
@@ -119,9 +124,7 @@ export function handleDelayDirect(engine, ms, context = {}) {
     }
 
     const scopeId = genId("delay_");
-    if (engine && engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-        engine._devtools.logErrorScope("DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
-    }
+    logScope(engine, context, "DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
 
     return new Promise((resolve, reject) => {
         let timerId = null;
@@ -135,18 +138,14 @@ export function handleDelayDirect(engine, ms, context = {}) {
         if (signal) {
             unsubscribe = signal.onCancel((reason) => {
                 cleanup();
-                if (engine && engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                    engine._devtools.logErrorScope("DELAY_CANCELLED", { scopeId, reason });
-                }
+                logScope(engine, context, "DELAY_CANCELLED", { scopeId, reason });
                 reject(reason || new EUIXStructuredError({ message: "Delay was cancelled", code: "ACTION_CANCELLED" }));
             });
         }
 
         timerId = setTimeout(() => {
             cleanup();
-            if (engine && engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                engine._devtools.logErrorScope("DELAY_COMPLETED", { scopeId, durationMs: duration });
-            }
+            logScope(engine, context, "DELAY_COMPLETED", { scopeId, durationMs: duration });
             resolve(true);
         }, duration);
     });
@@ -156,9 +155,6 @@ export const EUIXResiliencePlugin = {
     name: "EUIXResiliencePlugin",
     install(engineClass) {
         engineClass.EUIXCancellationController = EUIXCancellationController;
-        if (typeof window !== "undefined") {
-            window.EUIXCancellationController = EUIXCancellationController;
-        }
 
         // Register DELAY / WAIT / SLEEP Action Handler
         engineClass.registerAction("DELAY", async function(actionNode, context) {
@@ -206,11 +202,7 @@ export const EUIXResiliencePlugin = {
 
             const scopeId = genId("timeout_");
             const startTime = getNow();
-
-            const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
-            if (devtools && typeof devtools.logErrorScope === "function") {
-                devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
-            }
+            logScope(this, context, "TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
 
             const timeoutError = new EUIXStructuredError({
                 message: interpolatedMsg,
@@ -221,9 +213,9 @@ export const EUIXResiliencePlugin = {
             timeoutError.timeoutMs = duration;
             timeoutError.cancelled = true;
 
-            const childActions = Array.from(actionNode.children).filter(c => {
-                const tag = c.tagName ? c.tagName.toLowerCase() : "";
-                return !["message", "msg", "ms", "duration"].includes(tag);
+            const childActions = Array.from(actionNode.childNodes || actionNode.children || []).filter(c => {
+                const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
+                return tag && !["message", "msg", "ms", "duration"].includes(tag);
             });
 
             let timerId = null;
@@ -232,9 +224,7 @@ export const EUIXResiliencePlugin = {
                     const elapsedMs = getNow() - startTime;
                     timeoutError.elapsedMs = Math.round(elapsedMs);
                     controller.cancel(timeoutError);
-                    if (devtools && typeof devtools.logErrorScope === "function") {
-                        devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
-                    }
+                    logScope(this, context, "TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
                     reject(timeoutError);
                 }, duration);
             });
@@ -257,12 +247,10 @@ export const EUIXResiliencePlugin = {
             try {
                 const result = await Promise.race([actionPromise, timerPromise]);
                 clearTimeout(timerId);
-                if (devtools && typeof devtools.logErrorScope === "function") {
-                    devtools.logErrorScope("TIMEOUT_COMPLETED", {
-                        scopeId,
-                        durationMs: getNow() - startTime
-                    });
-                }
+                logScope(this, context, "TIMEOUT_COMPLETED", {
+                    scopeId,
+                    durationMs: getNow() - startTime
+                });
                 return result;
             } catch (err) {
                 clearTimeout(timerId);
@@ -329,16 +317,13 @@ export const EUIXResiliencePlugin = {
             const onErrorAttr = actionNode.getAttribute("on_error") || actionNode.getAttribute("when") || actionNode.getAttribute("filter");
             const errorFilters = onErrorAttr ? onErrorAttr.split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : null;
 
-            const childActions = Array.from(actionNode.children).filter(c => {
-                const tag = c.tagName ? c.tagName.toLowerCase() : "";
-                return !["delay", "ms", "attempts", "filter"].includes(tag);
+            const childActions = Array.from(actionNode.childNodes || actionNode.children || []).filter(c => {
+                const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
+                return tag && !["delay", "ms", "attempts", "filter"].includes(tag);
             });
 
             const scopeId = genId("retry_");
-            const devtools = (this && this._devtools) || (context && (context._engine || context.$engine) && (context._engine || context.$engine)._devtools);
-            if (devtools && typeof devtools.logErrorScope === "function") {
-                devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
-            }
+            logScope(this, context, "RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
 
             let lastError = null;
 
@@ -349,12 +334,13 @@ export const EUIXResiliencePlugin = {
                 }
 
                 const nextDelay = (attempt < maxAttempts) ? calculateBackoffDelay(backoff, baseDelay, attempt, maxDelay) : 0;
+                const isLast = attempt === maxAttempts;
                 const retryInfo = {
                     attempt,
                     max_attempts: maxAttempts,
                     maxAttempts,
-                    is_last: attempt === maxAttempts,
-                    isLast: attempt === maxAttempts,
+                    is_last: isLast,
+                    isLast,
                     prev_error: lastError,
                     prevError: lastError,
                     next_delay: nextDelay,
@@ -373,9 +359,7 @@ export const EUIXResiliencePlugin = {
                         result = await this._handleActionInternal(childNode, retryContext);
                     }
 
-                    if (devtools && typeof devtools.logErrorScope === "function") {
-                        devtools.logErrorScope("RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
-                    }
+                    logScope(this, context, "RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
                     return result;
                 } catch (rawErr) {
                     lastError = EUIXStructuredError.from(rawErr, {
@@ -386,29 +370,23 @@ export const EUIXResiliencePlugin = {
                     lastError.maxAttempts = maxAttempts;
 
                     if (attempt === maxAttempts) {
-                        if (devtools && typeof devtools.logErrorScope === "function") {
-                            devtools.logErrorScope("RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
-                        }
+                        logScope(this, context, "RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
                         throw lastError;
                     }
 
-                    if (errorFilters && errorFilters.length > 0) {
+                    if (errorFilters?.length) {
                         const codeMatch = errorFilters.includes(lastError.code.toUpperCase());
                         const statusMatch = lastError.status && errorFilters.includes(String(lastError.status));
                         const messageMatch = errorFilters.some(f => lastError.message.toUpperCase().includes(f));
                         if (!codeMatch && !statusMatch && !messageMatch) {
-                            if (devtools && typeof devtools.logErrorScope === "function") {
-                                devtools.logErrorScope("RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
-                            }
+                            logScope(this, context, "RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
                             throw lastError;
                         }
                     }
 
-                    if (devtools && typeof devtools.logErrorScope === "function") {
-                        devtools.logErrorScope("RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
-                    }
+                    logScope(this, context, "RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
 
-                    if (nextDelay > 0) {
+                    if (nextDelay) {
                         await handleDelayDirect(this, nextDelay, retryContext);
                     }
                 }

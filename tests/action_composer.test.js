@@ -638,6 +638,182 @@ describe('EUIX Engine - Action Composer Test Suite', () => {
             customattr: 'val1',
             paramKey: '{data.val}'
         }, { _componentName: 'App' });
+
+        // 3. Action name via target attribute and <name> child
+        const targetNode = document.createElement('on_click');
+        targetNode.setAttribute('target', 'TargetWorkflow');
+        await executeHandler.call(fakeEngine, targetNode, {});
+        expect(executeActionSpy).toHaveBeenCalledWith('TargetWorkflow', {}, {});
+
+        const childNameNode = document.createElement('on_click');
+        fakeEngine.getChild = (node, name) => name === 'name' ? { textContent: ' ChildWorkflow ' } : null;
+        await executeHandler.call(fakeEngine, childNameNode, {});
+        expect(executeActionSpy).toHaveBeenCalledWith('ChildWorkflow', {}, {});
+    });
+
+    it('21. should test EUIXActionRegistry, EUIXActionValidator, and EUIXActionContext direct APIs', () => {
+        // EUIXActionContext
+        const ctx = new EUIXActionContext();
+        expect(ctx.name).toBe('');
+        expect(ctx.depth).toBe(1);
+        expect(ctx.parent).toBeNull();
+
+        const childCtx = new EUIXActionContext({
+            name: 'ChildAction',
+            args: { x: 10 },
+            parent: ctx,
+            eventContext: { props: { title: 'T' } }
+        });
+        expect(childCtx.name).toBe('ChildAction');
+        expect(childCtx.depth).toBe(2);
+        expect(childCtx.callChain.has('ChildAction')).toBe(true);
+        expect(childCtx.props.title).toBe('T');
+
+        // EUIXActionValidator
+        expect(() => EUIXActionValidator.validateDefinition('', {})).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition(123, {})).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition('act', null)).toThrow(EUIXActionValidationError);
+        expect(() => EUIXActionValidator.validateDefinition('act', 'not_object')).toThrow(EUIXActionValidationError);
+
+        // EUIXActionRegistry
+        const registry = new EUIXActionRegistry();
+        expect(registry.has('non_existent')).toBe(false);
+        expect(registry.get('non_existent')).toBeUndefined();
+        expect(registry.getAll().size).toBe(0);
+
+        registry.register('testAct', { name: 'testAct', steps: [] });
+        expect(registry.has('testAct')).toBe(true);
+        expect(registry.get('testAct').name).toBe('testAct');
+        expect(registry.getAll().size).toBe(1);
+
+        registry.register('actA', { name: 'actA' });
+        registry.register('actB', { name: 'actB' });
+        expect(registry.getAll().size).toBe(3);
+        registry.clear();
+        expect(registry.getAll().size).toBe(0);
+    });
+
+    it('22. should directly test EUIXActionComposer.execute steps, conditionals, returns, and XML parsing', async () => {
+        const engine = EUIXEngine.mount('<uid_spec><data_model><state id="count">0</state></data_model></uid_spec>', container);
+
+        // 1. Direct parseXmlActionDef
+        const doc = new DOMParser().parseFromString(`
+            <action_def name="Workflow1">
+                <param name="multiplier" default="2" type="number" />
+                <step action="SET_STATE">
+                    <path>data.count</path>
+                    <value>{data.count} + {args.multiplier}</value>
+                </step>
+                <if condition="true">
+                    <step action="SET_STATE">
+                        <path>data.count</path>
+                        <value>10</value>
+                    </step>
+                </if>
+                <else>
+                    <step action="SET_STATE">
+                        <path>data.count</path>
+                        <value>99</value>
+                    </step>
+                </else>
+                <return>{data.count}</return>
+            </action_def>
+        `, 'text/xml');
+
+        const def = EUIXActionRegistry.parseXmlActionDef('Workflow1', doc.documentElement);
+        expect(def.name).toBe('Workflow1');
+        expect(def.params.length).toBe(1);
+        expect(def.returnExpr).toBe('{data.count}');
+
+        // Execute via EUIXActionComposer
+        const res = await EUIXActionComposer.execute(def, { multiplier: '5' }, engine);
+        expect(Number(res)).toBe(10);
+        expect(String(engine.getState('count'))).toBe('10');
+
+        // Test false condition triggering else branch
+        const docFalse = new DOMParser().parseFromString(`
+            <action_def name="Workflow2">
+                <if condition="false">
+                    <step action="SET_STATE">
+                        <path>data.count</path>
+                        <value>111</value>
+                    </step>
+                </if>
+                <else>
+                    <step action="SET_STATE">
+                        <path>data.count</path>
+                        <value>222</value>
+                    </step>
+                </else>
+            </action_def>
+        `, 'text/xml');
+        const defFalse = EUIXActionRegistry.parseXmlActionDef('Workflow2', docFalse.documentElement);
+        await EUIXActionComposer.execute(defFalse, {}, engine);
+        expect(engine.getState('count')).toBe('222');
+    });
+
+    it('23. should test arg_def, parameter, return value/expr attributes and nested if-else nodes', async () => {
+        const engine = EUIXEngine.mount('<uid_spec><data_model><state id="count">0</state></data_model></uid_spec>', container);
+
+        // Test arg_def and parameter tags with return value attribute and nested else
+        const doc = new DOMParser().parseFromString(`
+            <action_def name="Workflow3">
+                <arg_def id="p1" default="Hello" required="true" />
+                <parameter name="p2" value="World" />
+                <if test="false">
+                    <step action="SET_STATE"><path>data.count</path><value>1</value></step>
+                    <else><step action="SET_STATE"><path>data.count</path><value>555</value></step></else>
+                </if>
+                <return value="StaticReturnText" />
+            </action_def>
+        `, 'text/xml');
+
+        const def = EUIXActionRegistry.parseXmlActionDef('Workflow3', doc.documentElement);
+        expect(def.params.length).toBe(2);
+        expect(def.returnExpr).toBe('StaticReturnText');
+
+        const res = await EUIXActionComposer.execute(def, { p1: 'CustomHello' }, engine);
+        expect(res).toBe('StaticReturnText');
+        expect(engine.getState('count')).toBe('555');
+
+        // Test return expr attribute with non-JSON return
+        const docExpr = new DOMParser().parseFromString(`
+            <action_def name="Workflow4">
+                <return expr="TextResult_{data.count}" />
+            </action_def>
+        `, 'text/xml');
+        const defExpr = EUIXActionRegistry.parseXmlActionDef('Workflow4', docExpr.documentElement);
+        const resExpr = await EUIXActionComposer.execute(defExpr, {}, engine);
+        expect(resExpr).toBe('TextResult_555');
+    });
+
+    it('24. should test param textContent defaults, return tag textContent, and argument nodes', async () => {
+        const engine = EUIXEngine.mount('<uid_spec><data_model><state id="x">0</state></data_model></uid_spec>', container);
+
+        const doc = new DOMParser().parseFromString(`
+            <action_def name="Workflow5">
+                <param name="txtParam">DefaultTextContent</param>
+                <step action="SET_STATE">
+                    <path>data.x</path>
+                    <value>{args.txtParam}</value>
+                </step>
+                <return>
+                    Computed_{data.x}
+                </return>
+            </action_def>
+        `, 'text/xml');
+
+        const def = EUIXActionRegistry.parseXmlActionDef('Workflow5', doc.documentElement);
+        expect(def.params[0].default).toBe('DefaultTextContent');
+        expect(def.returnExpr).toBe('Computed_{data.x}');
+
+        const res = await EUIXActionComposer.execute(def, {}, engine);
+        expect(res).toBe('Computed_DefaultTextContent');
+        expect(engine.getState('x')).toBe('DefaultTextContent');
     });
 });
+
+
+
+
 

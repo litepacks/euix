@@ -263,4 +263,115 @@ describe('EUIXEngine State Persistence Suite (LocalStorage & SessionStorage)', (
         engine.setState('undef_key', undefined);
         expect(localStorage.getItem('custom_undef_key')).toBe('""');
     });
+
+    it('should test storage event error catch fallback and non-matching event guards', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="sync_key" persist="local">val1</state>
+            </data_model>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        // 1. Storage event with unparseable JSON (triggers catch block)
+        const badJsonEvent = new Event('storage');
+        badJsonEvent.key = 'euix_state_sync_key';
+        badJsonEvent.newValue = 'not-valid-json{[[(';
+        window.dispatchEvent(badJsonEvent);
+        expect(engine.getState('sync_key')).toBe('not-valid-json{[[(');
+
+        // 2. Storage event with empty/null key (guard test)
+        const emptyKeyEvent = new Event('storage');
+        emptyKeyEvent.key = '';
+        emptyKeyEvent.newValue = 'something';
+        window.dispatchEvent(emptyKeyEvent);
+        expect(engine.getState('sync_key')).toBe('not-valid-json{[[(');
+
+        // 3. Storage event with different key
+        const diffKeyEvent = new Event('storage');
+        diffKeyEvent.key = 'other_app_key';
+        diffKeyEvent.newValue = '"value"';
+        window.dispatchEvent(diffKeyEvent);
+        expect(engine.getState('sync_key')).toBe('not-valid-json{[[(');
+    });
+
+    it('should test persist with default options and _savePersistedState error handling', () => {
+        const engine = new EUIXEngine(container);
+        engine.mount('<uid_spec><data_model><state id="foo">bar</state></data_model></uid_spec>');
+
+        // Persist with no options argument (tests default parameter)
+        engine.persist('foo');
+        expect(localStorage.getItem('euix_state_foo')).toBe('"bar"');
+
+        // Test clearing unpersisted key
+        expect(engine.clearPersistedState('non_existent')).toBe(engine);
+
+        // Test _savePersistedState for unconfigured key
+        engine._savePersistedState('non_existent_key', 'some_value');
+
+        // Test _savePersistedState catch block when store.setItem throws
+        let reportedMsg = '';
+        const reportSpy = vi.spyOn(engine, 'reportError').mockImplementation((err, msg) => {
+            reportedMsg = msg;
+        });
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+            throw new Error('QuotaExceededError');
+        });
+
+        engine._savePersistedState('foo', 'new_val');
+        expect(reportSpy).toHaveBeenCalled();
+        expect(reportedMsg).toContain('Error persisting state key "foo"');
+
+        setItemSpy.mockRestore();
+    });
+
+    it('should handle persist when storage type is uppercase and trigger watchers on storage event', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="watched_key">init</state>
+                <state id="session_ignored">sess_val</state>
+            </data_model>
+        </uid_spec>
+        `;
+        const engine = new EUIXEngine(container);
+        engine.persist('watched_key', { storage: 'LOCAL' });
+        engine.persist('session_ignored', { storage: 'SESSION', key: 'euix_sess_key' });
+        engine.mount(xml);
+
+        let watcherCalled = false;
+        engine.watch('watched_key', (newVal) => {
+            watcherCalled = true;
+        });
+
+        // 1. Storage event for session-persisted key should NOT trigger update
+        const sessEvent = new Event('storage');
+        sessEvent.key = 'euix_sess_key';
+        sessEvent.newValue = '"new_sess_val"';
+        window.dispatchEvent(sessEvent);
+        expect(engine.getState('session_ignored')).toBe('sess_val');
+
+        // 2. Storage event for local key should trigger watcher (testing { silent: false })
+        const localEvent = new Event('storage');
+        localEvent.key = 'euix_state_watched_key';
+        localEvent.newValue = '"fresh_val"';
+        window.dispatchEvent(localEvent);
+        expect(engine.getState('watched_key')).toBe('fresh_val');
+        expect(watcherCalled).toBe(true);
+    });
+
+    it('should handle persist when storage type is invalid or store is unavailable', () => {
+        const engine = new EUIXEngine(container);
+        engine.mount('<uid_spec><data_model><state id="baz">qux</state></data_model></uid_spec>');
+
+        // Invalid storage type (neither session nor local store is returned if invalid name)
+        engine.persist('baz', { storage: 'invalid_store_type' });
+        engine.clearPersistedState('baz');
+        engine._savePersistedState('baz', 'val');
+    });
 });
+
+

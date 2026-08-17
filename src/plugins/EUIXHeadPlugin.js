@@ -8,8 +8,23 @@
 export const EUIXHeadPlugin = {
     name: "head",
     install(engineClass) {
-        // Track managed head elements for cleanup on engine unmount
-        engineClass.prototype._headManagedElements = engineClass.prototype._headManagedElements || new Set();
+        const proto = engineClass.prototype;
+        proto._headManagedElements = proto._headManagedElements || new Set();
+
+        const originalUnmount = proto.unmount;
+        proto.unmount = function() {
+            if (this._headManagedElements) {
+                this._headManagedElements.forEach(el => {
+                    if (el && el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                });
+                this._headManagedElements.clear();
+            }
+            if (typeof originalUnmount === "function") {
+                return originalUnmount.apply(this, arguments);
+            }
+        };
 
         /**
          * Render <head> or <helmet> XML specifications
