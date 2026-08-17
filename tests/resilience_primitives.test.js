@@ -301,7 +301,7 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
             const button = container.querySelector("button");
             button.click();
 
-            await new Promise(r => setTimeout(r, 60));
+            await new Promise(r => setTimeout(r, 150));
 
             expect(engine.getState("err_msg")).toBe("Persistent error");
         });

@@ -69,10 +69,7 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
   <uid_spec>
       <data_model>
           <state id="counter">0</state>
-          <state id="tasks" type="array">
-              <item id="1" title="Learn EUIX Engine" status="done" />
-              <item id="2" title="Build Drag & Drop App" status="todo" />
-          </state>
+          <state id="tasks" type="array">[{"id": 1, "title": "Learn EUIX Engine", "status": "done"}, {"id": 2, "title": "Build Drag & Drop App", "status": "todo"}]</state>
       </data_model>
 
       <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100">
@@ -85,7 +82,7 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
               <button class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md shadow-blue-500/20">
                   <on_click action="SET_STATE">
                       <path>data.counter</path>
-                      <value>{data.counter + 1}</value>
+                      <value>{data.counter} + 1</value>
                   </on_click>
                   ➕ Increment
               </button>
@@ -94,22 +91,19 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
           <!-- List Rendering with Keyed DOM Reconciliation -->
           <flex direction="column" gap="8" class="pt-2 border-t border-slate-100">
               <for_each items="{data.tasks}" var="task" key="id">
-                  <div draggable="true" data-id="{task.id}" class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl flex items-center justify-between border border-slate-100 transition-colors">
+                  <div class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl flex items-center justify-between border border-slate-100 transition-colors">
                       <span class="text-sm font-semibold text-slate-700">{task.title}</span>
                       <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg font-bold cursor-pointer transition-colors">
-                          <on_click action="MUTATE_STATE" operation="REMOVE">
-                              <path>data.tasks</path>
-                              <index>{task._index}</index>
+                          <on_click action="MUTATE_STATE">
+                              <path>tasks</path>
+                              <operation>REMOVE</operation>
+                              <where field="id" equals="{task.id}" />
                           </on_click>
                           ✕
                       </button>
-          <!-- Virtual Scrolling (10,000+ Items at 60 FPS) -->
-          <for_each items="{data.large_dataset}" var="item" key="id" virtual="true" item_height="44" height="320px" buffer="4">
-              <flex direction="row" align="center" justify="between" class="p-2 border-b border-slate-100">
-                  <span class="font-bold">{item.title}</span>
-                  <span class="text-xs text-slate-500">{item.status}</span>
-              </flex>
-          </for_each>
+                  </div>
+              </for_each>
+          </flex>
       </flex>
   </uid_spec>
   </script>
