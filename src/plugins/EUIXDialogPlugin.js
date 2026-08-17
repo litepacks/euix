@@ -111,11 +111,7 @@ export const EUIXDialogPlugin = {
                 if (open) {
                     if (!containerNode.contains(backdrop)) {
                         containerNode.appendChild(backdrop);
-                        if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-                            window.requestAnimationFrame(() => backdrop.focus());
-                        } else {
-                            setTimeout(() => backdrop.focus(), 0);
-                        }
+                        if (backdrop.focus) backdrop.focus();
                     }
                 } else {
                     if (containerNode.contains(backdrop)) {

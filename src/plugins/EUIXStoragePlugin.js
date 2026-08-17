@@ -4,6 +4,13 @@
  * Supports localStorage and sessionStorage sync for reactive state variables.
  */
 
+const getStore = (type) => {
+    const s = String(type || "").toLowerCase();
+    if (s === "session") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+    if (s === "local") return typeof localStorage !== "undefined" ? localStorage : null;
+    return null;
+};
+
 export const EUIXStoragePlugin = {
     name: "storage",
     install(engineClass) {
@@ -30,12 +37,10 @@ export const EUIXStoragePlugin = {
             if (!key) return this;
             const parsedKey = this.parseBindPath(key);
             const storageKey = customKey || `euix_state_${parsedKey}`;
-            this._persistenceConfig.set(parsedKey, { storage: String(storage).toLowerCase(), storageKey });
+            const storageType = String(storage).toLowerCase();
+            this._persistenceConfig.set(parsedKey, { storage: storageType, storageKey });
 
-            const store = String(storage).toLowerCase() === "session" 
-                ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
-                : (typeof localStorage !== "undefined" ? localStorage : null);
-
+            const store = getStore(storageType);
             if (store && this._rawState) {
                 const existing = store.getItem(storageKey);
                 if (existing !== null) {
@@ -57,9 +62,7 @@ export const EUIXStoragePlugin = {
             const parsedKey = this.parseBindPath(key);
             const config = this._persistenceConfig.get(parsedKey);
             if (config) {
-                const store = config.storage === "session" 
-                    ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
-                    : (typeof localStorage !== "undefined" ? localStorage : null);
+                const store = getStore(config.storage);
                 if (store) store.removeItem(config.storageKey);
             }
             return this;
@@ -69,9 +72,7 @@ export const EUIXStoragePlugin = {
             const config = this._persistenceConfig.get(key);
             if (!config) return;
             try {
-                const store = config.storage === "session" 
-                    ? (typeof sessionStorage !== "undefined" ? sessionStorage : null) 
-                    : (typeof localStorage !== "undefined" ? localStorage : null);
+                const store = getStore(config.storage);
                 if (!store) return;
                 const valToStore = JSON.stringify(value !== undefined ? value : "");
                 store.setItem(config.storageKey, valToStore);

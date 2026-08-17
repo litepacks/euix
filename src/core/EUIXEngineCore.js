@@ -611,7 +611,7 @@ class EUIXStructuredError extends Error {
     }
 
     static from(err, defaultInfo = {}) {
-        if (err instanceof EUIXStructuredError) {
+        if (err instanceof EUIXStructuredError || (err && err.name === "EUIXStructuredError")) {
             if (defaultInfo.component && !err.component) err.component = defaultInfo.component;
             if (defaultInfo.originatingAction && (!err.originatingAction || err.originatingAction === "UNKNOWN")) {
                 err.originatingAction = defaultInfo.originatingAction;
@@ -628,6 +628,8 @@ class EUIXStructuredError extends Error {
             code = "VALIDATION_ERROR";
         } else if (err && err.name === "EUIXActionRecursionError") {
             code = "ACTION_RECURSION_ERROR";
+        } else if (err && err.code) {
+            code = err.code;
         } else if (status || (code && code.startsWith("API_"))) {
             code = code || "API_HTTP_ERROR";
         }
@@ -656,6 +658,78 @@ class EUIXStructuredError extends Error {
             component: this.component,
             timestamp: this.timestamp
         };
+    }
+}
+
+/**
+ * EUIXCancellationController
+ * Cancellation signal and token generator for resilience primitives.
+ */
+class EUIXCancellationController {
+    constructor(parentSignal = null) {
+        this.isCancelled = false;
+        this.reason = null;
+        this.listeners = new Set();
+        this._abortController = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        this._parentUnsubscribe = null;
+
+        if (parentSignal) {
+            if (parentSignal.isCancelled) {
+                this.cancel(parentSignal.reason);
+            } else {
+                this._parentUnsubscribe = parentSignal.onCancel((reason) => this.cancel(reason));
+            }
+        }
+    }
+
+    get signal() {
+        const self = this;
+        return {
+            get isCancelled() { return self.isCancelled; },
+            get reason() { return self.reason; },
+            get abortSignal() { return self._abortController ? self._abortController.signal : null; },
+            onCancel: (cb) => {
+                if (typeof cb !== "function") return noop;
+                if (this.isCancelled) {
+                    try { cb(this.reason); } catch (_) {}
+                    return noop;
+                }
+                this.listeners.add(cb);
+                return () => this.listeners.delete(cb);
+            },
+            throwIfCancelled: () => {
+                if (this.isCancelled) {
+                    throw this.reason || new EUIXStructuredError({
+                        message: "Action execution was cancelled",
+                        code: "ACTION_CANCELLED"
+                    });
+                }
+            }
+        };
+    }
+
+    cancel(reason = null) {
+        if (this.isCancelled) return;
+        this.isCancelled = true;
+        this.reason = reason || new EUIXStructuredError({
+            message: "Action execution was cancelled",
+            code: "ACTION_CANCELLED"
+        });
+
+        if (this._abortController) {
+            try { this._abortController.abort(this.reason); } catch (_) {}
+        }
+
+        const toNotify = Array.from(this.listeners);
+        this.listeners.clear();
+        for (const cb of toNotify) {
+            try { cb(this.reason); } catch (_) {}
+        }
+
+        if (this._parentUnsubscribe) {
+            this._parentUnsubscribe();
+            this._parentUnsubscribe = null;
+        }
     }
 }
 
@@ -5892,7 +5966,7 @@ class EUIXEngineCore {
                 }
 
                 try {
-                    const catchActions = Array.from(catchNode.children);
+                    const catchActions = this.getChildren(catchNode);
                     for (const catchAct of catchActions) {
                         tryResult = await this._handleActionInternal(catchAct, catchContext);
                     }
@@ -5912,7 +5986,7 @@ class EUIXEngineCore {
                     this._devtools.logErrorScope("FINALLY_ENTER", { scopeId });
                 }
                 try {
-                    const finallyActions = Array.from(finallyNode.children);
+                    const finallyActions = this.getChildren(finallyNode);
                     for (const finAct of finallyActions) {
                         await this._handleActionInternal(finAct, context);
                     }
@@ -6087,9 +6161,9 @@ class EUIXEngineCore {
         timeoutError.timeoutMs = duration;
         timeoutError.cancelled = true;
 
-        const childActions = Array.from(timeoutNode.children).filter(c => {
-            const tag = c.tagName ? c.tagName.toLowerCase() : "";
-            return !["message", "msg", "ms", "duration"].includes(tag);
+        const childActions = Array.from(timeoutNode.childNodes || timeoutNode.children || []).filter(c => {
+            const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
+            return tag && !["message", "msg", "ms", "duration"].includes(tag);
         });
 
         let timerId = null;
@@ -6194,9 +6268,9 @@ class EUIXEngineCore {
         const onErrorAttr = retryNode.getAttribute("on_error") || retryNode.getAttribute("when") || retryNode.getAttribute("filter");
         const errorFilters = onErrorAttr ? onErrorAttr.split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : null;
 
-        const childActions = Array.from(retryNode.children).filter(c => {
-            const tag = c.tagName ? c.tagName.toLowerCase() : "";
-            return !["delay", "ms", "attempts", "filter"].includes(tag);
+        const childActions = Array.from(retryNode.childNodes || retryNode.children || []).filter(c => {
+            const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
+            return tag && !["delay", "ms", "attempts", "filter"].includes(tag);
         });
 
         const scopeId = genId("retry_");
@@ -6875,11 +6949,13 @@ class EUIXEngineCore {
 EUIXEngineCore.EUIXExpressionParser = EUIXExpressionParser;
 EUIXEngineCore.EUIXStructuredError = EUIXStructuredError;
 EUIXEngineCore.EUIXXMLParseError = EUIXXMLParseError;
+EUIXEngineCore.EUIXCancellationController = EUIXCancellationController;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
     window.EUIXStructuredError = EUIXStructuredError;
     window.EUIXXMLParseError = EUIXXMLParseError;
+    window.EUIXCancellationController = EUIXCancellationController;
     window.EUIXEngineCore = EUIXEngineCore;
     window.EUIXEngine = EUIXEngineCore;
     if (document.readyState === "loading") {
@@ -6889,5 +6965,5 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
 }
 
-export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError };
+export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError, EUIXCancellationController };
 export default EUIXEngineCore;

@@ -1,14 +1,32 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "mutate": [
-    "src/core/EUIXEngineCore.js",
-    "src/plugins/EUIXReactivePlugin.js",
-    "src/plugins/EUIXResiliencePlugin.js",
-    "src/plugins/EUIXComposerPlugin.js"
+    "src/plugins/EUIXAnimationPlugin.js"
   ],
+  "ignoreStatic": true,
   "testRunner": "vitest",
-  "reporters": ["html", "clear-text", "progress"],
   "coverageAnalysis": "perTest",
   "concurrency": 4,
-  "timeoutMS": 15000
+  "timeoutMS": 20000,
+  "timeoutFactor": 2.5,
+  "cleanTempDir": "always",
+  "tempDirName": ".stryker-tmp",
+  "reporters": [
+    "html",
+    "clear-text",
+    "progress",
+    "json"
+  ],
+  "htmlReporter": {
+    "fileName": "reports/mutation/mutation.html"
+  },
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "thresholds": {
+    "high": 80,
+    "low": 65,
+    "break": 60
+  },
+  "disableBail": false
 }

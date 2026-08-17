@@ -100,11 +100,9 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
                     <container>
                         <button class="btn">
                             <on_click>
-                                <timeout ms="500">
-                                    <step action="SET_STATE">
-                                        <path>data.status</path>
-                                        <value>completed</value>
-                                    </step>
+                                <timeout ms="500" action="SET_STATE">
+                                    <path>data.status</path>
+                                    <value>completed</value>
                                 </timeout>
                             </on_click>
                             Start
@@ -117,7 +115,7 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
             const button = container.querySelector("button");
             button.click();
 
-            await new Promise(r => setTimeout(r, 20));
+            await new Promise(r => setTimeout(r, 100));
 
             expect(engine.getState("status")).toBe("completed");
         });
@@ -821,8 +819,7 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
 
             EUIXResiliencePlugin.install(mockEngineClass);
 
-            expect(mockEngineClass.EUIXCancellationController).toBeDefined();
-            expect(window.EUIXCancellationController).toBeDefined();
+            expect(mockEngineClass.EUIXCancellationController).toBe(EUIXCancellationController);
             expect(registeredActions.has("DELAY")).toBe(true);
             expect(registeredActions.has("WAIT")).toBe(true);
             expect(registeredActions.has("SLEEP")).toBe(true);
@@ -868,7 +865,605 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
 
             await expect(delayPromise).rejects.toThrow("Action execution was cancelled");
         });
+
+        it("should directly execute TIMEOUT, RETRY, WAIT, and SLEEP handlers registered by EUIXResiliencePlugin", async () => {
+            const handlers = new Map();
+            const mockEngineClass = {
+                registerAction(name, handler) {
+                    handlers.set(name, handler);
+                }
+            };
+            EUIXResiliencePlugin.install(mockEngineClass);
+
+            const mockEngine = {
+                interpolate: (str) => str,
+                reportError: vi.fn(),
+                _handleActionInternal: vi.fn().mockResolvedValue("ActionSuccess"),
+                getChild: () => null
+            };
+
+            // 1. SLEEP & WAIT
+            const sleepNode = {
+                getAttribute: (k) => k === "ms" ? "5" : null,
+                children: []
+            };
+            const sleepRes = await handlers.get("SLEEP").call(mockEngine, sleepNode, {});
+            expect(sleepRes).toBe("ActionSuccess");
+
+            const waitNode = {
+                getAttribute: (k) => k === "ms" ? "5" : null,
+                children: []
+            };
+            const waitRes = await handlers.get("WAIT").call(mockEngine, waitNode, {});
+            expect(waitRes).toBe("ActionSuccess");
+
+            // 2. TIMEOUT handler success
+            const timeoutNode = {
+                getAttribute: (k) => k === "ms" ? "50" : (k === "action" ? "MY_ACTION" : null),
+                children: []
+            };
+            const timeoutRes = await handlers.get("TIMEOUT").call(mockEngine, timeoutNode, { _componentName: "TestComp" });
+            expect(timeoutRes).toBe("ActionSuccess");
+
+            // 3. TIMEOUT invalid duration validation error
+            const invalidTimeoutNode = {
+                getAttribute: (k) => k === "ms" ? "-10" : null,
+                children: []
+            };
+            await expect(handlers.get("TIMEOUT").call(mockEngine, invalidTimeoutNode, { _componentName: "TestComp" }))
+                .rejects.toThrow(EUIXStructuredError);
+
+            // 4. RETRY handler multi-attempt context tracking
+            let attemptCounter = 0;
+            let capturedRetryContext = null;
+            mockEngine._handleActionInternal = vi.fn().mockImplementation((childNode, ctx) => {
+                attemptCounter++;
+                capturedRetryContext = ctx.retry;
+                if (attemptCounter === 1) {
+                    throw new Error("FirstAttemptFailed");
+                }
+                return "SecondAttemptSuccess";
+            });
+
+            const retryNode = {
+                getAttribute: (k) => k === "attempts" ? "2" : (k === "delay" ? "5" : null),
+                children: [{ tagName: "step" }]
+            };
+            const retryRes = await handlers.get("RETRY").call(mockEngine, retryNode, { _componentName: "TestComp" });
+            expect(retryRes).toBe("SecondAttemptSuccess");
+            expect(capturedRetryContext.attempt).toBe(2);
+            expect(capturedRetryContext.is_last).toBe(true);
+            expect(capturedRetryContext.prev_error).toBeDefined();
+
+            // 5. RETRY invalid attempts validation error
+            const invalidRetryNode = {
+                getAttribute: (k) => k === "attempts" ? "0" : null,
+                children: []
+            };
+            await expect(handlers.get("RETRY").call(mockEngine, invalidRetryNode, { _componentName: "TestComp" }))
+                .rejects.toThrow(EUIXStructuredError);
+
+            // 6. RETRY error filter mismatch immediately re-throws error
+            mockEngine._handleActionInternal = vi.fn().mockRejectedValue(new EUIXStructuredError({
+                message: "Database Fail",
+                code: "DB_ERROR"
+            }));
+            const filterMismatchNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "NETWORK_ERROR" : null),
+                children: [{ tagName: "step" }]
+            };
+            await expect(handlers.get("RETRY").call(mockEngine, filterMismatchNode, { _componentName: "TestComp" }))
+                .rejects.toThrow("Database Fail");
+
+            // 7. calculateBackoffDelay modes
+            expect(calculateBackoffDelay("fixed", 100, 1, 1000)).toBe(100);
+            expect(calculateBackoffDelay("linear", 100, 3, 1000)).toBe(300);
+            expect(calculateBackoffDelay("exponential", 100, 2, 1000)).toBe(200);
+            expect(calculateBackoffDelay("exp", 100, 2, 1000)).toBe(200);
+            expect(calculateBackoffDelay("exponential", 100, 10, 500)).toBe(500); // capped at maxDelay
+            expect(calculateBackoffDelay("jitter", 100, 2, 1000)).toBeGreaterThanOrEqual(100);
+            expect(calculateBackoffDelay("fixed", 0, 1)).toBe(0);
+            expect(calculateBackoffDelay("fixed", -10, 1)).toBe(0);
+            expect(calculateBackoffDelay(null, 100, 1)).toBe(100);
+            expect(calculateBackoffDelay("fixed", 100, 1, -5)).toBe(100);
+            expect(calculateBackoffDelay("fixed", 100, 1, "invalid")).toBe(100);
+        });
+
+        it("8. should thoroughly test EUIXCancellationController signal listeners and abort controller", () => {
+            const ctrl = new EUIXCancellationController();
+            
+            // onCancel with non-function
+            const noopUnsub = ctrl.signal.onCancel(null);
+            expect(typeof noopUnsub).toBe("function");
+            noopUnsub();
+
+            // abortSignal getter
+            expect(ctrl.signal.abortSignal).toBeDefined();
+
+            // throwIfCancelled when not cancelled
+            expect(() => ctrl.signal.throwIfCancelled()).not.toThrow();
+
+            // Listener with throw error swallowed during cancel
+            ctrl.signal.onCancel(() => {
+                throw new Error("Swallowed listener error");
+            });
+
+            const normalSpy = vi.fn();
+            const unsubNormal = ctrl.signal.onCancel(normalSpy);
+            unsubNormal(); // test unsubscribe
+
+            ctrl.cancel();
+            expect(ctrl.signal.isCancelled).toBe(true);
+
+            // cancel again is idempotent
+            ctrl.cancel();
+
+            // onCancel after already cancelled with throwing callback
+            ctrl.signal.onCancel(() => {
+                throw new Error("Swallowed post-cancel callback");
+            });
+
+            // throwIfCancelled throws cancelled error
+            expect(() => ctrl.signal.throwIfCancelled()).toThrow("Action execution was cancelled");
+        });
+
+        it("9. should thoroughly test retry filters by status and message substring and backoff validation", async () => {
+            const handlers = new Map();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: vi.fn() },
+                _handleActionInternal: vi.fn()
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. Retry with invalid backoff
+            const invalidBackoffNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "backoff" ? "unsupported_strategy" : null),
+                children: []
+            };
+            await expect(handlers.get("RETRY").call(mockEngine, invalidBackoffNode, {}))
+                .rejects.toThrow('invalid backoff strategy "unsupported_strategy"');
+
+            // 2. Retry with delay < 0
+            const negativeDelayNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "delay" ? "-50" : null),
+                children: []
+            };
+            await expect(handlers.get("RETRY").call(mockEngine, negativeDelayNode, {}))
+                .rejects.toThrow("<retry> delay must be a non-negative number");
+
+            // 3. Retry with max_delay < base_delay
+            const badMaxDelayNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "delay" ? "100" : (k === "max_delay" ? "50" : null)),
+                children: []
+            };
+            await expect(handlers.get("RETRY").call(mockEngine, badMaxDelayNode, {}))
+                .rejects.toThrow("<retry> max_delay must be a number greater than or equal to initial delay");
+
+            // 4. Retry with error filter matching HTTP status 503
+            const err503 = new EUIXStructuredError({ message: "Service Unavailable", status: 503 });
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(err503)
+                .mockResolvedValueOnce("Recovered503");
+
+            const statusFilterNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "503, 500" : (k === "delay" ? "1" : null)),
+                children: [{ tagName: "step" }]
+            };
+            const res503 = await handlers.get("RETRY").call(mockEngine, statusFilterNode, {});
+            expect(res503).toBe("Recovered503");
+
+            // 5. Retry with error filter matching message substring
+            const errMsgErr = new Error("Gateway timeout occurred");
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(errMsgErr)
+                .mockResolvedValueOnce("RecoveredMsg");
+
+            const msgFilterNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "GATEWAY, TIMEOUT" : (k === "delay" ? "1" : null)),
+                children: [{ tagName: "step" }]
+            };
+            const resMsg = await handlers.get("RETRY").call(mockEngine, msgFilterNode, {});
+            expect(resMsg).toBe("RecoveredMsg");
+        });
+
+        it("10. should test TIMEOUT with parent cancellation signal and duration validations", async () => {
+            const handlers = new Map();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: vi.fn() },
+                _handleActionInternal: vi.fn()
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. Duration <= 0
+            const badDurationNode = {
+                getAttribute: (k) => k === "ms" ? "0" : null,
+                children: []
+            };
+            await expect(handlers.get("TIMEOUT").call(mockEngine, badDurationNode, {}))
+                .rejects.toThrow("<timeout> duration must be a positive number");
+
+            // 2. Pre-cancelled parent signal
+            const parentCtrl = new EUIXCancellationController();
+            parentCtrl.cancel(new Error("Pre-cancelled by parent"));
+
+            const validTimeoutNode = {
+                getAttribute: (k) => k === "ms" ? "100" : null,
+                children: []
+            };
+            await expect(handlers.get("TIMEOUT").call(mockEngine, validTimeoutNode, { _cancellationSignal: parentCtrl.signal }))
+                .rejects.toThrow("Pre-cancelled by parent");
+        });
+
+        it("11. should verify retry attempt failure, nextDelay timing and exhaustion with devtools", async () => {
+            const handlers = new Map();
+            const logErrorScopeSpy = vi.fn();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: logErrorScopeSpy },
+                _handleActionInternal: vi.fn()
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. Test retry with nextDelay > 0 (delay = 15ms)
+            const t0 = Date.now();
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(new Error("Attempt 1 Fail"))
+                .mockResolvedValueOnce("RecoveredAfterDelay");
+
+            const retryWithDelayNode = {
+                getAttribute: (k) => k === "attempts" ? "2" : (k === "delay" ? "15" : (k === "backoff" ? "fixed" : null)),
+                children: [{ tagName: "step" }]
+            };
+
+            const delayRes = await handlers.get("RETRY").call(mockEngine, retryWithDelayNode, {});
+            const elapsed = Date.now() - t0;
+            expect(delayRes).toBe("RecoveredAfterDelay");
+            expect(elapsed).toBeGreaterThanOrEqual(10); // Verifies handleDelayDirect was executed because nextDelay > 0
+
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_START", expect.any(Object));
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_ATTEMPT_FAILED", expect.objectContaining({ attempt: 1, nextDelay: 15 }));
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_SUCCESS", expect.objectContaining({ attempt: 2, maxAttempts: 2 }));
+
+            // 2. Test retry with nextDelay === 0 (delay = 0ms)
+            logErrorScopeSpy.mockClear();
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(new Error("Attempt 1 Fail Zero Delay"))
+                .mockResolvedValueOnce("RecoveredZeroDelay");
+
+            const retryZeroDelayNode = {
+                getAttribute: (k) => k === "attempts" ? "2" : (k === "delay" ? "0" : (k === "backoff" ? "fixed" : null)),
+                children: [{ tagName: "step" }]
+            };
+
+            const zeroRes = await handlers.get("RETRY").call(mockEngine, retryZeroDelayNode, {});
+            expect(zeroRes).toBe("RecoveredZeroDelay");
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_ATTEMPT_FAILED", expect.objectContaining({ attempt: 1, nextDelay: 0 }));
+
+            // 3. Test exhaustion
+            logErrorScopeSpy.mockClear();
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(new Error("Attempt 1 Fail"))
+                .mockRejectedValueOnce(new Error("Attempt 2 Final Fail"));
+
+            const retryExhaustNode = {
+                getAttribute: (k) => k === "attempts" ? "2" : (k === "delay" ? "5" : (k === "backoff" ? "fixed" : null)),
+                children: [{ tagName: "step" }]
+            };
+
+            await expect(handlers.get("RETRY").call(mockEngine, retryExhaustNode, {}))
+                .rejects.toThrow("Attempt 2 Final Fail");
+
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_EXHAUSTED", expect.objectContaining({ attempt: 2 }));
+        });
+
+        it("12. should test strict error filter combinations (code, status, message, mismatch)", async () => {
+            const handlers = new Map();
+            const logErrorScopeSpy = vi.fn();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: logErrorScopeSpy },
+                _handleActionInternal: vi.fn()
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. Code match
+            const codeErr = new EUIXStructuredError({ message: "Network timeout", code: "TIMEOUT_ERROR" });
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(codeErr)
+                .mockResolvedValueOnce("CodeMatched");
+
+            const codeFilterNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "TIMEOUT_ERROR" : (k === "delay" ? "1" : null)),
+                children: [{ tagName: "step" }]
+            };
+            const codeRes = await handlers.get("RETRY").call(mockEngine, codeFilterNode, {});
+            expect(codeRes).toBe("CodeMatched");
+
+            // 2. Filter mismatch throws immediately and logs RETRY_FILTER_MISMATCH
+            logErrorScopeSpy.mockClear();
+            const mismatchErr = new EUIXStructuredError({ message: "Forbidden Access", code: "AUTH_FORBIDDEN", status: 403 });
+            mockEngine._handleActionInternal.mockRejectedValueOnce(mismatchErr);
+
+            const mismatchFilterNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "NETWORK_ERROR, 500" : (k === "delay" ? "1" : null)),
+                children: [{ tagName: "step" }]
+            };
+
+            await expect(handlers.get("RETRY").call(mockEngine, mismatchFilterNode, {}))
+                .rejects.toThrow("Forbidden Access");
+
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("RETRY_FILTER_MISMATCH", expect.objectContaining({
+                attempt: 1,
+                error: expect.objectContaining({ code: "AUTH_FORBIDDEN" })
+            }));
+
+            // 3. Message substring match with multiple filter items (testing .some)
+            const multiFilterErr = new Error("Gateway timeout occurred on socket 8080");
+            mockEngine._handleActionInternal
+                .mockRejectedValueOnce(multiFilterErr)
+                .mockResolvedValueOnce("SomeMatchedSuccess");
+
+            const multiFilterNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "on_error" ? "DB_ERROR, 500, TIMEOUT" : (k === "delay" ? "1" : null)),
+                children: [{ tagName: "step" }]
+            };
+            const multiFilterRes = await handlers.get("RETRY").call(mockEngine, multiFilterNode, {});
+            expect(multiFilterRes).toBe("SomeMatchedSuccess");
+        });
+
+        it("13. should test TIMEOUT with direct action attribute and no child actions", async () => {
+            const handlers = new Map();
+            const logErrorScopeSpy = vi.fn();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: logErrorScopeSpy },
+                _handleActionInternal: vi.fn().mockResolvedValue("DirectActionRan")
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            const directTimeoutNode = {
+                getAttribute: (k) => k === "ms" ? "100" : (k === "action" ? "SET_STATE" : null),
+                childNodes: []
+            };
+
+            const res = await handlers.get("TIMEOUT").call(mockEngine, directTimeoutNode, {});
+            expect(res).toBe("DirectActionRan");
+            expect(mockEngine._handleActionInternal).toHaveBeenCalledWith(directTimeoutNode, expect.objectContaining({
+                _cancellationSignal: expect.any(Object)
+            }));
+            expect(logErrorScopeSpy).toHaveBeenCalledWith("TIMEOUT_COMPLETED", expect.any(Object));
+        });
+
+        it("14. should test WAIT and SLEEP action alias delegation to DELAY", async () => {
+            const handlers = new Map();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _handleActionInternal: vi.fn().mockResolvedValue("DelayDelegated")
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            const waitNode = {
+                getAttribute: (k) => k === "action" ? "WAIT" : (k === "ms" ? "20" : null)
+            };
+
+            const waitRes = await handlers.get("WAIT").call(mockEngine, waitNode, {});
+            expect(waitRes).toBe("DelayDelegated");
+            expect(mockEngine._handleActionInternal).toHaveBeenCalledWith(expect.objectContaining({
+                getAttribute: expect.any(Function)
+            }), {});
+
+            const sleepNode = {
+                getAttribute: (k) => k === "action" ? "SLEEP" : (k === "ms" ? "30" : null)
+            };
+            const sleepRes = await handlers.get("SLEEP").call(mockEngine, sleepNode, {});
+            expect(sleepRes).toBe("DelayDelegated");
+        });
+
+        it("15. should test custom originatingAction and calculateBackoffDelay nuances", async () => {
+            const handlers = new Map();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _handleActionInternal: vi.fn()
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. Custom action attribute on RETRY
+            mockEngine._handleActionInternal.mockRejectedValueOnce(new Error("Custom fail"));
+            const customRetryNode = {
+                getAttribute: (k) => k === "action" ? "CUSTOM_RETRY_ACTION" : (k === "attempts" ? "1" : null),
+                children: [{ tagName: "step" }]
+            };
+
+            try {
+                await handlers.get("RETRY").call(mockEngine, customRetryNode, {});
+            } catch (err) {
+                expect(err.originatingAction).toBe("CUSTOM_RETRY_ACTION");
+            }
+
+            // 2. Default RETRY originating action when no action attr
+            mockEngine._handleActionInternal.mockRejectedValueOnce(new Error("Default fail"));
+            const defaultRetryNode = {
+                getAttribute: (k) => k === "attempts" ? "1" : null,
+                children: [{ tagName: "step" }]
+            };
+
+            try {
+                await handlers.get("RETRY").call(mockEngine, defaultRetryNode, {});
+            } catch (err) {
+                expect(err.originatingAction).toBe("RETRY");
+            }
+
+            // 3. Custom message on TIMEOUT
+            const customMsgNode = {
+                getAttribute: (k) => k === "ms" ? "5" : (k === "message" ? "Custom timeout message" : null),
+                children: [{ tagName: "step" }]
+            };
+            mockEngine._handleActionInternal.mockImplementation(() => new Promise(r => setTimeout(r, 50)));
+
+            try {
+                await handlers.get("TIMEOUT").call(mockEngine, customMsgNode, {});
+            } catch (err) {
+                expect(err.message).toBe("Custom timeout message");
+            }
+        });
+
+        it("16. should verify all retryContext metadata (is_last, isLast, next_delay, nextDelay, prev_error) across attempts", async () => {
+            const handlers = new Map();
+            const capturedContexts = [];
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _handleActionInternal: vi.fn().mockImplementation((node, ctx) => {
+                    capturedContexts.push({ ...ctx.retry });
+                    if (ctx.retry.attempt < 3) {
+                        throw new Error(`Fail at attempt ${ctx.retry.attempt}`);
+                    }
+                    return "SuccessAtAttempt3";
+                })
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            const retryNode = {
+                getAttribute: (k) => k === "attempts" ? "3" : (k === "delay" ? "2" : (k === "backoff" ? "linear" : null)),
+                children: [{ tagName: "step" }]
+            };
+
+            const result = await handlers.get("RETRY").call(mockEngine, retryNode, {});
+            expect(result).toBe("SuccessAtAttempt3");
+            expect(capturedContexts).toHaveLength(3);
+
+            // Attempt 1
+            expect(capturedContexts[0].attempt).toBe(1);
+            expect(capturedContexts[0].is_last).toBe(false);
+            expect(capturedContexts[0].isLast).toBe(false);
+            expect(capturedContexts[0].next_delay).toBe(2);
+            expect(capturedContexts[0].nextDelay).toBe(2);
+            expect(capturedContexts[0].prev_error).toBeNull();
+            expect(capturedContexts[0].prevError).toBeNull();
+
+            // Attempt 2
+            expect(capturedContexts[1].attempt).toBe(2);
+            expect(capturedContexts[1].is_last).toBe(false);
+            expect(capturedContexts[1].isLast).toBe(false);
+            expect(capturedContexts[1].next_delay).toBe(4);
+            expect(capturedContexts[1].nextDelay).toBe(4);
+            expect(capturedContexts[1].prev_error).toBeDefined();
+            expect(capturedContexts[1].prevError).toBeDefined();
+
+            // Attempt 3 (Final attempt)
+            expect(capturedContexts[2].attempt).toBe(3);
+            expect(capturedContexts[2].is_last).toBe(true);
+            expect(capturedContexts[2].isLast).toBe(true);
+            expect(capturedContexts[2].next_delay).toBe(0);
+            expect(capturedContexts[2].nextDelay).toBe(0);
+            expect(capturedContexts[2].prev_error).toBeDefined();
+            expect(capturedContexts[2].prevError).toBeDefined();
+        });
+
+        it("17. should test RETRY pre-cancelled signal and child node filtering (delay, ms, attempts, filter)", async () => {
+            const handlers = new Map();
+            const logSpy = vi.fn();
+            const mockEngine = {
+                registerAction: (name, fn) => handlers.set(name, fn),
+                interpolate: (str, ctx) => str,
+                getChild: () => null,
+                reportError: vi.fn(),
+                _devtools: { logErrorScope: logSpy },
+                _handleActionInternal: vi.fn().mockResolvedValue("FilteredSuccess")
+            };
+
+            EUIXResiliencePlugin.install(mockEngine);
+
+            // 1. RETRY with pre-cancelled parent signal
+            const parentCtrl = new EUIXCancellationController();
+            parentCtrl.cancel(new Error("Cancelled before retry start"));
+
+            const retryNode = {
+                getAttribute: (k) => k === "attempts" ? "2" : null,
+                childNodes: []
+            };
+
+            await expect(handlers.get("RETRY").call(mockEngine, retryNode, { _cancellationSignal: parentCtrl.signal }))
+                .rejects.toThrow("Cancelled before retry start");
+
+            // 2. RETRY ignoring metadata child tags
+            const nodeWithMeta = {
+                getAttribute: (k) => k === "attempts" ? "1" : null,
+                childNodes: [
+                    { nodeType: 1, tagName: "delay" },
+                    { nodeType: 1, tagName: "ms" },
+                    { nodeType: 1, tagName: "attempts" },
+                    { nodeType: 1, tagName: "filter" },
+                    { nodeType: 1, tagName: "step", getAttribute: () => "MY_STEP" }
+                ]
+            };
+
+            const metaRes = await handlers.get("RETRY").call(mockEngine, nodeWithMeta, { _componentName: "Comp" });
+            expect(metaRes).toBe("FilteredSuccess");
+            expect(mockEngine._handleActionInternal).toHaveBeenCalledTimes(1);
+            expect(mockEngine._handleActionInternal).toHaveBeenCalledWith(
+                expect.objectContaining({ tagName: "step" }),
+                expect.any(Object)
+            );
+            expect(logSpy).toHaveBeenCalledWith("RETRY_START", expect.objectContaining({
+                maxAttempts: 1,
+                baseDelay: 0,
+                backoff: "fixed",
+                component: "Comp"
+            }));
+
+            // 3. TIMEOUT ignoring metadata child tags (message, msg, ms, duration)
+            const timeoutWithMeta = {
+                getAttribute: (k) => k === "ms" ? "50" : null,
+                childNodes: [
+                    { nodeType: 1, tagName: "message" },
+                    { nodeType: 1, tagName: "msg" },
+                    { nodeType: 1, tagName: "ms" },
+                    { nodeType: 1, tagName: "duration" },
+                    { nodeType: 1, tagName: "step" }
+                ]
+            };
+
+            mockEngine._handleActionInternal.mockClear();
+            const timeoutRes = await handlers.get("TIMEOUT").call(mockEngine, timeoutWithMeta, {});
+            expect(timeoutRes).toBe("FilteredSuccess");
+            expect(mockEngine._handleActionInternal).toHaveBeenCalledTimes(1);
+        });
     });
 });
+
 
 

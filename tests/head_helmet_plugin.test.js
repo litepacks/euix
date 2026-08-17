@@ -191,4 +191,48 @@ describe('EUIX Head & Helmet Plugin Suite', () => {
         engine.setState('status', 'Busy');
         expect(document.title).toBe('Status: Busy');
     });
+
+    it('should manage reactive <link> tags in document.head and clean up on unmount', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="page_url">https://example.com/item/1</state>
+            </data_model>
+            <head>
+                <link rel="canonical" href="{data.page_url}" />
+                <meta http-equiv="refresh" content="30" />
+                <meta charset="UTF-8" />
+            </head>
+            <div>Link Test</div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const linkEl = document.head.querySelector('link[rel="canonical"][data-euix-head="true"]');
+        const httpEquivEl = document.head.querySelector('meta[http-equiv="refresh"][data-euix-head="true"]');
+        const charsetEl = document.head.querySelector('meta[charset][data-euix-head="true"]');
+
+        expect(linkEl).not.toBeNull();
+        expect(linkEl.getAttribute('href')).toBe('https://example.com/item/1');
+        expect(httpEquivEl).not.toBeNull();
+        expect(charsetEl).not.toBeNull();
+
+        // Update state reactively
+        engine.setState('page_url', 'https://example.com/item/2');
+        expect(linkEl.getAttribute('href')).toBe('https://example.com/item/2');
+
+        // Test programmatic setTitle
+        engine.setTitle('Manual SetTitle');
+        expect(document.title).toBe('Manual SetTitle');
+
+        // Test plugin aliases and null guards
+        expect(EUIXHelmetPlugin.name).toBe('head');
+        engine.parseHeadMetadata(null);
+        engine.parseHeadMetadata({});
+
+        // Test unmount cleanup of managed head elements
+        engine.unmount();
+        expect(document.head.querySelector('link[rel="canonical"][data-euix-head="true"]')).toBeNull();
+    });
 });
+

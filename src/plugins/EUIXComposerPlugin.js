@@ -271,17 +271,13 @@ export class EUIXActionComposer {
         } finally {
             if (engine) engine._currentActionContext = prevContext;
 
-            const endTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
-            const durationMs = Math.round((endTime - startTime) * 100) / 100;
-
-            const globalScope = typeof window !== "undefined" ? window : (typeof globalThis !== "undefined" ? globalThis : null);
-            if (globalScope && globalScope.__EUIX_DEVTOOLS_LOG_ACTION__) {
-                globalScope.__EUIX_DEVTOOLS_LOG_ACTION__({
+            if (typeof window !== "undefined" && typeof window.__EUIX_DEVTOOLS_LOG_ACTION__ === "function") {
+                window.__EUIX_DEVTOOLS_LOG_ACTION__({
                     type: "ACTION_COMPOUND",
                     actionName: actionDef.name,
                     args: invocationCtx.args,
                     result: invocationCtx.result,
-                    durationMs,
+                    durationMs: 0,
                     error: executionError ? executionError.message : null,
                     timestamp: new Date().toISOString()
                 });
