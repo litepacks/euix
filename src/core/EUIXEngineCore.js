@@ -1024,6 +1024,9 @@ class EUIXEngineCore {
         this._batching = false;
         this._pendingFocusKey = null;
         this._bindings = new Map();
+        this._stateKeyBits = new Map();
+        this._nextStateBitIndex = 0;
+        this._dirtyBitmask = 0;
         this._customComponents = new Map();
         this._customActions = new Map();
         this._componentSpecs = new Map();
@@ -1193,6 +1196,11 @@ class EUIXEngineCore {
         if (this._bindings) {
             this._bindings.clear();
         }
+        if (this._stateKeyBits) {
+            this._stateKeyBits.clear();
+        }
+        this._nextStateBitIndex = 0;
+        this._dirtyBitmask = 0;
         if (this._stateWatchers) {
             this._stateWatchers.clear();
         }
@@ -2189,10 +2197,26 @@ class EUIXEngineCore {
         }
     }
 
+    getKeyMask(key) {
+        if (!key) return 0;
+        const cleanKey = String(key).replace(/^(?:data\.|local\.)/, "").trim();
+        let bitIndex = this._stateKeyBits.get(cleanKey);
+        if (bitIndex === undefined) {
+            bitIndex = (this._nextStateBitIndex++) & 31;
+            this._stateKeyBits.set(cleanKey, bitIndex);
+        }
+        return 1 << bitIndex;
+    }
+
     flushStateUpdates() {
-        if (!this._pendingBatchChanges || this._pendingBatchChanges.size === 0) return;
+        if (!this._pendingBatchChanges || this._pendingBatchChanges.size === 0) {
+            this._dirtyBitmask = 0;
+            return;
+        }
         const pending = Array.from(this._pendingBatchChanges.values());
         this._pendingBatchChanges.clear();
+        const dirtyMask = this._dirtyBitmask;
+        this._dirtyBitmask = 0;
 
         const allAffected = new Set();
         const invalidateComputed = (changedKey) => {
@@ -2307,6 +2331,9 @@ class EUIXEngineCore {
         try {
             const oldValue = this._rawState[key];
             this._rawState[key] = value;
+
+            const keyMask = this.getKeyMask(key);
+            this._dirtyBitmask |= keyMask;
 
             if (key.includes(".") || key.includes("[")) {
                 const parts = splitPath(key);
@@ -2482,7 +2509,8 @@ class EUIXEngineCore {
     registerBinding(path, el, kind, updateFn = null) {
         if (!path || !el) return;
         if (!this._bindings.has(path)) this._bindings.set(path, []);
-        this._bindings.get(path).push({ el, kind, updateFn });
+        const depMask = this.getKeyMask(path);
+        this._bindings.get(path).push({ el, kind, updateFn, depMask });
         if (el.dataset) {
             el.dataset.xuiKey = path;
             el.dataset.xuiBind = kind;
