@@ -228,4 +228,43 @@ describe('EUIXEngine External JSON Resources (data_model src, constants src, loa
         engine.setState('trigger_var', 'c');
         expect(engine.getState('change_count')).toBe(2);
     });
+
+    it('should load scripts and styles declared via <use_script> and <use_style> in root and component definitions', async () => {
+        const compXml = `
+        <component_def name="custom-widget">
+            <use_script src="https://cdn.example.com/widget-lib.js" />
+            <use_style href="https://cdn.example.com/widget-lib.css" />
+            <div id="widget_inner">Widget Content</div>
+        </component_def>
+        `;
+
+        EUIXEngine.registerComponentSpec('custom-widget', compXml);
+
+        const xml = `
+        <uid_spec>
+            <use_script src="https://cdn.example.com/root-lib.js" />
+            <use_style href="https://cdn.example.com/root-lib.css" />
+            <flex>
+                <component name="custom-widget" />
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+        if (engine._mountPromise) await engine._mountPromise;
+        await new Promise(r => setTimeout(r, 20));
+
+        // Verify root script and style were injected
+        expect(document.querySelector('script[src="https://cdn.example.com/root-lib.js"]')).not.toBeNull();
+        expect(document.querySelector('link[href="https://cdn.example.com/root-lib.css"]')).not.toBeNull();
+
+        // Verify component script and style were injected
+        expect(document.querySelector('script[src="https://cdn.example.com/widget-lib.js"]')).not.toBeNull();
+        expect(document.querySelector('link[href="https://cdn.example.com/widget-lib.css"]')).not.toBeNull();
+
+        // Verify component content rendered cleanly
+        expect(container.querySelector('#widget_inner')).not.toBeNull();
+        expect(container.querySelector('#widget_inner').textContent).toBe('Widget Content');
+    });
 });
