@@ -305,8 +305,10 @@ export const EUIXReactivePlugin = {
             return node.evaluate();
         };
 
+const noop = () => {};
+
         proto.watch = function(path, handlerOrFn, component = null, options = {}) {
-            if (!path) return () => {};
+            if (!path) return noop;
 
             if (typeof handlerOrFn === "function") {
                 const parsedKey = this.parseBindPath ? this.parseBindPath(typeof path === "string" ? path : (path[0] || "")) : path;

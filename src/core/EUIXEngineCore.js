@@ -378,6 +378,10 @@ class EUIXExpressionParser {
 }
 
 // Pure internal helpers for tree-shaking and minification optimization
+const EMPTY_ARR = Object.freeze([]);
+const EMPTY_OBJ = Object.freeze({});
+const noop = () => {};
+
 const isObj = (v) => v !== null && typeof v === "object";
 const isFn = (v) => typeof v === "function";
 const isStr = (v) => typeof v === "string";
@@ -385,7 +389,7 @@ const isBool = (v) => typeof v === "boolean";
 const isElem = (n) => n && n.nodeType === 1;
 const isTxtNode = (n) => n && (n.nodeType === 3 || n.nodeType === 4);
 const trimStr = (s) => typeof s === "string" ? s.trim() : (s && s.textContent ? s.textContent.trim() : "");
-const splitPath = (p) => String(p || "").replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean);
+const splitPath = (p) => (p ? String(p).replace(/\[(\w+)\]/g, ".$1").split(".").filter(Boolean) : EMPTY_ARR);
 const getRootKey = (p) => String(p || "").split(/[.[]/)[0];
 const getTagName = (n) => (n && n.tagName ? n.tagName.toLowerCase() : "");
 const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
@@ -398,8 +402,8 @@ const getAttr = (n, ...names) => {
     }
     return "";
 };
-const getChildNodes = (n) => (n && n.childNodes ? Array.from(n.childNodes) : []);
-const getChildrenList = (n) => (n && n.children ? Array.from(n.children) : []);
+const getChildNodes = (n) => (n && n.childNodes && n.childNodes.length > 0 ? Array.from(n.childNodes) : EMPTY_ARR);
+const getChildrenList = (n) => (n && n.children && n.children.length > 0 ? Array.from(n.children) : EMPTY_ARR);
 const isScoped = (n) => {
     if (!n || !n.getAttribute) return false;
     const s = n.getAttribute("scope");
@@ -662,21 +666,21 @@ class EUIXStructuredError extends Error {
  * Scoped execution context for composed action invocations.
  */
 class EUIXActionContext {
-    constructor({ name = "", args = {}, engine = null, parent = null, eventContext = {} } = {}) {
+    constructor({ name = "", args = EMPTY_OBJ, engine = null, parent = null, eventContext = EMPTY_OBJ } = EMPTY_OBJ) {
         this.name = name;
-        this.args = { ...(args || {}) };
+        this.args = args && Object.keys(args).length > 0 ? { ...args } : EMPTY_OBJ;
         this.params = this.args;
         this.engine = engine;
         this.parent = parent || null;
         this.depth = parent ? (parent.depth + 1) : 1;
-        this.callChain = new Set(parent ? parent.callChain : []);
+        this.callChain = new Set(parent ? parent.callChain : EMPTY_ARR);
         if (name) this.callChain.add(name);
 
         this.result = undefined;
         this._targetEl = eventContext._targetEl || (parent ? parent._targetEl : null);
         this._evt = eventContext._evt || (parent ? parent._evt : null);
-        this.props = eventContext.props || (parent ? parent.props : {});
-        this.constants = eventContext.constants || (parent ? parent.constants : {});
+        this.props = eventContext.props || (parent ? parent.props : EMPTY_OBJ);
+        this.constants = eventContext.constants || (parent ? parent.constants : EMPTY_OBJ);
         this._componentApiConfig = eventContext._componentApiConfig || (parent ? parent._componentApiConfig : null);
     }
 }
@@ -712,15 +716,13 @@ class EUIXActionValidator {
         }
 
         // Parameter requirements validation
-        if (Array.isArray(actionDef.params)) {
-            actionDef.params.forEach(param => {
-                if (param.required) {
-                    const val = args[param.name];
-                    if (val === undefined || val === null || val === "") {
-                        throw new EUIXActionValidationError(`[EUIX Action Composer] Missing required argument '${param.name}' for action '${actionDef.name}'`);
-                    }
-                }
-            });
+        const req = actionDef._requiredParams || (Array.isArray(actionDef.params) ? actionDef.params.filter(p => p.required) : EMPTY_ARR);
+        for (let i = 0; i < req.length; i++) {
+            const param = req[i];
+            const val = args[param.name];
+            if (val === undefined || val === null || val === "") {
+                throw new EUIXActionValidationError(`[EUIX Action Composer] Missing required argument '${param.name}' for action '${actionDef.name}'`);
+            }
         }
     }
 }
@@ -742,12 +744,15 @@ class EUIXActionRegistry {
         if (xmlNodeOrObj && (xmlNodeOrObj.nodeType === 1 || xmlNodeOrObj.nodeType === 9)) {
             actionDef = EUIXActionRegistry.parseXmlActionDef(normalizedName, xmlNodeOrObj);
         } else if (isObj(xmlNodeOrObj)) {
+            const p = xmlNodeOrObj.params || EMPTY_ARR;
             actionDef = {
                 name: normalizedName,
-                params: xmlNodeOrObj.params || [],
-                steps: xmlNodeOrObj.steps || [],
+                params: p,
+                steps: xmlNodeOrObj.steps || EMPTY_ARR,
                 returnExpr: xmlNodeOrObj.returnExpr || "",
-                rawNode: xmlNodeOrObj.rawNode || null
+                rawNode: xmlNodeOrObj.rawNode || null,
+                _requiredParams: Array.isArray(p) ? p.filter(item => item.required) : EMPTY_ARR,
+                _defaultParams: Array.isArray(p) ? p.filter(item => item.default !== undefined) : EMPTY_ARR
             };
         } else {
             return null;
@@ -799,15 +804,27 @@ class EUIXActionRegistry {
         childNodes.forEach(child => {
             const tag = getTagName(child);
             if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
+            child._cachedTag = tag;
+            if (tag === "if") {
+                child._cachedCond = child.getAttribute("condition") || child.getAttribute("test") || null;
+                const innerElse = child.querySelector ? child.querySelector("else") : null;
+                const nextElse = (child.nextElementSibling && child.nextElementSibling.tagName?.toLowerCase() === "else") ? child.nextElementSibling : null;
+                child._cachedElseNode = innerElse || nextElse || null;
+            }
             steps.push(child);
         });
+
+        const requiredParams = params.filter(p => p.required);
+        const defaultParams = params.filter(p => p.default !== undefined);
 
         return {
             name,
             params,
             steps,
             returnExpr,
-            rawNode: xmlNode
+            rawNode: xmlNode,
+            _requiredParams: requiredParams.length > 0 ? requiredParams : EMPTY_ARR,
+            _defaultParams: defaultParams.length > 0 ? defaultParams : EMPTY_ARR
         };
     }
 }
@@ -817,7 +834,7 @@ class EUIXActionRegistry {
  * Sequential execution engine for composed actions.
  */
 class EUIXActionComposer {
-    static async execute(actionDef, rawArgs = {}, engine = null, parentEventContext = {}) {
+    static async execute(actionDef, rawArgs = EMPTY_OBJ, engine = null, parentEventContext = EMPTY_OBJ) {
         const startTime = getNow();
 
         // 1. Resolve arguments in caller context & apply param defaults
@@ -875,9 +892,12 @@ class EUIXActionComposer {
         try {
             // 4. Sequential Step Execution
             let skipNextElse = false;
-            for (const step of actionDef.steps) {
+            const steps = actionDef.steps || EMPTY_ARR;
+            const stepLen = steps.length;
+            for (let sIdx = 0; sIdx < stepLen; sIdx++) {
+                const step = steps[sIdx];
                 mergedContext.result = invocationCtx.result;
-                const tag = step.tagName ? step.tagName.toLowerCase() : "";
+                const tag = step._cachedTag !== undefined ? step._cachedTag : (step.tagName ? step.tagName.toLowerCase() : "");
 
                 if (tag === "else") {
                     if (skipNextElse) {
@@ -890,7 +910,7 @@ class EUIXActionComposer {
                 }
 
                 if (tag === "if") {
-                    const cond = step.getAttribute("condition") || step.getAttribute("test");
+                    const cond = step._cachedCond !== undefined ? step._cachedCond : (step.getAttribute("condition") || step.getAttribute("test"));
                     const isTrue = !cond || !engine || engine.evalCondition(cond, mergedContext);
 
                     if (isTrue) {
@@ -899,7 +919,7 @@ class EUIXActionComposer {
                         if (res !== undefined) invocationCtx.result = res;
                     } else {
                         skipNextElse = false;
-                        const elseNode = engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null);
+                        const elseNode = step._cachedElseNode !== undefined ? step._cachedElseNode : (engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null));
                         if (elseNode) {
                             const elseRes = await engine._handleActionInternal(elseNode, mergedContext);
                             if (elseRes !== undefined) invocationCtx.result = elseRes;
@@ -921,12 +941,16 @@ class EUIXActionComposer {
             // 5. Evaluate Return Expression if present
             if (actionDef.returnExpr && engine) {
                 mergedContext.result = invocationCtx.result;
-                const evaluatedReturn = engine.interpolate(actionDef.returnExpr, mergedContext);
-                try {
-                    const parsedObj = JSON.parse(evaluatedReturn);
-                    invocationCtx.result = parsedObj;
-                } catch (_) {
-                    invocationCtx.result = evaluatedReturn;
+                const trimmedReturn = actionDef.returnExpr.trim();
+                if (trimmedReturn === "{result}" && invocationCtx.result !== undefined) {
+                    // Preserve original exact type of step result
+                } else {
+                    const evaluatedReturn = engine.interpolate(actionDef.returnExpr, mergedContext);
+                    try {
+                        invocationCtx.result = JSON.parse(evaluatedReturn);
+                    } catch (_) {
+                        invocationCtx.result = evaluatedReturn;
+                    }
                 }
             }
         } catch (err) {
@@ -1306,7 +1330,7 @@ class EUIXEngineCore {
     _savePersistedState(key, value) {}
 
     watch(key, callback) {
-        if (!key || !isFn(callback)) return () => {};
+        if (!key || !isFn(callback)) return noop;
         const parsedKey = this.parseBindPath(key);
         if (!this._stateWatchers.has(parsedKey)) this._stateWatchers.set(parsedKey, []);
         this._stateWatchers.get(parsedKey).push(callback);
@@ -1317,7 +1341,7 @@ class EUIXEngineCore {
     }
 
     onStateChange(callback) {
-        if (!isFn(callback)) return () => {};
+        if (!isFn(callback)) return noop;
         this._globalStateWatchers.push(callback);
         return () => {
             this._globalStateWatchers = this._globalStateWatchers.filter(cb => cb !== callback);
@@ -4858,7 +4882,7 @@ class EUIXEngineCore {
 
                 listContainer._keyedNodesMap = listContainer._keyedNodesMap || new Map();
                 const oldKeyedMap = listContainer._keyedNodesMap;
-                const oldKeys = listContainer._oldKeysSequence || [];
+                const oldKeys = listContainer._oldKeysSequence || EMPTY_ARR;
                 const newKeyedMap = new Map();
                 const newKeys = [];
 
