@@ -148,7 +148,8 @@
       border-radius: 4px;
     }
 
-    .country-btn {
+    .country-btn,
+    .nav-btn {
       height: 38px;
       padding: 0 14px;
       border: 1.5px solid #d8d5ca;
@@ -166,10 +167,12 @@
       flex-shrink: 0;
       box-sizing: border-box;
       line-height: 1;
+      text-decoration: none;
       transition: all .2s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
 
-    .country-btn:hover {
+    .country-btn:hover,
+    .nav-btn:hover {
       background: #eef5f0;
       border-color: #286247;
       color: #173e2b;
@@ -622,7 +625,8 @@
         font-size: 20px;
       }
 
-      .country-btn {
+      .country-btn,
+      .nav-btn {
         height: 34px;
         padding: 0 10px;
         font-size: 11px;
@@ -930,7 +934,7 @@
                   <span class="sync-dot" style="background: #286247;"></span>
                   <span>Active: <strong>{data.active_country}</strong></span>
                 </div>
-                <a href="./playground.html" class="country-btn" style="text-decoration:none;">
+                <a href="./playground.html" class="nav-btn">
                   ← Playground
                 </a>
               </div>
