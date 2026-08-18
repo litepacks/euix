@@ -187,7 +187,7 @@ export const EUIXLeafletPlugin = {
                             points = [[p.lat, p.lng]];
                         }
 
-                        const id = layer._areaId || `area_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+                        const id = layer._areaId || (layer._leaflet_id ? `layer_${layer._leaflet_id}` : `poly_${Date.now().toString(36)}_${i}`);
                         layer._areaId = id;
                         map._layersMap.set(id, layer);
 
@@ -259,7 +259,7 @@ export const EUIXLeafletPlugin = {
                             poly._areaId = id;
                             poly._customName = item.name;
                             const areaText = item.displayArea || item.display_area || formatMetricArea(item.areaM2 || item.area_sq_m || item.area || 0);
-                            poly.bindPopup(`<strong>${item.name || 'Area #' + (idx + 1)}</strong><br>${areaText}`);
+                            poly.bindPopup(`<strong>${item.name || ('Area-' + (id ? id.slice(-4) : 'poly'))}</strong><br>${areaText}`);
                             drawnItems.addLayer(poly);
                             map._layersMap.set(id, poly);
                         }
