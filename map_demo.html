@@ -750,21 +750,7 @@
       <uid_spec id="field_notebook_app">
         <!-- 1. Pure Declarative EUIX State Model -->
         <data_model>
-          <state id="selections" type="array" persist="local">[
-            {
-              "id": "init_london_hyde_park",
-              "name": "Hyde Park & Kensington",
-              "areaM2": 2530000,
-              "displayArea": "253.00 ha",
-              "createdAt": "10:30 AM",
-              "latLngs": [
-                {"lat": 51.5085, "lng": -0.1873},
-                {"lat": 51.5120, "lng": -0.1580},
-                {"lat": 51.5030, "lng": -0.1510},
-                {"lat": 51.4990, "lng": -0.1780}
-              ]
-            }
-          ]</state>
+          <state id="selections" type="array">[]</state>
           <state id="status">Focused on Istanbul, Turkey. Select the polygon tool (⬡) to measure.</state>
           <state id="active_country">TR</state>
           <state id="selected_id"></state>
@@ -824,6 +810,7 @@
             url="/api/polygons" 
             method="GET" 
             select="data" 
+            target="selections"
             bind_target="selections" 
             auto_fetch="true" 
             revalidate_focus="true"
@@ -836,6 +823,7 @@
             url="/api/polygons" 
             method="POST" 
             auto_fetch="false" 
+            revalidate="fetch_polygons"
           >
             <body>{"country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
           </api_endpoint>
@@ -847,6 +835,7 @@
             url="/api/polygons/{data.edit_id}" 
             method="PUT" 
             auto_fetch="false" 
+            revalidate="fetch_polygons"
           >
             <body>{"name":"{data.edit_name}","area":{data.edit_area},"displayArea":"{data.edit_display_area}","latlngs":{data.edit_coords}}</body>
           </api_endpoint>
@@ -858,6 +847,7 @@
             url="/api/polygons/{data.delete_id}" 
             method="DELETE" 
             auto_fetch="false" 
+            revalidate="fetch_polygons"
           />
         </api_config>
 
@@ -929,7 +919,6 @@
               }
             ]]></step>
             <step action="REVALIDATE_API" tag="create_polygon" />
-            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>New area measured and saved to database.</value>
@@ -949,7 +938,6 @@
               <value>{args.id}</value>
             </step>
             <step action="REVALIDATE_API" tag="delete_polygon" />
-            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>Removed {args.name}.</value>
@@ -978,7 +966,6 @@
                 }
               }
             ]]></step>
-            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>Polygon boundaries updated and saved.</value>
