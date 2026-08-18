@@ -1167,12 +1167,13 @@ class EUIXEngineCore {
         window.addEventListener("online", () => onRevalidateEvent("online"));
     }
 
-    revalidateApi(tagOrUrl = "") {
+    async revalidateApi(tagOrUrl = "") {
         const filter = String(tagOrUrl).trim();
         if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
-        if (this._isRevalidating) return this;
+        if (!this._revalidatingTags) this._revalidatingTags = new Set();
+        if (this._revalidatingTags.has(filter)) return this;
 
-        this._isRevalidating = true;
+        this._revalidatingTags.add(filter);
         try {
             const targets = [];
             this._registeredXhrs.forEach(item => {
@@ -1189,14 +1190,15 @@ class EUIXEngineCore {
                 }
             });
 
-            targets.forEach(item => {
+            const promises = targets.map(item => {
                 if (this._xhrCache && item.url) {
                     this._xhrCache.delete(item.url);
                 }
-                this.handleXHR(item.actionNode, item.context);
+                return this.handleXHR(item.actionNode, item.context);
             });
+            await Promise.all(promises);
         } finally {
-            this._isRevalidating = false;
+            this._revalidatingTags.delete(filter);
         }
 
         return this;
