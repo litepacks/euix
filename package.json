@@ -47,6 +47,9 @@
     "./helmet": {
       "import": "./dist/plugins/EUIXHeadPlugin.es.js"
     },
+    "./leaflet": {
+      "import": "./dist/plugins/EUIXLeafletPlugin.es.js"
+    },
     "./devtools": {
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"

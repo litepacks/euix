@@ -34,11 +34,7 @@ export default defineConfig({
         pure_funcs: ['isObj', 'isFn', 'isStr', 'isBool', 'isElem', 'isTxtNode', 'trimStr', 'splitPath', 'getRootKey', 'getTagName', 'getAttr', 'getChildNodes', 'getChildrenList', 'isScoped', 'toNum', 'genId', 'getNow']
       },
       mangle: {
-        toplevel: true,
-        properties: {
-          regex: /^_/,
-          reserved: ['_index', '_parentStateKey', '_targetEl', '_evt']
-        }
+        toplevel: true
       },
       format: {
         comments: false
