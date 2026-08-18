@@ -298,7 +298,7 @@
             <!-- 2. Battery & Power Card -->
             <div class="card">
               <div class="card-header">
-                <span class="card-title">🔋 Battery & Power</span>
+                <span class="card-title">🔋 Battery &amp; Power</span>
                 <span class="badge badge-info">
                   {data.nav.battery ? data.nav.battery.level + '%' : '100%'}
                 </span>
@@ -374,7 +374,7 @@
             <!-- Card 5: Share, Vibrate & WakeLock -->
             <div class="card">
               <div class="card-header">
-                <span class="card-title">⚡ Haptics & System</span>
+                <span class="card-title">⚡ Haptics &amp; System</span>
               </div>
               <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 14px;">
                 Trigger native mobile vibrations, wake lock or open system share dialog:
@@ -397,7 +397,7 @@
                   🚀 Native Share
                 </button>
                 <button class="btn btn-secondary">
-                  <on_click action="WAKE_LOCK" action="request" />
+                  <on_click action="WAKE_LOCK" type="request" />
                   <on_click action="SET_STATE">
                     <path>data.action_feedback</path>
                     <value>'Screen Wake Lock Requested'</value>
@@ -410,7 +410,7 @@
             <!-- Card 6: Geolocation & Badging -->
             <div class="card">
               <div class="card-header">
-                <span class="card-title">📍 GPS & Tab Badge</span>
+                <span class="card-title">📍 GPS &amp; Tab Badge</span>
               </div>
               <div class="btn-group">
                 <button class="btn">
