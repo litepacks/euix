@@ -3748,6 +3748,46 @@ class EUIXEngineCore {
             newEnd--;
         }
 
+        // 2.5 Swap 2 Items Fast-Path
+        if (oldLen === newLen && oldEnd >= start) {
+            let firstDiff = -1;
+            let secondDiff = -1;
+            let diffCount = 0;
+            for (let i = start; i <= oldEnd; i++) {
+                if (oldKeys[i] !== newKeys[i]) {
+                    diffCount++;
+                    if (firstDiff === -1) firstDiff = i;
+                    else if (secondDiff === -1) secondDiff = i;
+                    else break;
+                }
+            }
+            if (diffCount === 2 && firstDiff !== -1 && secondDiff !== -1) {
+                const keyA = oldKeys[firstDiff];
+                const keyB = oldKeys[secondDiff];
+                if (newKeys[firstDiff] === keyB && newKeys[secondDiff] === keyA) {
+                    const entryA = newKeyedMap.get(keyA);
+                    const entryB = newKeyedMap.get(keyB);
+                    if (entryA && entryA.nodes && entryB && entryB.nodes) {
+                        const nodeA = entryA.nodes[0];
+                        const nodeB = entryB.nodes[0];
+                        if (nodeA && nodeB && nodeA.parentNode === container && nodeB.parentNode === container) {
+                            const nextA = nodeA.nextSibling;
+                            const nextB = nodeB.nextSibling;
+                            if (nextA === nodeB) {
+                                container.insertBefore(nodeB, nodeA);
+                            } else if (nextB === nodeA) {
+                                container.insertBefore(nodeA, nodeB);
+                            } else {
+                                container.insertBefore(nodeA, nextB);
+                                container.insertBefore(nodeB, nextA);
+                            }
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
         // 3. Remove deleted old nodes
         const activeNewKeys = new Set(newKeys);
         for (let i = start; i <= oldEnd; i++) {
@@ -4073,11 +4113,11 @@ class EUIXEngineCore {
                     if (targetNode.value !== sVal) targetNode.value = sVal;
                 }
                 targetNode._euixBindPath = bp;
-                targetNode._euixContext = childContext;
+                targetNode._euixContext = { ...childContext };
             } else if (slot.type === "event") {
                 targetNode._euixEventMap = slot.eventMap;
                 targetNode.__euixEvents = slot.eventsObj;
-                targetNode._euixContext = childContext;
+                targetNode._euixContext = { ...childContext };
             }
         }
     }
@@ -4347,21 +4387,25 @@ class EUIXEngineCore {
 
                 const compiled = this._getCompiledForEachTemplate(xmlNode, varName, baseChildContext, context);
 
+                const pooledItemContext = Object.create(baseChildContext);
                 const createItemNodes = (item, idx) => {
-                    const childContext = Object.create(baseChildContext);
-                    childContext[varName] = item;
-                    childContext._index = idx;
-                    childContext.index = idx;
-
                     if (compiled && compiled.canClone) {
+                        pooledItemContext[varName] = item;
+                        pooledItemContext._index = idx;
+                        pooledItemContext.index = idx;
                         const protoLen = compiled.prototypes.length;
                         const nodes = new Array(protoLen);
                         for (let pIdx = 0; pIdx < protoLen; pIdx++) {
                             nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
                         }
-                        this._applyForEachSlots(nodes, compiled, item, childContext, varName);
+                        this._applyForEachSlots(nodes, compiled, item, pooledItemContext, varName);
                         return nodes;
                     }
+
+                    const childContext = Object.create(baseChildContext);
+                    childContext[varName] = item;
+                    childContext._index = idx;
+                    childContext.index = idx;
 
                     const nodes = [];
                     for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
@@ -4485,6 +4529,65 @@ class EUIXEngineCore {
                 const oldKeys = listContainer._oldKeysSequence || [];
                 const newKeyedMap = new Map();
                 const newKeys = [];
+
+                // Fast-Path 1: Initial Mount / Empty Container
+                const oldLen = oldKeys.length;
+                if (oldLen === 0) {
+                    const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+                    for (let idx = 0; idx < list.length; idx++) {
+                        const item = list[idx];
+                        if (typeof item === "object" && item !== null) {
+                            try { item._index = idx; item.index = idx; } catch (_) {}
+                        }
+                        const key = getItemKey(item, idx);
+                        const hash = getItemHash(item);
+                        const nodes = createItemNodes(item, idx);
+                        newKeys.push(key);
+                        newKeyedMap.set(key, { nodes, hash, index: idx });
+                        if (fragment) {
+                            for (let n = 0; n < nodes.length; n++) fragment.appendChild(nodes[n]);
+                        } else {
+                            for (let n = 0; n < nodes.length; n++) listContainer.appendChild(nodes[n]);
+                        }
+                    }
+                    if (fragment) listContainer.appendChild(fragment);
+                    listContainer._keyedNodesMap = newKeyedMap;
+                    listContainer._oldKeysSequence = newKeys;
+                    return;
+                }
+
+                // Fast-Path 2: Pure Append to existing list
+                if (list.length > oldLen) {
+                    let isPureAppend = true;
+                    for (let i = 0; i < oldLen; i++) {
+                        if (getItemKey(list[i], i) !== oldKeys[i]) {
+                            isPureAppend = false;
+                            break;
+                        }
+                    }
+                    if (isPureAppend) {
+                        const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+                        for (let idx = oldLen; idx < list.length; idx++) {
+                            const item = list[idx];
+                            if (typeof item === "object" && item !== null) {
+                                try { item._index = idx; item.index = idx; } catch (_) {}
+                            }
+                            const key = getItemKey(item, idx);
+                            const hash = getItemHash(item);
+                            const nodes = createItemNodes(item, idx);
+                            oldKeys.push(key);
+                            oldKeyedMap.set(key, { nodes, hash, index: idx });
+                            if (fragment) {
+                                for (let n = 0; n < nodes.length; n++) fragment.appendChild(nodes[n]);
+                            } else {
+                                for (let n = 0; n < nodes.length; n++) listContainer.appendChild(nodes[n]);
+                            }
+                        }
+                        if (fragment) listContainer.appendChild(fragment);
+                        listContainer._oldKeysSequence = oldKeys;
+                        return;
+                    }
+                }
 
                 for (let idx = 0; idx < list.length; idx++) {
                     const item = list[idx];
