@@ -253,7 +253,59 @@ app.post('/api/polygons', async (c) => {
     }
 });
 
-// 5. Delete Polygon
+// 5. Update Existing Polygon (PUT from Leaflet Draw Edit)
+app.put('/api/polygons/:id', async (c) => {
+    try {
+        const id = c.req.param('id');
+        const body = await c.req.json();
+        const area_sq_m = Number(body.area || body.area_sq_m || 0);
+        const display_area = body.displayArea || body.display_area || `${(area_sq_m / 10000).toFixed(2)} ha`;
+        let coordinates = body.latlngs || body.coordinates || [];
+        if (typeof coordinates !== 'string') {
+            coordinates = JSON.stringify(coordinates);
+        }
+        const name = body.name;
+
+        const db = c.env?.DB;
+        if (db) {
+            await ensureDb(db);
+            if (name) {
+                await db.prepare(`
+                    UPDATE polygons 
+                    SET area_sq_m = ?, display_area = ?, coordinates = ?, name = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `).bind(area_sq_m, display_area, coordinates, name, id).run();
+            } else {
+                await db.prepare(`
+                    UPDATE polygons 
+                    SET area_sq_m = ?, display_area = ?, coordinates = ?, updated_at = CURRENT_TIMESTAMP 
+                    WHERE id = ?
+                `).bind(area_sq_m, display_area, coordinates, id).run();
+            }
+        } else {
+            const idx = inMemoryPolygons.findIndex(p => p.id === id);
+            if (idx !== -1) {
+                inMemoryPolygons[idx] = {
+                    ...inMemoryPolygons[idx],
+                    area_sq_m,
+                    display_area,
+                    coordinates,
+                    ...(name ? { name } : {}),
+                    updated_at: new Date().toISOString()
+                };
+            }
+        }
+
+        return c.json({
+            success: true,
+            message: `Polygon ${id} updated successfully`
+        });
+    } catch (err) {
+        return c.json({ success: false, error: err.message }, 500);
+    }
+});
+
+// 6. Delete Polygon
 app.delete('/api/polygons/:id', async (c) => {
     const id = c.req.param('id');
     const db = c.env?.DB;
