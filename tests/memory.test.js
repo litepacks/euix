@@ -146,4 +146,31 @@ describe('EUIXEngine Memory Leak & Teardown Test Suite', () => {
         // Unmount container
         engine.destroy();
     });
+
+    it('should remove global window event listeners (focus, online, storage) on destroy/unmount', () => {
+        const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+
+        const engine = new EUIXEngine(container);
+        engine.mount('<uid_spec><data_model><state id="test">1</state></data_model></uid_spec>');
+
+        // Trigger listener registrations
+        if (typeof engine._initRevalidationListeners === 'function') {
+            engine._initRevalidationListeners();
+        }
+        if (typeof engine._setupStorageListener === 'function') {
+            engine._setupStorageListener();
+        }
+
+        const customHook = vi.fn();
+        engine.onUnmount(customHook);
+
+        engine.destroy();
+
+        expect(customHook).toHaveBeenCalledTimes(1);
+        expect(removeEventListenerSpy).toHaveBeenCalledWith('focus', expect.any(Function));
+        expect(removeEventListenerSpy).toHaveBeenCalledWith('online', expect.any(Function));
+        expect(removeEventListenerSpy).toHaveBeenCalledWith('storage', expect.any(Function));
+
+        removeEventListenerSpy.mockRestore();
+    });
 });
