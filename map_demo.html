@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17231b" />
+  <title>Field Notebook — Declarative EUIX &amp; Leaflet Spatial Suite</title>
+  <meta name="description"
+    content="Declarative polygon selection, spatial area measurement, country navigation and persistent GIS storage powered by EUIX Engine and Leaflet." />
+  <link rel="preconnect" href="https://unpkg.com" />
+  <link rel="preconnect" href="https://tile.openstreetmap.org" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="" />
+  <style>
+    :root {
+      --ink: #17231b;
+      --muted: #667269;
+      --paper: #f4f1e8;
+      --surface: #fffdf6;
+      --line: #d8d5ca;
+      --green: #286247;
+      --green-dark: #173e2b;
+      --lime: #d9ef62;
+      --orange: #ef7e46;
+      --shadow: 0 18px 50px rgba(29, 43, 34, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    #app {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,
+    select {
+      font: inherit;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      padding: 18px;
+      background:
+        radial-gradient(circle at 8% 8%, rgba(217, 239, 98, .25), transparent 28%),
+        radial-gradient(circle at 92% 90%, rgba(40, 98, 71, .08), transparent 30%),
+        var(--paper);
+    }
+
+    .topbar {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 8px 18px;
+      flex-wrap: nowrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      color: var(--lime);
+      background: var(--green-dark);
+      border: 0;
+      cursor: pointer;
+      font-size: 20px;
+      box-shadow: 0 8px 20px rgba(23, 62, 43, .2);
+      transition: transform .2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .brand-mark:hover {
+      transform: scale(1.06);
+    }
+
+    .eyebrow {
+      margin: 0 0 2px;
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(20px, 2.4vw, 28px);
+      line-height: 1.1;
+      white-space: nowrap;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 8px 4px 10px;
+      flex-shrink: 1;
+    }
+
+    .top-controls::-webkit-scrollbar {
+      display: none;
+    }
+
+    .country-btn {
+      height: 38px;
+      padding: 0 14px;
+      border: 1.5px solid #d8d5ca;
+      border-radius: 12px;
+      background: #ffffff;
+      color: #384d41;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-sizing: border-box;
+      line-height: 1;
+      transition: all .2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .country-btn:hover {
+      background: #eef5f0;
+      border-color: #286247;
+      color: #173e2b;
+      transform: translateY(-1px);
+    }
+
+    .country-btn.active {
+      background: linear-gradient(135deg, #184730 0%, #29684b 100%) !important;
+      color: #ffffff !important;
+      border-color: #173e2b !important;
+      box-shadow: 0 4px 14px rgba(23, 62, 43, 0.35), 0 0 0 2px rgba(217, 239, 98, 0.7) !important;
+      font-weight: 800;
+      transform: translateY(-1px);
+    }
+
+    .country-btn.active::after {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #d9ef62;
+      box-shadow: 0 0 10px #d9ef62, 0 0 4px #d9ef62;
+      margin-left: 4px;
+      display: inline-block;
+    }
+
+    .sync-pill {
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 246, .75);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+
+    .sync-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #67a475;
+      box-shadow: 0 0 0 3px rgba(103, 164, 117, .14);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .stat {
+      min-height: 90px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 253, 246, .88);
+      transition: transform .2s ease, box-shadow .2s ease;
+    }
+
+    .stat:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(23, 62, 43, .06);
+    }
+
+    .stat:first-child {
+      background: var(--green-dark);
+      border-color: var(--green-dark);
+      color: white;
+    }
+
+    .stat-label {
+      display: block;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+
+    .stat:first-child .stat-label {
+      color: #b8c8bd;
+    }
+
+    .stat-value {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(22px, 2.3vw, 32px);
+      line-height: 1;
+    }
+
+    .stat-unit {
+      margin-left: 4px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .stat:first-child .stat-unit {
+      color: var(--lime);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 350px;
+      height: calc(100vh - 215px);
+      min-height: 560px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .map-wrap {
+      position: relative;
+      min-width: 0;
+      height: 100%;
+    }
+
+    .euix-leaflet-map {
+      width: 100%;
+      height: 100%;
+      background: #dce5d8;
+    }
+
+    .map-hint {
+      position: absolute;
+      z-index: 700;
+      top: 16px;
+      left: 56px;
+      max-width: 320px;
+      padding: 11px 14px;
+      border: 1px solid rgba(23, 62, 43, .18);
+      border-radius: 12px;
+      background: rgba(255, 253, 246, .94);
+      color: var(--green-dark);
+      box-shadow: 0 8px 24px rgba(20, 45, 31, .12);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 650;
+    }
+
+    .map-hint b {
+      color: var(--orange);
+    }
+
+    .sidebar {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      border-left: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .sidebar-head {
+      padding: 22px 20px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 23px;
+    }
+
+    .count-badge {
+      min-width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: var(--lime);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .sidebar-copy {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .selection-list {
+      flex: 1;
+      overflow: auto;
+      padding: 10px 12px;
+    }
+
+    .selection-card {
+      display: grid;
+      grid-template-columns: 10px 1fr auto;
+      gap: 11px;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 13px 10px;
+      border: 1.5px solid transparent;
+      border-radius: 14px;
+      background: #f3f1e9;
+      transition: all .18s ease;
+      cursor: pointer;
+    }
+
+    .selection-card:hover {
+      transform: translateY(-1px);
+      border-color: #c9c7bc;
+    }
+
+    .selection-card.active {
+      border-color: var(--green);
+      background: #eaf3ec;
+      box-shadow: 0 4px 14px rgba(40, 98, 71, .12);
+    }
+
+    .selection-card.active .swatch {
+      background: var(--green);
+    }
+
+    .card-info {
+      min-width: 0;
+    }
+
+    .swatch {
+      width: 9px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--orange);
+    }
+
+    .selection-name {
+      margin: 0 0 4px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .selection-meta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .remove-btn {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 9px;
+      color: #8b3d2e;
+      background: #f5ded4;
+      cursor: pointer;
+      font-size: 17px;
+      transition: background .15s ease;
+    }
+
+    .remove-btn:hover {
+      background: #efc8b8;
+    }
+
+    .empty-note {
+      margin: 15px 8px;
+      padding: 16px;
+      border: 1px dashed #c8c4b8;
+      border-radius: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .sidebar-foot {
+      padding: 14px 16px 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .status {
+      min-height: 18px;
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .clear-btn {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      transition: all .15s ease;
+    }
+
+    .clear-btn:hover {
+      border-color: var(--orange);
+      color: #9a402c;
+    }
+
+    .leaflet-bar {
+      border: 0 !important;
+      box-shadow: 0 8px 24px rgba(23, 62, 43, .15) !important;
+    }
+
+    .leaflet-bar a {
+      color: var(--green-dark) !important;
+      background: var(--surface) !important;
+      border-color: var(--line) !important;
+    }
+
+    .leaflet-draw-toolbar a {
+      position: relative;
+      background-color: var(--surface) !important;
+      background-image: none !important;
+      text-indent: -9999px;
+      overflow: hidden;
+    }
+
+    .leaflet-draw-toolbar a::before {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: var(--green-dark);
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      font-weight: 800;
+      line-height: 1;
+      text-indent: 0;
+    }
+
+    .leaflet-draw-draw-polygon::before {
+      content: "⬡";
+      color: var(--green) !important;
+      font-size: 22px !important;
+    }
+
+    .leaflet-draw-draw-rectangle::before {
+      content: "▭";
+      color: var(--green) !important;
+      font-size: 20px !important;
+    }
+
+    .leaflet-draw-edit-edit::before {
+      content: "✎";
+    }
+
+    .leaflet-draw-edit-remove::before {
+      content: "×";
+      color: #a84935 !important;
+      font-size: 24px !important;
+    }
+
+    .leaflet-draw-toolbar a:hover::before {
+      color: var(--orange);
+    }
+
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      background: var(--green-dark);
+      color: white;
+      border-radius: 10px;
+    }
+
+    .leaflet-popup-content {
+      margin: 11px 14px;
+      font-size: 12px;
+    }
+
+    .leaflet-control-attribution {
+      font-size: 9px !important;
+    }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        padding: 12px;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .workspace {
+        height: auto;
+        min-height: 0;
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .map-wrap,
+      .euix-leaflet-map {
+        height: 58vh;
+        min-height: 420px;
+      }
+
+      .sidebar {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+        max-height: 420px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .sync-pill {
+        padding: 8px;
+      }
+
+      .sync-label {
+        display: none;
+      }
+
+      .stats {
+        gap: 7px;
+      }
+
+      .stat {
+        min-height: 78px;
+        padding: 13px;
+      }
+
+      .map-hint {
+        right: 12px;
+        left: 52px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <!-- External Leaflet & Leaflet.Draw Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" crossorigin=""></script>
+
+  <!-- Embedded Declarative EUIX Application Specification -->
+  <script type="application/euix" target="#app">
+      <uid_spec id="field_notebook_app">
+        <!-- 1. Pure Declarative EUIX State Model -->
+        <data_model>
+          <state id="selections" type="array" persist="local">[
+            {
+              "id": "init_london_hyde_park",
+              "name": "Hyde Park & Kensington",
+              "areaM2": 2530000,
+              "displayArea": "253.00 ha",
+              "createdAt": "10:30 AM",
+              "latLngs": [
+                {"lat": 51.5085, "lng": -0.1873},
+                {"lat": 51.5120, "lng": -0.1580},
+                {"lat": 51.5030, "lng": -0.1510},
+                {"lat": 51.4990, "lng": -0.1780}
+              ]
+            }
+          ]</state>
+          <state id="status">Focused on Istanbul, Turkey. Select the polygon tool (⬡) to measure.</state>
+          <state id="active_country">TR</state>
+          <state id="selected_id"></state>
+
+          <!-- 2. Pure EUIX Computed Metrics -->
+          <computed id="totalArea" deps="selections"><![CDATA[
+            const items = Array.isArray($data.selections) ? $data.selections : [];
+            return items.reduce((sum, item) => sum + Number(item.areaM2 || 0), 0);
+          ]]></computed>
+          <computed id="averageArea" deps="selections"><![CDATA[
+            const items = Array.isArray($data.selections) ? $data.selections : [];
+            if (!items.length) return 0;
+            const total = items.reduce((sum, item) => sum + Number(item.areaM2 || 0), 0);
+            return total / items.length;
+          ]]></computed>
+          <computed id="largestArea" deps="selections"><![CDATA[
+            const items = Array.isArray($data.selections) ? $data.selections : [];
+            return items.reduce((max, item) => Math.max(max, Number(item.areaM2 || 0)), 0);
+          ]]></computed>
+          <computed id="totalAreaText" deps="selections"><![CDATA[
+            const val = Number($data.totalArea) || 0;
+            if (val >= 1000000) return (val / 1000000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " km²";
+            if (val >= 10000) return (val / 10000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ha";
+            return val.toLocaleString("en-US", { maximumFractionDigits: 0 }) + " m²";
+          ]]></computed>
+          <computed id="averageAreaText" deps="selections"><![CDATA[
+            const val = Number($data.averageArea) || 0;
+            if (val >= 1000000) return (val / 1000000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " km²";
+            if (val >= 10000) return (val / 10000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ha";
+            return val.toLocaleString("en-US", { maximumFractionDigits: 0 }) + " m²";
+          ]]></computed>
+          <computed id="largestAreaText" deps="selections"><![CDATA[
+            const val = Number($data.largestArea) || 0;
+            if (val >= 1000000) return (val / 1000000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " km²";
+            if (val >= 10000) return (val / 10000).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ha";
+            return val.toLocaleString("en-US", { maximumFractionDigits: 0 }) + " m²";
+          ]]></computed>
+        </data_model>
+
+        <!-- Declarative Micro-Animations -->
+        <animations>
+          <animation_def name="statPulse" duration="340" easing="ease-out">
+            <keyframe offset="0" transform="scale(1)" />
+            <keyframe offset="0.45" transform="scale(1.018)" />
+            <keyframe offset="1" transform="scale(1)" />
+          </animation_def>
+          <animation_def name="compassBounce" duration="480" easing="ease-out">
+            <keyframe offset="0" transform="rotate(0deg) scale(1)" />
+            <keyframe offset="0.45" transform="rotate(-20deg) scale(1.15)" />
+            <keyframe offset="0.75" transform="rotate(10deg) scale(0.96)" />
+            <keyframe offset="1" transform="rotate(0deg) scale(1)" />
+          </animation_def>
+        </animations>
+
+        <!-- Reusable Action Workflow -->
+        <actions>
+          <action_def name="SelectCity">
+            <param name="country" required="true" />
+            <param name="city" required="true" />
+            <param name="lat" required="true" />
+            <param name="lng" required="true" />
+            <param name="zoom" default="13" />
+
+            <step action="SET_STATE">
+              <path>data.active_country</path>
+              <value>{args.country}</value>
+            </step>
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Focused on {args.city}.</value>
+            </step>
+            <step action="FLY_TO" map="main_map" lat="{args.lat}" lng="{args.lng}" zoom="{args.zoom}" duration="1.5" />
+          </action_def>
+        </actions>
+
+        <watch path="selections">
+          <step action="ANIMATE" target=".stats" name="statPulse" duration="340" />
+        </watch>
+
+        <!-- Main Declarative Layout Shell -->
+        <main class="app-shell">
+          <!-- Top Navigation Header with Declarative Fly-To Buttons -->
+          <header class="topbar" enter_animation="slide-in-down">
+            <div class="brand">
+              <button type="button" class="brand-mark" aria-label="Play compass animation">
+                <on_click action="ANIMATE" target=".brand-mark" name="compassBounce" duration="480" />
+                ⌖
+              </button>
+              <div>
+                <p class="eyebrow">Declarative EUIX · Leaflet Plugin</p>
+                <h1>Field Notebook</h1>
+              </div>
+            </div>
+            
+            <div class="top-controls">
+              <div class="sync-pill" style="border-color: #286247; background: #eef5f0; color: #173e2b;">
+                <span class="sync-dot" style="background: #286247;"></span>
+                <span>Active: <strong>{data.active_country}</strong></span>
+              </div>
+
+              <!-- Country / City Quick Navigators via Action Composer -->
+              <button type="button" class="country-btn {data.active_country == 'TR' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">TR</arg>
+                  <arg name="city">Istanbul, Turkey</arg>
+                  <arg name="lat">41.0082</arg>
+                  <arg name="lng">28.9784</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇹🇷 Istanbul (Turkey)
+              </button>
+
+              <button type="button" class="country-btn {data.active_country == 'UK' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">UK</arg>
+                  <arg name="city">London, United Kingdom</arg>
+                  <arg name="lat">51.5074</arg>
+                  <arg name="lng">-0.1278</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇬🇧 London (UK)
+              </button>
+
+              <button type="button" class="country-btn {data.active_country == 'USA' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">USA</arg>
+                  <arg name="city">New York, United States</arg>
+                  <arg name="lat">40.7128</arg>
+                  <arg name="lng">-74.0060</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇺🇸 New York (USA)
+              </button>
+
+              <button type="button" class="country-btn {data.active_country == 'JP' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">JP</arg>
+                  <arg name="city">Tokyo, Japan</arg>
+                  <arg name="lat">35.6762</arg>
+                  <arg name="lng">139.6503</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇯🇵 Tokyo (Japan)
+              </button>
+
+              <button type="button" class="country-btn {data.active_country == 'FR' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">FR</arg>
+                  <arg name="city">Paris, France</arg>
+                  <arg name="lat">48.8566</arg>
+                  <arg name="lng">2.3522</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇫🇷 Paris (France)
+              </button>
+
+              <button type="button" class="country-btn {data.active_country == 'DE' ? 'active' : ''}">
+                <on_click action="SelectCity">
+                  <arg name="country">DE</arg>
+                  <arg name="city">Berlin, Germany</arg>
+                  <arg name="lat">52.5200</arg>
+                  <arg name="lng">13.4050</arg>
+                  <arg name="zoom">13</arg>
+                </on_click>
+                🇩🇪 Berlin (Germany)
+              </button>
+
+              <a href="./playground.html" class="country-btn" style="text-decoration:none;">
+                ← Playground
+              </a>
+
+              <div class="sync-pill">
+                <span class="sync-dot"></span>
+                <span class="sync-label">Storage Synced</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Metric Statistics Cards -->
+          <section class="stats" aria-label="Area measurement statistics" enter_animation="fade-in">
+            <article class="stat" enter_animation="scale-in">
+              <span class="stat-label">Total Measured Area</span>
+              <span class="stat-value">{data.totalAreaText}</span>
+            </article>
+            <article class="stat" enter_animation="scale-in">
+              <span class="stat-label">Polygons Count</span>
+              <span class="stat-value">{data.selections.length}<small class="stat-unit">areas</small></span>
+            </article>
+            <article class="stat" enter_animation="scale-in">
+              <span class="stat-label">Average Area</span>
+              <span class="stat-value">{data.averageAreaText}</span>
+            </article>
+            <article class="stat" enter_animation="scale-in">
+              <span class="stat-label">Largest Area</span>
+              <span class="stat-value">{data.largestAreaText}</span>
+            </article>
+          </section>
+
+          <!-- Interactive Workspace: Declarative Leaflet Map & Sidebar -->
+          <section class="workspace" enter_animation="fade-in">
+            <div class="map-wrap">
+              <!-- Leaflet Map Primitive -->
+              <leaflet_map 
+                id="main_map" 
+                lat="41.0082" 
+                lng="28.9784" 
+                zoom="13" 
+                bind="data.selections" 
+                draw="true" 
+                draw_color="#286247" 
+                draw_fill_color="#d9ef62" 
+                draw_fill_opacity="0.34" 
+                class="w-full h-full"
+              >
+                <!-- Tile Layer -->
+                <tile_layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&amp;copy; OpenStreetMap contributors" />
+
+                <!-- Draw Control -->
+                <draw_control position="topleft" polygon="true" rectangle="true" circle="false" marker="false" edit="true" remove="true" />
+
+                <!-- Pure EUIX Declarative Event Handling for Draw Lifecycle -->
+                <on_draw_created action="SET_STATE">
+                  <path>data.status</path>
+                  <value>New area measured and saved.</value>
+                </on_draw_created>
+
+                <on_draw_edited action="SET_STATE">
+                  <path>data.status</path>
+                  <value>Polygon boundaries updated.</value>
+                </on_draw_edited>
+
+                <on_draw_deleted action="SET_STATE">
+                  <path>data.status</path>
+                  <value>Polygon removed from map.</value>
+                </on_draw_deleted>
+              </leaflet_map>
+
+              <div class="map-hint">
+                <b>Select the polygon tool (⬡)</b> on the top-left toolbar, click to place boundary points, and click the starting point to complete the polygon.
+              </div>
+            </div>
+
+            <!-- Sidebar: Selection Listing & Management -->
+            <aside class="sidebar">
+              <div class="sidebar-head">
+                <div class="sidebar-title-row">
+                  <h2>Saved Polygons</h2>
+                  <span class="count-badge">{data.selections.length}</span>
+                </div>
+                <p class="sidebar-copy">Drawn polygons are reactively bound to state and persist across browser reloads.</p>
+              </div>
+
+              <div class="selection-list">
+                <if condition="{data.selections.length} == 0">
+                  <p class="empty-note">No polygons recorded yet. Use the polygon tool on the map to measure land areas.</p>
+                </if>
+
+                <for_each items="{data.selections}" var="item">
+                  <article class="selection-card {data.selected_id == item.id ? 'active' : ''}" enter_animation="slide-in-left" leave_animation="slide-out-right">
+                    <on_click action="FOCUS_LAYER" map="main_map" id="{item.id}" />
+                    <on_click action="SET_STATE">
+                      <path>data.selected_id</path>
+                      <value>{item.id}</value>
+                    </on_click>
+                    <on_click action="SET_STATE">
+                      <path>data.status</path>
+                      <value>Focused on {item.name}.</value>
+                    </on_click>
+
+                    <span class="swatch"></span>
+                    <div class="card-info">
+                      <p class="selection-name">{item.name}</p>
+                      <p class="selection-meta">{item.displayArea} · {item.createdAt}</p>
+                    </div>
+                    <!-- Declarative Layer Removal & State Mutation -->
+                    <button type="button" class="remove-btn" title="Delete {item.name}" aria-label="Delete {item.name}">
+                      <on_click action="REMOVE_LAYER" map="main_map" id="{item.id}" />
+                      <on_click action="SET_STATE">
+                        <path>data.status</path>
+                        <value>Removed {item.name}.</value>
+                      </on_click>
+                      ×
+                    </button>
+                  </article>
+                </for_each>
+              </div>
+
+              <div class="sidebar-foot">
+                <p class="status" role="status">{data.status}</p>
+                <!-- Declarative Clear Map & Reset State -->
+                <button type="button" class="clear-btn">
+                  <on_click action="CLEAR_MAP" map="main_map" />
+                  <on_click action="SET_STATE">
+                    <path>data.status</path>
+                    <value>All measured areas have been cleared.</value>
+                  </on_click>
+                  Clear All Polygons
+                </button>
+              </div>
+            </aside>
+          </section>
+        </main>
+      </uid_spec>
+    </script>
+
+  <!-- Load Full EUIX Engine (includes EUIXLeafletPlugin automatically) -->
+  <script src="./dist/EUIXEngine.umd.js?v=0.3.3"></script>
+</body>
+
+</html>

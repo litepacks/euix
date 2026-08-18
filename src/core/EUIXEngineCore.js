@@ -1998,9 +1998,18 @@ class EUIXEngineCore {
         return list.filter(c => getTagName(c) === tag);
     }
 
+    static _globalCustomComponents = new Map();
+
+    static registerComponent(type, handler) {
+        if (isStr(type) && isFn(handler)) {
+            EUIXEngineCore._globalCustomComponents.set(type, handler);
+        }
+    }
+
     registerComponent(type, handler) {
         if (isStr(type) && isFn(handler)) {
             this._customComponents.set(type, handler);
+            EUIXEngineCore._globalCustomComponents.set(type, handler);
         }
     }
 
@@ -4724,15 +4733,15 @@ class EUIXEngineCore {
             return frag;
         }
 
-        if (this._customComponents.has(tagName)) {
-            const handler = this._customComponents.get(tagName);
-            const customEl = handler(xmlNode, context, this);
+        if (this._customComponents.has(tagName) || (EUIXEngineCore._globalCustomComponents && EUIXEngineCore._globalCustomComponents.has(tagName))) {
+            const handler = this._customComponents.get(tagName) || EUIXEngineCore._globalCustomComponents.get(tagName);
+            const customEl = handler.call(this, xmlNode, context, this);
             if (customEl) return this.applyRef(customEl, xmlNode, context);
         }
 
-        if (typeAttr && this._customComponents.has(typeAttr)) {
-            const handler = this._customComponents.get(typeAttr);
-            const customEl = handler(xmlNode, context, this);
+        if (typeAttr && (this._customComponents.has(typeAttr) || (EUIXEngineCore._globalCustomComponents && EUIXEngineCore._globalCustomComponents.has(typeAttr)))) {
+            const handler = this._customComponents.get(typeAttr) || EUIXEngineCore._globalCustomComponents.get(typeAttr);
+            const customEl = handler.call(this, xmlNode, context, this);
             if (customEl) return this.applyRef(customEl, xmlNode, context);
         }
 
@@ -6613,7 +6622,8 @@ class EUIXEngineCore {
             const fieldName = fieldNode ? fieldNode.textContent.trim() : (actionNode.getAttribute("field") || "quantity");
             const index = parseInt(this.interpolate(rawIdx, context), 10);
 
-            const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+            const currentVal = this.getState(path);
+            const currentList = Array.isArray(currentVal) ? [...currentVal] : (Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : []);
             if (!isNaN(index) && index >= 0 && index < currentList.length) {
                 const item = { ...currentList[index] };
                 let currVal = parseInt(item[fieldName] || 1, 10);
@@ -6674,7 +6684,8 @@ class EUIXEngineCore {
             const rawWhereEquals = whereNode ? whereNode.getAttribute("equals") : null;
             const targetId = rawWhereEquals ? this.interpolate(rawWhereEquals, context) : newItem.id;
 
-            const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+            const curVal = this.getState(path);
+            const currentList = Array.isArray(curVal) ? [...curVal] : (Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : []);
             const existingIdx = currentList.findIndex(it => String(it.id) === String(targetId));
 
             if (existingIdx >= 0 && targetId) {
@@ -6697,11 +6708,12 @@ class EUIXEngineCore {
             if (newItem.completed === undefined && (path === "todos" || path === "tasks")) newItem.completed = "false";
 
             this.batch(() => {
-                const currentList = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+                const curVal2 = this.getState(path);
+                const currentList2 = Array.isArray(curVal2) ? [...curVal2] : (Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : []);
                 if (operation === "UNSHIFT" || operation === "PREPEND") {
-                    this.setState(path, [newItem, ...currentList]);
+                    this.setState(path, [newItem, ...currentList2]);
                 } else {
-                    this.setState(path, [...currentList, newItem]);
+                    this.setState(path, [...currentList2, newItem]);
                 }
                 this.applyResets(actionNode);
                 if (!this.getChild(actionNode, "reset") && "new_todo_input" in this._rawState) {
@@ -6714,7 +6726,8 @@ class EUIXEngineCore {
         if (operation === "REMOVE") {
             const indexNode = this.getChild(actionNode, "index");
             const whereNode = this.getChild(actionNode, "where");
-            const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+            const currentVal = this.getState(path);
+            const list = Array.isArray(currentVal) ? [...currentVal] : (Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : []);
 
             if (indexNode) {
                 const rawIdx = indexNode.textContent.trim();
@@ -6978,11 +6991,19 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXXMLParseError = EUIXXMLParseError;
     window.EUIXCancellationController = EUIXCancellationController;
     window.EUIXEngineCore = EUIXEngineCore;
-    window.EUIXEngine = EUIXEngineCore;
+    const scheduleCoreInit = () => {
+        queueMicrotask(() => {
+            if (window.EUIXEngine && typeof window.EUIXEngine.autoInit === "function") {
+                window.EUIXEngine.autoInit();
+            } else {
+                EUIXEngineCore.autoInit();
+            }
+        });
+    };
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => EUIXEngineCore.autoInit());
+        document.addEventListener("DOMContentLoaded", scheduleCoreInit);
     } else {
-        EUIXEngineCore.autoInit();
+        scheduleCoreInit();
     }
 }
 
