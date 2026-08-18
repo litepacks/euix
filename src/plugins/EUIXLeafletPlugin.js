@@ -191,11 +191,12 @@ export const EUIXLeafletPlugin = {
                         layer._areaId = id;
                         map._layersMap.set(id, layer);
 
+                        const displayArea = formatMetricArea(areaM2, xmlNode.getAttribute("locale") || "en-US");
                         const item = {
                             id,
-                            name: layer._customName || `Area #${i++}`,
+                            name: layer._customName || "Measured Area",
                             areaM2: Math.round(areaM2 * 100) / 100,
-                            displayArea: formatMetricArea(areaM2, xmlNode.getAttribute("locale") || "en-US"),
+                            displayArea,
                             points,
                             latLngs: points.map(pt => ({ lat: pt[0], lng: pt[1] })),
                             createdAt: layer._createdAt || new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
