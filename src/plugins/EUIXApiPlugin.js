@@ -9,6 +9,109 @@ export const EUIXApiPlugin = {
     install(engineClass) {
         const proto = engineClass.prototype;
 
+        proto.configureApi = function(options = {}) {
+            if (!this._apiConfig) {
+                this._apiConfig = {
+                    baseUrl: "",
+                    credentials: undefined,
+                    headers: new Map(),
+                    timeout: 0,
+                    onRequest: null,
+                    onResponse: null,
+                    revalidateFocus: false,
+                    revalidateOnline: false
+                };
+            }
+            if (options.baseUrl !== undefined) this._apiConfig.baseUrl = options.baseUrl;
+            if (options.credentials !== undefined) this._apiConfig.credentials = options.credentials;
+            if (options.revalidateFocus !== undefined) this._apiConfig.revalidateFocus = Boolean(options.revalidateFocus);
+            if (options.revalidateOnline !== undefined) this._apiConfig.revalidateOnline = Boolean(options.revalidateOnline);
+            if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
+            if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
+            if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
+            
+            if (options.headers && typeof options.headers === "object") {
+                Object.entries(options.headers).forEach(([k, v]) => {
+                    this.setApiHeader(k, v);
+                });
+            }
+            return this;
+        };
+
+        proto.setApiHeader = function(name, value) {
+            if (!name) return this;
+            if (!this._apiConfig) this.configureApi();
+            this._apiConfig.headers.set(String(name).trim(), String(value !== undefined ? value : "").trim());
+            return this;
+        };
+
+        proto.removeApiHeader = function(name) {
+            if (!name) return this;
+            if (!this._apiConfig) this.configureApi();
+            this._apiConfig.headers.delete(String(name).trim());
+            return this;
+        };
+
+        proto._initRevalidationListeners = function() {
+            if (typeof window === "undefined" || this._revalidationBound) return;
+            this._revalidationBound = true;
+
+            const onRevalidateEvent = (evtType) => {
+                if (!this._registeredXhrs || this._registeredXhrs.size === 0) return;
+                this._registeredXhrs.forEach(item => {
+                    const shouldFocus = evtType === "focus" && (item.revalidateFocus || (this._apiConfig && this._apiConfig.revalidateFocus));
+                    const shouldOnline = evtType === "online" && (item.revalidateOnline || (this._apiConfig && this._apiConfig.revalidateOnline));
+
+                    if ((item.method === "GET" || item.method === "HEAD") && (shouldFocus || shouldOnline)) {
+                        if (this._xhrCache && item.url) {
+                            this._xhrCache.delete(item.url);
+                        }
+                        this.handleXHR(item.actionNode, item.context);
+                    }
+                });
+            };
+
+            window.addEventListener("focus", () => onRevalidateEvent("focus"));
+            window.addEventListener("online", () => onRevalidateEvent("online"));
+        };
+
+        proto.revalidateApi = async function(tagOrUrl = "") {
+            const filter = String(tagOrUrl).trim();
+            if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
+            if (!this._revalidatingTags) this._revalidatingTags = new Set();
+            if (this._revalidatingTags.has(filter)) return this;
+
+            this._revalidatingTags.add(filter);
+            try {
+                const targets = [];
+                this._registeredXhrs.forEach(item => {
+                    const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
+                    if (!filter) {
+                        if (isGetOrHead) targets.push(item);
+                    } else {
+                        const isExplicitUrlFilter = filter.includes("/");
+                        const matchesTag = Boolean(item.tag && item.tag === filter);
+                        const matchesUrl = (isGetOrHead || isExplicitUrlFilter) && Boolean(item.url && item.url.includes(filter));
+                        if (matchesTag || matchesUrl) {
+                            targets.push(item);
+                        }
+                    }
+                });
+
+                const promises = targets.map(item => {
+                    if (this._xhrCache && item.url) {
+                        this._xhrCache.delete(item.url);
+                    }
+                    return this.handleXHR(item.actionNode, item.context);
+                });
+                await Promise.all(promises);
+            } finally {
+                this._revalidatingTags.delete(filter);
+            }
+
+            return this;
+        };
+
         proto.getApiStatus = function(endpointId) {
             if (!this._apiStatus) this._apiStatus = {};
             if (!this._apiStatus[endpointId]) {
@@ -21,6 +124,61 @@ export const EUIXApiPlugin = {
                 };
             }
             return this._apiStatus[endpointId];
+        };
+
+        proto.getJsonPath = function(obj, path) {
+            if (!path) return obj;
+            return String(path).split(".").reduce((acc, key) => {
+                if (acc == null) return acc;
+                return acc[key];
+            }, obj);
+        };
+
+        proto.mapResponseItems = function(items, itemMapNode) {
+            if (!itemMapNode || !Array.isArray(items)) return items;
+
+            const fieldNodes = this.getChildren ? this.getChildren(itemMapNode, "field") : Array.from(itemMapNode.querySelectorAll("field"));
+            return items.map((raw) => {
+                const mapped = {};
+                const templates = [];
+
+                fieldNodes.forEach(field => {
+                    const as = field.getAttribute("as");
+                    if (!as) return;
+
+                    const template = field.getAttribute("template");
+                    if (template) {
+                        templates.push({ as, template });
+                        return;
+                    }
+
+                    const from = field.getAttribute("from") || as;
+                    let value = raw[from];
+                    let matchStr = field.getAttribute("match");
+                    if (matchStr && value != null) {
+                        let pattern = matchStr;
+                        let flags = "";
+                        const regexLiteralMatch = matchStr.match(/^\/(.+)\/([a-z]*)$/i);
+                        if (regexLiteralMatch) {
+                            pattern = regexLiteralMatch[1];
+                            flags = regexLiteralMatch[2];
+                        }
+                        try {
+                            const m = String(value).match(new RegExp(pattern, flags));
+                            value = m ? (m[1] ?? m[0]) : value;
+                        } catch (e) {
+                            console.warn("[EUIXEngine] Regex Match Error:", e);
+                        }
+                    }
+                    mapped[as] = value == null ? "" : String(value);
+                });
+
+                templates.forEach(({ as, template }) => {
+                    mapped[as] = template.replace(/\{(\w+)\}/g, (_, key) => mapped[key] ?? "");
+                });
+
+                return mapped;
+            });
         };
 
         proto.handleXHR = function(actionNode, context = {}) {
@@ -50,7 +208,7 @@ export const EUIXApiPlugin = {
 
             let finalUrl = rawUrl;
             const explicitBaseUrl = actionNode.getAttribute("base_url");
-            const effectiveBaseUrl = (explicitBaseUrl !== null) ? explicitBaseUrl : (compApiConfig.baseUrl || this._apiConfig.baseUrl || "");
+            const effectiveBaseUrl = (explicitBaseUrl !== null) ? explicitBaseUrl : (compApiConfig.baseUrl || (this._apiConfig && this._apiConfig.baseUrl) || "");
 
             // Ignore base_url if ignore_base_url="true", if base_url is explicitly "", or if rawUrl starts with "./" or "../"
             const ignoreBaseUrl = actionNode.getAttribute("ignore_base_url") === "true" 
@@ -155,7 +313,7 @@ export const EUIXApiPlugin = {
             if (errorPath) this.setState(errorPath, "", { silent: true });
 
             const headersObj = {};
-            if (this._apiConfig.headers && this._apiConfig.headers.size > 0) {
+            if (this._apiConfig && this._apiConfig.headers && this._apiConfig.headers.size > 0) {
                 this._apiConfig.headers.forEach((val, name) => {
                     headersObj[name] = this.interpolate(val, context);
                 });
@@ -182,7 +340,7 @@ export const EUIXApiPlugin = {
             }
 
             const body = bodyNode ? this.interpolate(bodyNode.textContent.trim(), context) : null;
-            const credentialsAttr = actionNode.getAttribute("credentials") || compApiConfig.credentials || this._apiConfig.credentials;
+            const credentialsAttr = actionNode.getAttribute("credentials") || compApiConfig.credentials || (this._apiConfig && this._apiConfig.credentials);
 
             // Security: Auto-set Content-Type for JSON payload bodies
             if (["POST", "PUT", "PATCH"].includes(method) && body && typeof body === "string") {
@@ -210,7 +368,7 @@ export const EUIXApiPlugin = {
             }
 
             let timeoutId = null;
-            const timeoutMs = parseInt(actionNode.getAttribute("timeout") || compApiConfig.timeout || this._apiConfig.timeout || 0, 10);
+            const timeoutMs = parseInt(actionNode.getAttribute("timeout") || compApiConfig.timeout || (this._apiConfig && this._apiConfig.timeout) || 0, 10);
             if (typeof AbortController !== "undefined") {
                 const controller = new AbortController();
                 fetchOptions.signal = controller.signal;
@@ -224,7 +382,7 @@ export const EUIXApiPlugin = {
                 }
             }
 
-            if (typeof this._apiConfig.onRequest === "function") {
+            if (this._apiConfig && typeof this._apiConfig.onRequest === "function") {
                 try {
                     this._apiConfig.onRequest({ url: finalUrl, options: fetchOptions });
                 } catch (_) {}
@@ -233,7 +391,7 @@ export const EUIXApiPlugin = {
             return fetch(finalUrl, fetchOptions)
                 .then(async (response) => {
                     if (timeoutId) clearTimeout(timeoutId);
-                    if (typeof this._apiConfig.onResponse === "function") {
+                    if (this._apiConfig && typeof this._apiConfig.onResponse === "function") {
                         try {
                             this._apiConfig.onResponse(response);
                         } catch (_) {}
@@ -318,7 +476,7 @@ export const EUIXApiPlugin = {
                             this._xhrCache.set(finalUrl, { data, timestamp: Date.now() });
                         }
 
-                        this.applyResets(actionNode);
+                        if (this.applyResets) this.applyResets(actionNode);
                         if (errorPath) this.setState(errorPath, "", { silent: true });
 
                         const revalidateNode = this.getChild(actionNode, "revalidate") || this.getChild(actionNode, "revalidate_tag");
@@ -380,6 +538,12 @@ export const EUIXApiPlugin = {
 
         // Register REVALIDATE_API Action Handler
         engineClass.registerAction("REVALIDATE_API", async function(actionNode, context) {
+            const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") || this.getChild(actionNode, "revalidate");
+            const rawTag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || actionNode.getAttribute("revalidate") || "");
+            const tag = this.interpolate(rawTag, context);
+            return this.revalidateApi(tag);
+        });
+        engineClass.registerAction("REVALIDATE", async function(actionNode, context) {
             const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") || this.getChild(actionNode, "revalidate");
             const rawTag = tagNode ? tagNode.textContent.trim() : (actionNode.getAttribute("tag") || actionNode.getAttribute("url") || actionNode.getAttribute("revalidate") || "");
             const tag = this.interpolate(rawTag, context);
