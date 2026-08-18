@@ -929,6 +929,7 @@
               }
             ]]></step>
             <step action="REVALIDATE_API" tag="create_polygon" />
+            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>New area measured and saved to database.</value>
@@ -948,6 +949,7 @@
               <value>{args.id}</value>
             </step>
             <step action="REVALIDATE_API" tag="delete_polygon" />
+            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>Removed {args.name}.</value>
@@ -976,6 +978,7 @@
                 }
               }
             ]]></step>
+            <step action="REVALIDATE_API" tag="fetch_polygons" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>Polygon boundaries updated and saved.</value>
