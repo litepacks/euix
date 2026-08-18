@@ -143,3 +143,7 @@ vite.config.ts.timestamp-*
 .vite/
 .stryker-tmp
 reports
+
+# Cloudflare Wrangler
+.wrangler/
+**/.wrangler/

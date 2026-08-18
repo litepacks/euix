@@ -512,6 +512,84 @@ describe("EUIXLeafletPlugin - Declarative Interactive Map & Spatial Analysis Sui
         expect(btnTr.className).toContain("active");
         expect(btnJp.className).not.toContain("active");
     });
+
+    it("10. should trigger on_draw_created declarative action workflow on map polygon creation", async () => {
+        const mockFetch = vi.fn().mockResolvedValue({
+            ok: true,
+            headers: new Map([["content-type", "application/json"]]),
+            json: async () => ({ success: true })
+        });
+        global.fetch = mockFetch;
+
+        const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="selections" type="array"></state>
+                    <state id="persisted_msg"></state>
+                    <state id="active_country">TR</state>
+                    <state id="draft_id"></state>
+                    <state id="draft_name"></state>
+                </data_model>
+
+                <api_config base_url="https://api.test.org" />
+
+                <actions>
+                    <action_def name="PersistDrawn">
+                        <step action="RUN_SCRIPT"><![CDATA[
+                            const items = $data.selections || [];
+                            const latest = items[items.length - 1];
+                            if (latest) {
+                                $data.draft_id = latest.id;
+                                $data.draft_name = latest.name;
+                            }
+                        ]]></step>
+                        <step action="XHR">
+                            <method>POST</method>
+                            <url>/api/polygons</url>
+                            <body>{"id":"{data.draft_id}","name":"{data.draft_name}"}</body>
+                        </step>
+                        <step action="SET_STATE">
+                            <path>data.persisted_msg</path>
+                            <value>Successfully Saved {data.draft_name}</value>
+                        </step>
+                    </action_def>
+                </actions>
+
+                <leaflet_map id="test_draw_map" lat="39.92" lng="32.85" zoom="13" bind="data.selections" draw="true">
+                    <on_draw_created action="PersistDrawn" />
+                </leaflet_map>
+            </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, container);
+        await new Promise(r => setTimeout(r, 20));
+
+        const mapInstance = engine._leafletMaps.get("test_draw_map");
+        expect(mapInstance).toBeDefined();
+
+        const mockLayer = {
+            _customName: "Ankara Park",
+            bindPopup: vi.fn().mockReturnThis(),
+            openPopup: vi.fn().mockReturnThis(),
+            getLatLngs: () => [
+                { lat: 39.92, lng: 32.85 },
+                { lat: 39.93, lng: 32.85 },
+                { lat: 39.93, lng: 32.86 }
+            ]
+        };
+
+        if (mapInstance["_on_draw:created"]) {
+            mapInstance["_on_draw:created"]({ layer: mockLayer });
+        }
+
+        await new Promise(r => setTimeout(r, 60));
+
+        expect(mockFetch).toHaveBeenCalled();
+        const [calledUrl, calledOpts] = mockFetch.mock.calls[0];
+        expect(calledUrl).toBe("https://api.test.org/api/polygons");
+        expect(calledOpts.method).toBe("POST");
+        expect(engine.getState("persisted_msg")).toContain("Successfully Saved");
+    });
 });
 
 

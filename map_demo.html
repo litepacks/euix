@@ -597,6 +597,49 @@
         left: 52px;
       }
     }
+
+    /* Declarative Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99999;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast-popup {
+      pointer-events: auto;
+      background: var(--ink);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.32);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(217, 239, 98, 0.35);
+      backdrop-filter: blur(12px);
+      min-width: 290px;
+    }
+
+    .toast-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--lime);
+      color: var(--green-dark);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 
@@ -630,21 +673,28 @@
           <state id="status">Focused on Istanbul, Turkey. Select the polygon tool (⬡) to measure.</state>
           <state id="active_country">TR</state>
           <state id="selected_id"></state>
+          <state id="toast_msg"></state>
+          <state id="toast_visible">false</state>
+          <state id="draft_id"></state>
+          <state id="draft_name"></state>
+          <state id="draft_area">0</state>
+          <state id="draft_display_area"></state>
+          <state id="draft_coords">[]</state>
 
           <!-- 2. Pure EUIX Computed Metrics -->
           <computed id="totalArea" deps="selections"><![CDATA[
             const items = Array.isArray($data.selections) ? $data.selections : [];
-            return items.reduce((sum, item) => sum + Number(item.areaM2 || 0), 0);
+            return items.reduce((sum, item) => sum + Number(item.areaM2 || item.area_sq_m || item.area || 0), 0);
           ]]></computed>
           <computed id="averageArea" deps="selections"><![CDATA[
             const items = Array.isArray($data.selections) ? $data.selections : [];
             if (!items.length) return 0;
-            const total = items.reduce((sum, item) => sum + Number(item.areaM2 || 0), 0);
+            const total = items.reduce((sum, item) => sum + Number(item.areaM2 || item.area_sq_m || item.area || 0), 0);
             return total / items.length;
           ]]></computed>
           <computed id="largestArea" deps="selections"><![CDATA[
             const items = Array.isArray($data.selections) ? $data.selections : [];
-            return items.reduce((max, item) => Math.max(max, Number(item.areaM2 || 0)), 0);
+            return items.reduce((max, item) => Math.max(max, Number(item.areaM2 || item.area_sq_m || item.area || 0)), 0);
           ]]></computed>
           <computed id="totalAreaText" deps="selections"><![CDATA[
             const val = Number($data.totalArea) || 0;
@@ -665,6 +715,18 @@
             return val.toLocaleString("en-US", { maximumFractionDigits: 0 }) + " m²";
           ]]></computed>
         </data_model>
+
+        <!-- Declarative Spatial API Configuration -->
+        <api_config base_url="https://euix-spatial-api.webspresso.workers.dev">
+          <api_endpoint 
+            id="fetch_polygons" 
+            url="/api/polygons" 
+            method="GET" 
+            select="data" 
+            bind_target="selections" 
+            auto_fetch="true" 
+          />
+        </api_config>
 
         <!-- Declarative Micro-Animations -->
         <animations>
@@ -699,6 +761,72 @@
               <value>Focused on {args.city}.</value>
             </step>
             <step action="FLY_TO" map="main_map" lat="{args.lat}" lng="{args.lng}" zoom="{args.zoom}" duration="1.5" />
+          </action_def>
+
+          <action_def name="ShowToast">
+            <param name="msg" required="true" />
+            <step action="SET_STATE">
+              <path>data.toast_msg</path>
+              <value>{args.msg}</value>
+            </step>
+            <step action="SET_STATE">
+              <path>data.toast_visible</path>
+              <value>true</value>
+            </step>
+            <step action="DELAY" ms="3200" />
+            <step action="SET_STATE">
+              <path>data.toast_visible</path>
+              <value>false</value>
+            </step>
+          </action_def>
+
+          <!-- Composed Workflow: Save Drawn Polygon to API via EUIX XHR Action & Show Toast -->
+          <action_def name="PersistDrawnPolygon">
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Saving new area to database...</value>
+            </step>
+            <step action="RUN_SCRIPT"><![CDATA[
+              const items = Array.isArray($data.selections) ? $data.selections : [];
+              const latest = items[items.length - 1];
+              if (latest) {
+                $data.draft_id = String(latest.id || ('poly-' + Date.now()));
+                $data.draft_name = String(latest.name || 'New Area');
+                $data.draft_area = Number(latest.areaM2 || latest.area_sq_m || latest.area || 0);
+                $data.draft_display_area = String(latest.displayArea || latest.display_area || '');
+                $data.draft_coords = JSON.stringify(latest.points || (latest.latLngs ? latest.latLngs.map(p => [p.lat, p.lng]) : []));
+              }
+            ]]></step>
+            <step action="XHR">
+              <method>POST</method>
+              <url>/api/polygons</url>
+              <body>{"id":"{data.draft_id}","name":"{data.draft_name}","country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
+            </step>
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Saved "{data.draft_name}" to database.</value>
+            </step>
+            <step action="ShowToast">
+              <arg name="msg">New polygon measured &amp; saved to server.</arg>
+            </step>
+          </action_def>
+
+          <!-- Composed Workflow: Delete Polygon from Map & API via EUIX XHR Action with Toast -->
+          <action_def name="DeletePolygon">
+            <param name="id" required="true" />
+            <param name="name" default="Area" />
+            <step action="REMOVE_LAYER" map="main_map" id="{args.id}" />
+            <step action="XHR">
+              <method>DELETE</method>
+              <url>/api/polygons/{args.id}</url>
+            </step>
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Removed {args.name}.</value>
+            </step>
+            <step action="ShowToast">
+              <arg name="msg">Removed "{args.name}" successfully.</arg>
+            </step>
           </action_def>
         </actions>
 
@@ -848,10 +976,7 @@
                 <draw_control position="topleft" polygon="true" rectangle="true" circle="false" marker="false" edit="true" remove="true" />
 
                 <!-- Pure EUIX Declarative Event Handling for Draw Lifecycle -->
-                <on_draw_created action="SET_STATE">
-                  <path>data.status</path>
-                  <value>New area measured and saved.</value>
-                </on_draw_created>
+                <on_draw_created action="PersistDrawnPolygon" />
 
                 <on_draw_edited action="SET_STATE">
                   <path>data.status</path>
@@ -899,14 +1024,13 @@
                     <span class="swatch"></span>
                     <div class="card-info">
                       <p class="selection-name">{item.name}</p>
-                      <p class="selection-meta">{item.displayArea} · {item.createdAt}</p>
+                      <p class="selection-meta">{item.displayArea || item.display_area} · {item.createdAt || item.created_at || 'Saved Zone'}</p>
                     </div>
-                    <!-- Declarative Layer Removal & State Mutation -->
+                    <!-- Declarative Layer Removal & API Sync via Composed Action -->
                     <button type="button" class="remove-btn" title="Delete {item.name}" aria-label="Delete {item.name}">
-                      <on_click action="REMOVE_LAYER" map="main_map" id="{item.id}" />
-                      <on_click action="SET_STATE">
-                        <path>data.status</path>
-                        <value>Removed {item.name}.</value>
+                      <on_click action="DeletePolygon">
+                        <arg name="id">{item.id}</arg>
+                        <arg name="name">{item.name}</arg>
                       </on_click>
                       ×
                     </button>
@@ -916,18 +1040,31 @@
 
               <div class="sidebar-foot">
                 <p class="status" role="status">{data.status}</p>
-                <!-- Declarative Clear Map & Reset State -->
-                <button type="button" class="clear-btn">
-                  <on_click action="CLEAR_MAP" map="main_map" />
+                <!-- Declarative Revalidate Action -->
+                <button type="button" class="country-btn" style="width: 100%; height: 38px; justify-content: center; background: #eef5f0; color: #173e2b; border-color: #286247;">
+                  <on_click action="REVALIDATE_API" tag="fetch_polygons" />
                   <on_click action="SET_STATE">
                     <path>data.status</path>
-                    <value>All measured areas have been cleared.</value>
+                    <value>Polygons synchronized successfully.</value>
                   </on_click>
-                  Clear All Polygons
+                  <on_click action="ShowToast">
+                    <arg name="msg">Polygons synchronized from server.</arg>
+                  </on_click>
+                  ↻ Refresh Polygons
                 </button>
               </div>
             </aside>
           </section>
+
+          <!-- Declarative Floating Toast Notification -->
+          <if condition="{data.toast_visible} == 'true' || {data.toast_visible} == true">
+            <div class="toast-container">
+              <div class="toast-popup" enter_animation="slide-in-up" leave_animation="slide-out-down">
+                <span class="toast-icon">✓</span>
+                <span class="toast-text">{data.toast_msg}</span>
+              </div>
+            </div>
+          </if>
         </main>
       </uid_spec>
     </script>
