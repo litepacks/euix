@@ -62,13 +62,19 @@
     }
 
     .topbar {
-      min-height: 64px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px 4px 14px;
+    }
+
+    .topbar-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 12px 8px 18px;
-      flex-wrap: nowrap;
+      gap: 12px;
+      width: 100%;
+      flex-wrap: wrap;
     }
 
     .brand {
@@ -114,20 +120,32 @@
       white-space: nowrap;
     }
 
-    .top-controls {
+    .topbar-actions {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
-      padding: 8px 4px 10px;
-      flex-shrink: 1;
+      flex-shrink: 0;
     }
 
-    .top-controls::-webkit-scrollbar {
-      display: none;
+    .country-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(40, 98, 71, 0.25) transparent;
+    }
+
+    .country-nav::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .country-nav::-webkit-scrollbar-thumb {
+      background: rgba(40, 98, 71, 0.25);
+      border-radius: 4px;
     }
 
     .country-btn {
@@ -546,8 +564,18 @@
         padding: 12px;
       }
 
+      .topbar {
+        padding: 6px 2px 10px;
+      }
+
+      .country-nav {
+        gap: 6px;
+        padding-bottom: 4px;
+      }
+
       .stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
       }
 
       .workspace {
@@ -555,46 +583,93 @@
         min-height: 0;
         grid-template-columns: 1fr;
         overflow: visible;
+        border-radius: 18px;
       }
 
       .map-wrap,
       .euix-leaflet-map {
-        height: 58vh;
-        min-height: 420px;
+        height: 52vh;
+        min-height: 380px;
       }
 
       .sidebar {
         border-left: 0;
         border-top: 1px solid var(--line);
-        max-height: 420px;
+        max-height: 440px;
       }
     }
 
-    @media (max-width: 520px) {
-      .topbar {
-        align-items: flex-start;
-      }
-
-      .sync-pill {
+    @media (max-width: 600px) {
+      .app-shell {
         padding: 8px;
       }
 
-      .sync-label {
-        display: none;
+      .topbar-row {
+        gap: 8px;
+      }
+
+      .brand {
+        gap: 8px;
+      }
+
+      .brand-mark {
+        width: 36px;
+        height: 36px;
+        font-size: 17px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .country-btn {
+        height: 34px;
+        padding: 0 10px;
+        font-size: 11px;
+        border-radius: 10px;
+      }
+
+      .sync-pill {
+        height: 34px;
+        padding: 0 9px;
+        font-size: 10.5px;
       }
 
       .stats {
-        gap: 7px;
+        gap: 6px;
       }
 
       .stat {
-        min-height: 78px;
-        padding: 13px;
+        min-height: 72px;
+        padding: 10px 12px;
+      }
+
+      .stat-label {
+        font-size: 9.5px;
+      }
+
+      .stat-value {
+        font-size: 19px;
       }
 
       .map-hint {
-        right: 12px;
-        left: 52px;
+        top: 8px;
+        right: 8px;
+        left: 48px;
+        font-size: 10.5px;
+        padding: 7px 10px;
+      }
+
+      .sidebar-head {
+        padding: 16px 14px 12px;
+      }
+
+      .selection-card {
+        padding: 10px 12px;
+      }
+
+      .selection-name {
+        font-size: 13px;
       }
     }
 
@@ -836,26 +911,33 @@
 
         <!-- Main Declarative Layout Shell -->
         <main class="app-shell">
-          <!-- Top Navigation Header with Declarative Fly-To Buttons -->
+          <!-- Top Navigation Header with Dedicated Mobile Responsive Country Nav -->
           <header class="topbar" enter_animation="slide-in-down">
-            <div class="brand">
-              <button type="button" class="brand-mark" aria-label="Play compass animation">
-                <on_click action="ANIMATE" target=".brand-mark" name="compassBounce" duration="480" />
-                ⌖
-              </button>
-              <div>
-                <p class="eyebrow">Declarative EUIX · Leaflet Plugin</p>
-                <h1>Field Notebook</h1>
-              </div>
-            </div>
-            
-            <div class="top-controls">
-              <div class="sync-pill" style="border-color: #286247; background: #eef5f0; color: #173e2b;">
-                <span class="sync-dot" style="background: #286247;"></span>
-                <span>Active: <strong>{data.active_country}</strong></span>
+            <div class="topbar-row">
+              <div class="brand">
+                <button type="button" class="brand-mark" aria-label="Play compass animation">
+                  <on_click action="ANIMATE" target=".brand-mark" name="compassBounce" duration="480" />
+                  ⌖
+                </button>
+                <div>
+                  <p class="eyebrow">Declarative EUIX · Leaflet Plugin</p>
+                  <h1>Field Notebook</h1>
+                </div>
               </div>
 
-              <!-- Country / City Quick Navigators via Action Composer -->
+              <div class="topbar-actions">
+                <div class="sync-pill" style="border-color: #286247; background: #eef5f0; color: #173e2b;">
+                  <span class="sync-dot" style="background: #286247;"></span>
+                  <span>Active: <strong>{data.active_country}</strong></span>
+                </div>
+                <a href="./playground.html" class="country-btn" style="text-decoration:none;">
+                  ← Playground
+                </a>
+              </div>
+            </div>
+
+            <!-- Country / City Quick Navigators via Action Composer -->
+            <nav class="country-nav" aria-label="Quick City Navigation">
               <button type="button" class="country-btn {data.active_country == 'TR' ? 'active' : ''}">
                 <on_click action="SelectCity">
                   <arg name="country">TR</arg>
@@ -864,7 +946,7 @@
                   <arg name="lng">28.9784</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇹🇷 Istanbul (Turkey)
+                🇹🇷 Istanbul
               </button>
 
               <button type="button" class="country-btn {data.active_country == 'UK' ? 'active' : ''}">
@@ -875,7 +957,7 @@
                   <arg name="lng">-0.1278</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇬🇧 London (UK)
+                🇬🇧 London
               </button>
 
               <button type="button" class="country-btn {data.active_country == 'USA' ? 'active' : ''}">
@@ -886,7 +968,7 @@
                   <arg name="lng">-74.0060</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇺🇸 New York (USA)
+                🇺🇸 New York
               </button>
 
               <button type="button" class="country-btn {data.active_country == 'JP' ? 'active' : ''}">
@@ -897,7 +979,7 @@
                   <arg name="lng">139.6503</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇯🇵 Tokyo (Japan)
+                🇯🇵 Tokyo
               </button>
 
               <button type="button" class="country-btn {data.active_country == 'FR' ? 'active' : ''}">
@@ -908,7 +990,7 @@
                   <arg name="lng">2.3522</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇫🇷 Paris (France)
+                🇫🇷 Paris
               </button>
 
               <button type="button" class="country-btn {data.active_country == 'DE' ? 'active' : ''}">
@@ -919,18 +1001,9 @@
                   <arg name="lng">13.4050</arg>
                   <arg name="zoom">13</arg>
                 </on_click>
-                🇩🇪 Berlin (Germany)
+                🇩🇪 Berlin
               </button>
-
-              <a href="./playground.html" class="country-btn" style="text-decoration:none;">
-                ← Playground
-              </a>
-
-              <div class="sync-pill">
-                <span class="sync-dot"></span>
-                <span class="sync-label">Storage Synced</span>
-              </div>
-            </div>
+            </nav>
           </header>
 
           <!-- Metric Statistics Cards -->
