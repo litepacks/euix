@@ -522,43 +522,16 @@ const ACTION_DISPATCH_TABLE = {
     "TOGGLE_STATE": "_handleToggleStateAction",
     "TOGGLE": "_handleToggleStateAction",
     "MUTATE_STATE": "_handleMutateStateAction",
-    "REVALIDATE_API": "_handleRevalidateAction",
-    "REVALIDATE": "_handleRevalidateAction",
     "FOCUS": "_handleFocusAction",
-    "XHR": "handleXHR",
     "RUN_SCRIPT": "_handleRunScriptAction",
     "EVAL_JS": "_handleRunScriptAction",
     "EXEC_JS": "_handleRunScriptAction",
     "SCRIPT": "_handleRunScriptAction",
-    "DELAY": "_handleDelay",
-    "WAIT": "_handleDelay",
-    "SLEEP": "_handleDelay",
-    "TIMEOUT": "_handleTimeout",
-    "RETRY": "_handleRetry",
     "TRY": "_handleTryCatchFinally",
     "RETHROW": "_handleRethrowAction",
     "THROW": "_handleThrowAction",
-    "ANIMATE": "_handleAnimateAction",
-    "TRANSITION": "_handleAnimateAction",
     "SET_TITLE": "_handleSetTitleAction"
 };
-
-/**
- * Action Composer Errors
- */
-class EUIXActionRecursionError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = "EUIXActionRecursionError";
-    }
-}
-
-class EUIXActionValidationError extends Error {
-    constructor(message) {
-        super(message);
-        this.name = "EUIXActionValidationError";
-    }
-}
 
 /**
  * EUIXXMLParseError
@@ -661,402 +634,6 @@ class EUIXStructuredError extends Error {
     }
 }
 
-/**
- * EUIXCancellationController
- * Cancellation signal and token generator for resilience primitives.
- */
-class EUIXCancellationController {
-    constructor(parentSignal = null) {
-        this.isCancelled = false;
-        this.reason = null;
-        this.listeners = new Set();
-        this._abortController = (typeof AbortController !== "undefined") ? new AbortController() : null;
-        this._parentUnsubscribe = null;
-
-        if (parentSignal) {
-            if (parentSignal.isCancelled) {
-                this.cancel(parentSignal.reason);
-            } else {
-                this._parentUnsubscribe = parentSignal.onCancel((reason) => this.cancel(reason));
-            }
-        }
-    }
-
-    get signal() {
-        const self = this;
-        return {
-            get isCancelled() { return self.isCancelled; },
-            get reason() { return self.reason; },
-            get abortSignal() { return self._abortController ? self._abortController.signal : null; },
-            onCancel: (cb) => {
-                if (typeof cb !== "function") return noop;
-                if (this.isCancelled) {
-                    try { cb(this.reason); } catch (_) {}
-                    return noop;
-                }
-                this.listeners.add(cb);
-                return () => this.listeners.delete(cb);
-            },
-            throwIfCancelled: () => {
-                if (this.isCancelled) {
-                    throw this.reason || new EUIXStructuredError({
-                        message: "Action execution was cancelled",
-                        code: "ACTION_CANCELLED"
-                    });
-                }
-            }
-        };
-    }
-
-    cancel(reason = null) {
-        if (this.isCancelled) return;
-        this.isCancelled = true;
-        this.reason = reason || new EUIXStructuredError({
-            message: "Action execution was cancelled",
-            code: "ACTION_CANCELLED"
-        });
-
-        if (this._abortController) {
-            try { this._abortController.abort(this.reason); } catch (_) {}
-        }
-
-        const toNotify = Array.from(this.listeners);
-        this.listeners.clear();
-        for (const cb of toNotify) {
-            try { cb(this.reason); } catch (_) {}
-        }
-
-        if (this._parentUnsubscribe) {
-            this._parentUnsubscribe();
-            this._parentUnsubscribe = null;
-        }
-    }
-}
-
-
-
-/**
- * EUIXActionContext
- * Scoped execution context for composed action invocations.
- */
-class EUIXActionContext {
-    constructor({ name = "", args = EMPTY_OBJ, engine = null, parent = null, eventContext = EMPTY_OBJ } = EMPTY_OBJ) {
-        this.name = name;
-        this.args = args && Object.keys(args).length > 0 ? { ...args } : EMPTY_OBJ;
-        this.params = this.args;
-        this.engine = engine;
-        this.parent = parent || null;
-        this.depth = parent ? (parent.depth + 1) : 1;
-        this.callChain = new Set(parent ? parent.callChain : EMPTY_ARR);
-        if (name) this.callChain.add(name);
-
-        this.result = undefined;
-        this._targetEl = eventContext._targetEl || (parent ? parent._targetEl : null);
-        this._evt = eventContext._evt || (parent ? parent._evt : null);
-        this.props = eventContext.props || (parent ? parent.props : EMPTY_OBJ);
-        this.constants = eventContext.constants || (parent ? parent.constants : EMPTY_OBJ);
-        this._componentApiConfig = eventContext._componentApiConfig || (parent ? parent._componentApiConfig : null);
-    }
-}
-
-/**
- * EUIXActionValidator
- * Static and runtime validation rules for Action Composer.
- */
-class EUIXActionValidator {
-    static validateDefinition(name, def) {
-        if (!name || typeof name !== "string") {
-            throw new EUIXActionValidationError("Action definition must have a valid name string.");
-        }
-        if (!def || typeof def !== "object") {
-            throw new EUIXActionValidationError(`Action definition for '${name}' must be an object or XML node.`);
-        }
-    }
-
-    static validateInvocation(actionDef, args, context, engine) {
-        if (!actionDef) {
-            throw new EUIXActionValidationError(`Unknown action: '${context.name}'`);
-        }
-
-        // Recursion loop detection via callChain
-        if (context.parent && context.parent.callChain.has(actionDef.name)) {
-            const chainStr = Array.from(context.parent.callChain).concat(actionDef.name).join(" -> ");
-            throw new EUIXActionRecursionError(`[EUIX Action Composer] Circular action recursion detected: ${chainStr}`);
-        }
-
-        // Recursion depth limit guard
-        if (context.depth > (engine?._maxActionDepth || 25)) {
-            throw new EUIXActionRecursionError(`[EUIX Action Composer] Maximum action recursion depth (${engine?._maxActionDepth || 25}) exceeded for action <${actionDef.name}>`);
-        }
-
-        // Parameter requirements validation
-        const req = actionDef._requiredParams || (Array.isArray(actionDef.params) ? actionDef.params.filter(p => p.required) : EMPTY_ARR);
-        for (let i = 0; i < req.length; i++) {
-            const param = req[i];
-            const val = args[param.name];
-            if (val === undefined || val === null || val === "") {
-                throw new EUIXActionValidationError(`[EUIX Action Composer] Missing required argument '${param.name}' for action '${actionDef.name}'`);
-            }
-        }
-    }
-}
-
-/**
- * EUIXActionRegistry
- * Central registry for pre-parsed action definitions.
- */
-class EUIXActionRegistry {
-    constructor() {
-        this._actions = new Map();
-    }
-
-    register(name, xmlNodeOrObj) {
-        if (!name || !isStr(name)) return null;
-        const normalizedName = name.trim();
-
-        let actionDef;
-        if (xmlNodeOrObj && (xmlNodeOrObj.nodeType === 1 || xmlNodeOrObj.nodeType === 9)) {
-            actionDef = EUIXActionRegistry.parseXmlActionDef(normalizedName, xmlNodeOrObj);
-        } else if (isObj(xmlNodeOrObj)) {
-            const p = xmlNodeOrObj.params || EMPTY_ARR;
-            actionDef = {
-                name: normalizedName,
-                params: p,
-                steps: xmlNodeOrObj.steps || EMPTY_ARR,
-                returnExpr: xmlNodeOrObj.returnExpr || "",
-                rawNode: xmlNodeOrObj.rawNode || null,
-                _requiredParams: Array.isArray(p) ? p.filter(item => item.required) : EMPTY_ARR,
-                _defaultParams: Array.isArray(p) ? p.filter(item => item.default !== undefined) : EMPTY_ARR
-            };
-        } else {
-            return null;
-        }
-
-        EUIXActionValidator.validateDefinition(normalizedName, actionDef);
-        this._actions.set(normalizedName, actionDef);
-        return actionDef;
-    }
-
-    has(name) {
-        return !!name && this._actions.has(String(name).trim());
-    }
-
-    get(name) {
-        return name ? this._actions.get(String(name).trim()) : undefined;
-    }
-
-    getAll() {
-        return new Map(this._actions);
-    }
-
-    clear() {
-        this._actions.clear();
-    }
-
-    static parseXmlActionDef(name, xmlNode) {
-        const params = [];
-        const steps = [];
-        let returnExpr = "";
-
-        const paramNodes = Array.from(xmlNode.querySelectorAll("param, arg_def, parameter"));
-        paramNodes.forEach(pNode => {
-            const pName = pNode.getAttribute("name") || pNode.getAttribute("id");
-            if (pName) {
-                const defaultVal = pNode.getAttribute("default") || pNode.getAttribute("value") || pNode.textContent.trim() || undefined;
-                const required = pNode.getAttribute("required") === "true" || pNode.hasAttribute("required");
-                const type = pNode.getAttribute("type") || "string";
-                params.push({ name: pName, default: defaultVal, required, type });
-            }
-        });
-
-        const returnNode = getChildNodes(xmlNode).find(n => isElem(n) && getTagName(n) === "return");
-        if (returnNode) {
-            returnExpr = trimStr(returnNode) || getAttr(returnNode, "value", "expr");
-        }
-
-        const childNodes = getChildNodes(xmlNode).filter(isElem);
-        childNodes.forEach(child => {
-            const tag = getTagName(child);
-            if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
-            child._cachedTag = tag;
-            if (tag === "if") {
-                child._cachedCond = child.getAttribute("condition") || child.getAttribute("test") || null;
-                const innerElse = child.querySelector ? child.querySelector("else") : null;
-                const nextElse = (child.nextElementSibling && child.nextElementSibling.tagName?.toLowerCase() === "else") ? child.nextElementSibling : null;
-                child._cachedElseNode = innerElse || nextElse || null;
-            }
-            steps.push(child);
-        });
-
-        const requiredParams = params.filter(p => p.required);
-        const defaultParams = params.filter(p => p.default !== undefined);
-
-        return {
-            name,
-            params,
-            steps,
-            returnExpr,
-            rawNode: xmlNode,
-            _requiredParams: requiredParams.length > 0 ? requiredParams : EMPTY_ARR,
-            _defaultParams: defaultParams.length > 0 ? defaultParams : EMPTY_ARR
-        };
-    }
-}
-
-/**
- * EUIXActionComposer
- * Sequential execution engine for composed actions.
- */
-class EUIXActionComposer {
-    static async execute(actionDef, rawArgs = EMPTY_OBJ, engine = null, parentEventContext = EMPTY_OBJ) {
-        const startTime = getNow();
-
-        // 1. Resolve arguments in caller context & apply param defaults
-        const evaluatedArgs = {};
-        const callerContext = parentEventContext instanceof EUIXActionContext ? parentEventContext : parentEventContext;
-
-        if (Array.isArray(actionDef.params)) {
-            actionDef.params.forEach(p => {
-                let val = rawArgs[p.name];
-                if (val === undefined && p.default !== undefined) {
-                    val = engine ? engine.interpolate(String(p.default), callerContext) : p.default;
-                }
-                if (typeof val === "string" && engine) {
-                    val = engine.interpolate(val, callerContext);
-                }
-                evaluatedArgs[p.name] = val;
-            });
-        }
-
-        // Include any extra passed arguments not declared in params
-        Object.keys(rawArgs).forEach(k => {
-            if (evaluatedArgs[k] === undefined) {
-                const val = rawArgs[k];
-                evaluatedArgs[k] = (typeof val === "string" && engine) ? engine.interpolate(val, callerContext) : val;
-            }
-        });
-
-        // 2. Build invocation context
-        const parentActionContext = parentEventContext instanceof EUIXActionContext ? parentEventContext : (parentEventContext._actionCtx || null);
-        const invocationCtx = new EUIXActionContext({
-            name: actionDef.name,
-            args: evaluatedArgs,
-            engine,
-            parent: parentActionContext,
-            eventContext: parentEventContext
-        });
-
-        // Merged context for expression interpolation inside step handlers
-        const mergedContext = {
-            ...parentEventContext,
-            args: invocationCtx.args,
-            params: invocationCtx.args,
-            result: invocationCtx.result,
-            _actionCtx: invocationCtx
-        };
-
-        // 3. Validation (recursion loop, depth limit, missing required args)
-        EUIXActionValidator.validateInvocation(actionDef, invocationCtx.args, invocationCtx, engine);
-
-        let executionError = null;
-
-        const prevContext = engine ? engine._currentActionContext : null;
-        if (engine) engine._currentActionContext = invocationCtx;
-
-        try {
-            // 4. Sequential Step Execution
-            let skipNextElse = false;
-            const steps = actionDef.steps || EMPTY_ARR;
-            const stepLen = steps.length;
-            for (let sIdx = 0; sIdx < stepLen; sIdx++) {
-                const step = steps[sIdx];
-                mergedContext.result = invocationCtx.result;
-                const tag = step._cachedTag !== undefined ? step._cachedTag : (step.tagName ? step.tagName.toLowerCase() : "");
-
-                if (tag === "else") {
-                    if (skipNextElse) {
-                        skipNextElse = false;
-                        continue;
-                    }
-                    const res = await engine._handleActionInternal(step, mergedContext);
-                    if (res !== undefined) invocationCtx.result = res;
-                    continue;
-                }
-
-                if (tag === "if") {
-                    const cond = step._cachedCond !== undefined ? step._cachedCond : (step.getAttribute("condition") || step.getAttribute("test"));
-                    const isTrue = !cond || !engine || engine.evalCondition(cond, mergedContext);
-
-                    if (isTrue) {
-                        skipNextElse = true;
-                        const res = await engine._handleActionInternal(step, mergedContext);
-                        if (res !== undefined) invocationCtx.result = res;
-                    } else {
-                        skipNextElse = false;
-                        const elseNode = step._cachedElseNode !== undefined ? step._cachedElseNode : (engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null));
-                        if (elseNode) {
-                            const elseRes = await engine._handleActionInternal(elseNode, mergedContext);
-                            if (elseRes !== undefined) invocationCtx.result = elseRes;
-                            if (elseNode === step.nextElementSibling) {
-                                skipNextElse = true;
-                            }
-                        }
-                    }
-                    continue;
-                }
-
-                skipNextElse = false;
-                const res = await engine._handleActionInternal(step, mergedContext);
-                if (res !== undefined) {
-                    invocationCtx.result = res;
-                }
-            }
-
-            // 5. Evaluate Return Expression if present
-            if (actionDef.returnExpr && engine) {
-                mergedContext.result = invocationCtx.result;
-                const trimmedReturn = actionDef.returnExpr.trim();
-                if (trimmedReturn === "{result}" && invocationCtx.result !== undefined) {
-                    // Preserve original exact type of step result
-                } else {
-                    const evaluatedReturn = engine.interpolate(actionDef.returnExpr, mergedContext);
-                    try {
-                        invocationCtx.result = JSON.parse(evaluatedReturn);
-                    } catch (_) {
-                        invocationCtx.result = evaluatedReturn;
-                    }
-                }
-            }
-        } catch (err) {
-            executionError = err;
-            if (engine) engine.reportError(err, `Action Composer (${actionDef.name})`);
-            throw err;
-        } finally {
-            if (engine) engine._currentActionContext = prevContext;
-
-            const endTime = getNow();
-            const durationMs = Math.round((endTime - startTime) * 100) / 100;
-
-            // DevTools logger hook
-            if (engine && engine._devtools && engine._devtools.enabled) {
-                try {
-                    engine._devtools.logAction("ActionComposer", {
-                        name: actionDef.name,
-                        caller: parentActionContext ? parentActionContext.name : (invocationCtx._targetEl ? invocationCtx._targetEl.tagName : "engine"),
-                        args: invocationCtx.args,
-                        result: invocationCtx.result,
-                        durationMs,
-                        error: executionError ? executionError.message : null,
-                        depth: invocationCtx.depth
-                    });
-                } catch (_) {}
-            }
-        }
-
-        return invocationCtx.result;
-    }
-}
-
 class EUIXEngineCore {
     static _installedPlugins = new Set();
     static _globalActionHandlers = new Map();
@@ -1130,78 +707,15 @@ class EUIXEngineCore {
         if (!EUIXEngineCore._globalComponentSpecs) {
             EUIXEngineCore._globalComponentSpecs = new Map();
         }
-        this._actionRegistry = new EUIXActionRegistry();
-        if (!EUIXEngineCore._globalActionRegistry) {
-            EUIXEngineCore._globalActionRegistry = new EUIXActionRegistry();
-        }
+        this._actionRegistry = null;
         this._maxActionDepth = 25;
         this._depGraph = null;
         this._computedRegistry = null;
         this._watchRegistry = null;
         this._isEvaluatingComputed = false;
         this._reactiveDepth = 0;
-        this._setupStorageListener();
-        this._initRevalidationListeners();
-    }
-
-    _initRevalidationListeners() {
-        if (typeof window === "undefined" || this._revalidationBound) return;
-        this._revalidationBound = true;
-
-        const onRevalidateEvent = (evtType) => {
-            if (!this._registeredXhrs || this._registeredXhrs.size === 0) return;
-            this._registeredXhrs.forEach(item => {
-                const shouldFocus = evtType === "focus" && (item.revalidateFocus || this._apiConfig.revalidateFocus);
-                const shouldOnline = evtType === "online" && (item.revalidateOnline || this._apiConfig.revalidateOnline);
-
-                if ((item.method === "GET" || item.method === "HEAD") && (shouldFocus || shouldOnline)) {
-                    if (this._xhrCache && item.url) {
-                        this._xhrCache.delete(item.url);
-                    }
-                    this.handleXHR(item.actionNode, item.context);
-                }
-            });
-        };
-
-        window.addEventListener("focus", () => onRevalidateEvent("focus"));
-        window.addEventListener("online", () => onRevalidateEvent("online"));
-    }
-
-    async revalidateApi(tagOrUrl = "") {
-        const filter = String(tagOrUrl).trim();
-        if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
-        if (!this._revalidatingTags) this._revalidatingTags = new Set();
-        if (this._revalidatingTags.has(filter)) return this;
-
-        this._revalidatingTags.add(filter);
-        try {
-            const targets = [];
-            this._registeredXhrs.forEach(item => {
-                const isGetOrHead = (item.method === "GET" || item.method === "HEAD");
-                if (!filter) {
-                    if (isGetOrHead) targets.push(item);
-                } else {
-                    const isExplicitUrlFilter = filter.includes("/");
-                    const matchesTag = Boolean(item.tag && item.tag === filter);
-                    const matchesUrl = (isGetOrHead || isExplicitUrlFilter) && Boolean(item.url && item.url.includes(filter));
-                    if (matchesTag || matchesUrl) {
-                        targets.push(item);
-                    }
-                }
-            });
-
-            const promises = targets.map(item => {
-                if (this._xhrCache && item.url) {
-                    this._xhrCache.delete(item.url);
-                }
-                return this.handleXHR(item.actionNode, item.context);
-            });
-            await Promise.all(promises);
-        } finally {
-            this._revalidatingTags.delete(filter);
-        }
-
-        return this;
+        if (isFn(this._setupStorageListener)) this._setupStorageListener();
+        if (isFn(this._initRevalidationListeners)) this._initRevalidationListeners();
     }
 
     async loadDataModel(urlOrObj) {
@@ -1373,33 +887,6 @@ class EUIXEngineCore {
         return this.getPerformanceMetrics();
     }
 
-    configureApi(options = {}) {
-        if (!isObj(options)) return this;
-        if (options.baseUrl !== undefined) this._apiConfig.baseUrl = String(options.baseUrl).trim();
-        if (options.credentials !== undefined) this._apiConfig.credentials = options.credentials;
-        if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
-        if (isFn(options.onRequest)) this._apiConfig.onRequest = options.onRequest;
-        if (isFn(options.onResponse)) this._apiConfig.onResponse = options.onResponse;
-        
-        if (isObj(options.headers)) {
-            Object.entries(options.headers).forEach(([k, v]) => {
-                this.setApiHeader(k, v);
-            });
-        }
-        return this;
-    }
-
-    setApiHeader(name, value) {
-        if (!name) return this;
-        this._apiConfig.headers.set(String(name).trim(), String(value !== undefined ? value : "").trim());
-        return this;
-    }
-
-    removeApiHeader(name) {
-        if (!name) return this;
-        this._apiConfig.headers.delete(String(name).trim());
-        return this;
-    }
 
     _setupStorageListener() {}
 
@@ -1833,14 +1320,15 @@ class EUIXEngineCore {
             if (!EUIXEngineCore._globalComponentSpecs) EUIXEngineCore._globalComponentSpecs = new Map();
             EUIXEngineCore._globalComponentSpecs.set(compName, node);
 
-            if (!EUIXEngineCore._globalActionRegistry) EUIXEngineCore._globalActionRegistry = new EUIXActionRegistry();
-            const actionDefNodes = Array.from(node.querySelectorAll ? node.querySelectorAll("action_def, workflow_def") : []);
-            actionDefNodes.forEach(def => {
-                const actName = def.getAttribute("name") || def.getAttribute("id");
-                if (actName) {
-                    EUIXEngineCore._globalActionRegistry.register(actName, def);
-                }
-            });
+            if (isFn(EUIXEngineCore.registerActionDef)) {
+                const actionDefNodes = Array.from(node.querySelectorAll ? node.querySelectorAll("action_def, workflow_def") : []);
+                actionDefNodes.forEach(def => {
+                    const actName = def.getAttribute("name") || def.getAttribute("id");
+                    if (actName) {
+                        EUIXEngineCore.registerActionDef(actName, def);
+                    }
+                });
+            }
         }
         return compName;
     }
@@ -1859,108 +1347,17 @@ class EUIXEngineCore {
             const specNode = EUIXEngineCore._globalComponentSpecs.get(compName);
             this._componentSpecs.set(compName, specNode);
 
-            if (!this._actionRegistry) this._actionRegistry = new EUIXActionRegistry();
-            const actionDefNodes = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : []);
-            actionDefNodes.forEach(def => {
-                const actName = def.getAttribute("name") || def.getAttribute("id");
-                if (actName) {
-                    this._actionRegistry.register(actName, def);
-                }
-            });
+            if (isFn(this.registerActionDef)) {
+                const actionDefNodes = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : []);
+                actionDefNodes.forEach(def => {
+                    const actName = def.getAttribute("name") || def.getAttribute("id");
+                    if (actName) {
+                        this.registerActionDef(actName, def);
+                    }
+                });
+            }
         }
         return compName;
-    }
-
-    static registerActionDef(name, xmlNodeOrObj) {
-        if (!EUIXEngineCore._globalActionRegistry) EUIXEngineCore._globalActionRegistry = new EUIXActionRegistry();
-        return EUIXEngineCore._globalActionRegistry.register(name, xmlNodeOrObj);
-    }
-
-    registerActionDef(name, xmlNodeOrObj) {
-        if (!this._actionRegistry) this._actionRegistry = new EUIXActionRegistry();
-        const def = this._actionRegistry.register(name, xmlNodeOrObj);
-        EUIXEngineCore.registerActionDef(name, xmlNodeOrObj);
-        return def;
-    }
-
-    hasActionDef(name) {
-        if (!name) return false;
-        const normalized = String(name).trim();
-        return (this._actionRegistry && this._actionRegistry.has(normalized)) ||
-            (EUIXEngineCore._globalActionRegistry && EUIXEngineCore._globalActionRegistry.has(normalized));
-    }
-
-    getActionDef(name) {
-        if (!name) return undefined;
-        const normalized = String(name).trim();
-        if (this._actionRegistry && this._actionRegistry.has(normalized)) {
-            return this._actionRegistry.get(normalized);
-        }
-        if (EUIXEngineCore._globalActionRegistry && EUIXEngineCore._globalActionRegistry.has(normalized)) {
-            return EUIXEngineCore._globalActionRegistry.get(normalized);
-        }
-        return undefined;
-    }
-
-    async executeAction(actionName, args = {}, context = {}) {
-        const actionDef = this.getActionDef(actionName);
-        if (!actionDef) {
-            const err = new EUIXActionValidationError(`[EUIX Action Composer] Unknown action: '${actionName}'`);
-            this.reportError(err, "Action Execution");
-            throw err;
-        }
-        const effectiveCtx = (context && (context instanceof EUIXActionContext || context._actionCtx))
-            ? context
-            : (this._currentActionContext || context);
-        return await EUIXActionComposer.execute(actionDef, args, this, effectiveCtx);
-    }
-
-    initActionRegistry() {
-        if (!this._actionRegistry) this._actionRegistry = new EUIXActionRegistry();
-        if (!EUIXEngineCore._globalActionRegistry) EUIXEngineCore._globalActionRegistry = new EUIXActionRegistry();
-
-        if (!this.xmlDoc) return;
-        const actionDefNodes = Array.from(this.xmlDoc.querySelectorAll("action_def, workflow_def"));
-        actionDefNodes.forEach(node => {
-            const name = node.getAttribute("name") || node.getAttribute("id");
-            if (name) {
-                this._actionRegistry.register(name, node);
-                EUIXEngineCore._globalActionRegistry.register(name, node);
-            }
-        });
-    }
-
-    _extractActionArgs(actionNode, context = {}) {
-        const args = {};
-
-        if (actionNode.attributes) {
-            Array.from(actionNode.attributes).forEach(attr => {
-                const attrName = attr.name;
-                if (["action", "name", "action_name", "class", "id"].includes(attrName)) return;
-
-                let key = attrName;
-                if (key.startsWith("arg-") || key.startsWith("param-")) {
-                    key = key.slice(4);
-                }
-                args[key] = this.interpolate(attr.value, context);
-            });
-        }
-
-        const argNodes = [
-            ...this.getChildren(actionNode, "arg"),
-            ...this.getChildren(actionNode, "param"),
-            ...this.getChildren(actionNode, "argument")
-        ];
-
-        argNodes.forEach(node => {
-            const name = node.getAttribute("name") || node.getAttribute("id");
-            if (name) {
-                const rawVal = node.getAttribute("value") || node.textContent.trim();
-                args[name] = this.interpolate(rawVal, context);
-            }
-        });
-
-        return args;
     }
 
     static autoInit() {
@@ -2931,7 +2328,7 @@ class EUIXEngineCore {
         this._pendingAsyncLoads = [];
         this.initConstants();
         this.initDataModel();
-        this.initActionRegistry();
+        if (isFn(this.initActionRegistry)) this.initActionRegistry();
 
         const importNodes = Array.from(this.xmlDoc.querySelectorAll("import"));
         if (importNodes.length > 0 && typeof fetch !== "undefined") {
@@ -6067,348 +5464,7 @@ class EUIXEngineCore {
         }
     }
 
-    _calculateBackoffDelay(strategy = "fixed", baseDelay = 0, attempt = 1, maxDelay = null) {
-        if (baseDelay <= 0) return 0;
-        let calculated = baseDelay;
 
-        const cleanStrategy = String(strategy || "fixed").toLowerCase().trim();
-        if (cleanStrategy === "linear") {
-            calculated = baseDelay * attempt;
-        } else if (cleanStrategy === "exponential" || cleanStrategy === "exp") {
-            calculated = baseDelay * Math.pow(2, attempt - 1);
-        } else if (cleanStrategy === "jitter") {
-            const exp = baseDelay * Math.pow(2, attempt - 1);
-            calculated = Math.round(exp * (0.5 + Math.random() * 0.5));
-        }
-
-        if (maxDelay !== null && maxDelay !== undefined && !isNaN(parseFloat(maxDelay))) {
-            const cap = parseFloat(maxDelay);
-            if (cap >= 0) calculated = Math.min(calculated, cap);
-        }
-
-        return Math.max(0, Math.round(calculated));
-    }
-
-    async _handleDelayDirect(ms, context = {}) {
-        const duration = parseFloat(ms);
-        if (isNaN(duration) || duration < 0) {
-            const err = new EUIXStructuredError({
-                message: `<delay> duration must be a non-negative number (received: ${ms})`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "DELAY",
-                component: context._componentName
-            });
-            this.reportError(err, "Delay Validation");
-            throw err;
-        }
-
-        const signal = context._cancellationSignal;
-        if (signal && signal.isCancelled) {
-            signal.throwIfCancelled();
-        }
-
-        const scopeId = genId("delay_");
-        if (this._devtools && isFn(this._devtools.logErrorScope)) {
-            this._devtools.logErrorScope("DELAY_START", { scopeId, durationMs: duration, component: context._componentName });
-        }
-
-        return new Promise((resolve, reject) => {
-            let timerId = null;
-            let unsubscribe = null;
-
-            const cleanup = () => {
-                if (timerId) clearTimeout(timerId);
-                if (unsubscribe) unsubscribe();
-            };
-
-            if (signal) {
-                unsubscribe = signal.onCancel((reason) => {
-                    cleanup();
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("DELAY_CANCELLED", { scopeId, reason });
-                    }
-                    reject(reason || new EUIXStructuredError({ message: "Delay was cancelled", code: "ACTION_CANCELLED" }));
-                });
-            }
-
-            timerId = setTimeout(() => {
-                cleanup();
-                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                    this._devtools.logErrorScope("DELAY_COMPLETED", { scopeId, durationMs: duration });
-                }
-                resolve(true);
-            }, duration);
-        });
-    }
-
-    async _handleDelay(delayNode, context = {}) {
-        const msAttr = delayNode.getAttribute("ms") || delayNode.getAttribute("delay") || delayNode.getAttribute("for") || this.getChild(delayNode, "ms")?.textContent.trim() || this.getChild(delayNode, "delay")?.textContent.trim();
-        const interpolatedMs = this.interpolate(msAttr || "0", context);
-        return this._handleDelayDirect(interpolatedMs, context);
-    }
-
-    async _handleTimeout(timeoutNode, context = {}) {
-        const msAttr = timeoutNode.getAttribute("ms") || timeoutNode.getAttribute("timeout") || timeoutNode.getAttribute("duration") || this.getChild(timeoutNode, "ms")?.textContent.trim() || this.getChild(timeoutNode, "timeout")?.textContent.trim();
-        const interpolatedMs = this.interpolate(msAttr || "0", context);
-        const duration = parseFloat(interpolatedMs);
-
-        if (isNaN(duration) || duration <= 0) {
-            const err = new EUIXStructuredError({
-                message: `<timeout> duration must be a positive number (received: ${msAttr})`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "TIMEOUT",
-                component: context._componentName
-            });
-            this.reportError(err, "Timeout Validation");
-            throw err;
-        }
-
-        const parentSignal = context._cancellationSignal || null;
-        if (parentSignal && parentSignal.isCancelled) {
-            parentSignal.throwIfCancelled();
-        }
-
-        const controller = new EUIXCancellationController(parentSignal);
-        const timeoutContext = {
-            ...context,
-            _cancellationSignal: controller.signal
-        };
-
-        const customMsg = timeoutNode.getAttribute("message") || timeoutNode.getAttribute("msg") || this.getChild(timeoutNode, "message")?.textContent.trim();
-        const interpolatedMsg = customMsg ? this.interpolate(customMsg, context) : `Execution timed out after ${duration}ms`;
-
-        const scopeId = genId("timeout_");
-        const startTime = getNow();
-
-        if (this._devtools && isFn(this._devtools.logErrorScope)) {
-            this._devtools.logErrorScope("TIMEOUT_START", { scopeId, timeoutMs: duration, component: context._componentName });
-        }
-
-        const timeoutError = new EUIXStructuredError({
-            message: interpolatedMsg,
-            code: "TIMEOUT_ERROR",
-            originatingAction: timeoutNode.getAttribute("action") || "TIMEOUT",
-            component: context._componentName
-        });
-        timeoutError.timeoutMs = duration;
-        timeoutError.cancelled = true;
-
-        const childActions = Array.from(timeoutNode.childNodes || timeoutNode.children || []).filter(c => {
-            const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
-            return tag && !["message", "msg", "ms", "duration"].includes(tag);
-        });
-
-        let timerId = null;
-        const timerPromise = new Promise((_, reject) => {
-            timerId = setTimeout(() => {
-                const elapsedMs = getNow() - startTime;
-                timeoutError.elapsedMs = Math.round(elapsedMs);
-                controller.cancel(timeoutError);
-                if (this._devtools && isFn(this._devtools.logErrorScope)) {
-                    this._devtools.logErrorScope("TIMEOUT_EXCEEDED", { scopeId, timeoutMs: duration, elapsedMs: timeoutError.elapsedMs });
-                }
-                reject(timeoutError);
-            }, duration);
-        });
-
-        const actionPromise = (async () => {
-            let result = undefined;
-            if (childActions.length === 0) {
-                const actAttr = timeoutNode.getAttribute("action");
-                if (actAttr && actAttr !== "TIMEOUT") {
-                    result = await this._handleActionInternal(timeoutNode, timeoutContext);
-                }
-            } else {
-                for (const childNode of childActions) {
-                    result = await this._handleActionInternal(childNode, timeoutContext);
-                }
-            }
-            return result;
-        })();
-
-        try {
-            const result = await Promise.race([actionPromise, timerPromise]);
-            clearTimeout(timerId);
-            if (this._devtools && isFn(this._devtools.logErrorScope)) {
-                this._devtools.logErrorScope("TIMEOUT_COMPLETED", {
-                    scopeId,
-                    durationMs: getNow() - startTime
-                });
-            }
-            return result;
-        } catch (err) {
-            clearTimeout(timerId);
-            throw err;
-        }
-    }
-
-    async _handleRetry(retryNode, context = {}) {
-        const attemptsAttr = retryNode.getAttribute("attempts") || retryNode.getAttribute("max_attempts") || retryNode.getAttribute("count") || this.getChild(retryNode, "attempts")?.textContent.trim();
-        const attemptsStr = this.interpolate(attemptsAttr || "3", context);
-        const maxAttempts = parseInt(attemptsStr, 10);
-
-        if (isNaN(maxAttempts) || maxAttempts <= 0) {
-            const err = new EUIXStructuredError({
-                message: `<retry> attempts must be a positive integer (received: ${attemptsAttr})`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "RETRY",
-                component: context._componentName
-            });
-            this.reportError(err, "Retry Validation");
-            throw err;
-        }
-
-        const delayAttr = retryNode.getAttribute("delay") || retryNode.getAttribute("delay_ms") || retryNode.getAttribute("ms") || this.getChild(retryNode, "delay")?.textContent.trim();
-        const baseDelay = parseFloat(this.interpolate(delayAttr || "0", context));
-        if (isNaN(baseDelay) || baseDelay < 0) {
-            const err = new EUIXStructuredError({
-                message: `<retry> delay must be a non-negative number (received: ${delayAttr})`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "RETRY",
-                component: context._componentName
-            });
-            this.reportError(err, "Retry Validation");
-            throw err;
-        }
-
-        const backoff = retryNode.getAttribute("backoff") || retryNode.getAttribute("strategy") || "fixed";
-        const validBackoff = ["fixed", "linear", "exponential", "exp", "jitter"].includes(String(backoff).toLowerCase());
-        if (!validBackoff) {
-            const err = new EUIXStructuredError({
-                message: `<retry> invalid backoff strategy "${backoff}". Supported strategies: fixed, linear, exponential, jitter`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "RETRY",
-                component: context._componentName
-            });
-            this.reportError(err, "Retry Validation");
-            throw err;
-        }
-
-        const maxDelayAttr = retryNode.getAttribute("max_delay") || retryNode.getAttribute("max_delay_ms");
-        const maxDelay = maxDelayAttr ? parseFloat(this.interpolate(maxDelayAttr, context)) : null;
-        if (maxDelay !== null && (isNaN(maxDelay) || maxDelay < baseDelay)) {
-            const err = new EUIXStructuredError({
-                message: `<retry> max_delay must be a number greater than or equal to initial delay (received: ${maxDelayAttr})`,
-                code: "VALIDATION_ERROR",
-                originatingAction: "RETRY",
-                component: context._componentName
-            });
-            this.reportError(err, "Retry Validation");
-            throw err;
-        }
-
-        const onErrorAttr = retryNode.getAttribute("on_error") || retryNode.getAttribute("when") || retryNode.getAttribute("filter");
-        const errorFilters = onErrorAttr ? onErrorAttr.split(",").map(s => s.trim().toUpperCase()).filter(Boolean) : null;
-
-        const childActions = Array.from(retryNode.childNodes || retryNode.children || []).filter(c => {
-            const tag = (c.nodeType === 1 && c.tagName) ? c.tagName.toLowerCase() : (c.tagName ? c.tagName.toLowerCase() : "");
-            return tag && !["delay", "ms", "attempts", "filter"].includes(tag);
-        });
-
-        const scopeId = genId("retry_");
-        if (this._devtools && isFn(this._devtools.logErrorScope)) {
-            this._devtools.logErrorScope("RETRY_START", { scopeId, maxAttempts, baseDelay, backoff, component: context._componentName });
-        }
-
-        let lastError = null;
-
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const parentSignal = context._cancellationSignal;
-            if (parentSignal && parentSignal.isCancelled) {
-                parentSignal.throwIfCancelled();
-            }
-
-            const nextDelay = (attempt < maxAttempts) ? this._calculateBackoffDelay(backoff, baseDelay, attempt, maxDelay) : 0;
-            const retryInfo = {
-                attempt,
-                max_attempts: maxAttempts,
-                maxAttempts,
-                is_last: attempt === maxAttempts,
-                isLast: attempt === maxAttempts,
-                prev_error: lastError,
-                prevError: lastError,
-                next_delay: nextDelay,
-                nextDelay
-            };
-
-            const retryContext = {
-                ...context,
-                retry: retryInfo,
-                $retry: retryInfo
-            };
-
-            try {
-                let result = undefined;
-                for (const childNode of childActions) {
-                    result = await this._handleActionInternal(childNode, retryContext);
-                }
-
-                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                    this._devtools.logErrorScope("RETRY_SUCCESS", { scopeId, attempt, maxAttempts });
-                }
-                return result;
-            } catch (rawErr) {
-                lastError = EUIXStructuredError.from(rawErr, {
-                    originatingAction: retryNode.getAttribute("action") || "RETRY",
-                    component: context._componentName
-                });
-                lastError.attempt = attempt;
-                lastError.maxAttempts = maxAttempts;
-
-                if (attempt === maxAttempts) {
-                    if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                        this._devtools.logErrorScope("RETRY_EXHAUSTED", { scopeId, attempt, error: lastError.toJSON() });
-                    }
-                    throw lastError;
-                }
-
-                if (errorFilters && errorFilters.length > 0) {
-                    const codeMatch = errorFilters.includes(lastError.code.toUpperCase());
-                    const statusMatch = lastError.status && errorFilters.includes(String(lastError.status));
-                    const messageMatch = errorFilters.some(f => lastError.message.toUpperCase().includes(f));
-                    if (!codeMatch && !statusMatch && !messageMatch) {
-                        if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                            this._devtools.logErrorScope("RETRY_FILTER_MISMATCH", { scopeId, attempt, error: lastError.toJSON() });
-                        }
-                        throw lastError;
-                    }
-                }
-
-                if (this._devtools && typeof this._devtools.logErrorScope === "function") {
-                    this._devtools.logErrorScope("RETRY_ATTEMPT_FAILED", { scopeId, attempt, nextDelay, error: lastError.toJSON() });
-                }
-
-                if (nextDelay > 0) {
-                    await this._handleDelayDirect(nextDelay, retryContext);
-                }
-            }
-        }
-
-        throw lastError;
-    }
-
-    _handleActionInternal(actionNode, context = {}) {
-        if (context._cancellationSignal && context._cancellationSignal.isCancelled) {
-            context._cancellationSignal.throwIfCancelled();
-        }
-
-        const prevContext = this._currentActionContext;
-        this._currentActionContext = context;
-
-        try {
-            const res = this._executeActionInternalBody(actionNode, context);
-            if (res && typeof res.then === "function") {
-                return res.finally(() => {
-                    this._currentActionContext = prevContext;
-                });
-            }
-            this._currentActionContext = prevContext;
-            return res;
-        } catch (err) {
-            this._currentActionContext = prevContext;
-            throw err;
-        }
-    }
 
     _setScopedState(rawPath, path, nextValue, context = {}) {
         if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
@@ -6931,10 +5987,9 @@ class EUIXEngineCore {
             ? (actionNode.getAttribute("name") || actionNode.getAttribute("action_name") || actionNode.getAttribute("target") || this.getChild(actionNode, "name")?.textContent.trim() || actionAttr)
             : (actionAttr || tagNameLower);
 
-        if (targetComposedName && this.hasActionDef(targetComposedName)) {
-            const actionDef = this.getActionDef(targetComposedName);
-            const args = this._extractActionArgs(actionNode, context);
-            return EUIXActionComposer.execute(actionDef, args, this, context);
+        if (targetComposedName && isFn(this.hasActionDef) && this.hasActionDef(targetComposedName)) {
+            const args = isFn(this._extractActionArgs) ? this._extractActionArgs(actionNode, context) : {};
+            return this.executeAction(targetComposedName, args, context);
         }
 
         // 3. Custom Action Handlers
@@ -6985,13 +6040,11 @@ class EUIXEngineCore {
 EUIXEngineCore.EUIXExpressionParser = EUIXExpressionParser;
 EUIXEngineCore.EUIXStructuredError = EUIXStructuredError;
 EUIXEngineCore.EUIXXMLParseError = EUIXXMLParseError;
-EUIXEngineCore.EUIXCancellationController = EUIXCancellationController;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
     window.EUIXStructuredError = EUIXStructuredError;
     window.EUIXXMLParseError = EUIXXMLParseError;
-    window.EUIXCancellationController = EUIXCancellationController;
     window.EUIXEngineCore = EUIXEngineCore;
     const scheduleCoreInit = () => {
         queueMicrotask(() => {
@@ -7009,5 +6062,5 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
 }
 
-export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError, EUIXCancellationController };
+export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError };
 export default EUIXEngineCore;

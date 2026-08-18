@@ -4,8 +4,9 @@ import path from 'path';
 import { EUIXEngineCore } from '../../src/core/EUIXEngineCore.js';
 import { EUIXReactivePlugin } from '../../src/plugins/EUIXReactivePlugin.js';
 import { EUIXResiliencePlugin } from '../../src/plugins/EUIXResiliencePlugin.js';
+import { EUIXComposerPlugin } from '../../src/plugins/EUIXComposerPlugin.js';
 
-EUIXEngineCore.use(EUIXReactivePlugin).use(EUIXResiliencePlugin);
+EUIXEngineCore.use(EUIXReactivePlugin).use(EUIXResiliencePlugin).use(EUIXComposerPlugin);
 
 const fixturesDir = path.join(__dirname, '../fixtures/torture_apps');
 
