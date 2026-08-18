@@ -180,12 +180,30 @@ app.get('/api/polygons', async (c) => {
     });
 });
 
+function nanoid(size = 8) {
+    const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    let id = "";
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+        const bytes = new Uint8Array(size);
+        crypto.getRandomValues(bytes);
+        for (let i = 0; i < size; i++) {
+            id += alphabet[bytes[i] % alphabet.length];
+        }
+        return id;
+    }
+    for (let i = 0; i < size; i++) {
+        id += alphabet[(Math.random() * alphabet.length) | 0];
+    }
+    return id;
+}
+
 // 4. Create New Polygon (POST from EUIX map drawing)
 app.post('/api/polygons', async (c) => {
     try {
         const body = await c.req.json();
-        const id = body.id || `poly-${Date.now()}`;
-        const name = body.name || `Polygon ${new Date().toLocaleTimeString()}`;
+        const shortId = nanoid(6);
+        const id = body.id || `poly_${nanoid(10)}`;
+        const name = body.name || `Area-${shortId}`;
         const country = (body.country || 'TR').toUpperCase();
         const city = body.city || 'Custom Zone';
         const area_sq_m = Number(body.area || body.area_sq_m || 0);

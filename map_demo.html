@@ -62,19 +62,13 @@
     }
 
     .topbar {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding: 8px 4px 14px;
-    }
-
-    .topbar-row {
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      width: 100%;
-      flex-wrap: wrap;
+      gap: 16px;
+      padding: 12px 8px 18px;
+      flex-wrap: nowrap;
     }
 
     .brand {
@@ -120,32 +114,27 @@
       white-space: nowrap;
     }
 
+    .country-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 4px 2px;
+      flex-shrink: 1;
+    }
+
+    .country-nav::-webkit-scrollbar {
+      display: none;
+    }
+
     .topbar-actions {
       display: flex;
       align-items: center;
       gap: 8px;
       flex-shrink: 0;
-    }
-
-    .country-nav {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      padding: 4px 2px 8px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(40, 98, 71, 0.25) transparent;
-    }
-
-    .country-nav::-webkit-scrollbar {
-      height: 4px;
-    }
-
-    .country-nav::-webkit-scrollbar-thumb {
-      background: rgba(40, 98, 71, 0.25);
-      border-radius: 4px;
     }
 
     .country-btn,
@@ -568,12 +557,39 @@
       }
 
       .topbar {
-        padding: 6px 2px 10px;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 8px 4px 14px;
+      }
+
+      .brand {
+        order: 1;
+      }
+
+      .topbar-actions {
+        order: 2;
+        margin-left: auto;
       }
 
       .country-nav {
+        order: 3;
+        width: 100%;
         gap: 6px;
-        padding-bottom: 4px;
+        padding: 4px 2px 8px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(40, 98, 71, 0.25) transparent;
+      }
+
+      .country-nav::-webkit-scrollbar {
+        height: 4px;
+        display: block;
+      }
+
+      .country-nav::-webkit-scrollbar-thumb {
+        background: rgba(40, 98, 71, 0.25);
+        border-radius: 4px;
       }
 
       .stats {
@@ -754,8 +770,6 @@
           <state id="selected_id"></state>
           <state id="toast_msg"></state>
           <state id="toast_visible">false</state>
-          <state id="draft_id"></state>
-          <state id="draft_name"></state>
           <state id="draft_area">0</state>
           <state id="draft_display_area"></state>
           <state id="draft_coords">[]</state>
@@ -869,8 +883,6 @@
               const items = Array.isArray($data.selections) ? $data.selections : [];
               const latest = items[items.length - 1];
               if (latest) {
-                $data.draft_id = String(latest.id || ('poly-' + Date.now()));
-                $data.draft_name = String(latest.name || 'New Area');
                 $data.draft_area = Number(latest.areaM2 || latest.area_sq_m || latest.area || 0);
                 $data.draft_display_area = String(latest.displayArea || latest.display_area || '');
                 $data.draft_coords = JSON.stringify(latest.points || (latest.latLngs ? latest.latLngs.map(p => [p.lat, p.lng]) : []));
@@ -879,11 +891,11 @@
             <step action="XHR">
               <method>POST</method>
               <url>/api/polygons</url>
-              <body>{"id":"{data.draft_id}","name":"{data.draft_name}","country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
+              <body>{"country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
             </step>
             <step action="SET_STATE">
               <path>data.status</path>
-              <value>Saved "{data.draft_name}" to database.</value>
+              <value>New area measured and saved to database.</value>
             </step>
             <step action="ShowToast">
               <arg name="msg">New polygon measured &amp; saved to server.</arg>
@@ -915,28 +927,16 @@
 
         <!-- Main Declarative Layout Shell -->
         <main class="app-shell">
-          <!-- Top Navigation Header with Dedicated Mobile Responsive Country Nav -->
+          <!-- Top Navigation Header -->
           <header class="topbar" enter_animation="slide-in-down">
-            <div class="topbar-row">
-              <div class="brand">
-                <button type="button" class="brand-mark" aria-label="Play compass animation">
-                  <on_click action="ANIMATE" target=".brand-mark" name="compassBounce" duration="480" />
-                  ⌖
-                </button>
-                <div>
-                  <p class="eyebrow">Declarative EUIX · Leaflet Plugin</p>
-                  <h1>Field Notebook</h1>
-                </div>
-              </div>
-
-              <div class="topbar-actions">
-                <div class="sync-pill" style="border-color: #286247; background: #eef5f0; color: #173e2b;">
-                  <span class="sync-dot" style="background: #286247;"></span>
-                  <span>Active: <strong>{data.active_country}</strong></span>
-                </div>
-                <a href="./playground.html" class="nav-btn">
-                  ← Playground
-                </a>
+            <div class="brand">
+              <button type="button" class="brand-mark" aria-label="Play compass animation">
+                <on_click action="ANIMATE" target=".brand-mark" name="compassBounce" duration="480" />
+                ⌖
+              </button>
+              <div>
+                <p class="eyebrow">Declarative EUIX · Leaflet Plugin</p>
+                <h1>Field Notebook</h1>
               </div>
             </div>
 
@@ -1008,6 +1008,16 @@
                 🇩🇪 Berlin
               </button>
             </nav>
+
+            <div class="topbar-actions">
+              <div class="sync-pill" style="border-color: #286247; background: #eef5f0; color: #173e2b;">
+                <span class="sync-dot" style="background: #286247;"></span>
+                <span>Active: <strong>{data.active_country}</strong></span>
+              </div>
+              <a href="./playground.html" class="nav-btn">
+                ← Playground
+              </a>
+            </div>
           </header>
 
           <!-- Metric Statistics Cards -->
