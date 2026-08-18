@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#17231b" />
+  <title>EUIX Spatial API & Cloudflare D1 Live Demo</title>
+  <meta name="description" content="Declarative geospatial map powered by EUIX Engine connected to Cloudflare Worker and D1 SQL database." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="" />
+  <style>
+    :root {
+      --ink: #17231b;
+      --muted: #667269;
+      --paper: #f4f1e8;
+      --surface: #fffdf6;
+      --line: #d8d5ca;
+      --green: #286247;
+      --green-dark: #173e2b;
+      --lime: #d9ef62;
+      --orange: #ef7e46;
+      --shadow: 0 18px 50px rgba(29, 43, 34, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html, body, #app { min-height: 100%; margin: 0; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow);
+    }
+
+    .brand-title {
+      font-size: 19px;
+      font-weight: 900;
+      margin: 0;
+      color: var(--green-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .api-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+
+    .top-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .country-btn {
+      height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--muted);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .country-btn:hover {
+      border-color: var(--green);
+      color: var(--green-dark);
+    }
+
+    .country-btn.active {
+      background: var(--green);
+      color: #fff;
+      border-color: var(--green-dark);
+      box-shadow: 0 4px 12px rgba(40, 98, 71, 0.24);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 16px;
+      flex: 1;
+      min-height: 580px;
+    }
+
+    .map-container {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      position: relative;
+      min-height: 580px;
+    }
+
+    .sidebar {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 6px 0;
+      color: var(--green-dark);
+    }
+
+    .action-btn {
+      width: 100%;
+      height: 38px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      background: var(--green);
+      color: #fff;
+      transition: opacity 0.2s;
+    }
+
+    .action-btn:hover { opacity: 0.9; }
+
+    @media (max-width: 960px) {
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <!-- External Leaflet & Leaflet.Draw Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" crossorigin=""></script>
+
+  <!-- Declarative EUIX Application Specification -->
+  <script type="application/euix" target="#app">
+    <uid_spec id="spatial_api_app">
+      <!-- 1. State Model -->
+      <data_model>
+        <state id="active_country">TR</state>
+        <state id="status">Connecting to Cloudflare D1 Spatial API...</state>
+        <state id="selections" type="array">[
+          {"id":"poly-ist-sultanahmet","name":"Sultanahmet Historical Zone","country":"TR","city":"Istanbul","area":28540.5,"displayArea":"2.85 ha","latlngs":[[41.0062,28.9755],[41.0088,28.9772],[41.0076,28.9808],[41.0048,28.9792]],"color":"#286247","fillColor":"#d9ef62","fillOpacity":0.35}
+        ]</state>
+      </data_model>
+
+      <!-- 2. Cloudflare Worker API Configuration -->
+      <api_config base_url="https://euix-spatial-api.webspresso.workers.dev">
+        <api_endpoint 
+          id="fetch_polygons" 
+          url="/api/polygons" 
+          method="GET" 
+          select="data" 
+          bind_target="selections" 
+          auto_fetch="true" 
+        />
+      </api_config>
+
+      <!-- 3. Reusable Action Subroutines -->
+      <actions>
+        <action_def name="SelectCity">
+          <param name="country" required="true" />
+          <param name="city" required="true" />
+          <param name="lat" required="true" />
+          <param name="lng" required="true" />
+          <param name="zoom" default="13" />
+
+          <step action="SET_STATE">
+            <path>data.active_country</path>
+            <value>{args.country}</value>
+          </step>
+          <step action="SET_STATE">
+            <path>data.status</path>
+            <value>Active Zone: {args.city}</value>
+          </step>
+          <step action="FLY_TO" map="spatial_map" lat="{args.lat}" lng="{args.lng}" zoom="{args.zoom}" duration="1.5" />
+        </action_def>
+      </actions>
+
+      <!-- 4. Main UI Layout -->
+      <div class="app-shell">
+        <header class="topbar">
+          <div>
+            <h1 class="brand-title">🌐 EUIX Spatial API + Cloudflare D1</h1>
+            <span style="font-size: 12px; color: var(--muted);">Declarative RESTful GIS polygon synchronization</span>
+          </div>
+
+          <div class="top-controls">
+            <span class="api-badge">⚡ Cloudflare D1: Live</span>
+            <button type="button" class="country-btn {data.active_country == 'TR' ? 'active' : ''}">
+              <on_click action="SelectCity">
+                <arg name="country">TR</arg>
+                <arg name="city">Istanbul, Turkey</arg>
+                <arg name="lat">41.0082</arg>
+                <arg name="lng">28.9784</arg>
+                <arg name="zoom">13</arg>
+              </on_click>
+              🇹🇷 Istanbul
+            </button>
+            <button type="button" class="country-btn {data.active_country == 'UK' ? 'active' : ''}">
+              <on_click action="SelectCity">
+                <arg name="country">UK</arg>
+                <arg name="city">London, UK</arg>
+                <arg name="lat">51.5074</arg>
+                <arg name="lng">-0.1278</arg>
+                <arg name="zoom">13</arg>
+              </on_click>
+              🇬🇧 London
+            </button>
+            <button type="button" class="country-btn {data.active_country == 'USA' ? 'active' : ''}">
+              <on_click action="SelectCity">
+                <arg name="country">USA</arg>
+                <arg name="city">New York, USA</arg>
+                <arg name="lat">40.7128</arg>
+                <arg name="lng">-74.0060</arg>
+                <arg name="zoom">12</arg>
+              </on_click>
+              🇺🇸 New York
+            </button>
+            <button type="button" class="country-btn {data.active_country == 'JP' ? 'active' : ''}">
+              <on_click action="SelectCity">
+                <arg name="country">JP</arg>
+                <arg name="city">Tokyo, Japan</arg>
+                <arg name="lat">35.6762</arg>
+                <arg name="lng">139.6503</arg>
+                <arg name="zoom">12</arg>
+              </on_click>
+              🇯🇵 Tokyo
+            </button>
+            <button type="button" class="country-btn {data.active_country == 'DE' ? 'active' : ''}">
+              <on_click action="SelectCity">
+                <arg name="country">DE</arg>
+                <arg name="city">Berlin, Germany</arg>
+                <arg name="lat">52.5200</arg>
+                <arg name="lng">13.4050</arg>
+                <arg name="zoom">13</arg>
+              </on_click>
+              🇩🇪 Berlin
+            </button>
+          </div>
+        </header>
+
+        <main class="main-grid">
+          <!-- Interactive Map Synchronized with D1 -->
+          <div class="map-container">
+            <leaflet_map 
+              id="spatial_map" 
+              lat="41.0082" 
+              lng="28.9784" 
+              zoom="13" 
+              bind="data.selections" 
+              draw="true" 
+              draw_color="#286247" 
+              draw_fill_color="#d9ef62" 
+              draw_fill_opacity="0.34" 
+              class="w-full h-full"
+            />
+          </div>
+
+          <!-- Sidebar Controls -->
+          <aside class="sidebar">
+            <div class="card">
+              <h3 class="card-title">Live Status</h3>
+              <p style="font-size: 12px; margin: 0; color: var(--muted);">{data.status}</p>
+            </div>
+
+            <div class="card">
+              <h3 class="card-title">D1 SQL Polygons ({data.selections.length})</h3>
+              <div style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                <for_each items="{data.selections}" var="poly">
+                  <div style="padding: 6px 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: 600;">{poly.name}</span>
+                    <span style="font-size: 11px; color: var(--green); font-weight: 700;">{poly.displayArea || poly.display_area}</span>
+                  </div>
+                </for_each>
+              </div>
+            </div>
+
+            <button type="button" class="action-btn">
+              <on_click action="REVALIDATE_API" tag="fetch_polygons" />
+              🔄 Sync from Cloudflare D1
+            </button>
+          </aside>
+        </main>
+      </div>
+    </uid_spec>
+  </script>
+
+  <!-- Load EUIX Engine -->
+  <script src="./dist/EUIXEngine.umd.js?v=0.3.3" onerror="this.onerror=null;this.src='https://unpkg.com/euixjs/dist/EUIXEngine.umd.js'"></script>
+</body>
+
+</html>

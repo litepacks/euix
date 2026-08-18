@@ -1,0 +1,13 @@
+name = "euix-spatial-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "euix-spatial-db"
+database_id = "4e7df71e-2a16-4901-b50d-d73ce4789bae"
+migrations_dir = "migrations"

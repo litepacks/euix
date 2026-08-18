@@ -211,26 +211,85 @@ export const EUIXLeafletPlugin = {
                     }
                 };
 
-                // Load initial saved items from state if present
+                const shapeOptions = {
+                    color: xmlNode.getAttribute("draw_color") || "#286247",
+                    fillColor: xmlNode.getAttribute("draw_fill_color") || "#d9ef62",
+                    fillOpacity: Number(xmlNode.getAttribute("draw_fill_opacity") || 0.34),
+                    weight: 3
+                };
+
+                const syncLayersFromState = (items) => {
+                    if (!Array.isArray(items) || !L) return;
+                    const validIds = new Set(items.map(it => String(it.id)));
+
+                    // 1. Remove deleted layers
+                    for (const [id, layer] of map._layersMap.entries()) {
+                        if (!validIds.has(String(id))) {
+                            if (drawnItems && drawnItems.hasLayer(layer)) {
+                                try { drawnItems.removeLayer(layer); } catch (_) {}
+                            }
+                            map._layersMap.delete(id);
+                        }
+                    }
+
+                    // 2. Add new layers from state
+                    items.forEach((item, idx) => {
+                        const id = item.id || `poly_${idx}`;
+                        if (map._layersMap.has(id)) return;
+
+                        const rawPoints = item.points || item.latlngs || item.latLngs || item.coordinates;
+                        let points = null;
+                        if (typeof rawPoints === "string") {
+                            try { points = JSON.parse(rawPoints); } catch (_) {}
+                        } else if (Array.isArray(rawPoints)) {
+                            if (Array.isArray(rawPoints[0])) {
+                                points = rawPoints;
+                            } else if (rawPoints[0] && typeof rawPoints[0] === "object") {
+                                points = rawPoints.map(p => [p.lat, p.lng]);
+                            }
+                        }
+
+                        if (points && points.length >= 3) {
+                            const poly = L.polygon(points, {
+                                color: item.color || shapeOptions.color,
+                                weight: 3,
+                                fillColor: item.fillColor || item.fill_color || shapeOptions.fillColor,
+                                fillOpacity: Number(item.fillOpacity || item.fill_opacity || shapeOptions.fillOpacity)
+                            });
+                            poly._areaId = id;
+                            poly._customName = item.name;
+                            const areaText = item.displayArea || item.display_area || formatMetricArea(item.areaM2 || item.area_sq_m || item.area || 0);
+                            poly.bindPopup(`<strong>${item.name || 'Area #' + (idx + 1)}</strong><br>${areaText}`);
+                            drawnItems.addLayer(poly);
+                            map._layersMap.set(id, poly);
+                        }
+                    });
+                };
+                map._syncLayersFromState = syncLayersFromState;
+
+                // Load initial saved items from state if present & subscribe to reactive state changes
                 if (bindPath) {
-                    const initialItems = this.getState(bindPath) || [];
-                    if (Array.isArray(initialItems)) {
-                        initialItems.forEach((item, idx) => {
-                            const points = item.points || (Array.isArray(item.latLngs) ? item.latLngs.map(p => [p.lat, p.lng]) : null);
-                            if (points && points.length >= 3) {
-                                const poly = L.polygon(points, {
-                                    color: "#286247",
-                                    weight: 3,
-                                    fillColor: "#d9ef62",
-                                    fillOpacity: 0.34
-                                });
-                                poly._areaId = item.id;
-                                poly._customName = item.name;
-                                poly.bindPopup(`<strong>${item.name || 'Area #' + (idx + 1)}</strong><br>${item.displayArea || formatMetricArea(item.areaM2)}`);
-                                drawnItems.addLayer(poly);
-                                map._layersMap.set(item.id, poly);
+                    const rawKey = this.parseBindPath(bindPath);
+                    syncLayersFromState(this.getState(rawKey) || []);
+                    if (this._bindings) {
+                        if (!this._bindings.has(rawKey)) this._bindings.set(rawKey, []);
+                        this._bindings.get(rawKey).push({
+                            el: container,
+                            kind: "custom",
+                            updateFn: (newItems) => {
+                                syncLayersFromState(newItems);
                             }
                         });
+                        if (rawKey !== bindPath) {
+                            if (!this._bindings.has(bindPath)) this._bindings.set(bindPath, []);
+                            this._bindings.get(bindPath).push({
+                                el: container,
+                                kind: "custom",
+                                updateFn: (newItems) => {
+                                    syncLayersFromState(newItems);
+                                }
+                            });
+                        }
                     }
                 }
 
@@ -251,16 +310,6 @@ export const EUIXLeafletPlugin = {
                         }
 
                         const drawPolygon = drawControlNode ? drawControlNode.getAttribute("polygon") !== "false" : true;
-                        const drawColor = xmlNode.getAttribute("draw_color") || "#286247";
-                        const drawFillColor = xmlNode.getAttribute("draw_fill_color") || "#d9ef62";
-                        const drawFillOpacity = Number(xmlNode.getAttribute("draw_fill_opacity") || 0.34);
-
-                        const shapeOptions = {
-                            color: drawColor,
-                            fillColor: drawFillColor,
-                            fillOpacity: drawFillOpacity,
-                            weight: 3
-                        };
 
                         const drawControl = new L.Control.Draw({
                             position: drawControlNode?.getAttribute("position") || "topleft",
@@ -325,6 +374,10 @@ export const EUIXLeafletPlugin = {
                             }
                         });
 
+                        const onDrawCreatedNodes = this.getChildren(xmlNode, "on_draw_created");
+                        const onDrawEditedNodes = this.getChildren(xmlNode, "on_draw_edited");
+                        const onDrawDeletedNodes = this.getChildren(xmlNode, "on_draw_deleted");
+
                         map.on(L.Draw.Event.CREATED, (event) => {
                             const layer = event.layer;
                             if (layer.setStyle) {
@@ -339,12 +392,26 @@ export const EUIXLeafletPlugin = {
                                 layer.bindPopup(`<strong>${latest.name}</strong><br>${latest.displayArea}`).openPopup();
                             }
 
+                            // Trigger declarative <on_draw_created> actions
+                            const eventContext = { ...context, _evt: event, latest };
+                            onDrawCreatedNodes.forEach(node => {
+                                this.handleAction(node, eventContext);
+                            });
+
                             // Cleanly ensure toolbar is disarmed
                             setTimeout(disableDrawToolbar, 10);
                         });
 
-                        map.on(L.Draw.Event.EDITED, () => syncToState("Area boundaries updated."));
-                        map.on(L.Draw.Event.DELETED, () => syncToState("Area removed from map."));
+                        map.on(L.Draw.Event.EDITED, (event) => {
+                            syncToState("Area boundaries updated.");
+                            const eventContext = { ...context, _evt: event };
+                            onDrawEditedNodes.forEach(node => this.handleAction(node, eventContext));
+                        });
+                        map.on(L.Draw.Event.DELETED, (event) => {
+                            syncToState("Area removed from map.");
+                            const eventContext = { ...context, _evt: event };
+                            onDrawDeletedNodes.forEach(node => this.handleAction(node, eventContext));
+                        });
                     }
                 }
 
@@ -472,20 +539,40 @@ export const EUIXLeafletPlugin = {
                 const rawLayerId = actionNode.getAttribute("layer_id") || actionNode.getAttribute("id") || "";
                 const layerId = this.interpolate(rawLayerId, context);
                 if (layerId) {
-                    const layersMap = map._layersMap;
-                    if (layersMap && layersMap.has(layerId)) {
-                        const layer = layersMap.get(layerId);
-                        if (layer) {
-                            if (layer.getBounds && map.fitBounds) {
-                                const bounds = layer.getBounds();
-                                if (bounds && bounds.isValid && bounds.isValid()) {
-                                    map.fitBounds(bounds.pad ? bounds.pad(0.35) : bounds, { animate: true, duration: 1.2 });
-                                }
-                            } else if (layer.getLatLng && map.flyTo) {
-                                map.flyTo(layer.getLatLng(), Math.max(map.getZoom(), 15), { duration: 1.2 });
+                    let layersMap = map._layersMap;
+                    let layer = layersMap ? layersMap.get(layerId) : null;
+                    
+                    if (!layer && map._syncLayersFromState && map._bindPath) {
+                        const items = this.getState(map._bindPath) || [];
+                        map._syncLayersFromState(items);
+                        layer = map._layersMap ? map._layersMap.get(layerId) : null;
+                    }
+
+                    if (layer) {
+                        if (layer.getBounds && map.fitBounds) {
+                            const bounds = layer.getBounds();
+                            if (bounds && bounds.isValid && bounds.isValid()) {
+                                map.fitBounds(bounds.pad ? bounds.pad(0.35) : bounds, { animate: true, duration: 1.2 });
                             }
-                            if (layer.openPopup) {
-                                setTimeout(() => { try { layer.openPopup(); } catch (_) {} }, 350);
+                        } else if (layer.getLatLng && map.flyTo) {
+                            map.flyTo(layer.getLatLng(), Math.max(map.getZoom(), 15), { duration: 1.2 });
+                        }
+                        if (layer.openPopup) {
+                            setTimeout(() => { try { layer.openPopup(); } catch (_) {} }, 350);
+                        }
+                    } else if (map._bindPath && L) {
+                        // Direct coordinate fallback from state
+                        const items = this.getState(map._bindPath) || [];
+                        const item = Array.isArray(items) ? items.find(it => String(it.id) === String(layerId)) : null;
+                        if (item) {
+                            const raw = item.points || item.latlngs || item.latLngs || item.coordinates;
+                            let pts = null;
+                            if (typeof raw === "string") { try { pts = JSON.parse(raw); } catch (_) {} }
+                            else if (Array.isArray(raw)) pts = raw;
+                            if (pts && pts.length >= 3 && map.fitBounds) {
+                                const latlngs = pts.map(p => Array.isArray(p) ? p : [p.lat, p.lng]);
+                                const bounds = L.latLngBounds(latlngs);
+                                if (bounds.isValid()) map.fitBounds(bounds.pad(0.35), { animate: true, duration: 1.2 });
                             }
                         }
                     }
