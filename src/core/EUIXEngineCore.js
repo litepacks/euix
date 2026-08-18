@@ -414,6 +414,29 @@ const toNum = (val, defaultVal = 0) => {
     return isNaN(n) ? defaultVal : n;
 };
 
+const isCycleError = (err) => {
+    const msg = err && err.message ? err.message : "";
+    const code = err && err.code ? err.code : "";
+    return code === "WATCHER_CYCLE_ERROR" || code === "COMPUTED_CYCLE_ERROR" ||
+        msg.includes("Infinite Loop Guard") || msg.includes("Maximum watcher reaction depth") ||
+        msg.includes("Cascade limit exceeded");
+};
+
+const getForEachItemHash = (item) => {
+    if (isObj(item)) {
+        if (item.__v !== undefined) return item.__v;
+        let h = "";
+        for (const k in item) {
+            if (k !== "_index" && k !== "index") {
+                const v = item[k];
+                h += k + ":" + (isObj(v) ? (v.id ?? v.key ?? Object.keys(v).length) : v) + ";";
+            }
+        }
+        return h;
+    }
+    return String(item);
+};
+
 const ALLOWED_HTML_TAGS = new Set([
     "button", "input", "textarea", "select", "form", "a", "img", "option", "table", "tr", "td", "th",
     "div", "span", "strong", "em", "label", "p", "h1", "h2", "h3", "h4", "h5", "h6",
@@ -902,8 +925,6 @@ class EUIXEngineCore {
         return this.getPerformanceMetrics();
     }
 
-
-
     watch(key, callback) {
         if (!key || !isFn(callback)) return noop;
         const parsedKey = this.parseBindPath(key);
@@ -940,14 +961,6 @@ class EUIXEngineCore {
             this.reportError(err, "Watcher Cycle Guard");
             throw err;
         }
-
-        const isCycleError = (err) => {
-            const msg = err && err.message ? err.message : "";
-            const code = err && err.code ? err.code : "";
-            return code === "WATCHER_CYCLE_ERROR" || code === "COMPUTED_CYCLE_ERROR" ||
-                msg.includes("Infinite Loop Guard") || msg.includes("Maximum watcher reaction depth") ||
-                msg.includes("Cascade limit exceeded");
-        };
 
         try {
             if (this._globalStateWatchers && this._globalStateWatchers.length) {
@@ -1694,6 +1707,21 @@ class EUIXEngineCore {
         return 1 << bitIndex;
     }
 
+    _invalidateComputed(changedKey, allAffected) {
+        if (!this._depGraph || !this._computedRegistry) return;
+        const affected = this._depGraph.getAffectedComputed(changedKey);
+        if (!affected || affected.size === 0) return;
+        affected.forEach(cId => {
+            if (allAffected) allAffected.add(cId);
+            const cNode = this._computedRegistry.get(cId);
+            if (cNode && !cNode.isDirty) {
+                cNode.isDirty = true;
+                this._invalidateComputed(cId, allAffected);
+                this._invalidateComputed("computed." + cId, allAffected);
+            }
+        });
+    }
+
     flushStateUpdates() {
         if (!this._pendingBatchChanges || this._pendingBatchChanges.size === 0) {
             this._dirtyBitmask = 0;
@@ -1705,25 +1733,12 @@ class EUIXEngineCore {
         this._dirtyBitmask = 0;
 
         const allAffected = new Set();
-        const invalidateComputed = (changedKey) => {
-            const affected = this._depGraph ? this._depGraph.getAffectedComputed(changedKey) : new Set();
-            affected.forEach(cId => {
-                allAffected.add(cId);
-                const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
-                if (cNode && !cNode.isDirty) {
-                    cNode.isDirty = true;
-                    invalidateComputed(cId);
-                    invalidateComputed("computed." + cId);
-                }
-            });
-        };
-
         const executedFns = new Set();
         const syncedPaths = new Set();
 
         for (let i = 0; i < pending.length; i++) {
             const { key, value, sourceEl } = pending[i];
-            invalidateComputed(key);
+            this._invalidateComputed(key, allAffected);
             this.syncBindings(key, value, sourceEl, executedFns);
             syncedPaths.add(key);
             if (key.includes(".")) {
@@ -1862,19 +1877,7 @@ class EUIXEngineCore {
             }
 
             const allAffected = new Set();
-            const invalidateComputed = (changedKey) => {
-                const affected = this._depGraph ? this._depGraph.getAffectedComputed(changedKey) : new Set();
-                affected.forEach(cId => {
-                    allAffected.add(cId);
-                    const cNode = this._computedRegistry ? this._computedRegistry.get(cId) : null;
-                    if (cNode && !cNode.isDirty) {
-                        cNode.isDirty = true;
-                        invalidateComputed(cId);
-                        invalidateComputed("computed." + cId);
-                    }
-                });
-            };
-            invalidateComputed(key);
+            this._invalidateComputed(key, allAffected);
 
             this.syncBindings(key, value, sourceEl);
             if (key.includes(".")) {
@@ -3833,29 +3836,39 @@ class EUIXEngineCore {
         }
     }
 
+    _isComplexForEachChild(node) {
+        if (!node || node.nodeType !== 1) return false;
+        const tag = (node.tagName || "").toLowerCase();
+        if (
+            (tag === "component" && (node.getAttribute("src") || (node.getAttribute("name") && !["text", "title", "checkbox", "button", "badge", "input"].includes(node.getAttribute("type"))))) ||
+            tag === "for_each" || tag === "slot" ||
+            tag === "children" || tag === "if" || tag === "else" || tag === "collapse" || tag === "dialog" ||
+            (this._componentDefs && this._componentDefs[tag]) ||
+            (this._componentRegistry && this._componentRegistry[tag]) ||
+            (EUIXEngineCore._globalComponentSpecs && EUIXEngineCore._globalComponentSpecs.has(tag))
+        ) {
+            return true;
+        }
+        const children = node.children || [];
+        for (let i = 0; i < children.length; i++) {
+            if (this._isComplexForEachChild(children[i])) return true;
+        }
+        return false;
+    }
+
     _getCompiledForEachTemplate(xmlNode, varName, baseChildContext, fallbackContext) {
         if (xmlNode._templatePrototype) {
             return xmlNode._templatePrototype;
         }
 
         const templateChildren = Array.from(xmlNode.children || []);
-        const isComplexOrInput = (node) => {
-            if (!node || node.nodeType !== 1) return false;
-            const tag = (node.tagName || "").toLowerCase();
-            if (
-                (tag === "component" && (node.getAttribute("src") || (node.getAttribute("name") && !["text", "title", "checkbox", "button", "badge", "input"].includes(node.getAttribute("type"))))) ||
-                tag === "for_each" || tag === "slot" ||
-                tag === "children" || tag === "if" || tag === "else" || tag === "collapse" || tag === "dialog" ||
-                (this._componentDefs && this._componentDefs[tag]) ||
-                (this._componentRegistry && this._componentRegistry[tag]) ||
-                (EUIXEngineCore._globalComponentSpecs && EUIXEngineCore._globalComponentSpecs.has(tag))
-            ) {
-                return true;
+        let hasComplexChild = false;
+        for (let i = 0; i < templateChildren.length; i++) {
+            if (this._isComplexForEachChild(templateChildren[i])) {
+                hasComplexChild = true;
+                break;
             }
-            return Array.from(node.children || []).some(isComplexOrInput);
-        };
-
-        const hasComplexChild = templateChildren.some(isComplexOrInput);
+        }
         if (hasComplexChild || templateChildren.length === 0) {
             xmlNode._templatePrototype = { canClone: false };
             return xmlNode._templatePrototype;
@@ -4207,30 +4220,7 @@ class EUIXEngineCore {
             listContainer.className = "euix-list-container";
             listContainer.style.display = "contents";
 
-            const setupDelegation = (containerTarget) => {
-                if (!containerTarget || containerTarget._delegatedBound) return;
-                containerTarget._delegatedBound = true;
-                const events = ["click", "change", "input", "submit", "keyup", "keydown"];
-                for (let eIdx = 0; eIdx < events.length; eIdx++) {
-                    const evtType = events[eIdx];
-                    containerTarget.addEventListener(evtType, (e) => {
-                        let target = e.target;
-                        while (target && target !== containerTarget) {
-                            const handlerNodes = target.__euixEvents ? target.__euixEvents[evtType] : (target._euixEventMap ? target._euixEventMap.get(evtType) : null);
-                            if (handlerNodes) {
-                                if (e._euixHandled) return;
-                                e._euixHandled = true;
-                                const targetContext = target._euixContext || {};
-                                this.executeEventHandlers(handlerNodes, evtType, e, target, targetContext);
-                                break;
-                            }
-                            target = target.parentNode;
-                        }
-                    });
-                }
-            };
-
-            setupDelegation(listContainer);
+            this._setupContainerEventDelegation(listContainer);
 
             const isVirtual = xmlNode.getAttribute("virtual") === "true" || xmlNode.getAttribute("virtual_scroll") === "true";
             const itemHeight = parseInt(xmlNode.getAttribute("item_height") || xmlNode.getAttribute("row_height") || "40", 10);
@@ -4283,20 +4273,7 @@ class EUIXEngineCore {
                 return `__idx_${idx}`;
             };
 
-            const getItemHash = (item) => {
-                if (isObj(item)) {
-                    if (item.__v !== undefined) return item.__v;
-                    let h = "";
-                    for (const k in item) {
-                        if (k !== "_index" && k !== "index") {
-                            const v = item[k];
-                            h += k + ":" + (isObj(v) ? (v.id ?? v.key ?? Object.keys(v).length) : v) + ";";
-                        }
-                    }
-                    return h;
-                }
-                return String(item);
-            };
+            const getItemHash = getForEachItemHash;
 
             const renderItems = () => {
                 let list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
@@ -5046,6 +5023,29 @@ class EUIXEngineCore {
         }
     }
 
+    _setupContainerEventDelegation(containerTarget) {
+        if (!containerTarget || containerTarget._delegatedBound) return;
+        containerTarget._delegatedBound = true;
+        const events = ["click", "change", "input", "submit", "keyup", "keydown"];
+        for (let eIdx = 0; eIdx < events.length; eIdx++) {
+            const evtType = events[eIdx];
+            containerTarget.addEventListener(evtType, (e) => {
+                let target = e.target;
+                while (target && target !== containerTarget) {
+                    const handlerNodes = target.__euixEvents ? target.__euixEvents[evtType] : (target._euixEventMap ? target._euixEventMap.get(evtType) : null);
+                    if (handlerNodes) {
+                        if (e._euixHandled) return;
+                        e._euixHandled = true;
+                        const targetContext = target._euixContext || {};
+                        this.executeEventHandlers(handlerNodes, evtType, e, target, targetContext);
+                        break;
+                    }
+                    target = target.parentNode;
+                }
+            });
+        }
+    }
+
     bindEvents(xmlNode, el, context = {}) {
         if (!el || xmlNode.nodeType !== Node.ELEMENT_NODE) return;
         if (xmlNode._hasEventTags === false) return;
@@ -5310,31 +5310,31 @@ class EUIXEngineCore {
         return window.confirm(this.interpolate(confirmAttr, context) || "Are you sure?");
     }
 
+    _handleActionError(err, actionNode, context = {}) {
+        const actName = actionNode && actionNode.getAttribute ? (actionNode.getAttribute("action") || actionNode.tagName) : "unknown";
+        const structuredErr = EUIXStructuredError.from(err, {
+            originatingAction: actName,
+            component: context._componentName
+        });
+        this.reportError(structuredErr, `Action Execution Fallback (${actName})`);
+        const errMsg = (err && err.message) ? err.message : "";
+        const isLoopGuard = errMsg.includes("Infinite Loop Guard") || errMsg.includes("Cascade limit exceeded") || errMsg.includes("Maximum watcher reaction depth");
+        if (structuredErr.code === "WATCHER_CYCLE_ERROR" || structuredErr.code === "COMPUTED_CYCLE_ERROR" || isLoopGuard || (context && (context._inTryScope || context.rethrow))) {
+            throw structuredErr;
+        }
+        return undefined;
+    }
+
     handleAction(actionNode, context = {}) {
         if (!actionNode) return;
-        const onError = (err) => {
-            const actName = actionNode.getAttribute ? (actionNode.getAttribute("action") || actionNode.tagName) : "unknown";
-            const structuredErr = EUIXStructuredError.from(err, {
-                originatingAction: actName,
-                component: context._componentName
-            });
-            this.reportError(structuredErr, `Action Execution Fallback (${actName})`);
-            const errMsg = (err && err.message) ? err.message : "";
-            const isLoopGuard = errMsg.includes("Infinite Loop Guard") || errMsg.includes("Cascade limit exceeded") || errMsg.includes("Maximum watcher reaction depth");
-            if (structuredErr.code === "WATCHER_CYCLE_ERROR" || structuredErr.code === "COMPUTED_CYCLE_ERROR" || isLoopGuard || (context && (context._inTryScope || context.rethrow))) {
-                throw structuredErr;
-            }
-            return undefined;
-        };
-
         try {
             const res = this._handleActionInternal(actionNode, context);
             if (res && isFn(res.then)) {
-                return res.catch(onError);
+                return res.catch(err => this._handleActionError(err, actionNode, context));
             }
             return res;
         } catch (err) {
-            return onError(err);
+            return this._handleActionError(err, actionNode, context);
         }
     }
 
