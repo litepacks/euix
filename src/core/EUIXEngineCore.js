@@ -4030,6 +4030,57 @@ class EUIXEngineCore {
         return xmlNode._templatePrototype;
     }
 
+    _applyForEachSlots(nodes, compiled, item, childContext, varName) {
+        if (!nodes || !compiled || !compiled.dynamicSlots) return;
+        const slots = compiled.dynamicSlots;
+        const slotLen = slots.length;
+        for (let sIdx = 0; sIdx < slotLen; sIdx++) {
+            const slot = slots[sIdx];
+            const rootNode = nodes[slot.childIndex];
+            if (!rootNode) continue;
+            const targetNode = slot.resolver ? slot.resolver(rootNode) : (slot.path.length === 0 ? rootNode : compiled.getNodeAtPath(rootNode, slot.path));
+            if (!targetNode) continue;
+
+            if (slot.type === "text") {
+                const txt = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
+                if (targetNode.nodeType === 3) {
+                    if (targetNode.data !== txt) targetNode.data = txt;
+                } else {
+                    if (targetNode.textContent !== txt) targetNode.textContent = txt;
+                }
+            } else if (slot.type === "attr") {
+                const val = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
+                if (slot.name === "class") {
+                    if (targetNode.className !== val) targetNode.className = val;
+                } else {
+                    if (targetNode.getAttribute(slot.name) !== val) targetNode.setAttribute(slot.name, val);
+                }
+            } else if (slot.type === "bind") {
+                const bp = slot.bindPath;
+                let currentVal;
+                if (bp.startsWith(varName + ".")) {
+                    const prop = bp.slice(varName.length + 1);
+                    currentVal = item ? item[prop] : undefined;
+                } else {
+                    currentVal = this.resolveValueFromPath(bp, childContext);
+                }
+                if (targetNode.type === "checkbox") {
+                    const isTrue = this.isTruthy(currentVal);
+                    if (targetNode.checked !== isTrue) targetNode.checked = isTrue;
+                } else {
+                    const sVal = currentVal ?? "";
+                    if (targetNode.value !== sVal) targetNode.value = sVal;
+                }
+                targetNode._euixBindPath = bp;
+                targetNode._euixContext = childContext;
+            } else if (slot.type === "event") {
+                targetNode._euixEventMap = slot.eventMap;
+                targetNode.__euixEvents = slot.eventsObj;
+                targetNode._euixContext = childContext;
+            }
+        }
+    }
+
     createHTMLElement(xmlNode, context = {}) {
         if (!xmlNode) return null;
         try {
@@ -4307,52 +4358,7 @@ class EUIXEngineCore {
                         for (let pIdx = 0; pIdx < protoLen; pIdx++) {
                             nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
                         }
-
-                        const slots = compiled.dynamicSlots;
-                        const slotLen = slots.length;
-                        for (let sIdx = 0; sIdx < slotLen; sIdx++) {
-                            const slot = slots[sIdx];
-                            const rootNode = nodes[slot.childIndex];
-                            if (!rootNode) continue;
-                            const targetNode = slot.resolver ? slot.resolver(rootNode) : (slot.path.length === 0 ? rootNode : compiled.getNodeAtPath(rootNode, slot.path));
-                            if (!targetNode) continue;
-
-                            if (slot.type === "text") {
-                                const txt = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
-                                if (targetNode.nodeType === 3) {
-                                    targetNode.data = txt;
-                                } else {
-                                    targetNode.textContent = txt;
-                                }
-                            } else if (slot.type === "attr") {
-                                const val = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
-                                if (slot.name === "class") {
-                                    targetNode.className = val;
-                                } else {
-                                    targetNode.setAttribute(slot.name, val);
-                                }
-                            } else if (slot.type === "bind") {
-                                const bp = slot.bindPath;
-                                let currentVal;
-                                if (bp.startsWith(varName + ".")) {
-                                    const prop = bp.slice(varName.length + 1);
-                                    currentVal = item ? item[prop] : undefined;
-                                } else {
-                                    currentVal = this.resolveValueFromPath(bp, childContext);
-                                }
-                                if (targetNode.type === "checkbox") {
-                                    targetNode.checked = this.isTruthy(currentVal);
-                                } else {
-                                    targetNode.value = currentVal ?? "";
-                                }
-                                targetNode._euixBindPath = bp;
-                                targetNode._euixContext = childContext;
-                            } else if (slot.type === "event") {
-                                targetNode._euixEventMap = slot.eventMap;
-                                targetNode.__euixEvents = slot.eventsObj;
-                                targetNode._euixContext = childContext;
-                            }
-                        }
+                        this._applyForEachSlots(nodes, compiled, item, childContext, varName);
                         return nodes;
                     }
 
@@ -4406,17 +4412,26 @@ class EUIXEngineCore {
                             const existing = oldKeyedMap.get(key);
                             let nodes;
 
-                            if (existing && existing.hash === hash && existing.nodes.length > 0) {
-                                nodes = existing.nodes;
-                            } else {
-                                nodes = createItemNodes(item, i);
-                                if (existing && existing.nodes) {
+                            if (existing && existing.nodes && existing.nodes.length > 0) {
+                                if (existing.hash === hash) {
+                                    nodes = existing.nodes;
+                                } else if (compiled && compiled.canClone) {
+                                    const childContext = Object.create(baseChildContext);
+                                    childContext[varName] = item;
+                                    childContext._index = i;
+                                    childContext.index = i;
+                                    this._applyForEachSlots(existing.nodes, compiled, item, childContext, varName);
+                                    nodes = existing.nodes;
+                                } else {
+                                    nodes = createItemNodes(item, i);
                                     existing.nodes.forEach(oldNode => {
                                         if (oldNode && oldNode.parentNode === contentWrapper) {
                                             contentWrapper.removeChild(oldNode);
                                         }
                                     });
                                 }
+                            } else {
+                                nodes = createItemNodes(item, i);
                             }
                             newKeyedMap.set(key, { nodes, hash, index: i });
                             itemNodesSequence.push(...nodes);
@@ -4466,7 +4481,7 @@ class EUIXEngineCore {
 
                 listContainer._keyedNodesMap = listContainer._keyedNodesMap || new Map();
                 const oldKeyedMap = listContainer._keyedNodesMap;
-                const oldKeys = listContainer._oldKeysSequence || EMPTY_ARR;
+                const oldKeys = listContainer._oldKeysSequence || [];
                 const newKeyedMap = new Map();
                 const newKeys = [];
 
@@ -4485,9 +4500,19 @@ class EUIXEngineCore {
                     const existing = oldKeyedMap.get(key);
                     let nodes;
 
-                    if (existing) {
+                    if (existing && existing.nodes && existing.nodes.length > 0) {
                         const hash = getItemHash(item);
-                        if (existing.hash === hash && existing.nodes.length > 0) {
+                        if (existing.hash === hash) {
+                            nodes = existing.nodes;
+                            newKeyedMap.set(key, { nodes, hash, index: idx });
+                            continue;
+                        }
+                        if (compiled && compiled.canClone) {
+                            const childContext = Object.create(baseChildContext);
+                            childContext[varName] = item;
+                            childContext._index = idx;
+                            childContext.index = idx;
+                            this._applyForEachSlots(existing.nodes, compiled, item, childContext, varName);
                             nodes = existing.nodes;
                             newKeyedMap.set(key, { nodes, hash, index: idx });
                             continue;
