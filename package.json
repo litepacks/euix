@@ -5,52 +5,68 @@
   "type": "module",
   "main": "dist/EUIXEngine.umd.js",
   "module": "dist/EUIXEngine.es.js",
+  "types": "./types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./types/index.d.ts",
       "import": "./dist/EUIXEngine.es.js",
       "require": "./dist/EUIXEngine.umd.js"
     },
     "./core": {
+      "types": "./types/core.d.ts",
       "import": "./dist/EUIXEngineCore.es.js",
       "require": "./dist/EUIXEngineCore.umd.js"
     },
     "./api": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXApiPlugin.es.js"
     },
     "./composer": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXComposerPlugin.es.js"
     },
     "./dnd": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXDragDropPlugin.es.js"
     },
     "./storage": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXStoragePlugin.es.js"
     },
     "./collapse": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXCollapsePlugin.es.js"
     },
     "./dialog": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXDialogPlugin.es.js"
     },
     "./resilience": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXResiliencePlugin.es.js"
     },
     "./reactive": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXReactivePlugin.es.js"
     },
     "./animation": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXAnimationPlugin.es.js"
     },
     "./head": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXHeadPlugin.es.js"
     },
     "./helmet": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXHeadPlugin.es.js"
     },
     "./leaflet": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXLeafletPlugin.es.js"
     },
     "./devtools": {
+      "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"
     }
@@ -58,6 +74,7 @@
   "files": [
     "dist",
     "!dist/**/*.map",
+    "types",
     "README.md",
     "llms.txt"
   ],
