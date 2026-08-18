@@ -773,6 +773,12 @@
           <state id="draft_area">0</state>
           <state id="draft_display_area"></state>
           <state id="draft_coords">[]</state>
+          <state id="edit_id"></state>
+          <state id="edit_name"></state>
+          <state id="edit_area">0</state>
+          <state id="edit_display_area"></state>
+          <state id="edit_coords">[]</state>
+          <state id="delete_id"></state>
 
           <!-- 2. Pure EUIX Computed Metrics -->
           <computed id="totalArea" deps="selections"><![CDATA[
@@ -809,15 +815,49 @@
           ]]></computed>
         </data_model>
 
-        <!-- Declarative Spatial API Configuration -->
+        <!-- Declarative Spatial API Configuration with Pre-Registered Endpoints -->
         <api_config base_url="https://euix-spatial-api.webspresso.workers.dev">
+          <!-- 1. GET Polygons List -->
           <api_endpoint 
             id="fetch_polygons" 
+            tag="fetch_polygons"
             url="/api/polygons" 
             method="GET" 
             select="data" 
             bind_target="selections" 
             auto_fetch="true" 
+            revalidate_focus="true"
+          />
+
+          <!-- 2. POST Create Polygon -->
+          <api_endpoint 
+            id="create_polygon" 
+            tag="create_polygon"
+            url="/api/polygons" 
+            method="POST" 
+            auto_fetch="false" 
+          >
+            <body>{"country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
+          </api_endpoint>
+
+          <!-- 3. PUT Update Polygon -->
+          <api_endpoint 
+            id="update_polygon" 
+            tag="update_polygon"
+            url="/api/polygons/{data.edit_id}" 
+            method="PUT" 
+            auto_fetch="false" 
+          >
+            <body>{"name":"{data.edit_name}","area":{data.edit_area},"displayArea":"{data.edit_display_area}","latlngs":{data.edit_coords}}</body>
+          </api_endpoint>
+
+          <!-- 4. DELETE Remove Polygon -->
+          <api_endpoint 
+            id="delete_polygon" 
+            tag="delete_polygon"
+            url="/api/polygons/{data.delete_id}" 
+            method="DELETE" 
+            auto_fetch="false" 
           />
         </api_config>
 
@@ -873,7 +913,7 @@
             </step>
           </action_def>
 
-          <!-- Composed Workflow: Save Drawn Polygon to API via EUIX XHR Action & Show Toast -->
+          <!-- Composed Workflow: Save Drawn Polygon to API via Registered create_polygon Endpoint -->
           <action_def name="PersistDrawnPolygon">
             <step action="SET_STATE">
               <path>data.status</path>
@@ -888,11 +928,7 @@
                 $data.draft_coords = JSON.stringify(latest.points || (latest.latLngs ? latest.latLngs.map(p => [p.lat, p.lng]) : []));
               }
             ]]></step>
-            <step action="XHR">
-              <method>POST</method>
-              <url>/api/polygons</url>
-              <body>{"country":"{data.active_country}","area":{data.draft_area},"displayArea":"{data.draft_display_area}","latlngs":{data.draft_coords}}</body>
-            </step>
+            <step action="REVALIDATE_API" tag="create_polygon" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>New area measured and saved to database.</value>
@@ -902,21 +938,50 @@
             </step>
           </action_def>
 
-          <!-- Composed Workflow: Delete Polygon from Map & API via EUIX XHR Action with Toast -->
+          <!-- Composed Workflow: Delete Polygon from Map & API via Registered delete_polygon Endpoint -->
           <action_def name="DeletePolygon">
             <param name="id" required="true" />
             <param name="name" default="Area" />
             <step action="REMOVE_LAYER" map="main_map" id="{args.id}" />
-            <step action="XHR">
-              <method>DELETE</method>
-              <url>/api/polygons/{args.id}</url>
+            <step action="SET_STATE">
+              <path>data.delete_id</path>
+              <value>{args.id}</value>
             </step>
+            <step action="REVALIDATE_API" tag="delete_polygon" />
             <step action="SET_STATE">
               <path>data.status</path>
               <value>Removed {args.name}.</value>
             </step>
             <step action="ShowToast">
               <arg name="msg">Removed "{args.name}" successfully.</arg>
+            </step>
+          </action_def>
+
+          <!-- Composed Workflow: Update Edited Polygons to API via Registered update_polygon Endpoint -->
+          <action_def name="PersistEditedPolygons">
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Updating polygon boundaries on server...</value>
+            </step>
+            <step action="RUN_SCRIPT"><![CDATA[
+              const items = Array.isArray($data.selections) ? $data.selections : [];
+              for (const item of items) {
+                if (item.id && !item.id.startsWith('layer_')) {
+                  $data.edit_id = item.id;
+                  $data.edit_name = item.name || '';
+                  $data.edit_area = Number(item.areaM2 || item.area_sq_m || item.area || 0);
+                  $data.edit_display_area = String(item.displayArea || item.display_area || '');
+                  $data.edit_coords = JSON.stringify(item.points || (item.latLngs ? item.latLngs.map(p => [p.lat, p.lng]) : []));
+                  $engine.revalidateApi('update_polygon');
+                }
+              }
+            ]]></step>
+            <step action="SET_STATE">
+              <path>data.status</path>
+              <value>Polygon boundaries updated and saved.</value>
+            </step>
+            <step action="ShowToast">
+              <arg name="msg">Polygon boundaries updated &amp; saved to server.</arg>
             </step>
           </action_def>
         </actions>
@@ -1065,10 +1130,7 @@
                 <!-- Pure EUIX Declarative Event Handling for Draw Lifecycle -->
                 <on_draw_created action="PersistDrawnPolygon" />
 
-                <on_draw_edited action="SET_STATE">
-                  <path>data.status</path>
-                  <value>Polygon boundaries updated.</value>
-                </on_draw_edited>
+                <on_draw_edited action="PersistEditedPolygons" />
 
                 <on_draw_deleted action="SET_STATE">
                   <path>data.status</path>
