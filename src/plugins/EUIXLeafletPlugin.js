@@ -352,11 +352,26 @@ export const EUIXLeafletPlugin = {
 
                         // Global ESC listener to cancel active drawing anytime
                         if (typeof window !== "undefined") {
-                            window.addEventListener("keydown", (e) => {
+                            const escKeyHandler = (e) => {
                                 if (e.key === "Escape" || e.keyCode === 27) {
                                     disableDrawToolbar();
                                 }
-                            });
+                            };
+                            window.addEventListener("keydown", escKeyHandler);
+                            if (typeof this.onUnmount === "function") {
+                                this.onUnmount(() => {
+                                    if (typeof window !== "undefined") {
+                                        window.removeEventListener("keydown", escKeyHandler);
+                                    }
+                                });
+                            }
+                            if (map && typeof map.on === "function") {
+                                map.on("unload", () => {
+                                    if (typeof window !== "undefined") {
+                                        window.removeEventListener("keydown", escKeyHandler);
+                                    }
+                                });
+                            }
                         }
 
                         // Allow double clicking to finish polygon immediately

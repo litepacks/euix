@@ -17,9 +17,11 @@ export const EUIXStoragePlugin = {
         const proto = engineClass.prototype;
 
         proto._setupStorageListener = function() {
-            if (typeof window === "undefined" || !window.addEventListener) return;
-            window.addEventListener("storage", (event) => {
-                if (!event.key || !this._rawState) return;
+            if (typeof window === "undefined" || !window.addEventListener || this._storageListenerBound) return;
+            this._storageListenerBound = true;
+
+            this._storageHandler = (event) => {
+                if (!event.key || !this._rawState || !this._persistenceConfig) return;
                 for (const [stateKey, config] of this._persistenceConfig.entries()) {
                     if (config.storage === "local" && config.storageKey === event.key) {
                         try {
@@ -30,7 +32,18 @@ export const EUIXStoragePlugin = {
                         }
                     }
                 }
-            });
+            };
+
+            window.addEventListener("storage", this._storageHandler);
+
+            if (typeof this.onUnmount === "function") {
+                this.onUnmount(() => {
+                    if (typeof window !== "undefined" && this._storageHandler) {
+                        window.removeEventListener("storage", this._storageHandler);
+                    }
+                    this._storageListenerBound = false;
+                });
+            }
         };
 
         proto.persist = function(key, { storage = "local", key: customKey = null } = {}) {

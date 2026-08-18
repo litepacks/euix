@@ -714,6 +714,7 @@ class EUIXEngineCore {
         this._watchRegistry = null;
         this._isEvaluatingComputed = false;
         this._reactiveDepth = 0;
+        this._destroyHooks = [];
         if (isFn(this._setupStorageListener)) this._setupStorageListener();
         if (isFn(this._initRevalidationListeners)) this._initRevalidationListeners();
     }
@@ -773,12 +774,26 @@ class EUIXEngineCore {
         return this;
     }
 
+    onUnmount(callback) {
+        if (isFn(callback)) {
+            if (!this._destroyHooks) this._destroyHooks = [];
+            this._destroyHooks.push(callback);
+        }
+        return this;
+    }
+
     unmount() {
         return this.destroy();
     }
 
     destroy() {
         this._isMounted = false;
+        if (this._destroyHooks && this._destroyHooks.length > 0) {
+            this._destroyHooks.forEach(hook => {
+                try { hook(); } catch (_) {}
+            });
+            this._destroyHooks = [];
+        }
         if (this._activeIntervals && this._activeIntervals.length > 0) {
             this._activeIntervals.forEach(id => clearInterval(id));
             this._activeIntervals = [];
@@ -888,17 +903,6 @@ class EUIXEngineCore {
     }
 
 
-    _setupStorageListener() {}
-
-    persist(key, options) {
-        return this;
-    }
-
-    clearPersistedState(key) {
-        return this;
-    }
-
-    _savePersistedState(key, value) {}
 
     watch(key, callback) {
         if (!key || !isFn(callback)) return noop;
@@ -1837,7 +1841,9 @@ class EUIXEngineCore {
                 }
             }
 
-            this._savePersistedState(key, value);
+            if (isFn(this._savePersistedState)) {
+                this._savePersistedState(key, value);
+            }
             if (this._devtools && this._devtools.enabled && !silent) {
                 this._devtools.logAction("setState", { path: key, value });
             }
@@ -2772,7 +2778,7 @@ class EUIXEngineCore {
                         rawState[key] = storedVal;
                     }
                 } else if (rawState[key] !== undefined) {
-                    this._savePersistedState(key, rawState[key]);
+                    if (isFn(this._savePersistedState)) this._savePersistedState(key, rawState[key]);
                 }
             }
         }
@@ -2813,7 +2819,7 @@ class EUIXEngineCore {
             },
             set(target, key, value) {
                 target[key] = value;
-                self._savePersistedState(key, value);
+                if (isFn(self._savePersistedState)) self._savePersistedState(key, value);
                 if (self._batching) {
                     self.syncBindings(key, value);
                     return true;
@@ -3420,12 +3426,16 @@ class EUIXEngineCore {
         return containerNode;
     }
 
-    resolveBindPath(xmlNode) {
-        const bindAttr = xmlNode.getAttribute("bind");
+     resolveBindPath(xmlNode) {
+        if (typeof xmlNode === "string") {
+            return this.parseBindPath(xmlNode);
+        }
+        if (!xmlNode) return "";
+        const bindAttr = typeof xmlNode.getAttribute === "function" ? xmlNode.getAttribute("bind") : null;
         if (bindAttr) return this.parseBindPath(bindAttr);
 
         const onChange = this.getChild(xmlNode, "on_change");
-        if (onChange && onChange.getAttribute("action") === "SET_STATE") {
+        if (onChange && typeof onChange.getAttribute === "function" && onChange.getAttribute("action") === "SET_STATE") {
             const pathNode = this.getChild(onChange, "path");
             if (pathNode) return this.parseBindPath(pathNode.textContent);
         }
@@ -3437,7 +3447,7 @@ class EUIXEngineCore {
         }
 
         if (xmlNode.textContent) {
-            const match = String(xmlNode.textContent || "").trim().match(/\{data\.(\w+)\}/);
+            const match = String(xmlNode.textContent || "").trim().match(/^\{data\.(\w+)\}$/);
             if (match) return match[1];
         }
 
@@ -3833,12 +3843,12 @@ class EUIXEngineCore {
             if (!node || node.nodeType !== 1) return false;
             const tag = (node.tagName || "").toLowerCase();
             if (
-                tag === "input" || tag === "select" || tag === "textarea" ||
-                tag === "component" || tag === "for_each" || tag === "slot" ||
-                tag === "children" || tag.startsWith("on_") || tag.includes("-") ||
-                tag === "if" || tag === "else" || tag === "collapse" || tag === "dialog" ||
+                (tag === "component" && (node.getAttribute("src") || (node.getAttribute("name") && !["text", "title", "checkbox", "button", "badge", "input"].includes(node.getAttribute("type"))))) ||
+                tag === "for_each" || tag === "slot" ||
+                tag === "children" || tag === "if" || tag === "else" || tag === "collapse" || tag === "dialog" ||
                 (this._componentDefs && this._componentDefs[tag]) ||
-                (this._componentRegistry && this._componentRegistry[tag])
+                (this._componentRegistry && this._componentRegistry[tag]) ||
+                (EUIXEngineCore._globalComponentSpecs && EUIXEngineCore._globalComponentSpecs.has(tag))
             ) {
                 return true;
             }
@@ -3872,12 +3882,16 @@ class EUIXEngineCore {
                     const txt = xNode.textContent;
                     if (txt && txt.includes("{")) {
                         let getter = null;
-                        const match = txt.trim().match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
+                        const trimmed = txt.trim();
+                        const match = trimmed.match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
                         if (match) {
                             const [_, scope, prop] = match;
                             if (scope === varName) {
                                 getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                             }
+                        }
+                        if (!getter) {
+                            getter = (item, ctx) => this.interpolate(txt, ctx);
                         }
                         const pLen = path.length;
                         const p0 = path[0];
@@ -3899,12 +3913,16 @@ class EUIXEngineCore {
                             const attrVal = attr.value;
                             if (attrVal && attrVal.includes("{") && !attrName.startsWith("on_")) {
                                 let getter = null;
-                                const match = attrVal.trim().match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
+                                const trimmed = attrVal.trim();
+                                const match = trimmed.match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
                                 if (match) {
                                     const [_, scope, prop] = match;
                                     if (scope === varName) {
                                         getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                                     }
+                                }
+                                if (!getter) {
+                                    getter = (item, ctx) => this.interpolate(attrVal, ctx);
                                 }
                                 const pLen = path.length;
                                 const p0 = path[0];
@@ -4323,27 +4341,35 @@ class EUIXEngineCore {
                             if (!targetNode) continue;
 
                             if (slot.type === "text") {
-                                const txt = slot.getter ? slot.getter(item) : this.interpolate(slot.rawExpr, childContext);
+                                const txt = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
                                 if (targetNode.nodeType === 3) {
                                     targetNode.data = txt;
                                 } else {
                                     targetNode.textContent = txt;
                                 }
                             } else if (slot.type === "attr") {
-                                const val = slot.getter ? slot.getter(item) : this.interpolate(slot.rawExpr, childContext);
+                                const val = slot.getter ? slot.getter(item, childContext) : this.interpolate(slot.rawExpr, childContext);
                                 if (slot.name === "class") {
                                     targetNode.className = val;
                                 } else {
                                     targetNode.setAttribute(slot.name, val);
                                 }
                             } else if (slot.type === "bind") {
-                                const resolvedBind = this.resolveBindPath(slot.bindPath, childContext);
-                                const currentVal = this.getState(resolvedBind) ?? this.resolveValueFromPath(slot.bindPath, childContext);
+                                const bp = slot.bindPath;
+                                let currentVal;
+                                if (bp.startsWith(varName + ".")) {
+                                    const prop = bp.slice(varName.length + 1);
+                                    currentVal = item ? item[prop] : undefined;
+                                } else {
+                                    currentVal = this.resolveValueFromPath(bp, childContext);
+                                }
                                 if (targetNode.type === "checkbox") {
                                     targetNode.checked = this.isTruthy(currentVal);
                                 } else {
                                     targetNode.value = currentVal ?? "";
                                 }
+                                targetNode._euixBindPath = bp;
+                                targetNode._euixContext = childContext;
                             } else if (slot.type === "event") {
                                 targetNode._euixEventMap = slot.eventMap;
                                 targetNode.__euixEvents = slot.eventsObj;

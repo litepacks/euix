@@ -71,8 +71,21 @@ export const EUIXApiPlugin = {
                 });
             };
 
-            window.addEventListener("focus", () => onRevalidateEvent("focus"));
-            window.addEventListener("online", () => onRevalidateEvent("online"));
+            this._focusRevalidateHandler = () => onRevalidateEvent("focus");
+            this._onlineRevalidateHandler = () => onRevalidateEvent("online");
+
+            window.addEventListener("focus", this._focusRevalidateHandler);
+            window.addEventListener("online", this._onlineRevalidateHandler);
+
+            if (typeof this.onUnmount === "function") {
+                this.onUnmount(() => {
+                    if (typeof window !== "undefined") {
+                        if (this._focusRevalidateHandler) window.removeEventListener("focus", this._focusRevalidateHandler);
+                        if (this._onlineRevalidateHandler) window.removeEventListener("online", this._onlineRevalidateHandler);
+                    }
+                    this._revalidationBound = false;
+                });
+            }
         };
 
         proto.revalidateApi = async function(tagOrUrl = "") {
