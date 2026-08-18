@@ -16,7 +16,8 @@ export default defineConfig({
         'plugins/EUIXReactivePlugin': resolve(__dirname, 'src/plugins/EUIXReactivePlugin.js'),
         'plugins/EUIXAnimationPlugin': resolve(__dirname, 'src/plugins/EUIXAnimationPlugin.js'),
         'plugins/EUIXHeadPlugin': resolve(__dirname, 'src/plugins/EUIXHeadPlugin.js'),
-        'plugins/EUIXLeafletPlugin': resolve(__dirname, 'src/plugins/EUIXLeafletPlugin.js')
+        'plugins/EUIXLeafletPlugin': resolve(__dirname, 'src/plugins/EUIXLeafletPlugin.js'),
+        'plugins/EUIXNavigatorPlugin': resolve(__dirname, 'src/plugins/EUIXNavigatorPlugin.js')
       },
       formats: ['es']
     },

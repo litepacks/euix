@@ -17,6 +17,7 @@ export const EUIXAnimationPlugin: EUIXPlugin;
 export const EUIXHeadPlugin: EUIXPlugin;
 export const EUIXHelmetPlugin: EUIXPlugin;
 export const EUIXLeafletPlugin: EUIXPlugin;
+export const EUIXNavigatorPlugin: EUIXPlugin;
 
 export class EUIXDevTools {
     static init(engine?: EUIXEngineCore): EUIXDevTools;

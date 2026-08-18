@@ -24,6 +24,7 @@ import { EUIXReactivePlugin, EUIXDependencyGraph, EUIXComputedNode, EUIXWatchNod
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
 import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
 import { EUIXLeafletPlugin, calculatePolygonArea, formatMetricArea } from "./plugins/EUIXLeafletPlugin.js";
+import { EUIXNavigatorPlugin } from "./plugins/EUIXNavigatorPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -37,6 +38,7 @@ EUIXEngineCore.use(EUIXReactivePlugin);
 EUIXEngineCore.use(EUIXAnimationPlugin);
 EUIXEngineCore.use(EUIXHeadPlugin);
 EUIXEngineCore.use(EUIXLeafletPlugin);
+EUIXEngineCore.use(EUIXNavigatorPlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -60,6 +62,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXHeadPlugin = EUIXHeadPlugin;
     window.EUIXHelmetPlugin = EUIXHelmetPlugin;
     window.EUIXLeafletPlugin = EUIXLeafletPlugin;
+    window.EUIXNavigatorPlugin = EUIXNavigatorPlugin;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());

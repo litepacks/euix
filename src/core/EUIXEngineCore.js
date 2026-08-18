@@ -520,6 +520,7 @@ const METADATA_AND_EVENT_TAGS = new Set([
     "on_mouseenter", "on_mouseleave", "on_interval", "on_timer", "on_mount", 
     "on_state_change", "on_visible", "on_update", "watch", "api_config", "api_endpoint", "endpoint", "api", 
     "persistence", "data_model", "imports", "constants", "vars", "variables",
+    "navigator_config", "device_config",
     "use_script", "script_loader", "load_script", "use_style", "style_loader", "load_style",
     "actions", "action_def", "workflow_def", "animations", "animation_def", "keyframe_def", "keyframe", "animate", "transition"
 ]);
@@ -5271,7 +5272,7 @@ class EUIXEngineCore {
             }
         };
 
-        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "script_loader", "style_loader", "load_script", "load_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
+        const metadataTags = ["props", "data_model", "imports", "import", "constants", "vars", "variables", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "navigator_config", "device_config", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "script_loader", "style_loader", "load_script", "load_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
         
         // Trigger external script / style loaders declared inside component
         const compScripts = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("use_script, script_loader, load_script") : []);
@@ -6059,7 +6060,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
+        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "navigator_config", "device_config", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
         
         if (isFn(this.parseHeadMetadata)) {
             this.parseHeadMetadata(root);
