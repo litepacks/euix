@@ -73,6 +73,10 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXRouterPlugin.es.js"
     },
+    "./chart": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXChartPlugin.es.js"
+    },
     "./devtools": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",

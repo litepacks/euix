@@ -18,7 +18,8 @@ export default defineConfig({
         'plugins/EUIXHeadPlugin': resolve(__dirname, 'src/plugins/EUIXHeadPlugin.js'),
         'plugins/EUIXLeafletPlugin': resolve(__dirname, 'src/plugins/EUIXLeafletPlugin.js'),
         'plugins/EUIXNavigatorPlugin': resolve(__dirname, 'src/plugins/EUIXNavigatorPlugin.js'),
-        'plugins/EUIXRouterPlugin': resolve(__dirname, 'src/plugins/EUIXRouterPlugin.js')
+        'plugins/EUIXRouterPlugin': resolve(__dirname, 'src/plugins/EUIXRouterPlugin.js'),
+        'plugins/EUIXChartPlugin': resolve(__dirname, 'src/plugins/EUIXChartPlugin.js')
       },
       formats: ['es']
     },

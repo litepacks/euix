@@ -19,6 +19,27 @@ export const EUIXHelmetPlugin: EUIXPlugin;
 export const EUIXLeafletPlugin: EUIXPlugin;
 export const EUIXNavigatorPlugin: EUIXPlugin;
 export const EUIXRouterPlugin: EUIXPlugin;
+export const EUIXChartPlugin: EUIXPlugin & {
+    configure(options?: { Chart?: any }): void;
+};
+
+export class EUIXChartError extends Error {
+    code: string;
+    context: any;
+}
+
+export interface EUIXChartEngineApi {
+    get(id: string): any;
+    has(id: string): boolean;
+    update(id: string, mode?: string): boolean;
+    resize(id: string): boolean;
+    destroy(id: string): boolean;
+    show(id: string, datasetIndex?: number): boolean;
+    hide(id: string, datasetIndex?: number): boolean;
+    toggleDataset(id: string, datasetIndex?: number): boolean;
+    toggleData(id: string, index?: number): boolean;
+    toBase64Image(id: string, type?: string, quality?: number): string | null;
+}
 
 export class EUIXRouter {
     navigate(to: string | object, options?: any): Promise<boolean>;

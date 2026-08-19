@@ -56,7 +56,8 @@ try {
     'dist/plugins/EUIXDialogPlugin.es.js',
     'dist/plugins/EUIXDragDropPlugin.es.js',
     'dist/plugins/EUIXStoragePlugin.es.js',
-    'dist/plugins/EUIXCollapsePlugin.es.js'
+    'dist/plugins/EUIXCollapsePlugin.es.js',
+    'dist/plugins/EUIXChartPlugin.es.js'
   ];
 
   for (const relFile of expectedFiles) {

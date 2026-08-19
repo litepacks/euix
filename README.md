@@ -151,6 +151,7 @@ const engine = EUIXEngine.mount(xmlString, '#app');
 | **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **126.3 kB / 241.6 kB** | **34.3 kB / 29.2 kB** |
 | **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **252.2 kB / 477.5 kB** | **67.9 kB / 56.3 kB** |
 | **`euixjs/router`** | **Web Router Engine (Data, Outlets, History)** | **82.2 kB (ESM)** | **17.2 kB / 14.9 kB** |
+| **`euixjs/chart`** | **Declarative Chart.js (v4.x) Integration** | **20.8 kB (ESM)** | **4.5 kB / 3.9 kB** |
 | **`euixjs/leaflet`** | **Declarative Leaflet Maps & GIS** | **26.6 kB (ESM)** | **6.2 kB / 5.4 kB** |
 | **`euixjs/api`** | **REST SWR HTTP Client Engine** | **24.0 kB (ESM)** | **5.1 kB / 4.5 kB** |
 | **`euixjs/animation`** | **Declarative Animation System** | **20.2 kB (ESM)** | **4.2 kB / 3.7 kB** |
@@ -264,6 +265,84 @@ Custom JavaScript snippets can be executed safely inside lifecycle hooks or even
 ```javascript
 // Flicker-free async mount (awaits all external JSON resources before rendering)
 const engine = await EUIXEngine.mountAsync(xml, '#app');
+```
+
+---
+
+## 📊 Declarative Chart.js (v4.x) Integration (`euixjs/chart`)
+
+Render and control Chart.js charts directly in XML with reactive state binding, declarative actions, and event bridging with zero Chart.js code bundled in EUIX core:
+
+```bash
+npm install euixjs chart.js
+```
+
+#### ESM Usage:
+```javascript
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXChartPlugin } from 'euixjs/chart';
+import Chart from 'chart.js/auto';
+
+// Inject Chart.js constructor
+EUIXChartPlugin.configure({ Chart });
+EUIXEngineCore.use(EUIXChartPlugin);
+
+const engine = EUIXEngineCore.mount(xmlSpec, '#app');
+```
+
+#### Declarative XML Syntax:
+```xml
+<uid_spec>
+  <data_model>
+    <state id="sales_chart" type="object">
+      {
+        "type": "bar",
+        "data": {
+          "labels": ["Q1", "Q2", "Q3", "Q4"],
+          "datasets": [{ "label": "Sales ($k)", "data": [45, 62, 78, 95] }]
+        },
+        "options": { "responsive": true, "maintainAspectRatio": false }
+      }
+    </state>
+  </data_model>
+
+  <flex direction="column" gap="16">
+    <!-- Declarative <chart> Element -->
+    <chart
+      id="sales"
+      config="{data.sales_chart}"
+      height="320"
+      update_mode="none"
+    >
+      <on_chart_click action="RUN_SCRIPT">
+        console.log("Clicked:", $evt.detail.label, $evt.detail.value);
+      </on_chart_click>
+    </chart>
+
+    <!-- Declarative Actions -->
+    <flex direction="row" gap="8">
+      <button class="btn">
+        <on_click action="CHART_TOGGLE_DATASET" chart="sales" dataset_index="0" />
+        Toggle Dataset
+      </button>
+      <button class="btn">
+        <on_click action="CHART_EXPORT_IMAGE" chart="sales" target="data.exported_png" />
+        Export PNG
+      </button>
+    </flex>
+  </flex>
+</uid_spec>
+```
+
+#### Imperative API (`engine.chart`):
+```javascript
+engine.chart.get('sales');                  // Access underlying Chart.js instance
+engine.chart.update('sales', 'none');       // In-place update with mode
+engine.chart.show('sales', 0);              // Show dataset 0
+engine.chart.hide('sales', 0);              // Hide dataset 0
+engine.chart.toggleDataset('sales', 0);     // Toggle dataset visibility
+engine.chart.toggleData('sales', 2);        // Toggle data point visibility
+engine.chart.toBase64Image('sales');        // Export base64 image
 ```
 
 ---
