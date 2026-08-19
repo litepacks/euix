@@ -203,11 +203,11 @@ class EUIXExpressionParser {
         }
 
         function parseLogicalAnd() {
-            return parseBinary(parseEquality, ["&&"], (op, l, r) => `(Boolean(${l}) && Boolean(${r}))`);
+            return parseBinary(parseEquality, ["&&"], (op, l, r) => `(((${l}) !== false && (${l}) !== "false" && (${l}) !== 0 && (${l}) !== null && (${l}) !== undefined && (${l}) !== "") ? (${r}) : (${l}))`);
         }
 
         function parseLogicalOr() {
-            return parseBinary(parseLogicalAnd, ["||"], (op, l, r) => `(Boolean(${l}) || Boolean(${r}))`);
+            return parseBinary(parseLogicalAnd, ["||"], (op, l, r) => `(((${l}) !== false && (${l}) !== "false" && (${l}) !== 0 && (${l}) !== null && (${l}) !== undefined && (${l}) !== "") ? (${l}) : (${r}))`);
         }
 
         function parseTernary() {
