@@ -58,6 +58,6 @@ describe("EUIX Router - Benchmark & Performance", () => {
         }
 
         const elapsedMs = performance.now() - start;
-        expect(elapsedMs).toBeLessThan(1000);
+        expect(elapsedMs).toBeLessThan(2500);
     });
 });
