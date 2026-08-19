@@ -9,8 +9,10 @@ export class RouteDataCache {
         this._entries = new Map();
     }
 
-    _makeKey(routeId, pathname, search = "") {
-        return `${routeId}:${pathname}:${search}`;
+    _makeKey(routeId, pathname = "/", search = "") {
+        const normPath = pathname ? (pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname) : "/";
+        const normSearch = search && search !== "?" ? search : "";
+        return `${routeId}:${normPath}:${normSearch}`;
     }
 
     get(routeId, pathname, search = "") {
