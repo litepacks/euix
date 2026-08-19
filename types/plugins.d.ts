@@ -18,6 +18,22 @@ export const EUIXHeadPlugin: EUIXPlugin;
 export const EUIXHelmetPlugin: EUIXPlugin;
 export const EUIXLeafletPlugin: EUIXPlugin;
 export const EUIXNavigatorPlugin: EUIXPlugin;
+export const EUIXRouterPlugin: EUIXPlugin;
+
+export class EUIXRouter {
+    navigate(to: string | object, options?: any): Promise<boolean>;
+    back(): void;
+    forward(): void;
+    go(delta: number): void;
+    revalidate(routeId?: string): Promise<void>;
+    prefetch(targetPath: string): Promise<void>;
+    fetcher(id: string): any;
+    path(routeName: string, params?: Record<string, any>): string;
+    inspect(): object;
+}
+
+export function createMemoryRouter(options?: any): EUIXRouter;
+export function createStaticRouter(options?: any): Promise<any>;
 
 export class EUIXDevTools {
     static init(engine?: EUIXEngineCore): EUIXDevTools;

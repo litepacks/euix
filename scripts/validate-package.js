@@ -42,11 +42,21 @@ try {
     'dist/EUIXEngine.es.js',
     'dist/EUIXEngineCore.umd.js',
     'dist/EUIXEngineCore.es.js',
+    'dist/EUIXDevTools.es.js',
+    'dist/EUIXDevTools.umd.js',
     'dist/plugins/EUIXApiPlugin.es.js',
     'dist/plugins/EUIXResiliencePlugin.es.js',
     'dist/plugins/EUIXReactivePlugin.es.js',
     'dist/plugins/EUIXComposerPlugin.es.js',
-    'dist/plugins/EUIXAnimationPlugin.es.js'
+    'dist/plugins/EUIXAnimationPlugin.es.js',
+    'dist/plugins/EUIXRouterPlugin.es.js',
+    'dist/plugins/EUIXLeafletPlugin.es.js',
+    'dist/plugins/EUIXNavigatorPlugin.es.js',
+    'dist/plugins/EUIXHeadPlugin.es.js',
+    'dist/plugins/EUIXDialogPlugin.es.js',
+    'dist/plugins/EUIXDragDropPlugin.es.js',
+    'dist/plugins/EUIXStoragePlugin.es.js',
+    'dist/plugins/EUIXCollapsePlugin.es.js'
   ];
 
   for (const relFile of expectedFiles) {

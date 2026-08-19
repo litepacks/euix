@@ -25,6 +25,20 @@ import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from
 import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
 import { EUIXLeafletPlugin, calculatePolygonArea, formatMetricArea } from "./plugins/EUIXLeafletPlugin.js";
 import { EUIXNavigatorPlugin } from "./plugins/EUIXNavigatorPlugin.js";
+import {
+    EUIXRouterPlugin,
+    EUIXRouter,
+    createMemoryRouter,
+    createStaticRouter,
+    RouterRedirect,
+    RouterError,
+    matchPath,
+    matchRoutes,
+    generatePath,
+    resolvePath,
+    createPath,
+    parsePath
+} from "./plugins/EUIXRouterPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -39,6 +53,7 @@ EUIXEngineCore.use(EUIXAnimationPlugin);
 EUIXEngineCore.use(EUIXHeadPlugin);
 EUIXEngineCore.use(EUIXLeafletPlugin);
 EUIXEngineCore.use(EUIXNavigatorPlugin);
+EUIXEngineCore.use(EUIXRouterPlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -63,6 +78,10 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXHelmetPlugin = EUIXHelmetPlugin;
     window.EUIXLeafletPlugin = EUIXLeafletPlugin;
     window.EUIXNavigatorPlugin = EUIXNavigatorPlugin;
+    window.EUIXRouterPlugin = EUIXRouterPlugin;
+    window.EUIXRouter = EUIXRouter;
+    window.createMemoryRouter = createMemoryRouter;
+    window.createStaticRouter = createStaticRouter;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -97,7 +116,19 @@ export {
     EUIXActionContext,
     EUIXActionValidator,
     EUIXActionRegistry,
-    EUIXActionComposer
+    EUIXActionComposer,
+    EUIXRouterPlugin,
+    EUIXRouter,
+    createMemoryRouter,
+    createStaticRouter,
+    RouterRedirect,
+    RouterError,
+    matchPath,
+    matchRoutes,
+    generatePath,
+    resolvePath,
+    createPath,
+    parsePath
 };
 
 export default EUIXEngine;

@@ -1,14 +1,134 @@
 # EUIX Engine (`euixjs`)
 
-> Ultra-lightweight, zero-dependency declarative XML/HTML framework with fine-grained state reactivity, SWR REST API fetching, component scoping, and standalone DevTools inspector.
+> Ultra-lightweight, zero-dependency declarative XML/HTML UI runtime with fine-grained state reactivity, REST API integration, tree-shakeable modular plugins, and zero Virtual DOM overhead.
 
-## Documentation & Guidelines
+---
 
-- [AGENTS.md](.agents/AGENTS.md): Full architecture, declarative XML specification syntax, supported state data types (`string`, `number`, `boolean`, `array`, `object`), parent-child prop mechanics, slot projection, SWR API integration, lifecycle hooks, and XSS security best practices.
-- [README.md](README.md): Project overview, capability matrix, quickstart code snippets, and bundle metrics (~20.3 KB Gzip core UMD).
+## 📚 Core Architecture & Documentation
 
-## Core Modules & Specifications
+- [AGENTS.md](.agents/AGENTS.md): Comprehensive runtime architecture, declarative XML grammar, state scoping models (component isolation vs global stores), REST SWR client, event delegation, error boundaries, and security rules.
+- [README.md](README.md): Project overview, capability matrix, benchmark benchmarks (js-framework-benchmark standard), quickstart snippets, and bundle metrics.
 
-- [src/EUIXEngine.js](src/EUIXEngine.js): Core declarative XML engine, DOM compiler, reactive state store, SWR HTTP client, and async component registry.
-- [src/EUIXDevTools.js](src/EUIXDevTools.js): Standalone DevTools inspector submodule (`euixjs/devtools`).
-- [components/DocPortalSection.xml](components/DocPortalSection.xml): Interactive documentation portal component specification.
+---
+
+## 🧩 Modular Subpaths & Core Source Modules
+
+### 1. Core Runtime Engines
+- [src/core/EUIXEngineCore.js](src/core/EUIXEngineCore.js) (`euixjs/core`): Ultra-compact Lite Core engine (~34.3 kB Gzip UMD). Includes XML template parser with AST caching, fine-grained reactive state store (`<data_model>`), batch DOM reconciler, and modular plugin loader (`.use()`).
+- [src/EUIXEngine.js](src/EUIXEngine.js) (`euixjs`): Full bundle entry point (~67.9 kB Gzip UMD) pre-registering all core plugins for turnkey zero-config usage.
+- [src/EUIXDevTools.js](src/EUIXDevTools.js) (`euixjs/devtools`): Standalone floating DevTools inspector with real-time state tree exploration and action dispatch streaming.
+
+### 2. Tree-Shakeable Plugin Modules
+- [src/plugins/EUIXRouterPlugin.js](src/plugins/EUIXRouterPlugin.js) (`euixjs/router`): Declarative Web Router supporting `<router>`, `<route>`, nested `<outlet>`s with branch layout preservation, data loaders (`loader="..."`), route actions (`action="..."`), View Transitions API, scroll restoration, and navigation blockers.
+- [src/plugins/EUIXApiPlugin.js](src/plugins/EUIXApiPlugin.js) (`euixjs/api`): Declarative SWR REST API HTTP client (`<api_config>`, `<api_endpoint>`) with automatic caching, request deduplication, and reactive status binding (`{api.<id>.loading}`).
+- [src/plugins/EUIXComposerPlugin.js](src/plugins/EUIXComposerPlugin.js) (`euixjs/composer`): Action Composer Workflow Engine (`<action_def>`, `<param>`, `<step>`, `<return>`) supporting sequential subroutines and circular loop guards.
+- [src/plugins/EUIXLeafletPlugin.js](src/plugins/EUIXLeafletPlugin.js) (`euixjs/leaflet`): Declarative GIS & Leaflet Maps plugin (`<leaflet_map>`, `<marker>`, `<polygon>`) with reactive state sync.
+- [src/plugins/EUIXAnimationPlugin.js](src/plugins/EUIXAnimationPlugin.js) (`euixjs/animation`): Declarative CSS keyframe transitions and enter/leave lifecycle animations (`<animate>`, `<on_enter>`, `<on_leave>`).
+- [src/plugins/EUIXResiliencePlugin.js](src/plugins/EUIXResiliencePlugin.js) (`euixjs/resilience`): Fault-tolerant execution primitives (exponential backoff retry, circuit breaker, timeout, fallback).
+- [src/plugins/EUIXReactivePlugin.js](src/plugins/EUIXReactivePlugin.js) (`euixjs/reactive`): Advanced reactivity primitives with declarative `<watch>` triggers and `<computed>` state properties.
+- [src/plugins/EUIXNavigatorPlugin.js](src/plugins/EUIXNavigatorPlugin.js) (`euixjs/navigator`): Hardware & browser capabilities (`<navigator_config>`) for online/offline status, battery, geolocation, clipboard, and vibration.
+- [src/plugins/EUIXHeadPlugin.js](src/plugins/EUIXHeadPlugin.js) (`euixjs/head` / `euixjs/helmet`): Dynamic `<head>` tag manager for document title, meta tags, and Open Graph attributes.
+- [src/plugins/EUIXDragDropPlugin.js](src/plugins/EUIXDragDropPlugin.js) (`euixjs/dnd`): HTML5 & Pointer Drag and Drop engine with floating ghost preview.
+- [src/plugins/EUIXStoragePlugin.js](src/plugins/EUIXStoragePlugin.js) (`euixjs/storage`): State persistence to `localStorage` or `sessionStorage` (`<state persist="local">`).
+- [src/plugins/EUIXDialogPlugin.js](src/plugins/EUIXDialogPlugin.js) (`euixjs/dialog`): Declarative modal dialog overlay component (`<dialog>`).
+- [src/plugins/EUIXCollapsePlugin.js](src/plugins/EUIXCollapsePlugin.js) (`euixjs/collapse`): Reactive accordion and collapsible section component (`<collapse>`).
+
+---
+
+## 📜 Declarative XML DSL Grammar Reference
+
+### 1. State Model (`<data_model>`)
+Always declare state keys with `id="..."`:
+```xml
+<data_model>
+  <state id="user_name">Guest</state>
+  <state id="counter" type="number">0</state>
+  <state id="is_active" type="boolean">true</state>
+  <state id="items" type="array">[{"id": 1, "title": "Item 1"}]</state>
+  <state id="config" type="object">{"theme": "dark"}</state>
+</data_model>
+```
+
+### 2. Declarative Event Actions (`<on_<event> action="...">`)
+```xml
+<!-- Set State -->
+<button class="btn">
+  <on_click action="SET_STATE">
+    <path>data.counter</path>
+    <value>{data.counter} + 1</value>
+  </on_click>
+  Increment
+</button>
+
+<!-- Mutate Array (PUSH, REMOVE, UPDATE, SWAP, CLEAR) -->
+<button class="btn">
+  <on_click action="MUTATE_STATE">
+    <path>items</path>
+    <operation>REMOVE</operation>
+    <where field="id" equals="{item.id}" />
+  </on_click>
+  Delete
+</button>
+
+<!-- Navigation -->
+<button class="btn">
+  <on_click action="NAVIGATE" to="/projects/1" />
+  View Project
+</button>
+
+<!-- Sandboxed Script -->
+<button class="btn">
+  <on_click action="RUN_SCRIPT">
+    console.log("Clicked by:", $data.user_name);
+  </on_click>
+  Log User
+</button>
+```
+
+### 3. List Reconciliation & Virtualization
+```xml
+<!-- Keyed DOM Reconciliation -->
+<for_each items="{data.items}" var="item" key="id">
+  <div class="row">
+    <span>{item.title}</span>
+  </div>
+</for_each>
+
+<!-- 60 FPS Virtual Scrolling (10,000+ items) -->
+<for_each items="{data.large_dataset}" var="item" virtual="true" item_height="40">
+  <div class="virtual-row">{item.name}</div>
+</for_each>
+```
+
+### 4. Declarative Error Handling (`<try>`, `<catch>`, `<finally>`)
+```xml
+<button class="btn">
+  <on_click action="TRY">
+    <step action="XHR">
+      <url>https://api.example.com/data</url>
+      <method>POST</method>
+    </step>
+    <catch var="err">
+      <step action="SET_STATE">
+        <path>data.error_msg</path>
+        <value>{err.message} ({err.code})</value>
+      </step>
+    </catch>
+    <finally>
+      <step action="SET_STATE">
+        <path>data.loading</path>
+        <value>false</value>
+      </step>
+    </finally>
+  </on_click>
+  Submit
+</button>
+```
+
+---
+
+## 🛠️ TypeScript & Types
+
+- [types/core.d.ts](types/core.d.ts): Complete typings for `EUIXEngineCore`, `EUIXEngine`, state stores, and DOM compiler options.
+- [types/plugins.d.ts](types/plugins.d.ts): Typings for all modular plugins, routers, action composers, and navigators.
+- [types/index.d.ts](types/index.d.ts): Unified library export declarations.

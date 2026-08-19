@@ -146,20 +146,24 @@ const engine = EUIXEngine.mount(xmlString, '#app');
 
 ## 📦 Subpath Package Exports & Bundle Metrics
 
-| Subpath Import | Module / Description | Raw Size (UMD / ESM) | Compressed (Gzip) |
+| Subpath Import | Module / Description | Minified Size (UMD / ESM) | Compressed (Gzip / Brotli) |
 | :--- | :--- | :--- | :--- |
-| **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **94.8 kB / 189.4 kB** | **26.3 kB / 37.6 kB** |
-| **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **143.1 kB / 285.4 kB** | **39.1 kB / 56.0 kB** |
-| **`euixjs/animation`** | **Declarative Animation System** | **21.1 kB** | **4.3 kB** |
-| **`euixjs/resilience`** | **Resilience Execution Primitives** | **17.0 kB** | **3.5 kB** |
-| **`euixjs/api`** | **REST SWR HTTP Client Engine** | **14.5 kB** | **3.4 kB** |
-| **`euixjs/reactive`** | **Watch & Computed State System** | **13.9 kB** | **3.3 kB** |
-| **`euixjs/composer`** | **Action Composer Workflow System** | **11.9 kB** | **3.1 kB** |
-| **`euixjs/dnd`** | **HTML5 & Pointer Drag and Drop** | **5.1 kB** | **1.4 kB** |
-| **`euixjs/dialog`** | **Modal Dialog Overlay Component** | **5.4 kB** | **1.6 kB** |
-| **`euixjs/collapse`** | **Accordion / Collapse Component** | **3.3 kB** | **1.2 kB** |
-| **`euixjs/storage`** | **State Storage & Persistence** | **3.1 kB** | **0.9 kB** |
-| **`euixjs/devtools`** | **DevTools Inspector Panel** | **17.0 kB / 21.6 kB** | **4.8 kB / 5.3 kB** |
+| **`euixjs/core`** | **`EUIXEngineCore` (Lite Core Build)** | **126.3 kB / 241.6 kB** | **34.3 kB / 29.2 kB** |
+| **`euixjs`** | **`EUIXEngine` (Full Bundle Build)** | **252.2 kB / 477.5 kB** | **67.9 kB / 56.3 kB** |
+| **`euixjs/router`** | **Web Router Engine (Data, Outlets, History)** | **82.2 kB (ESM)** | **17.2 kB / 14.9 kB** |
+| **`euixjs/leaflet`** | **Declarative Leaflet Maps & GIS** | **26.6 kB (ESM)** | **6.2 kB / 5.4 kB** |
+| **`euixjs/api`** | **REST SWR HTTP Client Engine** | **24.0 kB (ESM)** | **5.1 kB / 4.5 kB** |
+| **`euixjs/animation`** | **Declarative Animation System** | **20.2 kB (ESM)** | **4.2 kB / 3.7 kB** |
+| **`euixjs/composer`** | **Action Composer Workflow Engine** | **17.9 kB (ESM)** | **4.1 kB / 3.6 kB** |
+| **`euixjs/resilience`** | **Resilience Execution Primitives** | **15.4 kB (ESM)** | **3.4 kB / 3.0 kB** |
+| **`euixjs/reactive`** | **Watch & Computed State System** | **13.6 kB (ESM)** | **3.3 kB / 2.9 kB** |
+| **`euixjs/navigator`** | **Device & Browser Capabilities** | **12.1 kB (ESM)** | **2.6 kB / 2.2 kB** |
+| **`euixjs/head`** | **Declarative Head & Helmet Meta** | **7.1 kB (ESM)** | **1.6 kB / 1.3 kB** |
+| **`euixjs/dialog`** | **Modal Dialog Overlay Component** | **5.0 kB (ESM)** | **1.5 kB / 1.3 kB** |
+| **`euixjs/dnd`** | **HTML5 & Pointer Drag and Drop** | **5.0 kB (ESM)** | **1.4 kB / 1.2 kB** |
+| **`euixjs/storage`** | **State Storage & Persistence** | **3.3 kB (ESM)** | **1.0 kB / 0.9 kB** |
+| **`euixjs/collapse`** | **Accordion / Collapse Component** | **3.3 kB (ESM)** | **1.1 kB / 0.9 kB** |
+| **`euixjs/devtools`** | **DevTools Inspector Panel** | **17.2 kB / 22.0 kB** | **4.8 kB / 4.1 kB** |
 
 ---
 

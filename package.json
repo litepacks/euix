@@ -69,6 +69,10 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXNavigatorPlugin.es.js"
     },
+    "./router": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXRouterPlugin.es.js"
+    },
     "./devtools": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",
