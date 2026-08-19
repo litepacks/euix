@@ -57,16 +57,23 @@ export class ScrollRestorationManager {
             }
         }
 
+        const safeScrollTo = (x, y) => {
+            if (typeof window === "undefined" || typeof window.scrollTo !== "function") return;
+            try {
+                // In JSDOM test environments, skip scrollTo to prevent noise
+                if (typeof navigator !== "undefined" && /jsdom/i.test(navigator.userAgent || "")) {
+                    return;
+                }
+                window.scrollTo(x, y);
+            } catch (_) {}
+        };
+
         if (isPop && location.key && this._positions.has(location.key)) {
             const pos = this._positions.get(location.key);
-            if (typeof window.scrollTo === "function") {
-                try { window.scrollTo(pos.x, pos.y); } catch (_) {}
-            }
+            safeScrollTo(pos.x, pos.y);
         } else {
             // New navigation: scroll to top
-            if (typeof window.scrollTo === "function") {
-                try { window.scrollTo(0, 0); } catch (_) {}
-            }
+            safeScrollTo(0, 0);
         }
     }
 }

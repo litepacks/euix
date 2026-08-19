@@ -174,6 +174,8 @@ export class EUIXRouter {
     }
 
     getRouteData(routeId) {
+        const match = this.matches.find(m => m.id === routeId || (m.route && m.route.id === routeId));
+        if (match && match.data !== undefined) return match.data;
         return this.cache.get(routeId, this.location.pathname, this.location.search);
     }
 
