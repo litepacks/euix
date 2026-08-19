@@ -352,5 +352,39 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(engine.getState('list').length).toBe(1000);
         console.log(`[Vitest Bench] mutateState PUSH: ${pushDuration.toFixed(2)} ms`);
     });
+
+    it('should benchmark Select Row / Highlight in 1,000 items list (<for_each as="tbody">)', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="rows" type="array"></state>
+                <state id="selected">500</state>
+            </data_model>
+            <table>
+                <for_each as="tbody" id="tbody" items="{data.rows}" var="row" key="id">
+                    <tr class="{data.selected === row.id ? 'danger' : ''}">
+                        <td class="col-id">{row.id}</td>
+                        <td class="col-lbl"><a>{row.label}</a></td>
+                    </tr>
+                </for_each>
+            </table>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngine.mount(xml, '#app');
+        const rows = Array.from({ length: 1000 }, (_, i) => ({ id: `${i}`, label: `Row ${i}` }));
+        engine.setState('rows', rows);
+
+        expect(document.querySelector('tr.danger')?.textContent).toContain('500');
+
+        const start = performance.now();
+        engine.setState('selected', '250');
+        const duration = performance.now() - start;
+
+        const selectedRow = document.querySelector('tr.danger');
+        expect(selectedRow).not.toBeNull();
+        expect(selectedRow.textContent).toContain('250');
+        console.log(`[Vitest Bench] Select Row (in-place slot patch in 1,000 rows): ${duration.toFixed(2)} ms`);
+    });
 });
 
