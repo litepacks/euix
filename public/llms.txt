@@ -20,6 +20,7 @@
 
 ### 2. Tree-Shakeable Plugin Modules
 - [src/plugins/EUIXRouterPlugin.js](src/plugins/EUIXRouterPlugin.js) (`euixjs/router`): Declarative Web Router supporting `<router>`, `<route>`, nested `<outlet>`s with branch layout preservation, data loaders (`loader="..."`), route actions (`action="..."`), View Transitions API, scroll restoration, and navigation blockers.
+- [src/plugins/EUIXChartPlugin.js](src/plugins/EUIXChartPlugin.js) (`euixjs/chart`): Declarative Chart.js (v4.x) Integration Plugin (`<chart>`, `CHART_UPDATE`, `CHART_TOGGLE_DATASET`, `CHART_EXPORT_IMAGE`) with reactive state sync and interaction event bridging.
 - [src/plugins/EUIXApiPlugin.js](src/plugins/EUIXApiPlugin.js) (`euixjs/api`): Declarative SWR REST API HTTP client (`<api_config>`, `<api_endpoint>`) with automatic caching, request deduplication, and reactive status binding (`{api.<id>.loading}`).
 - [src/plugins/EUIXComposerPlugin.js](src/plugins/EUIXComposerPlugin.js) (`euixjs/composer`): Action Composer Workflow Engine (`<action_def>`, `<param>`, `<step>`, `<return>`) supporting sequential subroutines and circular loop guards.
 - [src/plugins/EUIXLeafletPlugin.js](src/plugins/EUIXLeafletPlugin.js) (`euixjs/leaflet`): Declarative GIS & Leaflet Maps plugin (`<leaflet_map>`, `<marker>`, `<polygon>`) with reactive state sync.

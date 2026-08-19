@@ -25,6 +25,7 @@ import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from
 import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
 import { EUIXLeafletPlugin, calculatePolygonArea, formatMetricArea } from "./plugins/EUIXLeafletPlugin.js";
 import { EUIXNavigatorPlugin } from "./plugins/EUIXNavigatorPlugin.js";
+import { EUIXChartPlugin, EUIXChartError } from "./plugins/EUIXChartPlugin.js";
 import {
     EUIXRouterPlugin,
     EUIXRouter,
@@ -53,6 +54,7 @@ EUIXEngineCore.use(EUIXAnimationPlugin);
 EUIXEngineCore.use(EUIXHeadPlugin);
 EUIXEngineCore.use(EUIXLeafletPlugin);
 EUIXEngineCore.use(EUIXNavigatorPlugin);
+EUIXEngineCore.use(EUIXChartPlugin);
 EUIXEngineCore.use(EUIXRouterPlugin);
 
 const EUIXEngine = EUIXEngineCore;
@@ -78,6 +80,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXHelmetPlugin = EUIXHelmetPlugin;
     window.EUIXLeafletPlugin = EUIXLeafletPlugin;
     window.EUIXNavigatorPlugin = EUIXNavigatorPlugin;
+    window.EUIXChartPlugin = EUIXChartPlugin;
+    window.EUIXChartError = EUIXChartError;
     window.EUIXRouterPlugin = EUIXRouterPlugin;
     window.EUIXRouter = EUIXRouter;
     window.createMemoryRouter = createMemoryRouter;
@@ -117,6 +121,8 @@ export {
     EUIXActionValidator,
     EUIXActionRegistry,
     EUIXActionComposer,
+    EUIXChartPlugin,
+    EUIXChartError,
     EUIXRouterPlugin,
     EUIXRouter,
     createMemoryRouter,

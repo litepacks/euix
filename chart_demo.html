@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EUIX Engine - Declarative Chart.js Demo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js v4.4.1 (UMD) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- EUIX Engine (Full Bundle with Chart Plugin) -->
+    <script src="./dist/EUIXEngine.umd.js"></script>
+    <script src="./dist/EUIXDevTools.umd.js" data-euix-devtools="open"></script>
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-indigo {
+            box-shadow: 0 0 40px -10px rgba(99, 102, 241, 0.3);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 40px -10px rgba(6, 182, 212, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white pb-16">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="./router_demo.html" class="flex items-center gap-3 hover:opacity-90 transition-opacity">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-purple-600 to-cyan-400 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-indigo-500/20">
+                    E
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-extrabold text-white text-base tracking-tight leading-none flex items-center gap-2">
+                        EUIX Engine <span class="px-2 py-0.5 text-[10px] bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20 rounded-md">Chart.js v4</span>
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">Declarative XML Data Visualization Plugin</span>
+                </div>
+            </a>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <a href="./playground.html" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-all flex items-center gap-1.5 shadow-sm">
+                🎮 Playground
+            </a>
+            <a href="./router_demo.html" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-all flex items-center gap-1.5 shadow-sm">
+                🧭 Router Demo
+            </a>
+            <a href="./map_demo.html" class="px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-all flex items-center gap-1.5 shadow-sm">
+                🗺️ Map Demo
+            </a>
+        </div>
+    </header>
+
+    <!-- App Mount Point -->
+    <main id="app" class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-8"></main>
+
+    <!-- Embedded EUIX XML Specification -->
+    <script type="application/euix" target="#app">
+    <uid_spec>
+        <!-- 1. Central Reactive Data Model -->
+        <data_model>
+            <state id="selected_label">None</state>
+            <state id="selected_value">None</state>
+            <state id="selected_chart">None</state>
+            <state id="chart_type">bar</state>
+            <state id="exported_image"></state>
+
+            <!-- Multi-Dataset Revenue & Expenses Chart Config -->
+            <state id="finance_chart" type="object">
+                {
+                    "type": "bar",
+                    "data": {
+                        "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+                        "datasets": [
+                            {
+                                "label": "Revenue ($k)",
+                                "data": [45, 52, 68, 74, 85, 96],
+                                "backgroundColor": "rgba(99, 102, 241, 0.8)",
+                                "borderColor": "rgb(99, 102, 241)",
+                                "borderWidth": 2,
+                                "borderRadius": 8
+                            },
+                            {
+                                "label": "Expenses ($k)",
+                                "data": [30, 38, 42, 45, 50, 58],
+                                "backgroundColor": "rgba(244, 63, 94, 0.8)",
+                                "borderColor": "rgb(244, 63, 94)",
+                                "borderWidth": 2,
+                                "borderRadius": 8
+                            }
+                        ]
+                    },
+                    "options": {
+                        "responsive": true,
+                        "maintainAspectRatio": false,
+                        "plugins": {
+                            "legend": {
+                                "labels": { "color": "#94a3b8", "font": { "family": "Inter", "weight": "bold" } }
+                            }
+                        },
+                        "scales": {
+                            "x": { "ticks": { "color": "#94a3b8" }, "grid": { "color": "rgba(255,255,255,0.05)" } },
+                            "y": { "ticks": { "color": "#94a3b8" }, "grid": { "color": "rgba(255,255,255,0.05)" } }
+                        }
+                    }
+                }
+            </state>
+
+            <!-- Line Trend Chart Config -->
+            <state id="traffic_chart" type="object">
+                {
+                    "type": "line",
+                    "data": {
+                        "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                        "datasets": [
+                            {
+                                "label": "Active Users",
+                                "data": [1200, 1900, 3000, 2800, 3400, 4200, 4800],
+                                "borderColor": "rgb(6, 182, 212)",
+                                "backgroundColor": "rgba(6, 182, 212, 0.15)",
+                                "fill": true,
+                                "tension": 0.4,
+                                "borderWidth": 3,
+                                "pointBackgroundColor": "rgb(6, 182, 212)",
+                                "pointRadius": 4
+                            }
+                        ]
+                    },
+                    "options": {
+                        "responsive": true,
+                        "maintainAspectRatio": false,
+                        "plugins": {
+                            "legend": {
+                                "labels": { "color": "#94a3b8", "font": { "family": "Inter", "weight": "bold" } }
+                            }
+                        },
+                        "scales": {
+                            "x": { "ticks": { "color": "#94a3b8" }, "grid": { "color": "rgba(255,255,255,0.05)" } },
+                            "y": { "ticks": { "color": "#94a3b8" }, "grid": { "color": "rgba(255,255,255,0.05)" } }
+                        }
+                    }
+                }
+            </state>
+
+            <!-- Doughnut Category Distribution Chart Config -->
+            <state id="device_chart" type="object">
+                {
+                    "type": "doughnut",
+                    "data": {
+                        "labels": ["Desktop", "Mobile", "Tablet", "Other"],
+                        "datasets": [
+                            {
+                                "label": "Traffic Source",
+                                "data": [55, 32, 9, 4],
+                                "backgroundColor": [
+                                    "rgba(99, 102, 241, 0.85)",
+                                    "rgba(6, 182, 212, 0.85)",
+                                    "rgba(245, 158, 11, 0.85)",
+                                    "rgba(148, 163, 184, 0.85)"
+                                ],
+                                "borderColor": "#0f172a",
+                                "borderWidth": 3
+                            }
+                        ]
+                    },
+                    "options": {
+                        "responsive": true,
+                        "maintainAspectRatio": false,
+                        "plugins": {
+                            "legend": {
+                                "position": "bottom",
+                                "labels": { "color": "#94a3b8", "font": { "family": "Inter", "weight": "bold" } }
+                            }
+                        }
+                    }
+                }
+            </state>
+        </data_model>
+
+        <!-- 2. Declarative Main Dashboard Layout -->
+        <flex direction="column" gap="24" class="w-full">
+
+            <!-- Hero Section -->
+            <flex direction="row" align="center" justify="between" class="glass-panel p-6 sm:p-8 rounded-3xl glow-indigo border border-indigo-500/20 flex-wrap gap-4">
+                <flex direction="column" gap="8">
+                    <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 font-extrabold text-xs rounded-full uppercase tracking-wider border border-indigo-500/30 w-fit">
+                        ✨ Pure XML Declarative Data Visualization
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                        Reactive Chart.js Engine for EUIX
+                    </h1>
+                    <p class="text-sm text-slate-300 max-w-2xl leading-relaxed">
+                        Control Chart.js (v4.x) directly from declarative XML specs with fine-grained reactive state bindings, zero Virtual DOM overhead, declarative actions, and normalized interaction events.
+                    </p>
+                </flex>
+
+                <!-- Live Click Inspector Pill -->
+                <flex direction="column" gap="6" class="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 min-w-[240px]">
+                    <span class="text-[11px] font-black uppercase text-indigo-400 tracking-wider">🎯 Live Clicked Element</span>
+                    <div class="text-xs text-slate-300 flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span class="text-slate-400">Chart:</span>
+                        <strong class="font-mono text-cyan-400">{data.selected_chart}</strong>
+                    </div>
+                    <div class="text-xs text-slate-300 flex items-center justify-between border-b border-slate-800 pb-1.5">
+                        <span class="text-slate-400">Label:</span>
+                        <strong class="font-mono text-emerald-400">{data.selected_label}</strong>
+                    </div>
+                    <div class="text-xs text-slate-300 flex items-center justify-between">
+                        <span class="text-slate-400">Value:</span>
+                        <strong class="font-mono text-amber-400">{data.selected_value}</strong>
+                    </div>
+                </flex>
+            </flex>
+
+            <!-- Top Grid: Bar/Line Multi-Dataset Main Chart + Side Controls -->
+            <grid class="grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Main Reactive Chart Card (2 Cols) -->
+                <flex direction="column" gap="16" class="lg:col-span-2 glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
+                        <flex direction="column" gap="2">
+                            <span class="text-xs font-black uppercase tracking-widest text-indigo-400">📊 Financial Performance</span>
+                            <h2 class="text-lg font-bold text-white">Revenue vs. Expenses Multi-Dataset</h2>
+                        </flex>
+
+                        <!-- Action Buttons Toolbar -->
+                        <flex direction="row" gap="6" class="flex-wrap">
+                            <button class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-indigo-500/20">
+                                <on_click action="RUN_SCRIPT">
+                                    const months = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                                    const nextMonth = months[$data.finance_chart.data.labels.length % months.length];
+                                    const nextRev = Math.floor(Math.random() * 60) + 50;
+                                    const nextExp = Math.floor(Math.random() * 40) + 30;
+                                    
+                                    $data.finance_chart.data.labels.push(nextMonth);
+                                    $data.finance_chart.data.datasets[0].data.push(nextRev);
+                                    $data.finance_chart.data.datasets[1].data.push(nextExp);
+                                    $data.finance_chart = { ...$data.finance_chart };
+                                </on_click>
+                                ➕ Add Month
+                            </button>
+
+                            <button class="px-3 py-1.5 bg-rose-600/80 hover:bg-rose-600 active:scale-95 text-white font-bold rounded-xl text-xs transition-all cursor-pointer">
+                                <on_click action="RUN_SCRIPT">
+                                    if ($data.finance_chart.data.labels.length > 2) {
+                                        $data.finance_chart.data.labels.pop();
+                                        $data.finance_chart.data.datasets[0].data.pop();
+                                        $data.finance_chart.data.datasets[1].data.pop();
+                                        $data.finance_chart = { ...$data.finance_chart };
+                                    }
+                                </on_click>
+                                ➖ Pop
+                            </button>
+
+                            <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                                <on_click action="CHART_TOGGLE_DATASET" chart="main_finance_chart" dataset_index="0" />
+                                👁️ Rev
+                            </button>
+
+                            <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                                <on_click action="CHART_TOGGLE_DATASET" chart="main_finance_chart" dataset_index="1" />
+                                👁️ Exp
+                            </button>
+
+                            <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                                <on_click action="RUN_SCRIPT">
+                                    const nextType = $data.finance_chart.type === 'bar' ? 'line' : 'bar';
+                                    $data.finance_chart = { ...$data.finance_chart, type: nextType };
+                                </on_click>
+                                🔀 Switch Type
+                            </button>
+
+                            <button class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md shadow-emerald-500/20">
+                                <on_click action="CHART_EXPORT_IMAGE" chart="main_finance_chart" target="data.exported_image" />
+                                📷 Export PNG
+                            </button>
+                        </flex>
+                    </flex>
+
+                    <!-- Declarative <chart> Element -->
+                    <chart
+                        id="main_finance_chart"
+                        config="{data.finance_chart}"
+                        height="320"
+                        update_mode="none"
+                        class="w-full"
+                    >
+                        <on_chart_click action="RUN_SCRIPT">
+                            if ($evt.detail) {
+                                $data.selected_chart = "Financial Chart";
+                                $data.selected_label = $evt.detail.label || "N/A";
+                                $data.selected_value = ($evt.detail.value !== undefined ? "$" + $evt.detail.value + "k" : "N/A");
+                            }
+                        </on_chart_click>
+                    </chart>
+                </flex>
+
+                <!-- Doughnut Device Distribution Card (1 Col) -->
+                <flex direction="column" gap="16" class="glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <flex direction="column" gap="2">
+                        <span class="text-xs font-black uppercase tracking-widest text-cyan-400">📱 Device Analytics</span>
+                        <h2 class="text-lg font-bold text-white">Traffic by Platform</h2>
+                    </flex>
+
+                    <!-- Doughnut Chart -->
+                    <chart
+                        id="device_distribution_chart"
+                        config="{data.device_chart}"
+                        height="240"
+                        class="w-full"
+                    >
+                        <on_chart_click action="RUN_SCRIPT">
+                            if ($evt.detail) {
+                                $data.selected_chart = "Device Chart";
+                                $data.selected_label = $evt.detail.label || "N/A";
+                                $data.selected_value = ($evt.detail.value !== undefined ? $evt.detail.value + "%" : "N/A");
+                            }
+                        </on_chart_click>
+                    </chart>
+
+                    <flex direction="row" gap="8" justify="center">
+                        <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                            <on_click action="CHART_TOGGLE_DATA" chart="device_distribution_chart" data_index="0" />
+                            Toggle Desktop
+                        </button>
+                        <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                            <on_click action="CHART_TOGGLE_DATA" chart="device_distribution_chart" data_index="1" />
+                            Toggle Mobile
+                        </button>
+                    </flex>
+                </flex>
+            </grid>
+
+            <!-- Bottom Grid: Traffic Trends Area Chart + Image Export Preview -->
+            <grid class="grid-cols-1 lg:grid-cols-3 gap-6">
+
+                <!-- Smooth Line Area Chart (2 Cols) -->
+                <flex direction="column" gap="16" class="lg:col-span-2 glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <flex direction="row" align="center" justify="between" class="flex-wrap gap-2">
+                        <flex direction="column" gap="2">
+                            <span class="text-xs font-black uppercase tracking-widest text-emerald-400">📈 User Engagement</span>
+                            <h2 class="text-lg font-bold text-white">Weekly Active Traffic Trends</h2>
+                        </flex>
+
+                        <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                            <on_click action="RUN_SCRIPT">
+                                const newData = $data.traffic_chart.data.datasets[0].data.map(() => Math.floor(Math.random() * 4000) + 1000);
+                                $data.traffic_chart.data.datasets[0].data = newData;
+                                $data.traffic_chart = { ...$data.traffic_chart };
+                            </on_click>
+                            🎲 Randomize Traffic
+                        </button>
+                    </flex>
+
+                    <chart
+                        id="traffic_trend_chart"
+                        config="{data.traffic_chart}"
+                        height="260"
+                        class="w-full"
+                    >
+                        <on_chart_click action="RUN_SCRIPT">
+                            if ($evt.detail) {
+                                $data.selected_chart = "Traffic Chart";
+                                $data.selected_label = $evt.detail.label || "N/A";
+                                $data.selected_value = ($evt.detail.value !== undefined ? $evt.detail.value + " users" : "N/A");
+                            }
+                        </on_chart_click>
+                    </chart>
+                </flex>
+
+                <!-- Exported PNG Preview Card (1 Col) -->
+                <flex direction="column" gap="12" class="glass-panel p-6 rounded-3xl border border-slate-800 shadow-xl">
+                    <span class="text-xs font-black uppercase tracking-widest text-amber-400">🖼️ Image Export Output</span>
+                    <h2 class="text-sm font-bold text-white">Live Base64 PNG Preview</h2>
+
+                    <div class="flex-1 min-h-[180px] bg-slate-950/60 rounded-2xl border border-slate-800 flex items-center justify-center p-4 overflow-hidden">
+                        <if condition="{data.exported_image}">
+                            <img src="{data.exported_image}" alt="Exported Chart" class="max-w-full max-h-[160px] object-contain rounded-lg shadow-lg border border-slate-700" />
+                        </if>
+                        <if condition="!{data.exported_image}">
+                            <span class="text-xs text-slate-500 font-medium text-center">
+                                Click "Export PNG" on any chart above to generate a client-side base64 snapshot.
+                            </span>
+                        </if>
+                    </div>
+                </flex>
+            </grid>
+
+        </flex>
+    </uid_spec>
+    </script>
+</body>
+</html>
