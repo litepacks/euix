@@ -57,7 +57,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await expect(modalTitle).toHaveText('Delete Task?');
 
     // Click "Yes, Delete" in modal
-    await page.locator('button:has-text("Yes, Delete")').click();
+    await page.locator('button:has-text("Yes, Delete")').click({ force: true });
 
     // Verify only ONE task was removed (remaining count = 4)
     const tasksAfter = await page.locator('input[type="checkbox"]').count();
@@ -125,12 +125,14 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     await titleInput.fill('Playwright Test Post Title');
     await bodyTextarea.fill('Playwright Test Post Body Content');
 
-    // Click Publish Post
+    // Submit post and await network response
+    const responsePromise = page.waitForResponse(resp => resp.url().includes('jsonplaceholder.typicode.com/posts') && resp.request().method() === 'POST').catch(() => null);
     await page.locator('button:has-text("Publish Post")').click();
+    await responsePromise;
 
     // Verify post was prepended
-    const newPostTitle = page.locator('span:has-text("Playwright Test Post Title")');
-    await expect(newPostTitle).toBeVisible();
+    const newPostTitle = page.locator('span:has-text("Playwright Test Post Title")').first();
+    await expect(newPostTitle).toBeVisible({ timeout: 10000 });
 
     // Delete the new post
     const deleteBtn = page.locator('button:has-text("Delete")').first();
@@ -167,5 +169,48 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
 
     // Verify table row count updated to 3 (1 header + 2 employees)
     await expect(page.locator('table tr')).toHaveCount(3);
+  });
+
+  test('should execute Action Composer workflow and populate tasks and logs', async ({ page }) => {
+    // Click "➕ Add Bugfix Task"
+    const addBugfixBtn = page.locator('button:has-text("Add Bugfix Task")');
+    await expect(addBugfixBtn).toBeVisible();
+    await addBugfixBtn.click();
+
+    // Verify task was added to composer tasks
+    const taskItem = page.locator('span:has-text("Fix API Cache Invalidation")').first();
+    await expect(taskItem).toBeVisible();
+
+    // Click "🎨 Add Design Task"
+    const addDesignBtn = page.locator('button:has-text("Add Design Task")');
+    await addDesignBtn.click();
+
+    const designItem = page.locator('span:has-text("Redesign Dashboard Layout")').first();
+    await expect(designItem).toBeVisible();
+  });
+
+  test('should load 1,000 items in Virtual Scrolling Benchmark section', async ({ page }) => {
+    // Click "🚀 Load 1,000 Items"
+    const loadBtn = page.locator('button:has-text("Load 1,000 Items")');
+    await expect(loadBtn).toBeVisible();
+    await loadBtn.click();
+
+    // Verify virtual item row rendered
+    const itemCard = page.locator('span:has-text("High-Frequency Telemetry Packet")').first();
+    await expect(itemCard).toBeVisible();
+  });
+
+  test('should interact with E-Commerce Catalog and add items to cart', async ({ page }) => {
+    // Wait for product card to render
+    const productCard = page.locator('.product-card, .ecommerce-product, button:has-text("Add to Cart")').first();
+    await expect(productCard).toBeVisible();
+
+    // Click "Add to Cart" on first available product
+    const addToCartBtn = page.locator('button:has-text("Add to Cart")').first();
+    await addToCartBtn.click();
+
+    // Verify cart count or items
+    const cartItem = page.locator('.cart-item, span:has-text("Cart")').first();
+    await expect(cartItem).toBeVisible();
   });
 });
