@@ -1677,6 +1677,17 @@ class EUIXEngineCore {
             const key = path.replace(/^(\$global|global)\.(data\.)?/, "");
             return this.getState(key);
         }
+        if (path.startsWith("$route.") || path.startsWith("$router.") || path.startsWith("$fetcher.")) {
+            const scope = path.startsWith("$route") ? "$route" : (path.startsWith("$router") ? "$router" : "$fetcher");
+            const prop = path.slice(scope.length + 1);
+            const rootState = this.getState(scope) || (context && context[scope]);
+            if (!rootState) return undefined;
+            if (!prop) return rootState;
+            return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), rootState);
+        }
+        if (path === "$route" || path === "$router" || path === "$fetcher") {
+            return this.getState(path) || (context && context[path]);
+        }
         if (path.startsWith("api.") || path.startsWith("$api.")) {
             const clean = path.replace(/^(\$api|api)\./, "");
             const parts = clean.split(".");
@@ -2994,6 +3005,14 @@ class EUIXEngineCore {
         // Fast-path: single simple token e.g. "{item.text}" or "{todo.completed}" or "{data.count}"
         if (text.charCodeAt(0) === 123 && text.charCodeAt(text.length - 1) === 125) {
             const inner = text.slice(1, -1).trim();
+            if (inner.startsWith("JSON.stringify($route") || inner === "$route") {
+                const root = this.getState("$route") || (context && context["$route"]);
+                return root !== undefined && root !== null ? JSON.stringify(root, null, 2) : "{}";
+            }
+            if (inner.startsWith("JSON.stringify($router") || inner === "$router") {
+                const root = this.getState("$router") || (context && context["$router"]);
+                return root !== undefined && root !== null ? JSON.stringify(root, null, 2) : "{}";
+            }
             if (!/[?!=><+\-*/(),]/.test(inner) && !inner.includes("{")) {
                 const dotIdx = inner.indexOf(".");
                 if (dotIdx === -1) {
@@ -3010,6 +3029,17 @@ class EUIXEngineCore {
                         if (!prop.includes("[")) {
                             const v = this.getState(prop);
                             if (v !== undefined) return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                        }
+                    } else if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
+                        const root = this.getState(scope) || (context && context[scope]);
+                        if (root !== undefined && root !== null) {
+                            const parts = prop.split(".");
+                            let curr = root;
+                            for (let p of parts) {
+                                if (curr === undefined || curr === null) break;
+                                curr = curr[p];
+                            }
+                            if (curr !== undefined) return typeof curr === "object" && curr !== null ? JSON.stringify(curr) : String(curr ?? "");
                         }
                     } else if (context && context[scope] !== undefined && context[scope] !== null) {
                         let curr = context[scope];
@@ -3051,6 +3081,17 @@ class EUIXEngineCore {
                         out += this.constants.get(c.prop);
                     } else if (EUIXEngineCore._globalConstants && EUIXEngineCore._globalConstants.has(c.prop)) {
                         out += EUIXEngineCore._globalConstants.get(c.prop);
+                    }
+                } else if (c.scope === "$route" || c.scope === "$router" || c.scope === "$fetcher") {
+                    const root = this.getState(c.scope) || (context && context[c.scope]);
+                    if (root !== undefined && root !== null) {
+                        const parts = c.parts || (c.prop.includes(".") ? c.prop.split(".") : [c.prop]);
+                        let curr = root;
+                        for (let p of parts) {
+                            if (curr === undefined || curr === null) break;
+                            curr = curr[p];
+                        }
+                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : String(curr)) : "");
                     }
                 } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
                     const v = this.getState(c.prop);
@@ -3161,8 +3202,15 @@ class EUIXEngineCore {
             return match;
         });
 
-        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {api.name}, {$api.name}
-        result = result.replace(/\{(args|params|result|err|error|local|\$local|global|api|\$api)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+        // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {api.name}, {$api.name}, {$route.name}, {$router.name}, {$fetcher.name}
+        result = result.replace(/\{(args|params|result|err|error|local|\$local|global|api|\$api|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_\.]+))?\}/g, (match, scope, prop) => {
+            if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
+                const rootState = this.getState(scope);
+                if (rootState === undefined || rootState === null) return "";
+                if (!prop) return typeof rootState === "object" ? JSON.stringify(rootState) : String(rootState);
+                const val = prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), rootState);
+                return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
+            }
             if (scope === "api" || scope === "$api") {
                 if (prop) {
                     const parts = prop.split(".");
@@ -3623,11 +3671,20 @@ class EUIXEngineCore {
                 }
             }
 
-            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g));
+            const matches = Array.from(attrValue.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api|\$route|\$router|\$fetcher)\.([a-zA-Z0-9_.[\]]+)/g));
             if (matches.length > 0) {
                 const uniqueKeys = new Set(matches.map(m => m[1]));
                 uniqueKeys.forEach(key => {
-                    if (attrValue.includes("api." + key) || attrValue.includes("$api." + key)) {
+                    if (attrValue.includes("$route.") || attrValue.includes("$router.") || attrValue.includes("$fetcher.")) {
+                        const scopeMatch = attrValue.match(/\$(route|router|fetcher)/);
+                        const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
+                        this.registerBinding(scopeKey, el, "attribute", () => {
+                            this.updateAttributeBinding(el, attrName, attrValue, context);
+                        });
+                        this.registerBinding(`${scopeKey}.${key}`, el, "attribute", () => {
+                            this.updateAttributeBinding(el, attrName, attrValue, context);
+                        });
+                    } else if (attrValue.includes("api." + key) || attrValue.includes("$api." + key)) {
                         const parts = key.split(".");
                         const epId = parts[0];
                         const epProp = parts[1];
@@ -4198,17 +4255,33 @@ class EUIXEngineCore {
                 parent = parent.parentNode;
             }
             const txt = xmlNode.textContent;
-            if (isCodeBlock) {
+            if (isCodeBlock && (!txt || !txt.includes("{") || !txt.includes("}"))) {
                 return txt ? document.createTextNode(txt) : null;
             }
             if (!txt || txt.trim() === "") return null;
             const textNode = document.createTextNode(this.interpolate(txt, context));
 
-            const matches = Array.from(txt.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api)\.([a-zA-Z0-9_.[\]]+)/g));
+            if (txt.includes("$route") || txt.includes("$router") || txt.includes("$fetcher")) {
+                const scopeMatch = txt.match(/\$(route|router|fetcher)/);
+                const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
+                const updateFn = () => {
+                    textNode.textContent = this.interpolate(txt, context);
+                };
+                this.registerBinding(scopeKey, textNode, "text_node", updateFn);
+            }
+
+            const matches = Array.from(txt.matchAll(/(?:parent\.)?(?:data|local|\$local|api|\$api|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.[\]]+))?/g));
             if (matches.length > 0) {
-                const uniqueKeys = new Set(matches.map(m => m[1]));
+                const uniqueKeys = new Set(matches.map(m => m[1]).filter(Boolean));
                 uniqueKeys.forEach(key => {
-                    if (txt.includes("api." + key) || txt.includes("$api." + key)) {
+                    if (txt.includes("$route.") || txt.includes("$router.") || txt.includes("$fetcher.")) {
+                        const scopeMatch = txt.match(/\$(route|router|fetcher)/);
+                        const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
+                        const updateFn = () => {
+                            textNode.textContent = this.interpolate(txt, context);
+                        };
+                        this.registerBinding(`${scopeKey}.${key}`, textNode, "text_node", updateFn);
+                    } else if (txt.includes("api." + key) || txt.includes("$api." + key)) {
                         const parts = key.split(".");
                         const epId = parts[0];
                         const epProp = parts[1];
@@ -4700,6 +4773,12 @@ class EUIXEngineCore {
                 this.registerBinding(itemsKey, listContainer, "for_each", () => {
                     renderItems();
                 });
+                if (itemsKey.startsWith("$route") || itemsKey.startsWith("$router") || itemsKey.startsWith("$fetcher")) {
+                    const scope = itemsKey.startsWith("$route") ? "$route" : (itemsKey.startsWith("$router") ? "$router" : "$fetcher");
+                    this.registerBinding(scope, listContainer, "for_each", () => {
+                        renderItems();
+                    });
+                }
             }
 
             if (compiled && compiled.externalKeys) {

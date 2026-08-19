@@ -57,7 +57,7 @@
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">0 External Dependencies</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
-                    <span class="text-lg md:text-xl font-black text-blue-400">23.2 KB</span>
+                    <span class="text-lg md:text-xl font-black text-blue-400">34.3 KB</span>
                     <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lite Core Gzip</span>
                 </flex>
                 <flex direction="column" align="center" class="p-3 bg-white/5 rounded-xl border border-white/10">
@@ -91,6 +91,9 @@
                 </button>
                 <a href="./playground.html" class="px-4 sm:px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-emerald-600/30 cursor-pointer flex items-center gap-2">
                     🎮 Live Demos
+                </a>
+                <a href="./router_demo.html" class="px-4 sm:px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-purple-600/30 cursor-pointer flex items-center gap-2">
+                    🧭 Web Router Demo
                 </a>
                 <a href="./navigator_demo.html" class="px-4 sm:px-5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-lg shadow-sky-600/30 cursor-pointer flex items-center gap-2">
                     🌐 Navigator Demo
@@ -352,7 +355,7 @@
                             <span class="text-2xl">📦</span>
                             <h3 class="font-extrabold text-white text-sm">Zero Dependency Footprint</h3>
                             <p class="text-xs text-slate-300 leading-relaxed">
-                                Self-contained 22.6 KB minified &amp; gzipped UMD/ESM bundle requiring zero npm build tools or transpilations to execute in any browser.
+                                Self-contained 34.3 KB minified &amp; gzipped UMD/ESM Lite Core bundle requiring zero npm build tools or transpilations to execute in any browser.
                             </p>
                         </flex>
                         <flex direction="column" gap="8" class="p-5 bg-slate-900 rounded-2xl border border-slate-800 shadow-xl hover:border-slate-700 transition-all">
@@ -1109,7 +1112,7 @@ engine.registerAction("TRACK_ANALYTICS", (actionNode, context) =&gt; {
                                 <flex direction="column" gap="12" class="min-w-0 max-w-full">
                                     <h3 class="text-lg font-black text-white">🧩 14. Modular Plugin Architecture</h3>
                                     <p class="text-xs text-slate-300 leading-relaxed">
-                                        EUIX Engine is split into a Lite Core (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">euixjs/core</code> - 18.8 KB Gzip) and tree-shakeable plugins (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">composer</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">api</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dnd</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">storage</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">collapse</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dialog</code>).
+                                        EUIX Engine is split into a Lite Core (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">euixjs/core</code> - 34.3 KB Gzip) and tree-shakeable plugins (<code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">router</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">api</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">composer</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">leaflet</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">dnd</code>, <code class="bg-slate-950 px-1.5 py-0.5 rounded text-indigo-300 border border-slate-800 font-mono">storage</code>).
                                     </p>
                                     <pre class="p-4 bg-slate-950 text-indigo-200 text-xs rounded-xl border border-slate-800 overflow-x-auto max-w-full whitespace-pre-wrap break-words font-mono"><code class="language-javascript">import { EUIXEngineCore } from 'euixjs/core';
 import { EUIXComposerPlugin } from 'euixjs/composer';

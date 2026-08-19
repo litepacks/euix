@@ -1,7 +1,7 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "mutate": [
-    "src/plugins/EUIXAnimationPlugin.js"
+    "src/core/**/*.js"
   ],
   "ignoreStatic": true,
   "testRunner": "vitest",

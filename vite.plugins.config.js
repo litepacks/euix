@@ -17,7 +17,8 @@ export default defineConfig({
         'plugins/EUIXAnimationPlugin': resolve(__dirname, 'src/plugins/EUIXAnimationPlugin.js'),
         'plugins/EUIXHeadPlugin': resolve(__dirname, 'src/plugins/EUIXHeadPlugin.js'),
         'plugins/EUIXLeafletPlugin': resolve(__dirname, 'src/plugins/EUIXLeafletPlugin.js'),
-        'plugins/EUIXNavigatorPlugin': resolve(__dirname, 'src/plugins/EUIXNavigatorPlugin.js')
+        'plugins/EUIXNavigatorPlugin': resolve(__dirname, 'src/plugins/EUIXNavigatorPlugin.js'),
+        'plugins/EUIXRouterPlugin': resolve(__dirname, 'src/plugins/EUIXRouterPlugin.js')
       },
       formats: ['es']
     },
