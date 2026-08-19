@@ -276,4 +276,40 @@ describe('EUIXNavigatorPlugin - Browser Device & Navigator Capabilities Suite', 
 
         engine.unmount();
     });
+
+    it('7. should render GPS fallback "N/A" initially and render real coordinates after GET_GEOLOCATION', async () => {
+        const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="user_coords" type="object">{}</state>
+                </data_model>
+                <div>
+                    <div class="toast-box">
+                        <strong>GPS:</strong> Lat: {data.user_coords.latitude || 'N/A'}, Lng: {data.user_coords.longitude || 'N/A'}
+                    </div>
+                    <button class="btn-locate">
+                        <on_click action="GET_GEOLOCATION" target="user_coords" />
+                        Locate
+                    </button>
+                </div>
+            </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        const toast = container.querySelector('.toast-box');
+
+        // Initial state -> must show N/A, not true!
+        expect(toast.textContent).toContain('Lat: N/A, Lng: N/A');
+        expect(toast.textContent).not.toContain('true');
+
+        // Trigger Geolocation
+        const btnLocate = container.querySelector('.btn-locate');
+        btnLocate.click();
+        await new Promise(r => setTimeout(r, 20));
+
+        // After locating -> must show coordinates
+        expect(toast.textContent).toContain('Lat: 41.0082, Lng: 28.9784');
+
+        engine.unmount();
+    });
 });

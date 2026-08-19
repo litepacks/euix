@@ -57,4 +57,32 @@ describe('EUIXExpressionParser AST Cache & Telemetry Suite', () => {
         expect(stats.hits).toBe(0);
         expect(stats.misses).toBe(0);
     });
+
+    it('should correctly evaluate logical OR (||) fallback values with undefined and truthy operands', () => {
+        const resolver = (name) => {
+            if (name === 'data.user_coords.latitude') return undefined;
+            if (name === 'data.active_city') return 'Istanbul';
+            return undefined;
+        };
+
+        // Undefined operand falls back to string
+        const resFallback = EUIXExpressionParser.eval("data.user_coords.latitude || 'N/A'", resolver);
+        expect(resFallback).toBe('N/A');
+
+        // Truthy operand returns its actual value
+        const resValue = EUIXExpressionParser.eval("data.active_city || 'DefaultCity'", resolver);
+        expect(resValue).toBe('Istanbul');
+    });
+
+    it('should correctly evaluate logical AND (&&) values', () => {
+        const resolver = (name) => {
+            if (name === 'data.is_admin') return true;
+            if (name === 'data.user_name') return 'Ahmet';
+            if (name === 'data.is_banned') return false;
+            return undefined;
+        };
+
+        expect(EUIXExpressionParser.eval("data.is_admin && data.user_name", resolver)).toBe('Ahmet');
+        expect(EUIXExpressionParser.eval("data.is_banned && data.user_name", resolver)).toBe(false);
+    });
 });
