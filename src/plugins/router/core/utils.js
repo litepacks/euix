@@ -158,13 +158,15 @@ export function resolvePath(to, fromPath = "/") {
 export function generatePath(pattern = "/", params = {}) {
     if (!pattern) return "/";
 
+    const safeParams = params || {};
+
     // Fast path: if pattern has no dynamic parameters or wildcards
     if (pattern.indexOf(":") === -1 && pattern.indexOf("*") === -1) {
         return normalizePath(pattern);
     }
 
     let path = pattern.replace(/:([a-zA-Z0-9_]+)(\?)?/g, (_, key, optional) => {
-        const val = params[key];
+        const val = safeParams[key];
         if (val !== undefined && val !== null) {
             return encodeURIComponent(String(val));
         }
@@ -175,9 +177,13 @@ export function generatePath(pattern = "/", params = {}) {
     });
 
     if (path.indexOf("*") !== -1) {
-        path = path.replace(/\/\*$/, () => {
-            const splat = params["*"];
-            return splat ? `/${encodeURI(String(splat).replace(/^\//, ""))}` : "";
+        path = path.replace(/(\/)?\*$/, (_, slash) => {
+            const splat = safeParams["*"];
+            if (splat !== undefined && splat !== null) {
+                const cleanSplat = encodeURI(String(splat).replace(/^\//, ""));
+                return slash ? `/${cleanSplat}` : cleanSplat;
+            }
+            return "";
         });
     }
 
