@@ -151,7 +151,18 @@ export class EUIXRouter {
     }
 
     get matches() {
-        return this.navigationController.matches;
+        const rawMatches = this.navigationController.matches;
+        if (!rawMatches) return [];
+        return rawMatches.map(m => {
+            const routeId = m.id || (m.route && m.route.id);
+            if (m.data === undefined && routeId) {
+                const cachedData = this.cache.get(routeId, this.location.pathname, this.location.search);
+                if (cachedData !== undefined) {
+                    return { ...m, data: cachedData };
+                }
+            }
+            return m;
+        });
     }
 
     get navigation() {

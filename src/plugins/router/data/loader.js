@@ -24,13 +24,14 @@ export class RouteLoaderManager {
      * @returns {Promise<any>}
      */
     async executeLoader({ match, location, signal, context = {} }) {
-        const route = match.route;
+        const route = match.route || {};
+        const routeId = match.id || route.id;
         const pathname = location.pathname;
         const search = location.search;
 
         // Check Cache first if not explicitly invalidated
-        if (this.cache && this.cache.has(match.id, pathname, search)) {
-            return this.cache.get(match.id, pathname, search);
+        if (this.cache && routeId && this.cache.has(routeId, pathname, search)) {
+            return this.cache.get(routeId, pathname, search);
         }
 
         const searchParams = parseSearchParams(search);
@@ -40,7 +41,7 @@ export class RouteLoaderManager {
 
         const loaderContext = {
             request,
-            params: match.params,
+            params: match.params || {},
             search: searchParams,
             signal,
             route,
@@ -51,10 +52,11 @@ export class RouteLoaderManager {
         let result = undefined;
 
         // 1. Programmatic Loader
-        if (typeof route.loader === "function") {
-            result = await route.loader(loaderContext);
-        } else if (typeof route.loader === "string" && this._registeredLoaders.has(route.loader)) {
-            const loaderFn = this._registeredLoaders.get(route.loader);
+        const loaderCandidate = match.loader || route.loader;
+        if (typeof loaderCandidate === "function") {
+            result = await loaderCandidate(loaderContext);
+        } else if (typeof loaderCandidate === "string" && this._registeredLoaders.has(loaderCandidate)) {
+            const loaderFn = this._registeredLoaders.get(loaderCandidate);
             result = await loaderFn(loaderContext);
         } else if (route.loaderNode) {
             // 2. Declarative XML Loader: <loader request="/api/..." method="GET" as="key" />
@@ -71,8 +73,8 @@ export class RouteLoaderManager {
         }
 
         // Store in cache
-        if (this.cache && result !== undefined) {
-            this.cache.set(match.id, pathname, search, result);
+        if (this.cache && routeId && result !== undefined) {
+            this.cache.set(routeId, pathname, search, result);
         }
 
         return result;
