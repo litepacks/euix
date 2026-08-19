@@ -658,6 +658,74 @@ class EUIXStructuredError extends Error {
     }
 }
 
+const _resolveRoot = (r) => r;
+const _resolveChild0 = (r) => (r && r.childNodes ? r.childNodes[0] : null);
+const _resolveChild1 = (r) => (r && r.childNodes ? r.childNodes[1] : null);
+const _resolveChild2 = (r) => (r && r.childNodes ? r.childNodes[2] : null);
+const _resolveChild3 = (r) => (r && r.childNodes ? r.childNodes[3] : null);
+const _resolveChild0_0 = (r) => (r && r.childNodes && r.childNodes[0] ? r.childNodes[0].childNodes[0] : null);
+const _resolveChild0_1 = (r) => (r && r.childNodes && r.childNodes[0] ? r.childNodes[0].childNodes[1] : null);
+const _resolveChild1_0 = (r) => (r && r.childNodes && r.childNodes[1] ? r.childNodes[1].childNodes[0] : null);
+const _resolveChild1_1 = (r) => (r && r.childNodes && r.childNodes[1] ? r.childNodes[1].childNodes[1] : null);
+const _resolveChild2_0 = (r) => (r && r.childNodes && r.childNodes[2] ? r.childNodes[2].childNodes[0] : null);
+const _resolveChild2_1 = (r) => (r && r.childNodes && r.childNodes[2] ? r.childNodes[2].childNodes[1] : null);
+
+function _getNodeAtPath(root, path) {
+    let curr = root;
+    for (let i = 0; i < path.length; i++) {
+        if (!curr || !curr.childNodes) return null;
+        curr = curr.childNodes[path[i]];
+    }
+    return curr;
+}
+
+function _getStaticNodeResolver(path) {
+    const len = path.length;
+    if (len === 0) return _resolveRoot;
+    if (len === 1) {
+        if (path[0] === 0) return _resolveChild0;
+        if (path[0] === 1) return _resolveChild1;
+        if (path[0] === 2) return _resolveChild2;
+        if (path[0] === 3) return _resolveChild3;
+        const p0 = path[0];
+        return (r) => (r && r.childNodes ? r.childNodes[p0] : null);
+    }
+    if (len === 2) {
+        if (path[0] === 0 && path[1] === 0) return _resolveChild0_0;
+        if (path[0] === 0 && path[1] === 1) return _resolveChild0_1;
+        if (path[0] === 1 && path[1] === 0) return _resolveChild1_0;
+        if (path[0] === 1 && path[1] === 1) return _resolveChild1_1;
+        if (path[0] === 2 && path[1] === 0) return _resolveChild2_0;
+        if (path[0] === 2 && path[1] === 1) return _resolveChild2_1;
+        const p0 = path[0], p1 = path[1];
+        return (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null);
+    }
+    return (r) => _getNodeAtPath(r, path);
+}
+
+function _isVisualXmlChild(n) {
+    if (n.nodeType === 3) return Boolean(n.textContent && n.textContent.trim() !== "");
+    if (n.nodeType === 1) {
+        const tag = (n.tagName || "").toLowerCase();
+        return !(tag.startsWith("on_") || tag === "confirm" || tag === "step" || tag === "param" || tag === "where" || tag === "when");
+    }
+    return false;
+}
+
+const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
+
+function _extractExternalKeysFromExpr(expr, varName, targetSet) {
+    if (!expr || !expr.includes("{")) return;
+    _EXT_KEY_RE.lastIndex = 0;
+    let m;
+    while ((m = _EXT_KEY_RE.exec(expr)) !== null) {
+        const key = m[1];
+        if (key && key !== varName && key !== "_index" && key !== "index") {
+            targetSet.add(key);
+        }
+    }
+}
+
 class EUIXEngineCore {
     static _installedPlugins = new Set();
     static _globalActionHandlers = new Map();
@@ -3711,9 +3779,10 @@ class EUIXEngineCore {
             for (let i = 0; i < newKeys.length; i++) {
                 const entry = newKeyedMap.get(newKeys[i]);
                 if (entry && entry.nodes) {
-                    for (let n = 0; n < entry.nodes.length; n++) {
-                        if (fragment) fragment.appendChild(entry.nodes[n]);
-                        else container.appendChild(entry.nodes[n]);
+                    const nodes = entry.nodes;
+                    for (let n = 0; n < nodes.length; n++) {
+                        if (fragment) fragment.appendChild(nodes[n]);
+                        else container.appendChild(nodes[n]);
                     }
                 }
             }
@@ -3722,13 +3791,15 @@ class EUIXEngineCore {
         }
 
         if (!newKeys || newKeys.length === 0) {
-            oldKeyedMap.forEach(entry => {
+            for (const entry of oldKeyedMap.values()) {
                 if (entry && entry.nodes) {
-                    entry.nodes.forEach(n => {
-                        if (n && n.parentNode === container) container.removeChild(n);
-                    });
+                    const nodes = entry.nodes;
+                    for (let n = 0; n < nodes.length; n++) {
+                        const node = nodes[n];
+                        if (node && node.parentNode === container) container.removeChild(node);
+                    }
                 }
-            });
+            }
             return;
         }
 
@@ -3795,9 +3866,11 @@ class EUIXEngineCore {
             if (!activeNewKeys.has(oldKey)) {
                 const oldEntry = oldKeyedMap.get(oldKey);
                 if (oldEntry && oldEntry.nodes) {
-                    oldEntry.nodes.forEach(n => {
-                        if (n && n.parentNode === container) container.removeChild(n);
-                    });
+                    const nodes = oldEntry.nodes;
+                    for (let n = 0; n < nodes.length; n++) {
+                        const node = nodes[n];
+                        if (node && node.parentNode === container) container.removeChild(node);
+                    }
                 }
             }
         }
@@ -3947,14 +4020,7 @@ class EUIXEngineCore {
                         if (!getter) {
                             getter = (item, ctx) => this.interpolate(txt, ctx);
                         }
-                        const pLen = path.length;
-                        const p0 = path[0];
-                        const p1 = path[1];
-                        const resolver = pLen === 0 ? (r) => r :
-                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
-                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
-                                         (r) => getNodeAtPath(r, path);
-                        dynamicSlots.push({ childIndex: cIdx, path: [...path], type: "text", rawExpr: txt, getter, resolver });
+                        dynamicSlots.push({ childIndex: cIdx, path: [...path], type: "text", rawExpr: txt, getter, resolver: _getStaticNodeResolver(path) });
                     }
                     return;
                 }
@@ -3978,13 +4044,6 @@ class EUIXEngineCore {
                                 if (!getter) {
                                     getter = (item, ctx) => this.interpolate(attrVal, ctx);
                                 }
-                                const pLen = path.length;
-                                const p0 = path[0];
-                                const p1 = path[1];
-                                const resolver = pLen === 0 ? (r) => r :
-                                                 pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
-                                                 pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
-                                                 (r) => getNodeAtPath(r, path);
                                 dynamicSlots.push({
                                     childIndex: cIdx,
                                     path: [...path],
@@ -3992,7 +4051,7 @@ class EUIXEngineCore {
                                     name: attrName,
                                     rawExpr: attrVal,
                                     getter,
-                                    resolver
+                                    resolver: _getStaticNodeResolver(path)
                                 });
                             }
                         }
@@ -4000,19 +4059,12 @@ class EUIXEngineCore {
 
                     const bindAttr = xNode.getAttribute("bind");
                     if (bindAttr) {
-                        const pLen = path.length;
-                        const p0 = path[0];
-                        const p1 = path[1];
-                        const resolver = pLen === 0 ? (r) => r :
-                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
-                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
-                                         (r) => getNodeAtPath(r, path);
                         dynamicSlots.push({
                             childIndex: cIdx,
                             path: [...path],
                             type: "bind",
                             bindPath: bindAttr,
-                            resolver
+                            resolver: _getStaticNodeResolver(path)
                         });
                     }
 
@@ -4021,24 +4073,17 @@ class EUIXEngineCore {
                         dNode._euixEventMap.forEach((handlers, evType) => {
                             eventsObj[evType] = handlers;
                         });
-                        const pLen = path.length;
-                        const p0 = path[0];
-                        const p1 = path[1];
-                        const resolver = pLen === 0 ? (r) => r :
-                                         pLen === 1 ? (r) => (r && r.childNodes ? r.childNodes[p0] : null) :
-                                         pLen === 2 ? (r) => (r && r.childNodes && r.childNodes[p0]?.childNodes ? r.childNodes[p0].childNodes[p1] : null) :
-                                         (r) => getNodeAtPath(r, path);
                         dynamicSlots.push({
                             childIndex: cIdx,
                             path: [...path],
                             type: "event",
                             eventMap: new Map(dNode._euixEventMap),
                             eventsObj,
-                            resolver
+                            resolver: _getStaticNodeResolver(path)
                         });
                     }
 
-                    const xChildren = Array.from(xNode.childNodes).filter(n => n.nodeType === 1 || (n.nodeType === 3 && n.textContent && n.textContent.trim() !== ""));
+                    const xChildren = Array.from(xNode.childNodes).filter(_isVisualXmlChild);
                     const dChildren = Array.from(dNode.childNodes);
 
                     const len = Math.min(xChildren.length, dChildren.length);
@@ -4052,20 +4097,17 @@ class EUIXEngineCore {
             prototypes.push(domChild);
         }
 
-        const getNodeAtPath = (root, path) => {
-            let curr = root;
-            for (let i = 0; i < path.length; i++) {
-                if (!curr || !curr.childNodes) return null;
-                curr = curr.childNodes[path[i]];
-            }
-            return curr;
-        };
+        const externalKeys = new Set();
+        for (let sIdx = 0; sIdx < dynamicSlots.length; sIdx++) {
+            _extractExternalKeysFromExpr(dynamicSlots[sIdx].rawExpr, varName, externalKeys);
+        }
 
         xmlNode._templatePrototype = {
             canClone: true,
             prototypes,
             dynamicSlots,
-            getNodeAtPath
+            getNodeAtPath: _getNodeAtPath,
+            externalKeys
         };
 
         return xmlNode._templatePrototype;
@@ -4308,9 +4350,16 @@ class EUIXEngineCore {
         }
 
         if (tagName === "for_each") {
-            const listContainer = document.createElement("div");
-            listContainer.className = "euix-list-container";
-            listContainer.style.display = "contents";
+            const containerTag = xmlNode.getAttribute("as") || xmlNode.getAttribute("tag") || "div";
+            const listContainer = document.createElement(containerTag);
+            if (xmlNode.getAttribute("id")) listContainer.id = xmlNode.getAttribute("id");
+            const customClass = xmlNode.getAttribute("class") || "";
+            if (containerTag === "div") {
+                listContainer.className = customClass ? customClass + " euix-list-container" : "euix-list-container";
+                listContainer.style.display = "contents";
+            } else if (customClass) {
+                listContainer.className = customClass;
+            }
 
             this._setupContainerEventDelegation(listContainer);
 
@@ -4349,23 +4398,59 @@ class EUIXEngineCore {
             const varName = xmlNode.getAttribute("var") || "item";
             const keyAttr = xmlNode.getAttribute("key") || xmlNode.getAttribute("key_field") || xmlNode.getAttribute("item_key") || "";
 
-            const getItemKey = (item, idx) => {
-                if (keyAttr) {
-                    if (keyAttr.startsWith("{") && keyAttr.endsWith("}")) {
-                        const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey, _insideForEach: true };
-                        const res = this.interpolate(keyAttr, childContext);
-                        if (res !== undefined && res !== null && res !== "") return String(res);
-                    } else if (typeof item === "object" && item !== null && item[keyAttr] !== undefined && item[keyAttr] !== null) {
-                        return String(item[keyAttr]);
-                    }
-                }
-                if (typeof item === "object" && item !== null && item.id !== undefined && item.id !== null) {
-                    return String(item.id);
-                }
-                return `__idx_${idx}`;
-            };
+            let getItemKey;
+            if (!keyAttr || keyAttr === "id") {
+                getItemKey = (item, idx) => (item && item.id !== undefined && item.id !== null ? String(item.id) : (item && item._key !== undefined ? String(item._key) : `__idx_${idx}`));
+            } else if (!keyAttr.includes("{")) {
+                getItemKey = (item, idx) => (item && item[keyAttr] !== undefined && item[keyAttr] !== null ? String(item[keyAttr]) : (item && item.id !== undefined && item.id !== null ? String(item.id) : `__idx_${idx}`));
+            } else {
+                getItemKey = (item, idx) => {
+                    const childContext = { ...context, [varName]: item, _index: idx, index: idx, _parentStateKey: itemsKey, _insideForEach: true };
+                    const res = this.interpolate(keyAttr, childContext);
+                    return res !== undefined && res !== null && res !== "" ? String(res) : (item && item.id !== undefined && item.id !== null ? String(item.id) : `__idx_${idx}`);
+                };
+            }
 
             const getItemHash = getForEachItemHash;
+
+            const baseChildContext = Object.create(context);
+            baseChildContext._parentStateKey = itemsKey;
+            baseChildContext._insideForEach = true;
+
+            const compiled = this._getCompiledForEachTemplate(xmlNode, varName, baseChildContext, context);
+            const pooledItemContext = Object.create(baseChildContext);
+
+            const templateChildren = Array.from(xmlNode.children);
+            const createItemNodes = (item, idx) => {
+                if (compiled && compiled.canClone) {
+                    pooledItemContext[varName] = item;
+                    pooledItemContext._index = idx;
+                    pooledItemContext.index = idx;
+                    const protoLen = compiled.prototypes.length;
+                    const nodes = new Array(protoLen);
+                    for (let pIdx = 0; pIdx < protoLen; pIdx++) {
+                        nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
+                    }
+                    this._applyForEachSlots(nodes, compiled, item, pooledItemContext, varName);
+                    return nodes;
+                }
+
+                const childContext = Object.create(baseChildContext);
+                childContext[varName] = item;
+                childContext._index = idx;
+                childContext.index = idx;
+
+                const nodes = [];
+                for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
+                    const child = templateChildren[cIdx];
+                    const el = this.createHTMLElement(child, childContext);
+                    if (el) {
+                        this.applyItemChildStyles(el, child, context);
+                        nodes.push(el);
+                    }
+                }
+                return nodes;
+            };
 
             const renderItems = () => {
                 let list = (this._rawState && this._rawState[itemsKey] && Array.isArray(this._rawState[itemsKey]))
@@ -4379,45 +4464,6 @@ class EUIXEngineCore {
                         list = [];
                     }
                 }
-
-                const templateChildren = Array.from(xmlNode.children);
-                const baseChildContext = Object.create(context);
-                baseChildContext._parentStateKey = itemsKey;
-                baseChildContext._insideForEach = true;
-
-                const compiled = this._getCompiledForEachTemplate(xmlNode, varName, baseChildContext, context);
-
-                const pooledItemContext = Object.create(baseChildContext);
-                const createItemNodes = (item, idx) => {
-                    if (compiled && compiled.canClone) {
-                        pooledItemContext[varName] = item;
-                        pooledItemContext._index = idx;
-                        pooledItemContext.index = idx;
-                        const protoLen = compiled.prototypes.length;
-                        const nodes = new Array(protoLen);
-                        for (let pIdx = 0; pIdx < protoLen; pIdx++) {
-                            nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
-                        }
-                        this._applyForEachSlots(nodes, compiled, item, pooledItemContext, varName);
-                        return nodes;
-                    }
-
-                    const childContext = Object.create(baseChildContext);
-                    childContext[varName] = item;
-                    childContext._index = idx;
-                    childContext.index = idx;
-
-                    const nodes = [];
-                    for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
-                        const child = templateChildren[cIdx];
-                        const el = this.createHTMLElement(child, childContext);
-                        if (el) {
-                            this.applyItemChildStyles(el, child, context);
-                            nodes.push(el);
-                        }
-                    }
-                    return nodes;
-                };
 
                 if (isVirtual) {
                     const totalItems = list.length;
@@ -4606,17 +4652,16 @@ class EUIXEngineCore {
 
                     if (existing && existing.nodes && existing.nodes.length > 0) {
                         const hash = getItemHash(item);
-                        if (existing.hash === hash) {
+                        if (existing.hash === hash && (!compiled || !compiled.externalKeys || compiled.externalKeys.size === 0)) {
                             nodes = existing.nodes;
                             newKeyedMap.set(key, { nodes, hash, index: idx });
                             continue;
                         }
                         if (compiled && compiled.canClone) {
-                            const childContext = Object.create(baseChildContext);
-                            childContext[varName] = item;
-                            childContext._index = idx;
-                            childContext.index = idx;
-                            this._applyForEachSlots(existing.nodes, compiled, item, childContext, varName);
+                            pooledItemContext[varName] = item;
+                            pooledItemContext._index = idx;
+                            pooledItemContext.index = idx;
+                            this._applyForEachSlots(existing.nodes, compiled, item, pooledItemContext, varName);
                             nodes = existing.nodes;
                             newKeyedMap.set(key, { nodes, hash, index: idx });
                             continue;
@@ -4654,6 +4699,14 @@ class EUIXEngineCore {
             if (itemsKey) {
                 this.registerBinding(itemsKey, listContainer, "for_each", () => {
                     renderItems();
+                });
+            }
+
+            if (compiled && compiled.externalKeys) {
+                compiled.externalKeys.forEach(extKey => {
+                    this.registerBinding(extKey, listContainer, "for_each", () => {
+                        renderItems();
+                    });
                 });
             }
 
@@ -5778,8 +5831,8 @@ class EUIXEngineCore {
             .replace(/&quot;/g, "\"")
             .replace(/&apos;/g, "'")
             .replace(/&amp;/g, "&");
-        const interpolatedCode = decodedCode.replace(/\{(?:data|props|state|constants|const|vars|args|params|result)\.([a-zA-Z0-9_\.]+)\}/g, (match, p1) => {
-            const val = this.resolveValueFromPath(match.slice(1, -1), context);
+        const interpolatedCode = decodedCode.replace(/\{([a-zA-Z_$][a-zA-Z0-9_\.]*)\}/g, (match, p1) => {
+            const val = this.resolveValueFromPath(p1, context);
             return val !== undefined ? JSON.stringify(val) : match;
         });
         const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
