@@ -208,7 +208,7 @@ export function createRouteContext(match, routerInstance) {
         hash: loc.hash || "",
         location: loc,
         data: routeData,
-        actionData: match.actionData !== undefined ? match.actionData : routerInstance.getRouteActionData(match.id),
+        actionData: match.actionData !== undefined ? match.actionData : (typeof routerInstance.getRouteActionData === "function" ? routerInstance.getRouteActionData(match.id) : undefined),
         error: match.error,
         matches: routerInstance.matches,
         navigation: routerInstance.navigation
