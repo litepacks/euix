@@ -566,7 +566,7 @@ export const EUIXChartPlugin = {
                     return true;
 
                 case "CHART_EXPORT_IMAGE": {
-                    const targetState = actionNode.getAttribute("target") || actionNode.getAttribute("bind") || actionNode.getAttribute("to");
+                    const targetState = actionNode.getAttribute("target") || actionNode.getAttribute("bind") || actionNode.getAttribute("to") || actionNode.getAttribute("target_state");
                     const imgType = actionNode.getAttribute("type") || "image/png";
                     const quality = Number(actionNode.getAttribute("quality")) || 1;
                     if (typeof chart.toBase64Image === "function") {
