@@ -226,6 +226,12 @@ export class EUIXRouter {
     }
 
     // Public API
+    async initialize() {
+        if (this.navigationController && this.location) {
+            return this.navigationController.navigate(this.location, { replace: true, fromHistory: true });
+        }
+    }
+
     async navigate(to, options = {}) {
         return this.navigationController.navigate(to, options);
     }
