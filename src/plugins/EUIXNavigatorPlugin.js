@@ -164,7 +164,7 @@ export const EUIXNavigatorPlugin = {
 
         // 3. Declarative Actions
         // Action: CLIPBOARD_COPY / COPY_TO_CLIPBOARD
-        engineClass.registerAction("CLIPBOARD_COPY", async function(actionNode, context) {
+        const handleClipboardCopy = async function(actionNode, context) {
             const rawText = actionNode.getAttribute("text") || actionNode.getAttribute("value") || "";
             const textNode = this.getChild(actionNode, "text") || this.getChild(actionNode, "value");
             const text = textNode ? this.interpolate(textNode.textContent, context) : this.interpolate(rawText, context);
@@ -186,13 +186,12 @@ export const EUIXNavigatorPlugin = {
                 }
             }
             return text;
-        });
-        engineClass.registerAction("COPY_TO_CLIPBOARD", function(actionNode, context) {
-            return this.executeAction("CLIPBOARD_COPY", actionNode, context);
-        });
+        };
+        engineClass.registerAction("CLIPBOARD_COPY", handleClipboardCopy);
+        engineClass.registerAction("COPY_TO_CLIPBOARD", handleClipboardCopy);
 
         // Action: CLIPBOARD_READ / READ_CLIPBOARD
-        engineClass.registerAction("CLIPBOARD_READ", async function(actionNode, context) {
+        const handleClipboardRead = async function(actionNode, context) {
             const targetPath = actionNode.getAttribute("target") || actionNode.getAttribute("path") || "";
             let text = "";
             if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.readText === "function") {
@@ -202,13 +201,12 @@ export const EUIXNavigatorPlugin = {
                 this.setState(this.parseBindPath(targetPath), text);
             }
             return text;
-        });
-        engineClass.registerAction("READ_CLIPBOARD", function(actionNode, context) {
-            return this.executeAction("CLIPBOARD_READ", actionNode, context);
-        });
+        };
+        engineClass.registerAction("CLIPBOARD_READ", handleClipboardRead);
+        engineClass.registerAction("READ_CLIPBOARD", handleClipboardRead);
 
         // Action: WEB_SHARE / SHARE
-        engineClass.registerAction("WEB_SHARE", async function(actionNode, context) {
+        const handleWebShare = async function(actionNode, context) {
             const titleNode = this.getChild(actionNode, "title");
             const textNode = this.getChild(actionNode, "text");
             const urlNode = this.getChild(actionNode, "url");
@@ -224,10 +222,9 @@ export const EUIXNavigatorPlugin = {
                 return true;
             }
             return false;
-        });
-        engineClass.registerAction("SHARE", function(actionNode, context) {
-            return this.executeAction("WEB_SHARE", actionNode, context);
-        });
+        };
+        engineClass.registerAction("WEB_SHARE", handleWebShare);
+        engineClass.registerAction("SHARE", handleWebShare);
 
         // Action: VIBRATE
         engineClass.registerAction("VIBRATE", function(actionNode, context) {
@@ -251,7 +248,7 @@ export const EUIXNavigatorPlugin = {
 
         // Action: WAKE_LOCK
         engineClass.registerAction("WAKE_LOCK", async function(actionNode, context) {
-            const op = (actionNode.getAttribute("action") || actionNode.getAttribute("type") || "request").toLowerCase();
+            const op = (actionNode.getAttribute("type") || actionNode.getAttribute("mode") || actionNode.getAttribute("op") || (actionNode.getAttribute("action") !== "WAKE_LOCK" ? actionNode.getAttribute("action") : null) || "request").toLowerCase();
             if (typeof navigator === "undefined" || !navigator.wakeLock) return false;
 
             if (op === "request") {
