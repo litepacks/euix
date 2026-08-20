@@ -33,7 +33,7 @@ export function createLinkRenderer(engine, routerInstance) {
 
         const isDynamic = (rawTo && rawTo.indexOf("{") !== -1) || 
                           (namedRoute && namedRoute.indexOf("{") !== -1) || 
-                          (paramsAttr && paramsAttr.indexOf("{") !== -1);
+                          (paramsAttr && (paramsAttr.includes("{data.") || paramsAttr.includes("{$")));
 
         // Determine target path
         const getTargetPath = () => {
@@ -43,9 +43,13 @@ export function createLinkRenderer(engine, routerInstance) {
                     let parsedParams = {};
                     if (paramsAttr) {
                         try {
-                            const interpolated = engine.interpolate(paramsAttr, context);
-                            parsedParams = typeof interpolated === "object" ? interpolated : JSON.parse(interpolated);
-                        } catch (_) {}
+                            parsedParams = JSON.parse(paramsAttr);
+                        } catch (_) {
+                            try {
+                                const interpolated = engine.interpolate(paramsAttr, context);
+                                parsedParams = typeof interpolated === "object" ? interpolated : JSON.parse(interpolated);
+                            } catch (_) {}
+                        }
                     }
                     return generatePath(namedPattern, parsedParams);
                 }
