@@ -9,25 +9,25 @@ This guide explains the **Core Architecture** of **EUIX Engine** (`euixjs`) and 
 EUIX Engine is built on a **Modular Plugin Architecture**:
 
 ```
-                                  +---------------------------------------+
-                                  |         EUIXEngine (Full Bundle)      |
-                                  +---------------------------------------+
-                                                      |
-         +--------------------+-----------------------+-----------------------+--------------------+
-         |                    |                       |                       |                    |
-         v                    v                       v                       v                    v
-  +--------------+    +---------------+       +---------------+       +---------------+    +---------------+
-  |EUIXEngineCore|    | EUIXApiPlugin |       |EUIXComposerPlg|       | EUIXStoragePlg|    | EUIXDialogPlg |
-  | (Lite Core)  |    | (SWR Client)  |       | (Workflows)   |       | (Persistence) |    |   (Modals)    |
-  +--------------+    +---------------+       +---------------+       +---------------+    +---------------+
+                                  +-----------------------------------------------------------------------------------+
+                                  |                             EUIXEngine (Full Bundle)                              |
+                                  +-----------------------------------------------------------------------------------+
+                                                                            |
+         +--------------------+-----------------------+---------------------+---------------------+-------------------+
+         |                    |                       |                     |                     |                   |
+         v                    v                       v                     v                     v                   v
+  +--------------+    +---------------+       +---------------+     +---------------+     +---------------+   +---------------+
+  |EUIXEngineCore|    | EUIXApiPlugin |       |EUIXComposerPlg|     |EUIXStoragePlg |     | EUIXDialogPlg |   |EUIXRouterPlg  |
+  | (Lite Core)  |    | (SWR Client)  |       | (Workflows)   |     | (Persistence) |     |   (Modals)    |   | (Web Router)  |
+  +--------------+    +---------------+       +---------------+     +---------------+     +---------------+   +---------------+
          |
-         +--------------------------------------------+
-         |                                            |
-         v                                            v
-  +--------------+                            +---------------+
-  | EUIXDragDrop |                            |EUIXCollapsePlg|
-  |  (Pointer)   |                            |  (Accordions) |
-  +--------------+                            +---------------+
+         +--------------------+-----------------------+---------------------+---------------------+-------------------+
+         |                    |                       |                     |                     |                   |
+         v                    v                       v                     v                     v                   v
+  +--------------+    +---------------+       +---------------+     +---------------+     +---------------+   +---------------+
+  | EUIXDragDrop |    |EUIXCollapsePlg|       | EUIXDatePlugin|     |EUIXChartPlugin|     |EUIXLeafletPlg |   |EUIXNavigator  |
+  |  (Pointer)   |    |  (Accordions) |       | (Intl & Dayjs)|     | (SVG Charts)  |     | (Interactive) |   | (Bottom Tabs) |
+  +--------------+    +---------------+       +---------------+     +---------------+     +---------------+   +---------------+
 ```
 
 1. **XML UI Specification Parser (`<uid_spec>`)**: Parses XML templates into an in-memory specification tree with zero Virtual DOM overhead, converting XML elements directly into optimized DOM nodes with AST Caching (`_astCache`).
@@ -814,3 +814,209 @@ EUIX Engine provides a tree-shakeable declarative animation system (`<animations
 - **Interruption & Cancellation Policies**: Supports `cancel` (aborts current target animation), `finish` (skips to end state), and `queue` policies. Integrates with `EUIXCancellationController`.
 - **Reduced Motion Awareness**: Respects system `prefers-reduced-motion` settings by collapsing duration to 0ms.
 - **Programmatic Control**: Programmatically trigger animations via `engine.animate(target, keyframesOrName, options)`.
+
+---
+
+## 🌐 16. Web Router & Client-Side Navigation (`EUIXRouterPlugin`)
+
+EUIX Engine provides a complete, modern declarative Web Router (`<router>`, `<route>`, `<outlet>`, `<link>`, `$route`, `$router`, `loaders`, `actions`, `fetchers`, `guards`, `scroll restoration`) via `EUIXRouterPlugin` (`euixjs/router`):
+
+```xml
+<uid_spec>
+  <!-- Declarative Router Tree -->
+  <router mode="history" base="/">
+    <!-- Root Layout Route with Navigation Bar and Nested Outlet -->
+    <route id="root" path="/" layout="./layouts/RootLayout.xml">
+      <!-- Index Route -->
+      <route id="home" index="true" component="./pages/Home.xml" />
+
+      <!-- Parameterized Route with Async Data Loader -->
+      <route 
+        id="user-profile" 
+        path="/users/:id" 
+        component="./pages/UserProfile.xml" 
+        loader="loadUserData" 
+        action="updateUserData" 
+      />
+
+      <!-- Wildcard / 404 Fallback Route -->
+      <route id="not-found" path="*" component="./pages/NotFound.xml" />
+    </route>
+  </router>
+
+  <flex direction="column" gap="16">
+    <!-- Declarative Navigation Link with Active Class Styling -->
+    <flex direction="row" gap="8">
+      <link to="/" active_class="font-bold text-emerald-400">Home</link>
+      <link to="/users/42" active_class="font-bold text-emerald-400">User Profile (42)</link>
+    </flex>
+
+    <!-- Main Viewport Router Outlet -->
+    <outlet />
+  </flex>
+</uid_spec>
+```
+
+### Key Router Capabilities:
+- **Router Modes**: `history` (HTML5 History API with pushState/popState) and `hash` (Single-Page Apps / static hosts).
+- **Nested Routes & Outlets (`<outlet />`)**: Nested routing with hierarchical component projection and layout inheritance.
+- **Async Loaders & Route Data (`$route.data`)**: Route data prefetching via registered async loader functions or XHR configurations.
+- **Route Actions & Mutations**: Handle form actions, updates, and automatic loader revalidation.
+- **Independent Fetchers (`$fetcher.<id>`)**: Perform background data mutations or optimistic loads without changing the current URL.
+- **Route Guards & Middleware (`beforeEnter`, `canActivate`)**: Protect routes with declarative or programmatic authentication checks.
+- **Scroll Restoration**: Automatic scroll position management across page navigation and popstate events.
+- **Programmatic Router API**: `engine.$router.navigate(to, options)`, `engine.$router.back()`, `engine.$router.forward()`.
+
+---
+
+## 📅 17. Declarative Date & Time Localization (`EUIXDatePlugin`)
+
+EUIX Engine provides native `Intl`-powered date/time formatting, relative times, date ranges, and Day.js-style calculations via `EUIXDatePlugin` (`euixjs/date`):
+
+```xml
+<uid_spec>
+  <!-- 1. Global Date Configuration -->
+  <date_config locale="tr-TR" timezone="Europe/Istanbul" />
+
+  <data_model>
+    <state id="sampleDate">2026-08-20T14:30:00Z</state>
+    <state id="startDate">2026-08-01T09:00:00Z</state>
+    <state id="endDate">2026-09-15T18:00:00Z</state>
+    <state id="publishedAt">2026-08-20T12:00:00Z</state>
+  </data_model>
+
+  <flex direction="column" gap="16">
+    <!-- 2. Declarative Formatted Date -->
+    <date value="{data.sampleDate}" format="full" locale="en-US" />
+
+    <!-- 3. Live Ticking Clock (updates automatically) -->
+    <time value="now" format="time_medium" live="true" interval="1000" />
+
+    <!-- 4. Date Range Formatting -->
+    <date_range start="{data.startDate}" end="{data.endDate}" format="medium" />
+
+    <!-- 5. Relative Time Formatting (e.g. "5 hours ago", "in 2 days") -->
+    <relative_time value="{data.publishedAt}" live="true" interval="10000" />
+
+    <!-- 6. Template Expression Calculations (Day.js-style APIs) -->
+    <p>Days in Month: {$date.daysInMonth(data.sampleDate)}</p>
+    <p>Is Leap Year: {$date.isLeapYear(data.sampleDate) ? 'Yes' : 'No'}</p>
+    <p>Quarter: Q{$date.quarter(data.sampleDate)}</p>
+    <p>Week of Year: Week {$date.weekOfYear(data.sampleDate)}</p>
+
+    <!-- 7. Declarative Actions -->
+    <button class="btn">
+      <on_click action="SET_DATE_LOCALE" locale="de-DE" />
+      Switch to German
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities & Day.js Utilities:
+- **Intl-Powered Memoization**: High-performance LRU caching over `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat`.
+- **Format Presets**: `date`, `short`, `medium`, `long`, `full`, `time`, `time_medium`, `datetime`, `datetime_long`, `year`, `month`, `weekday`, `iso`, `timestamp`.
+- **Live Updating (`live="true"`, `interval="..."`)**: Real-time relative times and digital clocks without memory leaks.
+- **Day.js-style Utility Methods**: `$date.daysInMonth()`, `$date.isLeapYear()`, `$date.add()`, `$date.subtract()`, `$date.diff()`, `$date.startOf()`, `$date.endOf()`, `$date.quarter()`, `$date.weekOfYear()`, `$date.isBefore()`, `$date.isAfter()`, `$date.isSame()`, `$date.isBetween()`, `$date.isToday()`.
+- **Programmatic & Expression Access**: Accessible via `$date` in templates, inline scripts (`RUN_SCRIPT`), and `engine.$date`.
+
+---
+
+## 📊 18. Declarative SVG Charts & Visualizations (`EUIXChartPlugin`)
+
+EUIX Engine provides zero-dependency declarative SVG charts via `EUIXChartPlugin` (`euixjs/chart`):
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="salesData" type="array">
+      [
+        {"month": "Jan", "revenue": 12000, "profit": 4000},
+        {"month": "Feb", "revenue": 19000, "profit": 6500},
+        {"month": "Mar", "revenue": 24000, "profit": 9200},
+        {"month": "Apr", "revenue": 18000, "profit": 5800}
+      ]
+    </state>
+  </data_model>
+
+  <flex direction="column" gap="16">
+    <!-- Bar / Line / Area Chart Specification -->
+    <chart type="bar" data="{data.salesData}" width="100%" height="320" animated="true">
+      <chart_axis x="month" y="revenue" grid="true" />
+      <chart_series y="revenue" name="Revenue" color="#10b981" />
+      <chart_series y="profit" name="Profit" color="#6366f1" />
+      <chart_tooltip format="currency" />
+      <chart_legend position="top" />
+    </chart>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities:
+- **Supported Chart Types**: `bar`, `line`, `area`, `pie`, `doughnut`, `scatter`, `radar`.
+- **Zero Heavy External Dependencies**: Lightweight SVG rendering pipeline with crisp vector rendering on any DPI.
+- **Interactive Tooltips & Legends**: Hover markers, data point inspections, and series visibility toggles.
+- **Reactive Data Binding**: Charts re-render and morph seamlessly when underlying array state updates.
+
+---
+
+## 🗺️ 19. Declarative Maps & GIS (`EUIXLeafletPlugin`)
+
+EUIX Engine provides declarative interactive maps via `EUIXLeafletPlugin` (`euixjs/leaflet`):
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="markers" type="array">
+      [
+        {"id": 1, "lat": 41.0082, "lng": 28.9784, "title": "Istanbul Office"},
+        {"id": 2, "lat": 39.9334, "lng": 32.8597, "title": "Ankara Hub"}
+      ]
+    </state>
+  </data_model>
+
+  <flex direction="column" gap="16">
+    <map center="[41.0082, 28.9784]" zoom="12" height="400px" class="rounded-2xl border">
+      <tile_layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
+      
+      <for_each items="{data.markers}" var="m" key="id">
+        <marker lat="{m.lat}" lng="{m.lng}" title="{m.title}">
+          <popup>
+            <h4>{m.title}</h4>
+            <p>Coordinates: {m.lat}, {m.lng}</p>
+          </popup>
+        </marker>
+      </for_each>
+
+      <circle center="[41.0082, 28.9784]" radius="5000" color="#10b981" fill_color="#10b981" fill_opacity="0.2" />
+    </map>
+  </flex>
+</uid_spec>
+```
+
+### Key Capabilities:
+- **Declarative Map Primitives**: `<map>`, `<marker>`, `<popup>`, `<tile_layer>`, `<circle>`, `<polygon>`, `<polyline>`, `<geo_json>`.
+- **Reactive Marker Lists**: Dynamically add, update, or filter markers using standard EUIX `<for_each>` bindings.
+- **Interactive Event Actions**: Trigger EUIX actions on marker clicks, map moves, and popup actions.
+
+---
+
+## 🧭 20. App Navigation & Bottom Tabs (`EUIXNavigatorPlugin`)
+
+EUIX Engine provides mobile and web bottom tab navigation and stack navigation via `EUIXNavigatorPlugin` (`euixjs/navigator`):
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="activeTab">home</state>
+  </data_model>
+
+  <navigator bind="activeTab" type="bottom-tabs" class="fixed bottom-0 left-0 right-0">
+    <nav_item id="home" label="Home" icon="home" component="./tabs/HomeTab.xml" />
+    <nav_item id="search" label="Search" icon="search" component="./tabs/SearchTab.xml" />
+    <nav_item id="notifications" label="Alerts" icon="bell" badge="{data.unread_count}" component="./tabs/AlertsTab.xml" />
+    <nav_item id="profile" label="Profile" icon="user" component="./tabs/ProfileTab.xml" />
+  </navigator>
+</uid_spec>
+```
+
