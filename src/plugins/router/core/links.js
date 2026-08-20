@@ -20,6 +20,11 @@ export function createLinkRenderer(engine, routerInstance) {
         const baseClass = xmlNode.getAttribute("class") || "";
         if (baseClass) linkEl.className = baseClass;
 
+        const targetAttr = xmlNode.getAttribute("target");
+        if (targetAttr) linkEl.target = targetAttr;
+        const downloadAttr = xmlNode.getAttribute("download");
+        if (downloadAttr !== null) linkEl.setAttribute("download", downloadAttr);
+
         const activeClass = xmlNode.getAttribute("active-class") || xmlNode.getAttribute("active_class") || "active";
         const pendingClass = xmlNode.getAttribute("pending-class") || xmlNode.getAttribute("pending_class") || "pending";
         const isExact = xmlNode.hasAttribute("exact") && xmlNode.getAttribute("exact") !== "false";
