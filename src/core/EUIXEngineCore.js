@@ -553,6 +553,8 @@ const ACTION_DISPATCH_TABLE = {
     "TOGGLE": "_handleToggleStateAction",
     "MUTATE_STATE": "_handleMutateStateAction",
     "FOCUS": "_handleFocusAction",
+    "REVALIDATE_API": "_handleRevalidateAction",
+    "REVALIDATE": "_handleRevalidateAction",
     "RUN_SCRIPT": "_handleRunScriptAction",
     "EVAL_JS": "_handleRunScriptAction",
     "EXEC_JS": "_handleRunScriptAction",
