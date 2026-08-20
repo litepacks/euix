@@ -12,7 +12,7 @@
             --bg-primary: #090d16;
             --bg-secondary: #0f172a;
             --bg-card: rgba(30, 41, 59, 0.7);
-            --bg-glass: rgba(15, 23, 42, 0.75);
+            --bg-glass: rgba(15, 23, 42, 0.85);
             --border-color: rgba(148, 163, 184, 0.15);
             --border-hover: rgba(99, 102, 241, 0.4);
             --text-primary: #f8fafc;
@@ -33,13 +33,15 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
@@ -47,29 +49,33 @@
                 radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
                 radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
             background-attachment: fixed;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         header.app-header {
             background: var(--bg-glass);
             backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-color);
-            padding: 16px 32px;
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: sticky;
             top: 0;
             z-index: 100;
+            gap: 12px;
         }
 
         .logo-box {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             text-decoration: none;
             color: inherit;
             cursor: pointer;
             transition: opacity 0.2s;
+            flex-shrink: 0;
         }
 
         .logo-box:hover {
@@ -80,35 +86,68 @@
             background: var(--accent-gradient);
             color: white;
             font-weight: 800;
-            font-size: 14px;
-            padding: 6px 12px;
+            font-size: 13px;
+            padding: 5px 10px;
             border-radius: var(--radius-sm);
             letter-spacing: 0.5px;
             box-shadow: 0 4px 14px var(--accent-glow);
         }
 
         .logo-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
 
+        .header-links {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 2px;
+            scrollbar-width: none;
+        }
+
+        .header-links::-webkit-scrollbar {
+            display: none;
+        }
+
+        .header-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            background: rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            border: 1px solid var(--border-color);
+        }
+
+        .header-links a:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         .app-container {
             display: grid;
-            grid-template-columns: 280px 1fr 340px;
-            min-height: calc(100vh - 73px);
+            grid-template-columns: 260px 1fr 320px;
+            min-height: calc(100vh - 65px);
             max-width: 1600px;
             margin: 0 auto;
             width: 100%;
+            transition: all 0.3s ease;
         }
 
         aside.sidebar {
             background: rgba(15, 23, 42, 0.4);
             border-right: 1px solid var(--border-color);
-            padding: 24px 16px;
+            padding: 20px 16px;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 20px;
         }
 
         .sidebar-section-title {
@@ -139,6 +178,7 @@
             font-weight: 500;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid transparent;
+            min-height: 44px;
         }
 
         .nav-links a:hover {
@@ -155,17 +195,19 @@
         }
 
         main.content-view {
-            padding: 32px 40px;
+            padding: 24px 28px;
             overflow-y: auto;
+            flex: 1;
         }
 
         .card {
             background: var(--bg-card);
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
-            padding: 24px;
-            margin-bottom: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             transition: transform 0.2s ease, border-color 0.2s ease;
         }
@@ -175,15 +217,16 @@
         }
 
         h1 {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 800;
-            letter-spacing: -0.8px;
-            margin-bottom: 12px;
+            letter-spacing: -0.6px;
+            margin-bottom: 10px;
+            line-height: 1.25;
         }
 
         p {
             color: var(--text-secondary);
-            font-size: 15px;
+            font-size: 14px;
             line-height: 1.6;
             margin-bottom: 16px;
         }
@@ -192,7 +235,7 @@
             background: var(--accent-gradient);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 10px 18px;
             border-radius: var(--radius-sm);
             font-weight: 600;
             font-size: 14px;
@@ -200,12 +243,19 @@
             transition: transform 0.15s ease, opacity 0.15s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
+            min-height: 44px;
+            text-decoration: none;
         }
 
         .btn:hover {
             opacity: 0.95;
             transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
         }
 
         .btn-secondary {
@@ -222,12 +272,13 @@
             background: rgba(15, 23, 42, 0.6);
             border: 1px solid var(--border-color);
             color: var(--text-primary);
-            padding: 10px 14px;
+            padding: 12px 14px;
             border-radius: var(--radius-sm);
-            font-size: 14px;
+            font-size: 15px;
             outline: none;
             width: 100%;
             transition: border-color 0.2s ease;
+            min-height: 44px;
         }
 
         .input-text:focus {
@@ -236,20 +287,31 @@
 
         .tabs {
             display: flex;
-            gap: 8px;
+            gap: 4px;
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+
+        .tabs::-webkit-scrollbar {
+            display: none;
         }
 
         .tabs a {
-            padding: 10px 16px;
+            padding: 10px 14px;
             color: var(--text-secondary);
             text-decoration: none;
             font-size: 14px;
             font-weight: 500;
             border-bottom: 2px solid transparent;
             margin-bottom: -1px;
+            white-space: nowrap;
             transition: all 0.2s;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
         }
 
         .tabs a.active {
@@ -259,16 +321,16 @@
         }
 
         aside.inspect-panel {
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.75);
             border-left: 1px solid var(--border-color);
-            padding: 24px;
+            padding: 20px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 12px;
             overflow-y: auto;
         }
 
         .inspect-header {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
@@ -280,13 +342,116 @@
         }
 
         pre.code-block {
-            background: rgba(0, 0, 0, 0.4);
-            padding: 14px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 12px;
             border-radius: var(--radius-sm);
             border: 1px solid var(--border-color);
             color: #a5b4fc;
             overflow-x: auto;
             line-height: 1.5;
+        }
+
+        /* Mobile Bottom Tab Bar */
+        .mobile-bottom-nav {
+            display: none;
+        }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 1023px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                padding-bottom: 72px; /* Space for mobile tab bar */
+            }
+
+            aside.sidebar {
+                display: none; /* Replaced by bottom bar on mobile */
+            }
+
+            main.content-view {
+                padding: 16px;
+            }
+
+            aside.inspect-panel {
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+                padding: 16px;
+                background: rgba(15, 23, 42, 0.95);
+            }
+
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: var(--bg-glass);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border-top: 1px solid var(--border-color);
+                z-index: 200;
+                justify-content: space-around;
+                align-items: center;
+                padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+            }
+
+            .mobile-bottom-nav a {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 3px;
+                color: var(--text-muted);
+                text-decoration: none;
+                font-size: 11px;
+                font-weight: 600;
+                padding: 6px 12px;
+                border-radius: var(--radius-sm);
+                transition: all 0.2s ease;
+                min-width: 64px;
+            }
+
+            .mobile-bottom-nav a .nav-icon {
+                font-size: 18px;
+            }
+
+            .mobile-bottom-nav a:hover,
+            .mobile-bottom-nav a.active {
+                color: #fff;
+                background: rgba(99, 102, 241, 0.15);
+            }
+
+            .mobile-bottom-nav a.active .nav-icon {
+                transform: scale(1.1);
+            }
+
+            .project-list-card {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 12px;
+            }
+
+            .project-list-card .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 640px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            .logo-title {
+                display: none;
+            }
+
+            .header-links {
+                max-width: 220px;
+            }
+
+            .card {
+                padding: 16px;
+                border-radius: var(--radius-sm);
+            }
         }
     </style>
 </head>
@@ -296,13 +461,15 @@
             <span class="logo-badge">EUIX</span>
             <span class="logo-title">Web Router Engine</span>
         </a>
-        <div style="display: flex; align-items: center; gap: 12px; font-size: 13px;">
-            <a href="./chart_demo.html" style="color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); background: var(--surface-light);">📊 Chart Demo</a>
-            <a href="./playground.html" style="color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); background: var(--surface-light);">🎮 Playground</a>
-            <a href="./map_demo.html" style="color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); background: var(--surface-light);">🗺️ Map Demo</a>
-            <a href="./index.html" style="color: var(--text-secondary); text-decoration: none; padding: 6px 12px; border-radius: var(--radius-sm); background: var(--surface-light);">📖 Docs</a>
+        <div class="header-links">
+            <a href="./chart_demo.html">📊 Charts</a>
+            <a href="./playground.html">🎮 Playground</a>
+            <a href="./map_demo.html">🗺️ Maps</a>
+            <a href="./index.html">📖 Docs</a>
         </div>
     </header>
+
+    <div id="app"></div>
 
     <div id="app"></div>
 
@@ -371,6 +538,22 @@
                         </div>
                         <pre class="code-block" style="margin-top: 10px; font-size: 11px; max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">{JSON.stringify($route, null, 2)}</pre>
                     </aside>
+
+                    <!-- Mobile Bottom Tab Bar -->
+                    <nav class="mobile-bottom-nav">
+                        <route-link to="/" exact="true">
+                            <span class="nav-icon">⚡</span>
+                            <span>Home</span>
+                        </route-link>
+                        <route-link to="/projects">
+                            <span class="nav-icon">📁</span>
+                            <span>Projects</span>
+                        </route-link>
+                        <route-link to="/about">
+                            <span class="nav-icon">ℹ️</span>
+                            <span>About</span>
+                        </route-link>
+                    </nav>
                 </div>
             </component_def>
 
@@ -381,7 +564,7 @@
                     <p>
                         A lightweight, buildless Web Router that provides React Router-equivalent capabilities directly in browser XML specs.
                     </p>
-                    <div style="display: flex; gap: 12px; margin-top: 16px;">
+                    <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                         <route-link to="/projects" class="btn">Explore Projects →</route-link>
                         <route-link to="/about" class="btn btn-secondary">Learn Architecture</route-link>
                     </div>
@@ -403,7 +586,7 @@
 
                     <div style="display: grid; gap: 16px; margin-top: 20px;">
                         <for_each items="{$route.data}" var="p">
-                            <div class="card" style="margin: 0; display: flex; justify-content: space-between; align-items: center;">
+                            <div class="card project-list-card" style="margin: 0; display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <h3 style="margin-bottom: 4px;">{p.title}</h3>
                                     <span style="font-size: 13px; color: var(--text-muted);">{p.category}</span>
