@@ -33,11 +33,13 @@ export const EUIXNavigatorPlugin = {
 
         // 2. Programmatic & Declarative State Initializer
         engineClass.prototype.initNavigatorState = function(targetKey = "navigator", options = {}) {
-            if (typeof window === "undefined" || typeof navigator === "undefined") {
+            if (typeof window === "undefined" && typeof navigator === "undefined") {
                 return;
             }
 
-            const nav = navigator;
+            const nav = typeof navigator !== "undefined" ? navigator : (typeof window !== "undefined" ? window.navigator : null);
+            if (!nav) return;
+
             const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
 
             const readNetworkInfo = () => ({
@@ -49,11 +51,11 @@ export const EUIXNavigatorPlugin = {
             });
 
             const readHardwareInfo = () => ({
-                cores: nav.hardwareConcurrency || 4,
-                memory: nav.deviceMemory || 8,
+                cores: Number(nav.hardwareConcurrency) || 4,
+                memory: Number(nav.deviceMemory) || 8,
                 touch: (nav.maxTouchPoints || 0) > 0,
-                language: nav.language || "en",
-                languages: Array.from(nav.languages || [nav.language || "en"]),
+                language: String(nav.language || "en"),
+                languages: Array.isArray(nav.languages) ? Array.from(nav.languages) : [String(nav.language || "en")],
                 cookieEnabled: !!nav.cookieEnabled,
                 pdfViewerEnabled: !!nav.pdfViewerEnabled
             });
@@ -65,6 +67,12 @@ export const EUIXNavigatorPlugin = {
                 hardware: readHardwareInfo()
             };
 
+            if (this._stateMap && !this._stateMap.has(targetKey)) {
+                this._stateMap.set(targetKey, { type: "object", value: nextState });
+            }
+            if (this._rawState) {
+                this._rawState[targetKey] = nextState;
+            }
             this.setState(targetKey, nextState);
 
             // Network Change Tracking
@@ -330,7 +338,8 @@ export const EUIXNavigatorPlugin = {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
                 if (targetDoc) {
-                    const navConfig = targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : (targetDoc.getElementsByTagName ? (targetDoc.getElementsByTagName("navigator_config")[0] || targetDoc.getElementsByTagName("device_config")[0]) : null);
+                    const navConfig = (targetDoc.getElementsByTagName ? (targetDoc.getElementsByTagName("navigator_config")[0] || targetDoc.getElementsByTagName("device_config")[0]) : null) 
+                        || (targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : null);
                     if (navConfig && typeof this._processNavigatorTag === "function") {
                         this._processNavigatorTag(navConfig);
                     }

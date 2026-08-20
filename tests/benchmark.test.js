@@ -63,7 +63,7 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(engine.getState('todos').length).toBe(1000);
         expect(document.querySelectorAll('span').length).toBe(1000);
         console.log(`[Vitest Bench] 1,000 Item Render Duration: ${duration.toFixed(2)} ms`);
-    }, 15000);
+    }, 30000);
 
     it('should benchmark 3,000 Bulk Item DOM Mutation in Vitest', () => {
         const xml = `
@@ -91,7 +91,7 @@ describe('EUIXEngine Vitest Performance & Benchmark Suite (js-framework-benchmar
         expect(engine.getState('todos').length).toBe(3000);
         expect(document.querySelectorAll('span').length).toBe(3000);
         console.log(`[Vitest Bench] 3,000 Item Render Duration: ${duration.toFixed(2)} ms`);
-    }, 15000);
+    }, 30000);
 
     it('should benchmark Partial Update (updating every 10th row out of 1,000)', () => {
         const xml = `

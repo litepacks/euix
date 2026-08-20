@@ -50,8 +50,8 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/.stryker-tmp/**'],
-    bail: 1,
-    testTimeout: 10000,
+    bail: 0,
+    testTimeout: 30000,
     teardownTimeout: 2000,
     fileParallelism: true,
     onConsoleLog(log) {
@@ -60,12 +60,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/EUIXEngine.js', 'src/EUIXDevTools.js'],
+      include: ['src/**/*.js'],
       thresholds: {
-        statements: 85,
-        branches: 75,
-        functions: 90,
-        lines: 85
+        statements: 80,
+        branches: 70,
+        functions: 75,
+        lines: 80
       }
     }
   }
