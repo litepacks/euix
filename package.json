@@ -77,6 +77,10 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXChartPlugin.es.js"
     },
+    "./date": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXDatePlugin.es.js"
+    },
     "./devtools": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",
