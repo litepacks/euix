@@ -252,7 +252,9 @@ export const EUIXApiPlugin = {
             const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim() || idAttr || compApiConfig.tag || "";
             const revalidateFocus = actionNode.getAttribute("revalidate_focus") === "true" || compApiConfig.revalidateFocus === true;
             const revalidateOnline = actionNode.getAttribute("revalidate_online") === "true" || compApiConfig.revalidateOnline === true;
-            const cacheTtlMs = parseInt(actionNode.getAttribute("cache_ttl") || actionNode.getAttribute("cache") || compApiConfig.cacheTtl || 0, 10);
+            const cacheTtlNode = this.getChild(actionNode, "cache_ttl") || this.getChild(actionNode, "cache_ttl_ms") || this.getChild(actionNode, "cache");
+            const cacheTtlRaw = cacheTtlNode ? cacheTtlNode.textContent.trim() : (actionNode.getAttribute("cache_ttl") || actionNode.getAttribute("cache_ttl_ms") || actionNode.getAttribute("cache") || compApiConfig.cacheTtl || 0);
+            const cacheTtlMs = parseInt(cacheTtlRaw, 10);
 
             if (!this._registeredXhrs) this._registeredXhrs = new Set();
             let existingEntry = null;
