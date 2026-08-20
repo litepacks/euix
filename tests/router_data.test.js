@@ -38,7 +38,7 @@ describe("EUIX Router Data - Loaders & Actions", () => {
 
         const router = createMemoryRouter({
             routes,
-            initialEntries: ["/projects/101"]
+            initialEntries: ["/"]
         });
 
         await router.navigate("/projects/101");
@@ -111,7 +111,7 @@ describe("EUIX Router Data - Loaders & Actions", () => {
             }
         ];
 
-        const router = createMemoryRouter({ routes, initialEntries: ["/projects"] });
+        const router = createMemoryRouter({ routes, initialEntries: ["/"] });
         await router.navigate("/projects");
 
         expect(loaderCalls).toBe(1);
