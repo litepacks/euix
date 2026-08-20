@@ -3,8 +3,9 @@ import { resolve } from 'path';
 
 export default defineConfig({
   server: {
-    port: 3000,
-    open: true
+    port: 3100,
+    strictPort: true,
+    open: false
   },
   build: {
     target: ['es2022', 'chrome100', 'firefox100', 'safari15', 'edge100'],

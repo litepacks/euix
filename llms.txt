@@ -33,6 +33,8 @@
 - [src/plugins/EUIXStoragePlugin.js](src/plugins/EUIXStoragePlugin.js) (`euixjs/storage`): State persistence to `localStorage` or `sessionStorage` (`<state persist="local">`).
 - [src/plugins/EUIXDialogPlugin.js](src/plugins/EUIXDialogPlugin.js) (`euixjs/dialog`): Declarative modal dialog overlay component (`<dialog>`).
 - [src/plugins/EUIXCollapsePlugin.js](src/plugins/EUIXCollapsePlugin.js) (`euixjs/collapse`): Reactive accordion and collapsible section component (`<collapse>`).
+- [src/plugins/EUIXInspectorPlugin.js](src/plugins/EUIXInspectorPlugin.js) (`euixjs/inspector`): Lightweight development inspector with fixed hover highlight, stable E2E selector generator & scorer, component tree, boundary visualizer, and action logs.
+- [src/plugins/inspector/playwright.js](src/plugins/inspector/playwright.js) (`euixjs/inspector/playwright` / `euixjs/playwright`): Playwright E2E testing helper suite (`euix(page)`, `.component()`, `.getByTestId()`, `.waitForIdle()`, `.debug()`).
 
 ---
 

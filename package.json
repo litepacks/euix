@@ -85,6 +85,22 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",
       "require": "./dist/EUIXDevTools.umd.js"
+    },
+    "./inspector": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXInspectorPlugin.es.js"
+    },
+    "./inspector/playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./devtools/playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
     }
   },
   "files": [
