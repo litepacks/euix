@@ -40,6 +40,7 @@ import {
     createPath,
     parsePath
 } from "./plugins/EUIXRouterPlugin.js";
+import { EUIXDatePlugin, EUIXDateFormatter, DATE_PRESETS } from "./plugins/EUIXDatePlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -56,6 +57,7 @@ EUIXEngineCore.use(EUIXLeafletPlugin);
 EUIXEngineCore.use(EUIXNavigatorPlugin);
 EUIXEngineCore.use(EUIXChartPlugin);
 EUIXEngineCore.use(EUIXRouterPlugin);
+EUIXEngineCore.use(EUIXDatePlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -86,6 +88,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXRouter = EUIXRouter;
     window.createMemoryRouter = createMemoryRouter;
     window.createStaticRouter = createStaticRouter;
+    window.EUIXDatePlugin = EUIXDatePlugin;
+    window.EUIXDateFormatter = EUIXDateFormatter;
+    window.DATE_PRESETS = DATE_PRESETS;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -134,7 +139,10 @@ export {
     generatePath,
     resolvePath,
     createPath,
-    parsePath
+    parsePath,
+    EUIXDatePlugin,
+    EUIXDateFormatter,
+    DATE_PRESETS
 };
 
 export default EUIXEngine;

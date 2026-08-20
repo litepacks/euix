@@ -19,6 +19,31 @@ export const EUIXHelmetPlugin: EUIXPlugin;
 export const EUIXLeafletPlugin: EUIXPlugin;
 export const EUIXNavigatorPlugin: EUIXPlugin;
 export const EUIXRouterPlugin: EUIXPlugin;
+export const EUIXDatePlugin: EUIXPlugin;
+export const DATE_PRESETS: Record<string, Intl.DateTimeFormatOptions>;
+export class EUIXDateFormatter {
+    parseDate(value: Date | string | number | null | undefined): Date | null;
+    format(value: Date | string | number, optionsOrPreset?: string | Intl.DateTimeFormatOptions, locale?: string, timeZone?: string): string;
+    formatRelative(value: Date | string | number, baseDate?: Date | string | number, options?: { numeric?: "auto" | "always"; style?: "long" | "short" | "narrow" }, locale?: string): string;
+    formatRange(start: Date | string | number, end: Date | string | number, optionsOrPreset?: string | Intl.DateTimeFormatOptions, locale?: string, timeZone?: string): string;
+    add(value: Date | string | number, amount?: number, unit?: "seconds" | "minutes" | "hours" | "days" | "weeks" | "months" | "years"): Date | null;
+    subtract(value: Date | string | number, amount?: number, unit?: "seconds" | "minutes" | "hours" | "days" | "weeks" | "months" | "years"): Date | null;
+    diff(start: Date | string | number, end: Date | string | number, unit?: "seconds" | "minutes" | "hours" | "days" | "weeks" | "months" | "years"): number;
+    startOf(value: Date | string | number, unit?: "year" | "month" | "week" | "day" | "hour" | "minute"): Date | null;
+    endOf(value: Date | string | number, unit?: "year" | "month" | "week" | "day" | "hour" | "minute"): Date | null;
+    daysInMonth(value: Date | string | number): number;
+    isLeapYear(value: Date | string | number): boolean;
+    isSame(start: Date | string | number, end: Date | string | number, unit?: string): boolean;
+    isBefore(start: Date | string | number, end: Date | string | number, unit?: string | null): boolean;
+    isAfter(start: Date | string | number, end: Date | string | number, unit?: string | null): boolean;
+    isBetween(target: Date | string | number, start: Date | string | number, end: Date | string | number, inclusivity?: "()" | "[)" | "(]" | "[]"): boolean;
+    isToday(value: Date | string | number): boolean;
+    isTomorrow(value: Date | string | number): boolean;
+    isYesterday(value: Date | string | number): boolean;
+    quarter(value: Date | string | number): number;
+    weekOfYear(value: Date | string | number): number;
+    formatToParts(value: Date | string | number, optionsOrPreset?: string | Intl.DateTimeFormatOptions, locale?: string, timeZone?: string): Array<{ type: string; value: string }>;
+}
 export const EUIXChartPlugin: EUIXPlugin & {
     configure(options?: { Chart?: any }): void;
 };

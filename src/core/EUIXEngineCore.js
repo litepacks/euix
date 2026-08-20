@@ -140,7 +140,13 @@ class EUIXExpressionParser {
                     if (lower === "not") {
                         return `(!(${args[0]}) || (${args[0]}) === "false")`;
                     }
-                    return "undefined";
+                    if (id.includes(".")) {
+                        const lastDot = id.lastIndexOf(".");
+                        const targetObj = id.slice(0, lastDot);
+                        const method = id.slice(lastDot + 1);
+                        return `(($r(${JSON.stringify(targetObj)}) && typeof $r(${JSON.stringify(targetObj)})[${JSON.stringify(method)}] === "function") ? $r(${JSON.stringify(targetObj)})[${JSON.stringify(method)}](${args.join(", ")}) : undefined)`;
+                    }
+                    return `(($r(${JSON.stringify(id)}) && typeof $r(${JSON.stringify(id)}) === "function") ? $r(${JSON.stringify(id)})(${args.join(", ")}) : undefined)`;
                 }
                 if (id.includes(".") || id.startsWith("data.") || id.startsWith("parent.") || id.startsWith("local.") || id.startsWith("props.")) {
                     return `($r(${JSON.stringify(id)}))`;
@@ -520,7 +526,7 @@ const METADATA_AND_EVENT_TAGS = new Set([
     "on_mouseenter", "on_mouseleave", "on_interval", "on_timer", "on_mount", 
     "on_state_change", "on_visible", "on_update", "watch", "api_config", "api_endpoint", "endpoint", "api", 
     "persistence", "data_model", "imports", "constants", "vars", "variables",
-    "navigator_config", "device_config",
+    "navigator_config", "device_config", "date_config", "date-config", "date_settings", "date-settings",
     "use_script", "script_loader", "load_script", "use_style", "style_loader", "load_style",
     "actions", "action_def", "workflow_def", "animations", "animation_def", "keyframe_def", "keyframe", "animate", "transition"
 ]);
@@ -1687,6 +1693,16 @@ class EUIXEngineCore {
         }
         if (path === "$route" || path === "$router" || path === "$fetcher") {
             return this.getState(path) || (context && context[path]);
+        }
+        if (path.startsWith("$date.") || path.startsWith("date.")) {
+            const helper = this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
+            const prop = path.replace(/^(\$date|date)\./, "");
+            if (!helper) return undefined;
+            if (!prop) return helper;
+            return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
+        }
+        if (path === "$date" || path === "date") {
+            return this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
         }
         if (path.startsWith("api.") || path.startsWith("$api.")) {
             const clean = path.replace(/^(\$api|api)\./, "");
@@ -3321,6 +3337,16 @@ class EUIXEngineCore {
                         if (name.startsWith("global.") || name.startsWith("$global.")) {
                             const gk = name.replace(/^(\$global|global)\.(data\.)?/, "");
                             return this.getState(gk);
+                        }
+                        if (name.startsWith("$date.") || name.startsWith("date.")) {
+                            const helper = this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
+                            const prop = name.replace(/^(\$date|date)\./, "");
+                            if (!helper) return undefined;
+                            if (!prop) return helper;
+                            return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
+                        }
+                        if (name === "$date" || name === "date") {
+                            return this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
                         }
 
                         const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
@@ -5919,14 +5945,15 @@ class EUIXEngineCore {
             const isAsync = interpolatedCode.includes("await ");
             const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
             const fn = isAsync
-                ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode)
-                : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", interpolatedCode);
+                ? new AsyncFunction("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", "$date", interpolatedCode)
+                : new Function("$el", "$data", "$engine", "$evt", "$args", "$result", "$retry", "$cancellationSignal", "$newValue", "$prevValue", "$oldValue", "$path", "$err", "$date", interpolatedCode);
             const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
             const pVal = context.$prevValue !== undefined ? context.$prevValue : (context.prevValue !== undefined ? context.prevValue : context.oldValue);
             const oVal = context.$oldValue !== undefined ? context.$oldValue : context.oldValue;
             const pPath = context.$path || context.path || "";
             const errVal = context.err || context.error || context._lastError || null;
-            return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath, errVal);
+            const dateHelper = this.$date || this.date || null;
+            return fn.call(targetEl, targetEl, this.state || this._proxyState, this, context._evt || null, context.args || {}, context.result, context.retry || context.$retry || null, context._cancellationSignal || null, nVal, pVal, oVal, pPath, errVal, dateHelper);
         } catch (err) {
             this.reportError(err, "Action Execution (RUN_SCRIPT)");
             throw err;
@@ -6295,7 +6322,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this.refs = {};
         const root = this.getChild(this.xmlDoc, "uid_spec") || this.xmlDoc.querySelector("uid_spec") || this.xmlDoc;
-        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "navigator_config", "device_config", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
+        const metadataTags = ["data_model", "imports", "import", "constants", "vars", "variables", "component_def", "actions", "action_def", "workflow_def", "api_config", "api_endpoint", "endpoint", "api", "persistence", "navigator_config", "device_config", "date_config", "date-config", "date_settings", "date-settings", "on_mount", "on_unmount", "on_interval", "on_state_change", "use_script", "use_style", "animations", "animation_def", "watch", "computed", "head", "helmet", "title"];
         
         if (isFn(this.parseHeadMetadata)) {
             this.parseHeadMetadata(root);
