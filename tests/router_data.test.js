@@ -26,7 +26,7 @@ describe("EUIX Router Data - Loaders & Actions", () => {
         const routes = [
             {
                 id: "project",
-                path: "projects/:projectId",
+                path: "/projects/:projectId",
                 component: "project-view",
                 loader: async ({ params, signal }) => {
                     expect(params.projectId).toBe("101");
