@@ -35,9 +35,19 @@ export class RouteLoaderManager {
         }
 
         const searchParams = parseSearchParams(search);
-        const request = typeof Request !== "undefined" 
-            ? new Request(typeof window !== "undefined" ? window.location.origin + pathname + search : `http://localhost${pathname}${search}`, { signal })
-            : { url: pathname + search, signal };
+        const hasValidOrigin = typeof window !== "undefined" && window.location && typeof window.location.origin === "string" && window.location.origin.startsWith("http");
+        const originUrl = hasValidOrigin ? window.location.origin : "http://localhost";
+        const normalizedPath = pathname ? (pathname.startsWith("/") ? pathname : "/" + pathname) : "/";
+        const fullUrl = `${originUrl}${normalizedPath}${search || ""}`;
+
+        let request;
+        try {
+            request = typeof Request !== "undefined"
+                ? new Request(fullUrl, { signal })
+                : { url: fullUrl, signal };
+        } catch (_) {
+            request = { url: fullUrl, signal };
+        }
 
         const loaderContext = {
             request,
