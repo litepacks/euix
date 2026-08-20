@@ -62,10 +62,10 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       include: ['src/EUIXEngine.js', 'src/EUIXDevTools.js'],
       thresholds: {
-        statements: 75,
-        branches: 65,
-        functions: 75,
-        lines: 75
+        statements: 85,
+        branches: 75,
+        functions: 90,
+        lines: 85
       }
     }
   }
