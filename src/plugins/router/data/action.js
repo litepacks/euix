@@ -21,15 +21,25 @@ export class RouteActionManager {
      * @returns {Promise<any>}
      */
     async executeAction({ match, location, formData, signal, context = {} }) {
-        const route = match.route;
+        const route = match.route || {};
+        const pathname = location.pathname || "/";
+        const hasValidOrigin = typeof window !== "undefined" && window.location && typeof window.location.origin === "string" && window.location.origin.startsWith("http");
+        const originUrl = hasValidOrigin ? window.location.origin : "http://localhost";
+        const normalizedPath = pathname.startsWith("/") ? pathname : "/" + pathname;
+        const fullUrl = `${originUrl}${normalizedPath}${location.search || ""}`;
 
-        const request = typeof Request !== "undefined"
-            ? new Request(typeof window !== "undefined" ? window.location.origin + location.pathname : `http://localhost${location.pathname}`, {
-                method: "POST",
-                body: formData,
-                signal
-            })
-            : { url: location.pathname, method: "POST", body: formData, signal };
+        let request;
+        try {
+            request = typeof Request !== "undefined"
+                ? new Request(fullUrl, {
+                    method: "POST",
+                    body: formData,
+                    signal
+                })
+                : { url: fullUrl, method: "POST", body: formData, signal };
+        } catch (_) {
+            request = { url: fullUrl, method: "POST", body: formData, signal };
+        }
 
         const actionContext = {
             request,
