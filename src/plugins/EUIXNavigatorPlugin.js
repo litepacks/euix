@@ -23,10 +23,10 @@ export const EUIXNavigatorPlugin = {
         // 1. Tag Pre-Processor: <navigator_config> / <device_config>
         engineClass.prototype._processNavigatorTag = function(xmlNode) {
             if (!xmlNode) return;
-            const target = xmlNode.getAttribute("bind_target") || xmlNode.getAttribute("target") || "navigator";
+            const target = xmlNode.getAttribute("bind_target") || xmlNode.getAttribute("target") || xmlNode.getAttribute("bind") || "navigator";
             const trackNetwork = xmlNode.getAttribute("track_network") !== "false";
             const trackBattery = xmlNode.getAttribute("track_battery") === "true";
-            const trackGeo = xmlNode.getAttribute("track_geolocation") === "true";
+            const trackGeo = xmlNode.getAttribute("track_geolocation") === "true" || xmlNode.getAttribute("track_geo") === "true";
 
             this.initNavigatorState(target, { trackNetwork, trackBattery, trackGeo });
         };

@@ -613,7 +613,7 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("route-block", blockComponentHandler);
 
         // 4. Register Declarative Event Actions
-        engineClass.registerAction("NAVIGATE", async function(actionNode, context) {
+        const handleNavigate = async function(actionNode, context) {
             if (!this.router) return false;
             const toRaw = actionNode.getAttribute("to") || actionNode.getAttribute("path") || actionNode.getAttribute("href") || "";
             const toNode = this.getChild(actionNode, "to") || this.getChild(actionNode, "path");
@@ -621,20 +621,18 @@ export const EUIXRouterPlugin = {
             const replace = actionNode.getAttribute("replace") === "true";
 
             return this.router.navigate(to, { replace });
-        });
-        engineClass.registerAction("ROUTER_NAVIGATE", function(actionNode, context) {
-            return this.executeAction("NAVIGATE", actionNode, context);
-        });
+        };
+        engineClass.registerAction("NAVIGATE", handleNavigate);
+        engineClass.registerAction("ROUTER_NAVIGATE", handleNavigate);
 
-        engineClass.registerAction("REVALIDATE", async function(actionNode, context) {
+        const handleRevalidate = async function(actionNode, context) {
             if (!this.router) return false;
             const routeId = actionNode.getAttribute("route") || actionNode.getAttribute("id");
             await this.router.revalidate(routeId);
             return true;
-        });
-        engineClass.registerAction("ROUTER_REVALIDATE", function(actionNode, context) {
-            return this.executeAction("REVALIDATE", actionNode, context);
-        });
+        };
+        engineClass.registerAction("REVALIDATE", handleRevalidate);
+        engineClass.registerAction("ROUTER_REVALIDATE", handleRevalidate);
 
         engineClass.registerAction("ROUTER_BACK", function() {
             if (this.router) this.router.back();
