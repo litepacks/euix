@@ -245,7 +245,8 @@ export const EUIXApiPlugin = {
             const bodyNode = this.getChild(actionNode, "body");
 
             const targetOpNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "target_op");
-            const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : (actionNode.getAttribute("operation") || actionNode.getAttribute("target_op") || "SET").toUpperCase();
+            const targetNodeOp = targetNode ? targetNode.getAttribute("op") : null;
+            const targetOp = targetOpNode ? targetOpNode.textContent.trim().toUpperCase() : (targetNodeOp || actionNode.getAttribute("operation") || actionNode.getAttribute("target_op") || "SET").toUpperCase();
 
             const idAttr = actionNode.getAttribute("id") || actionNode.getAttribute("name") || "";
             const tagAttr = actionNode.getAttribute("tag") || this.getChild(actionNode, "tag")?.textContent.trim() || idAttr || compApiConfig.tag || "";
@@ -412,12 +413,17 @@ export const EUIXApiPlugin = {
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
                     }
-                    const contentType = response.headers.get("content-type") || "";
+                    const contentType = (response.headers && typeof response.headers.get === "function" ? response.headers.get("content-type") : "") || "";
                     let data;
-                    if (contentType.includes("application/json")) {
-                        data = await response.json();
+                    if (contentType.includes("application/json") || typeof response.json === "function") {
+                        try {
+                            data = await response.json();
+                        } catch (_) {
+                            const textData = typeof response.text === "function" ? await response.text() : "";
+                            try { data = JSON.parse(textData); } catch (_) { data = textData; }
+                        }
                     } else {
-                        const textData = await response.text();
+                        const textData = typeof response.text === "function" ? await response.text() : "";
                         try { data = JSON.parse(textData); } catch (_) { data = textData; }
                     }
                     return data;
@@ -455,13 +461,14 @@ export const EUIXApiPlugin = {
                         }
 
                         if (target) {
+                            const rawTarget = this.getState ? this.getState(target) : (this._rawState ? this._rawState[target] : null);
                             if (targetOp === "UNSHIFT" || targetOp === "PREPEND") {
-                                const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                                const currentList = Array.isArray(rawTarget) ? [...rawTarget] : [];
                                 const newItem = (typeof data === "object" && data !== null && (data.id || data.title)) ? data : { id: Date.now(), ...data };
                                 currentList.unshift(newItem);
                                 this.setState(target, currentList);
                             } else if (targetOp === "PUSH" || targetOp === "APPEND") {
-                                const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                                const currentList = Array.isArray(rawTarget) ? [...rawTarget] : [];
                                 const newItem = (typeof data === "object" && data !== null && (data.id || data.title)) ? data : { id: Date.now(), ...data };
                                 currentList.push(newItem);
                                 this.setState(target, currentList);
@@ -469,14 +476,14 @@ export const EUIXApiPlugin = {
                                 const whereNode = this.getChild(actionNode, "where");
                                 const rawEquals = whereNode ? (whereNode.getAttribute("equals") || whereNode.textContent.trim()) : "";
                                 const removeId = rawEquals ? this.interpolate(rawEquals, context) : context.id;
-                                const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                                const currentList = Array.isArray(rawTarget) ? [...rawTarget] : [];
                                 const nextList = currentList.filter(item => String(item.id) !== String(removeId));
                                 this.setState(target, nextList);
                             } else if (targetOp === "UPDATE") {
                                 const whereNode = this.getChild(actionNode, "where");
                                 const rawEquals = whereNode ? (whereNode.getAttribute("equals") || whereNode.textContent.trim()) : "";
                                 const updateId = rawEquals ? this.interpolate(rawEquals, context) : context.id;
-                                const currentList = Array.isArray(this._rawState[target]) ? [...this._rawState[target]] : [];
+                                const currentList = Array.isArray(rawTarget) ? [...rawTarget] : [];
                                 const nextList = currentList.map(item => String(item.id) === String(updateId) ? { ...item, ...data } : item);
                                 this.setState(target, nextList);
                             } else {

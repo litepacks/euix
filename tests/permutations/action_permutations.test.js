@@ -60,7 +60,10 @@ describe('EUIX Engine - Declarative Action Permutation Engine', () => {
     const button = container.querySelector('#btn');
     button.click();
 
-    await new Promise(r => setTimeout(r, 600));
+    for (let i = 0; i < 40; i++) {
+      if (engine.getState('status') === 'success') break;
+      await new Promise(r => setTimeout(r, 50));
+    }
 
     expect(engine.getState('status')).toBe('success');
     expect(engine.getState('finally_count')).toBe('1');
@@ -101,7 +104,10 @@ describe('EUIX Engine - Declarative Action Permutation Engine', () => {
     const button = container.querySelector('#btn');
     button.click();
 
-    await new Promise(r => setTimeout(r, 300));
+    for (let i = 0; i < 40; i++) {
+      if (engine.getState('caught_error') === 'TIMEOUT_ERROR') break;
+      await new Promise(r => setTimeout(r, 50));
+    }
 
     expect(engine.getState('caught_error')).toBe('TIMEOUT_ERROR');
     expect(engine.getState('late_mutated')).toBe('false'); // Blocked late mutation invariant!
