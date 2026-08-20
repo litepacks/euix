@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine - Leaflet Maps Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/map_demo.html');
+    await euix(page).waitForIdle();
   });
 
   test('should mount Leaflet map and render spatial analytics dashboard', async ({ page }) => {
@@ -25,12 +27,14 @@ test.describe('EUIX Engine - Leaflet Maps Plugin End-to-End (E2E) Browser Suite'
 
     // Click London
     await ukButton.click();
+    await euix(page).waitForIdle();
     await expect(ukButton).toHaveClass(/active/);
     await expect(trButton).not.toHaveClass(/active/);
 
     // Click New York
     const usaButton = page.locator('button.country-btn:has-text("New York")');
     await usaButton.click();
+    await euix(page).waitForIdle();
     await expect(usaButton).toHaveClass(/active/);
     await expect(ukButton).not.toHaveClass(/active/);
   });
@@ -38,6 +42,7 @@ test.describe('EUIX Engine - Leaflet Maps Plugin End-to-End (E2E) Browser Suite'
   test('should switch city presets and update focus status', async ({ page }) => {
     const londonButton = page.locator('button.country-btn:has-text("London")');
     await londonButton.click();
+    await euix(page).waitForIdle();
 
     // Verify button is active
     await expect(londonButton).toHaveClass(/active/);

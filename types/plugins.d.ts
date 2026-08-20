@@ -81,12 +81,58 @@ export class EUIXRouter {
 export function createMemoryRouter(options?: any): EUIXRouter;
 export function createStaticRouter(options?: any): Promise<any>;
 
-export class EUIXDevTools {
-    static init(engine?: EUIXEngineCore): EUIXDevTools;
+export interface EUIXInspectorOptions {
+    enabled?: boolean;
+    shortcut?: string;
+    maxEvents?: number;
+    testAttributes?: boolean;
+    maskSensitive?: boolean;
+}
+
+export class EUIXInspector {
+    constructor(engine?: EUIXEngineCore, options?: EUIXInspectorOptions);
+    enabled: boolean;
+    enable(): void;
+    disable(): void;
+    toggle(force?: boolean): void;
+    select(element: Element): void;
+    showBoundaries(): void;
+    hideBoundaries(): void;
+    toggleBoundaries(): void;
+    destroy(): void;
+}
+
+export function inspector(options?: EUIXInspectorOptions): EUIXPlugin;
+export const EUIXInspectorPlugin: EUIXPlugin;
+
+export class EUIXDevTools extends EUIXInspector {
+    static init(engine?: EUIXEngineCore, options?: EUIXInspectorOptions): EUIXDevTools;
     static open(): void;
     static close(): void;
     static toggle(): void;
 }
+
+// Playwright E2E Helpers
+export class EuixPlaywrightWrapper {
+    constructor(pageOrLocator: any, scopeSelector?: string);
+    component(componentName: string): EuixPlaywrightWrapper;
+    action(actionName: string): any;
+    getByTestId(testId: string): any;
+    testId(testId: string): any;
+    element(refOrSelector: string): any;
+    waitForIdle(options?: { timeout?: number }): Promise<this>;
+    waitForReady(options?: { timeout?: number }): Promise<this>;
+    debug(): Promise<any>;
+    locator(selector: string): any;
+    click(options?: any): Promise<void>;
+    fill(value: string, options?: any): Promise<void>;
+    textContent(): Promise<string | null>;
+}
+
+export function euix(pageOrLocator: any): EuixPlaywrightWrapper;
+export function getByComponent(pageOrLocator: any, componentName: string): any;
+export function getByAction(pageOrLocator: any, actionName: string): any;
+export function getByTestId(pageOrLocator: any, testId: string): any;
 
 // Action Composer Types
 export class EUIXActionRecursionError extends Error {}

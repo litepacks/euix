@@ -20,7 +20,9 @@ export default defineConfig({
         'plugins/EUIXNavigatorPlugin': resolve(__dirname, 'src/plugins/EUIXNavigatorPlugin.js'),
         'plugins/EUIXRouterPlugin': resolve(__dirname, 'src/plugins/EUIXRouterPlugin.js'),
         'plugins/EUIXChartPlugin': resolve(__dirname, 'src/plugins/EUIXChartPlugin.js'),
-        'plugins/EUIXDatePlugin': resolve(__dirname, 'src/plugins/EUIXDatePlugin.js')
+        'plugins/EUIXDatePlugin': resolve(__dirname, 'src/plugins/EUIXDatePlugin.js'),
+        'plugins/EUIXInspectorPlugin': resolve(__dirname, 'src/plugins/EUIXInspectorPlugin.js'),
+        'plugins/EUIXPlaywright': resolve(__dirname, 'src/plugins/inspector/playwright.js')
       },
       formats: ['es']
     },

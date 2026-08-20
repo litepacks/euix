@@ -734,7 +734,70 @@ function _extractExternalKeysFromExpr(expr, varName, targetSet) {
     }
 }
 
+class EUIXHookEmitter {
+    constructor() {
+        this._listeners = new Map();
+    }
+
+    on(event, handler) {
+        if (!event || typeof handler !== "function") return () => {};
+        if (!this._listeners.has(event)) {
+            this._listeners.set(event, new Set());
+        }
+        this._listeners.get(event).add(handler);
+        return () => this.off(event, handler);
+    }
+
+    off(event, handler) {
+        if (!this._listeners.has(event)) return;
+        if (handler) {
+            this._listeners.get(event).delete(handler);
+        } else {
+            this._listeners.delete(event);
+        }
+    }
+
+    emit(event, data) {
+        if (!this._listeners.has(event)) return;
+        const handlers = this._listeners.get(event);
+        for (const fn of handlers) {
+            try {
+                fn(data);
+            } catch (err) {
+                if (typeof console !== "undefined" && console.error) {
+                    console.error(`[EUIXEngine Hook Error] Error in '${event}' hook handler:`, err);
+                }
+            }
+        }
+    }
+
+    clear() {
+        this._listeners.clear();
+    }
+}
+
+function updateDevToolsStatus(engine, key, deltaOrValue) {
+    if (typeof window === "undefined") return;
+    if (!window.__EUIX_DEVTOOLS__) {
+        window.__EUIX_DEVTOOLS__ = {
+            pendingActions: 0,
+            pendingLoaders: 0,
+            pendingRevalidations: 0,
+            routeTransition: false,
+            ready: true
+        };
+    }
+    const dev = window.__EUIX_DEVTOOLS__;
+    if (typeof deltaOrValue === "number") {
+        dev[key] = Math.max(0, (dev[key] || 0) + deltaOrValue);
+    } else if (typeof deltaOrValue === "boolean") {
+        dev[key] = deltaOrValue;
+    }
+    dev.ready = (dev.pendingActions === 0 && dev.pendingLoaders === 0 && dev.pendingRevalidations === 0 && !dev.routeTransition);
+}
+
 class EUIXEngineCore {
+    static hooks = new EUIXHookEmitter();
     static _installedPlugins = new Set();
     static _globalActionHandlers = new Map();
     static _componentAstCache = new Map();
@@ -815,6 +878,7 @@ class EUIXEngineCore {
         this._isEvaluatingComputed = false;
         this._reactiveDepth = 0;
         this._destroyHooks = [];
+        this.hooks = new EUIXHookEmitter();
         if (isFn(this._setupStorageListener)) this._setupStorageListener();
         if (isFn(this._initRevalidationListeners)) this._initRevalidationListeners();
     }
@@ -3618,6 +3682,14 @@ class EUIXEngineCore {
                 const idVal = this.interpolate(attrValue, context);
                 el.id = idVal;
                 el.setAttribute("id", idVal);
+            } else if (lowerAttrName === "test-id" || lowerAttrName === "test_id" || lowerAttrName === "testid" || lowerAttrName === "data-testid" || lowerAttrName === "data-euix-test") {
+                const testVal = this.interpolate(attrValue, context);
+                el.setAttribute("data-euix-test", testVal);
+                el.setAttribute(attrName, testVal);
+            } else if (lowerAttrName === "action" || lowerAttrName === "data-euix-action") {
+                const actionVal = this.interpolate(attrValue, context);
+                el.setAttribute("data-euix-action", actionVal);
+                el.setAttribute(attrName, actionVal);
             } else if (attrName.startsWith("on") && attrName.length > 2 && !attrName.startsWith("on_")) {
                 const eventName = attrName.toLowerCase();
                 const handlerCode = this.interpolate(attrValue, context);
@@ -5378,6 +5450,17 @@ class EUIXEngineCore {
         el._euixEventMap = eventMap;
         el._euixContext = context;
 
+        const actionNames = [];
+        eventMap.forEach((handlerNodes) => {
+            handlerNodes.forEach(h => {
+                const act = h.getAttribute && (h.getAttribute("action") || h.getAttribute("name"));
+                if (act && !actionNames.includes(act)) actionNames.push(act);
+            });
+        });
+        if (actionNames.length > 0 && !el.hasAttribute("data-euix-action")) {
+            el.setAttribute("data-euix-action", actionNames.join(","));
+        }
+
         const eventsObj = Object.create(null);
         eventMap.forEach((handlerNodes, eventType) => {
             eventsObj[eventType] = handlerNodes;
@@ -5565,7 +5648,19 @@ class EUIXEngineCore {
         const rendered = this.createHTMLElement(templateNode, childContext);
         if (isElem(rendered)) {
             rendered.dataset.xuiComponent = compName;
+            rendered.dataset.euixComponent = compName;
+            rendered.dataset.euixInstance = instanceId;
             this.processLifecycleHooks(specNode, rendered, childContext);
+            if (this.hooks) {
+                this.hooks.emit("component:mount", {
+                    component: compName,
+                    instanceId,
+                    element: rendered,
+                    props,
+                    localState: childContext._localState,
+                    context: childContext
+                });
+            }
         }
 
         if (rendered && usageNode.getAttribute("class")) {
@@ -5764,16 +5859,54 @@ class EUIXEngineCore {
         const prevContext = this._currentActionContext;
         this._currentActionContext = context;
 
+        const actionName = (actionNode && actionNode.getAttribute) 
+            ? (actionNode.getAttribute("action") || actionNode.getAttribute("name") || actionNode.tagName)
+            : (typeof actionNode === "string" ? actionNode : "ACTION");
+
+        const actionPayload = {
+            action: actionName,
+            context,
+            timestamp: Date.now()
+        };
+        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+
+        if (this.hooks) {
+            this.hooks.emit("action:start", actionPayload);
+        }
+        updateDevToolsStatus(this, "pendingActions", 1);
+
+        const onComplete = (err, result) => {
+            updateDevToolsStatus(this, "pendingActions", -1);
+            const duration = ((typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now()) - startTime;
+            if (this.hooks) {
+                this.hooks.emit("action:end", {
+                    ...actionPayload,
+                    duration,
+                    error: err || null,
+                    result,
+                    status: err ? "error" : "success"
+                });
+            }
+        };
+
         try {
             const res = this._executeActionInternalBody(actionNode, context);
             if (res && isFn(res.then)) {
-                return res.finally(() => {
+                return res.then(val => {
+                    onComplete(null, val);
+                    return val;
+                }).catch(err => {
+                    onComplete(err, null);
+                    throw err;
+                }).finally(() => {
                     this._currentActionContext = prevContext;
                 });
             }
+            onComplete(null, res);
             this._currentActionContext = prevContext;
             return res;
         } catch (err) {
+            onComplete(err, null);
             this._currentActionContext = prevContext;
             throw err;
         }
@@ -6378,5 +6511,5 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
 }
 
-export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError };
+export { EUIXEngineCore, EUIXEngineCore as EUIXEngine, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError, EUIXHookEmitter };
 export default EUIXEngineCore;

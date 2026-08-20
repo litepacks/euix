@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/playground.html');
+    await euix(page).waitForIdle();
   });
 
   test('should mount EUIX Engine Demo page and render header', async ({ page }) => {
@@ -16,23 +18,28 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
 
     // Click +1
     await page.locator('button:text-is("+")').click();
+    await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('1');
 
     // Click +5
     await page.locator('button:has-text("+5")').click();
+    await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('6');
 
     // Click -1
     await page.locator('button:text-is("-")').click();
+    await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('5');
 
     // Click -5
     await page.locator('button:has-text("-5")').click();
+    await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('0');
 
     // Click Reset
     await page.locator('button:text-is("+")').click();
     await page.locator('button:has-text("Reset (0)")').click();
+    await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('0');
   });
 
@@ -58,6 +65,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
 
     // Click "Yes, Delete" in modal
     await page.locator('button:has-text("Yes, Delete")').click({ force: true });
+    await euix(page).waitForIdle();
 
     // Verify only ONE task was removed (remaining count = 4)
     const tasksAfter = await page.locator('input[type="checkbox"]').count();
@@ -71,6 +79,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const input = page.locator('input[placeholder="Enter a new task..."]');
     await input.fill('Playwright E2E Test Task');
     await page.locator('button:text-is("Add Task")').click();
+    await euix(page).waitForIdle();
 
     // Verify new task was appended
     const lastTask = page.locator('span:has-text("Playwright E2E Test Task")');
@@ -80,42 +89,44 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test('should reflect form inputs live in the summary box', async ({ page }) => {
     const textarea = page.locator('textarea[placeholder*="biography"]');
     await textarea.fill('Playwright Engineer Bio');
+    await euix(page).waitForIdle();
 
     const summary = page.locator('.bg-indigo-50\\/50').last();
     await expect(summary).toContainText('Playwright Engineer Bio');
   });
 
   test('should toggle DevTools overlay off when pressing Escape key', async ({ page }) => {
-    const devHud = page.locator('#euix-devtools-hud');
-    await expect(devHud).toBeVisible();
+    const devHud = page.locator('#euix-dev-toggle, #euix-dev-panel-btn, #euix-inspector-hud');
+    await expect(devHud.first()).toBeVisible();
 
-    const dot = page.locator('#euix-dev-dot');
+    const dot = page.locator('#euix-dev-dot, #euix-hud-dot');
 
     // Press Escape key to deactivate inspector
     await page.keyboard.press('Escape');
 
     // Dot background should turn grey (#64748b)
-    const dotBackground = await dot.evaluate(el => el.style.background);
+    const dotBackground = await dot.first().evaluate(el => el.style.background);
     expect(dotBackground).toBe('rgb(100, 116, 139)');
   });
 
   test('should open DevTools State & Log Panel when clicking panel button', async ({ page }) => {
-    const panelBtn = page.locator('#euix-dev-panel-btn');
-    await expect(panelBtn).toBeVisible();
+    const panelBtn = page.locator('#euix-dev-panel-btn, #euix-hud-panel-btn');
+    await expect(panelBtn.first()).toBeVisible();
 
     // Click panel button
-    await panelBtn.click();
+    await panelBtn.first().click();
 
-    const panel = page.locator('#euix-devtools-panel');
-    await expect(panel).toBeVisible();
+    const panel = page.locator('#euix-devtools-panel, #euix-inspector-panel');
+    await expect(panel.first()).toBeVisible();
 
     // Verify State keys are listed in panel
-    await expect(panel).toContainText('counter_value');
-    await expect(panel).toContainText('todos');
+    await expect(panel.first()).toContainText('counter_value');
+    await expect(panel.first()).toContainText('todos');
 
     // Click Logs tab
-    await page.locator('#euix-tab-logs').click();
-    await expect(panel).toContainText('Logs');
+    const logsTab = page.locator('#euix-tab-logs, #euix-tab-actions');
+    await logsTab.first().click();
+    await expect(panel.first()).toContainText('Recent actions');
   });
 
   test('should interact with JSONPlaceholder Posts CRUD section (create new post and delete post)', async ({ page }) => {
@@ -129,6 +140,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const responsePromise = page.waitForResponse(resp => resp.url().includes('jsonplaceholder.typicode.com/posts') && resp.request().method() === 'POST').catch(() => null);
     await page.locator('button:has-text("Publish Post")').click();
     await responsePromise;
+    await euix(page).waitForIdle();
 
     // Verify post was prepended
     const newPostTitle = page.locator('span:has-text("Playwright Test Post Title")').first();
@@ -137,6 +149,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Delete the new post
     const deleteBtn = page.locator('button:has-text("Delete")').first();
     await deleteBtn.click();
+    await euix(page).waitForIdle();
   });
 
   test('should reload Pokémon cards from PokéAPI and display cards', async ({ page }) => {
@@ -145,6 +158,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
 
     // Click Reload Pokémon
     await reloadBtn.click();
+    await euix(page).waitForIdle();
 
     // Verify Pokémon cards are rendered in grid
     const cards = page.locator('.pokemon-name, span.capitalize');
@@ -166,6 +180,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Delete second employee (Zeynep Kaya)
     const removeBtn = page.locator('button:has-text("Remove")').nth(1);
     await removeBtn.click();
+    await euix(page).waitForIdle();
 
     // Verify table row count updated to 3 (1 header + 2 employees)
     await expect(page.locator('table tr')).toHaveCount(3);
@@ -176,6 +191,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const addBugfixBtn = page.locator('button:has-text("Add Bugfix Task")');
     await expect(addBugfixBtn).toBeVisible();
     await addBugfixBtn.click();
+    await euix(page).waitForIdle();
 
     // Verify task was added to composer tasks
     const taskItem = page.locator('span:has-text("Fix API Cache Invalidation")').first();
@@ -184,6 +200,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Click "🎨 Add Design Task"
     const addDesignBtn = page.locator('button:has-text("Add Design Task")');
     await addDesignBtn.click();
+    await euix(page).waitForIdle();
 
     const designItem = page.locator('span:has-text("Redesign Dashboard Layout")').first();
     await expect(designItem).toBeVisible();
@@ -194,6 +211,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     const loadBtn = page.locator('button:has-text("Load 1,000 Items")');
     await expect(loadBtn).toBeVisible();
     await loadBtn.click();
+    await euix(page).waitForIdle();
 
     // Verify virtual item row rendered
     const itemCard = page.locator('span:has-text("High-Frequency Telemetry Packet")').first();
@@ -208,6 +226,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
     // Click "Add to Cart" on first available product
     const addToCartBtn = page.locator('button:has-text("Add to Cart")').first();
     await addToCartBtn.click();
+    await euix(page).waitForIdle();
 
     // Verify cart count or items
     const cartItem = page.locator('.cart-item, span:has-text("Cart")').first();

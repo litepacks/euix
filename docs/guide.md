@@ -677,3 +677,50 @@ npm run test:package
 # 7. Full Release Verification Gate (Build, Unit, Battle, Package Smoke Dashboard)
 npm run verify:release
 ```
+
+---
+
+## XI. Runtime Inspector & E2E Testing Guide (`@euix/inspector` / `euixjs/inspector`)
+
+### 1. Integration into Lite Core
+```javascript
+import { EUIXEngineCore } from 'euixjs/core';
+import inspector from 'euixjs/inspector';
+
+EUIXEngineCore.use(
+  inspector({
+    enabled: process.env.NODE_ENV === 'development',
+    shortcut: 'Alt+Shift+X',
+    testAttributes: true,
+    maxEvents: 100
+  })
+);
+```
+
+### 2. Playwright E2E Integration
+```javascript
+import { test, expect } from '@playwright/test';
+import { euix } from 'euixjs/inspector/playwright';
+
+test('interactive todo flow', async ({ page }) => {
+  await page.goto('/playground.html');
+
+  // Scoped component locator with test-id
+  await euix(page)
+    .component('TodoApp')
+    .getByTestId('new-task-input')
+    .fill('Write E2E test with Playwright');
+
+  await euix(page)
+    .component('TodoApp')
+    .getByTestId('add-task-btn')
+    .click();
+
+  // Wait for all engine background tasks to settle
+  await euix(page).waitForIdle();
+
+  // Inspect debug snapshot if needed
+  const snapshot = await euix(page).component('TodoApp').debug();
+});
+```
+

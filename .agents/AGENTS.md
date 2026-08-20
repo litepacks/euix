@@ -1020,3 +1020,68 @@ EUIX Engine provides mobile and web bottom tab navigation and stack navigation v
 </uid_spec>
 ```
 
+---
+
+## 🔍 21. Runtime Inspector & Playwright E2E Integration (`@euix/inspector` / `euixjs/inspector`)
+
+EUIX provides a lightweight runtime inspector and Playwright testing integration designed for **E2E test authoring, component debugging, DOM inspection, and stable selector generation**.
+
+### 1. Registration & Zero-Cost Configuration
+```js
+import { EUIXEngineCore } from 'euixjs/core';
+import inspector from 'euixjs/inspector';
+
+// Register with Lite Core
+EUIXEngineCore.use(
+  inspector({
+    enabled: import.meta.env.DEV, // Zero cost in production when false
+    shortcut: 'Alt+Shift+X',       // Keyboard shortcut to toggle inspect mode
+    testAttributes: true,          // Automatically inject data-euix-test and data-euix-action
+    maxEvents: 100                 // Ring buffer action log capacity
+  })
+);
+```
+
+### 2. Inspect Mode & Selector Scoring Hierarchy
+- **Shortcut**: `Alt+Shift+X` (or `Alt+Shift+I`), `Escape` to deactivate.
+- **Visual Overlay**: Non-intrusive fixed highlight outline (`pointer-events: none`) with badge tooltip displaying component name, instance ID, props, test-id, action, route, and bindings.
+- **Scored Stable Selectors**:
+  1. `[data-euix-test="..."]` *(Score: 100%)*
+  2. `page.getByRole('...', { name: '...' })` *(Score: 90%)*
+  3. `[data-euix-action="..."]` *(Score: 85%)*
+  4. `[data-euix-component="..."] button` *(Score: 75%)*
+  5. `#id`, `input[name="..."]` *(Score: 60%)*
+  6. CSS Path & `nth-child` fallback
+
+### 3. Playwright E2E Integration Suite (`euix(page)`)
+```js
+import { test, expect } from '@playwright/test';
+import { euix } from 'euixjs/inspector/playwright';
+
+test('order submission flow', async ({ page }) => {
+  await page.goto('/checkout');
+
+  // Chainable component and test-id scoping
+  await euix(page)
+    .component('CheckoutForm')
+    .getByTestId('submit-btn')
+    .click();
+
+  // Deterministic idle waiting (waits for pending actions, loaders, revalidations, route transitions)
+  await euix(page).waitForIdle();
+
+  // Failure debugging snapshot
+  const snapshot = await euix(page).component('CheckoutForm').debug();
+});
+```
+
+### 4. Console Debugging API (`$euix`)
+```js
+$euix.inspect($0);       // Inspect selected DOM element
+$euix.componentOf($0);   // Get component name of element
+$euix.snapshot($0);      // Get masked JSON debug snapshot
+$euix.tree();            // View mounted component hierarchy tree
+$euix.actions();         // View recent action execution logs
+```
+
+
