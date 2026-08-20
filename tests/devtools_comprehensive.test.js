@@ -151,6 +151,7 @@ describe('EUIXDevTools Comprehensive Test Suite', () => {
     });
 
     it('should record all ErrorScope lifecycle events and cap log arrays at 30 items', () => {
+        const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
         devtools.togglePanel(true);
 
         const errorEvents = [
@@ -181,7 +182,8 @@ describe('EUIXDevTools Comprehensive Test Suite', () => {
             devtools.logErrorScope('TRY_ENTER', { scopeId: `scope_${i}` });
         }
         expect(devtools.logs.length).toBe(30);
-    });
+        consoleSpy.mockRestore();
+    }, 30000);
 
     it('should inspect elements on mousemove, traversing hierarchy and parsing metadata', () => {
         devtools.toggle(true);

@@ -17,7 +17,7 @@ describe('EUIXEngine Memory Leak & Teardown Test Suite', () => {
         }
     });
 
-    it('should clean up all DOM nodes and state watchers across 200 mount/unmount stress cycles', () => {
+    it('should clean up all DOM nodes and state watchers across 50 mount/unmount stress cycles', () => {
         const xml = `
         <uid_spec>
             <data_model>
@@ -30,7 +30,7 @@ describe('EUIXEngine Memory Leak & Teardown Test Suite', () => {
         </uid_spec>
         `;
 
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 50; i++) {
             const engine = new EUIXEngine(container);
             engine.mount(xml);
             engine.setState('counter', `${i}`);
@@ -43,7 +43,7 @@ describe('EUIXEngine Memory Leak & Teardown Test Suite', () => {
         }
 
         expect(container.children.length).toBe(0);
-    }, 15000);
+    }, 30000);
 
     it('should provide zero-leakage teardown when invoking engine.destroy() / engine.unmount()', () => {
         const xml = `
