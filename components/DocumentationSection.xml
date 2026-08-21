@@ -10,104 +10,104 @@
     </data_model>
 
     <flex direction="column" gap="16" class="w-full">
-        <!-- Documentation Header Banner -->
-        <flex class="p-6 sm:p-8 bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <flex direction="column" gap="2">
+        <!-- Documentation Header Banner (Mobile-Optimized) -->
+        <flex class="p-4 sm:p-8 bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-xl flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <flex direction="column" gap="2" class="w-full sm:w-auto">
                 <flex direction="row" align="center" gap="8">
-                    <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 font-extrabold text-xs rounded-full border border-indigo-500/30 uppercase tracking-wider">
-                        📖 Official Documentation
+                    <span class="px-2.5 sm:px-3 py-1 bg-indigo-500/20 text-indigo-300 font-extrabold text-[11px] sm:text-xs rounded-full border border-indigo-500/30 uppercase tracking-wider">
+                        📖 Documentation
                     </span>
-                    <span class="text-xs text-slate-400 font-medium hidden sm:inline">19 In-Depth Topics &amp; Spec Standards</span>
+                    <span class="text-[11px] sm:text-xs text-slate-400 font-medium">19 In-Depth Topics</span>
                 </flex>
-                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">EUIX Engine Core Reference</h1>
-                <p class="text-xs sm:text-sm text-slate-300 max-w-2xl">
+                <h1 class="text-xl sm:text-3xl font-black text-white tracking-tight leading-tight">EUIX Engine Reference</h1>
+                <p class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
                     Comprehensive architectural guides, declarative XML specifications, reactive state models, resilience primitives, and plugin APIs.
                 </p>
             </flex>
 
-            <flex direction="row" align="center" gap="8" class="flex-wrap">
-                <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl transition-all border border-slate-700 flex items-center gap-2">
+            <flex direction="row" align="center" gap="8" class="w-full sm:w-auto flex-wrap sm:flex-nowrap shrink-0">
+                <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="flex-1 sm:flex-initial px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white font-bold text-xs rounded-xl transition-all border border-slate-700 flex items-center justify-center gap-2">
                     <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                    GitHub (v0.3.2)
+                    <span>GitHub</span>
                 </a>
-                <route-link to="/playground" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1.5">
-                    🎮 Live Playground
+                <route-link to="/playground" class="flex-1 sm:flex-initial px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/30 flex items-center justify-center gap-1.5">
+                    🎮 <span>Playground</span>
                 </route-link>
             </flex>
         </flex>
 
-        <!-- Mobile Horizontal Topic Scroller (Visible on small screens) -->
-        <div class="block lg:hidden w-full overflow-x-auto no-scrollbar py-1">
+        <!-- Mobile Horizontal Topic Scroller (Touch-Friendly Pill Navigation) -->
+        <div class="block lg:hidden w-full overflow-x-auto no-scrollbar scroll-smooth touch-pan-x py-1.5 -mx-1 px-1">
             <flex direction="row" gap="6" class="w-max">
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'getting_started' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'getting_started' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>getting_started</value></on_click>
                     🚀 1. Getting Started
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'layout_containers' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'layout_containers' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>layout_containers</value></on_click>
                     📐 2. Layout &amp; Tags
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'control_flow' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'control_flow' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>control_flow</value></on_click>
                     🔀 3. Control Flow
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'actions_events' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'actions_events' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>actions_events</value></on_click>
                     ⚡ 4. Actions &amp; Mutations
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'drag_drop' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'drag_drop' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>drag_drop</value></on_click>
                     🗂️ 5. Drag &amp; Drop
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'hooks' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'hooks' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>hooks</value></on_click>
                     🪝 6. Lifecycle Hooks
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'external_scripts' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'external_scripts' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>external_scripts</value></on_click>
                     📜 7. External Scripts
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'api_client' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'api_client' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>api_client</value></on_click>
                     📡 8. API Client
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'swr_revalidation' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'swr_revalidation' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>swr_revalidation</value></on_click>
                     🔄 9. SWR Caching
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'design_tokens' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'design_tokens' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>design_tokens</value></on_click>
                     🎨 10. Design Tokens
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'storage_persistence' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'storage_persistence' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>storage_persistence</value></on_click>
                     💾 11. Persistence
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'action_composer' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'action_composer' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>action_composer</value></on_click>
                     ⚡ 13. Action Composer
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'modular_plugins' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'modular_plugins' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>modular_plugins</value></on_click>
                     🧩 14. Plugins
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'try_catch_finally' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'try_catch_finally' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>try_catch_finally</value></on_click>
                     🛡️ 15. Error Handling
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'resilience_primitives' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'resilience_primitives' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>resilience_primitives</value></on_click>
                     ⚡ 16. Resilience
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'watch_computed' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'watch_computed' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>watch_computed</value></on_click>
                     ⚡ 17. Computed &amp; Watch
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'animation_system' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'animation_system' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>animation_system</value></on_click>
                     🎭 18. Animations
                 </button>
-                <button type="button" class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'battle_testing' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-300'}">
+                <button type="button" class="shrink-0 whitespace-nowrap px-3.5 py-2 rounded-xl font-bold text-xs transition-all {data.active_doc_topic == 'battle_testing' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-slate-900 border border-slate-800 text-slate-300 active:bg-slate-800'}">
                     <on_click action="SET_STATE"><path>data.active_doc_topic</path><value>battle_testing</value></on_click>
                     🛡️ 19. Battle Testing
                 </button>

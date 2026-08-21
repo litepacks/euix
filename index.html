@@ -143,68 +143,83 @@
         <!-- Master App Layout Shell -->
         <component_def name="master-layout">
             <flex direction="column" class="w-full min-h-screen">
-                <!-- Unified Top Navigation Bar -->
-                <header class="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <route-link to="/" exact="true" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity text-white no-underline">
-                            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-purple-600 to-pink-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-brand-500/25">
-                                <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+                <!-- Unified Top Navigation Bar (Mobile-first Responsive Architecture) -->
+                <header class="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-3 sm:px-6 py-2.5 sm:py-3 transition-all">
+                    <div class="w-full flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">
+                        <!-- Top Row on Mobile: Brand Logo & Actions -->
+                        <div class="flex items-center justify-between w-full md:w-auto shrink-0">
+                            <route-link to="/" exact="true" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity text-white no-underline">
+                                <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-purple-600 to-pink-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-brand-500/25 shrink-0">
+                                    <i data-lucide="zap" class="w-4 h-4 sm:w-5 sm:h-5 text-white"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-extrabold text-white text-sm sm:text-base tracking-tight leading-none">EUIX Engine</span>
+                                        <span class="px-1.5 py-0.5 text-[9px] sm:text-[10px] bg-brand-500/15 text-brand-400 font-bold border border-brand-500/25 rounded-md leading-none">Hub</span>
+                                    </div>
+                                    <span class="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden sm:inline">Declarative XML UI &amp; Ecosystem</span>
+                                </div>
+                            </route-link>
+
+                            <!-- Mobile Quick Access Links -->
+                            <div class="flex items-center gap-1.5 md:hidden">
+                                <a href="./live-editor.html" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 font-bold text-xs flex items-center gap-1 transition-all">
+                                    <i data-lucide="code-2" class="w-3.5 h-3.5 text-indigo-400"></i>
+                                    <span>Studio</span>
+                                </a>
+                                <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-center" title="GitHub">
+                                    <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                                </a>
                             </div>
-                            <div class="flex flex-col">
-                                <span class="font-extrabold text-white text-base tracking-tight leading-none flex items-center gap-2">
-                                    EUIX Engine <span class="px-2 py-0.5 text-[10px] bg-brand-500/10 text-brand-400 font-bold border border-brand-500/20 rounded-md">Master Hub</span>
-                                </span>
-                                <span class="text-[11px] text-slate-400 font-medium hidden sm:inline">Declarative XML UI &amp; Ecosystem</span>
-                            </div>
-                        </route-link>
+                        </div>
+
+                        <!-- SPA Route Navigation Links (Smooth Horizontal Touch Scrolling on Mobile) -->
+                        <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar scroll-smooth py-0.5 text-xs font-semibold w-full md:w-auto -mx-1 px-1 md:mx-0 md:px-0">
+                            <route-link to="/" exact="true" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="home" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Home</span>
+                            </route-link>
+
+                            <route-link to="/docs" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="book-open" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Docs</span>
+                            </route-link>
+
+                            <route-link to="/playground" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="play" class="w-3.5 h-3.5 text-amber-400"></i> <span>Playground</span>
+                            </route-link>
+
+                            <a href="./live-editor.html" target="_blank" class="hidden md:flex shrink-0 px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white items-center gap-1.5 transition-all" title="Monaco IDE Live Studio">
+                                <i data-lucide="code-2" class="w-3.5 h-3.5 text-blue-400"></i> <span>Studio ↗</span>
+                            </a>
+
+                            <route-link to="/charts" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Charts</span>
+                            </route-link>
+
+                            <route-link to="/maps" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="map" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Maps</span>
+                            </route-link>
+
+                            <route-link to="/date" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="calendar" class="w-3.5 h-3.5 text-teal-400"></i> <span>Date</span>
+                            </route-link>
+
+                            <route-link to="/navigator" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="smartphone" class="w-3.5 h-3.5 text-sky-400"></i> <span>Navigator</span>
+                            </route-link>
+
+                            <route-link to="/actions" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="workflow" class="w-3.5 h-3.5 text-rose-400"></i> <span>Actions</span>
+                            </route-link>
+
+                            <route-link to="/router-showcase" class="shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                                <i data-lucide="git-branch" class="w-3.5 h-3.5 text-purple-400"></i> <span>Router</span>
+                            </route-link>
+
+                            <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="hidden md:flex shrink-0 p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all ml-1 items-center justify-center" title="GitHub">
+                                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                            </a>
+                        </nav>
                     </div>
-
-                    <!-- SPA Route Navigation Links -->
-                    <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs font-semibold">
-                        <route-link to="/" exact="true" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="home" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Home</span>
-                        </route-link>
-
-                        <route-link to="/docs" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="book-open" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Docs</span>
-                        </route-link>
-
-                        <route-link to="/playground" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="play" class="w-3.5 h-3.5 text-amber-400"></i> <span>Playground</span>
-                        </route-link>
-
-                        <a href="./live-editor.html" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all" title="Monaco IDE Live Studio">
-                            <i data-lucide="code-2" class="w-3.5 h-3.5 text-blue-400"></i> <span>Studio ↗</span>
-                        </a>
-
-                        <route-link to="/charts" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Charts</span>
-                        </route-link>
-
-                        <route-link to="/maps" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="map" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Maps</span>
-                        </route-link>
-
-                        <route-link to="/date" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-teal-400"></i> <span>Date</span>
-                        </route-link>
-
-                        <route-link to="/navigator" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="smartphone" class="w-3.5 h-3.5 text-sky-400"></i> <span>Navigator</span>
-                        </route-link>
-
-                        <route-link to="/actions" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="workflow" class="w-3.5 h-3.5 text-rose-400"></i> <span>Actions</span>
-                        </route-link>
-
-                        <route-link to="/router-showcase" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
-                            <i data-lucide="git-branch" class="w-3.5 h-3.5 text-purple-400"></i> <span>Router</span>
-                        </route-link>
-
-                        <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all ml-1 flex items-center justify-center" title="GitHub">
-                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-                        </a>
-                    </nav>
                 </header>
 
                 <!-- Active Route Dynamic Content Outlet -->
