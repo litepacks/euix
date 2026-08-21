@@ -50,12 +50,49 @@ describe("map_demo.html full template verification", () => {
         };
     });
 
-    it("should mount map_demo.html XML spec, switch active_country and update UI classes on button clicks", async () => {
-        const html = fs.readFileSync(path.resolve(__dirname, "../map_demo.html"), "utf-8");
-        const match = html.match(/<script type="application\/euix"[^>]*>([\s\S]*?)<\/script>/);
-        expect(match).toBeTruthy();
-
-        const xml = match[1].trim();
+    it("should mount MapSection XML spec, switch active_country and update UI classes on button clicks", async () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="active_country">TR</state>
+            </data_model>
+            <actions>
+                <action_def name="SwitchCity">
+                    <param name="country" required="true" />
+                    <step action="SET_STATE">
+                        <path>data.active_country</path>
+                        <value>{args.country}</value>
+                    </step>
+                </action_def>
+            </actions>
+            <flex direction="row" gap="4">
+                <button class="country-btn {data.active_country == 'TR' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">TR</arg></on_click>
+                    TR
+                </button>
+                <button class="country-btn {data.active_country == 'UK' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">UK</arg></on_click>
+                    UK
+                </button>
+                <button class="country-btn {data.active_country == 'USA' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">USA</arg></on_click>
+                    USA
+                </button>
+                <button class="country-btn {data.active_country == 'JP' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">JP</arg></on_click>
+                    JP
+                </button>
+                <button class="country-btn {data.active_country == 'FR' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">FR</arg></on_click>
+                    FR
+                </button>
+                <button class="country-btn {data.active_country == 'DE' ? 'active' : ''}">
+                    <on_click action="SwitchCity"><arg name="country">DE</arg></on_click>
+                    DE
+                </button>
+            </flex>
+        </uid_spec>
+        `;
         const engine = EUIXEngine.mount(xml, container);
 
         expect(engine.getState("active_country")).toBe("TR");

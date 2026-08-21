@@ -1,0 +1,115 @@
+<component_def name="playground-section">
+    <data_model>
+        <state id="new_todo_input" type="string"></state>
+        <state id="edit_todo_input" type="string"></state>
+        <state id="editing_id" type="string"></state>
+        <state id="todos" type="array">
+            <item id="1" text="Explore EUIX Engine Core" completed="true" />
+            <item id="2" text="Test Reactive Fine-Grained Signals" completed="true" />
+            <item id="3" text="Integrate Modular Plugins" completed="false" />
+            <item id="4" text="Build Declarative XML Interfaces" completed="false" />
+        </state>
+        <state id="pokemons" type="array"></state>
+        <state id="pokemon_loading" type="string">false</state>
+        <state id="pokemon_error" type="string"></state>
+        <state id="pokemon_open" type="string">true</state>
+        <state id="posts" type="array"></state>
+        <state id="posts_loading" type="string">false</state>
+        <state id="posts_error" type="string"></state>
+        <state id="posts_open" type="string">true</state>
+        <state id="new_post_title" type="string"></state>
+        <state id="new_post_body" type="string"></state>
+        <state id="todos_open" type="string">true</state>
+        <state id="events_open" type="string">true</state>
+        <state id="form_open" type="string">true</state>
+        <state id="quick_todo_input" type="string"></state>
+        <state id="hover_status" type="string">Hover over this box...</state>
+        <state id="click_status" type="string">Click anywhere in the target area</state>
+        <state id="key_status" type="string">Type in the input above...</state>
+        <state id="is_active" type="string">true</state>
+        <state id="primary_user_name" type="string">Guest User</state>
+        <state id="confirm_modal_open" type="string">false</state>
+        <state id="delete_modal_open" type="string">false</state>
+        <state id="deleting_todo_id" type="string"></state>
+        <state id="search_query" type="string"></state>
+        <state id="search_results" type="array"></state>
+        <state id="search_loading" type="string">false</state>
+        <state id="search_error" type="string"></state>
+        <state id="counter_value" type="number">10</state>
+        <state id="seconds" type="number">0</state>
+        <state id="seconds_running" type="string">true</state>
+        <state id="auto_tick" type="string">false</state>
+        <state id="state_log" type="string">System initialized. Watching state...</state>
+        <state id="last_action" type="string">None</state>
+        <state id="session_role" type="string">Admin</state>
+        <state id="local_note" type="string">Saved in LocalStorage</state>
+        <state id="system_version" type="string">0.3.2</state>
+    </data_model>
+
+    <imports>
+        <import name="app-header" src="components/AppHeader.xml" />
+        <import name="reactive-section" src="components/ReactiveSection.xml" />
+        <import name="animation-section" src="components/AnimationSection.xml" />
+        <import name="action-composer-section" src="components/ActionComposerSection.xml" />
+        <import name="ecommerce-section" src="components/EcommerceSection.xml" />
+        <import name="virtual-list-section" src="components/VirtualListSection.xml" />
+        <import name="kanban-section" src="components/KanbanSection.xml" />
+        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
+        <import name="table-section" src="components/TableSection.xml" />
+        <import name="counter-section" src="components/CounterSection.xml" />
+        <import name="countdown-section" src="components/CountdownSection.xml" />
+        <import name="persistence-section" src="components/PersistenceSection.xml" />
+        <import name="api-client-section" src="components/ApiClientSection.xml" />
+        <import name="todo-section" src="components/TodoSection.xml" />
+        <import name="posts-crud-section" src="components/PostsCrudSection.xml" />
+        <import name="pokemon-section" src="components/PokemonSection.xml" />
+        <import name="form-section" src="components/FormSection.xml" />
+        <import name="events-section" src="components/EventsSection.xml" />
+        <import name="confirm-modal" src="components/ConfirmModal.xml" />
+        <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
+    </imports>
+
+    <flex direction="column" gap="20" class="w-full">
+        <!-- Hero Header -->
+        <flex class="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+            <flex direction="column" gap="4">
+                <flex direction="row" align="center" gap="8" class="flex-wrap">
+                    <span class="px-3 py-1 bg-amber-500/15 text-amber-400 font-extrabold text-xs rounded-full border border-amber-500/20 uppercase tracking-wider">
+                        🎮 Interactive Playground
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">AST Caching &amp; Batching Active</span>
+                </flex>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Full Interactive Component Suites</h1>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                    Explore real-world full-stack components built 100% with Vanilla .EUIX Engine.
+                </p>
+            </flex>
+
+            <span class="px-3 py-1.5 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 text-xs font-bold font-mono">
+                ● Live Reactive
+            </span>
+        </flex>
+
+        <reactive-section />
+        <animation-section />
+        <action-composer-section />
+        <ecommerce-section />
+        <virtual-list-section />
+        <kanban-section />
+        <crypto-portfolio-section />
+        <table-section />
+        <counter-section />
+        <countdown-section />
+        <persistence-section />
+        <api-client-section />
+        <state-bridge-badge count="{data.counter_value}" />
+
+        <todo-section />
+        <posts-crud-section />
+        <pokemon-section />
+        <form-section />
+        <events-section />
+        <confirm-modal bind="data.confirm_modal_open" mode="clear" title="Clear All Tasks?" message="Are you sure you want to permanently delete all tasks?" confirm_text="Yes, Delete All" cancel_text="Cancel" />
+        <confirm-modal bind="data.delete_modal_open" mode="remove" title="Delete Task?" message="Are you sure you want to remove this task?" confirm_text="Yes, Delete" cancel_text="Cancel" />
+    </flex>
+</component_def>

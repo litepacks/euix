@@ -1,9 +1,9 @@
 <component_def name="confirm-modal">
     <dialog bind="{props.bind}" title="{props.title}">
         <flex direction="column" gap="12" class="p-1">
-            <span class="text-sm text-slate-600">{props.message}</span>
+            <span class="text-sm text-slate-300">{props.message}</span>
             <flex direction="row" justify="end" gap="8" class="mt-2">
-                <button class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-lg transition-colors cursor-pointer">
+                <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs rounded-xl transition-colors cursor-pointer border border-slate-700">
                     {props.cancel_text}
                     <on_click action="SET_STATE">
                         <path>{props.bind}</path>
@@ -11,7 +11,7 @@
                     </on_click>
                 </button>
                 <if condition="{props.mode} == 'remove'">
-                    <button class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors shadow-md shadow-rose-500/20 cursor-pointer">
+                    <button class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-colors shadow-lg shadow-rose-600/20 cursor-pointer">
                         {props.confirm_text}
                         <on_click action="SET_STATE">
                             <path>{props.bind}</path>
@@ -24,7 +24,7 @@
                         </on_click>
                     </button>
                     <else>
-                        <button class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-colors shadow-md shadow-rose-500/20 cursor-pointer">
+                        <button class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-colors shadow-lg shadow-rose-600/20 cursor-pointer">
                             {props.confirm_text}
                             <on_click action="SET_STATE">
                                 <path>{props.bind}</path>

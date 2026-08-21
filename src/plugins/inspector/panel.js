@@ -23,42 +23,47 @@ export class InspectorPanel {
     initDOM() {
         if (typeof document === "undefined") return;
 
-        // 1. DevTools Bottom HUD Bar
+        // 1. DevTools Bottom HUD Bar (Compact Floating Card)
         this.hudEl = document.createElement("div");
         this.hudEl.id = "euix-inspector-hud";
         this.hudEl.style.cssText = `
             position: fixed;
-            bottom: 16px;
-            left: 16px;
-            right: 16px;
+            bottom: 12px;
+            right: 12px;
             z-index: 999999;
             width: max-content;
-            max-width: calc(100vw - 32px);
-            margin-left: auto;
-            background: #0f172a;
+            max-width: calc(100vw - 24px);
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             color: #f8fafc;
-            padding: 6px 12px;
-            border-radius: 12px;
+            padding: 5px 8px;
+            border-radius: 10px;
             font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             user-select: none;
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            gap: 4px;
             box-sizing: border-box;
         `;
         this.hudEl.innerHTML = `
-            <div id="euix-dev-toggle" style="cursor:pointer;display:flex;align-items:center;gap:6px;">
-                <span id="euix-dev-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#64748b;"></span>
-                <span>🛠️ EUIX Inspector</span>
-                <span style="color:#64748b;font-size:10px;font-weight:normal;">(Alt+Shift+X)</span>
+            <!-- Top Row: Action Buttons -->
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <button id="euix-dev-panel-btn" style="background:#1e293b;border:1px solid rgba(56,189,248,0.3);color:#38bdf8;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.2;">📊 Panel</button>
+                    <button id="euix-hud-boundaries-btn" style="background:#1e293b;border:1px solid rgba(236,72,153,0.3);color:#f472b6;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.2;">📐 Bounds</button>
+                </div>
+                <span id="euix-dev-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;flex-shrink:0;"></span>
             </div>
-            <span style="color:rgba(255,255,255,0.2);">|</span>
-            <button id="euix-dev-panel-btn" style="background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#38bdf8;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📊 DevTools Panel</button>
-            <button id="euix-hud-boundaries-btn" style="background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#ec4899;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">📐 Boundaries</button>
+            <!-- Bottom Row: Toggle Title -->
+            <div id="euix-dev-toggle" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;border-top:1px solid rgba(255,255,255,0.08);padding-top:3px;">
+                <span style="color:#e2e8f0;font-size:10px;">🛠️ EUIX Inspector</span>
+                <span style="color:#64748b;font-size:9px;font-weight:normal;">Alt+Shift+X</span>
+            </div>
         `;
         document.body.appendChild(this.hudEl);
 

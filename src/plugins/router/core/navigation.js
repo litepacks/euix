@@ -255,7 +255,11 @@ export class NavigationController extends EventTarget {
             };
 
             if (this.transitionManager && options.viewTransition !== false) {
-                await this.transitionManager.runTransition(updateDOM);
+                try {
+                    await this.transitionManager.runTransition(updateDOM);
+                } catch (_) {
+                    updateDOM();
+                }
             } else {
                 updateDOM();
             }

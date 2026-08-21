@@ -1,13 +1,13 @@
 <component_def name="posts-crud-section">
-    <collapse bind="data.posts_open" title="📡 Declarative Posts CRUD (JSONPlaceholder REST API)" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
+    <collapse bind="data.posts_open" title="📡 Declarative Posts CRUD (JSONPlaceholder REST API)" class="border border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-slate-950/80 mb-6" header_class="w-full flex items-center justify-between p-4 bg-slate-900 border-none font-bold text-white hover:bg-slate-800/80 cursor-pointer text-sm" body_class="p-4 sm:p-5 flex flex-col gap-4">
         
         <!-- Header & Action Info -->
-        <flex class="pb-3 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
+        <flex class="pb-3 border-b border-slate-800 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
             <flex direction="column">
-                <span class="text-xs font-bold text-slate-700">JSONPlaceholder REST API Endpoints</span>
-                <span class="text-[11px] text-slate-500">GET, POST, DELETE https://jsonplaceholder.typicode.com/posts</span>
+                <span class="text-xs font-bold text-white">JSONPlaceholder REST API Endpoints</span>
+                <span class="text-[11px] text-slate-400">GET, POST, DELETE https://jsonplaceholder.typicode.com/posts</span>
             </flex>
-            <button class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors cursor-pointer flex items-center gap-1.5">
+            <button class="px-3.5 py-1.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 border border-indigo-500/30">
                 <span>🔄 Fetch Initial Posts</span>
                 <on_click action="XHR">
                     <method>GET</method>
@@ -20,7 +20,7 @@
         </flex>
 
         <!-- New Post Form (POST Endpoint) -->
-        <form class="p-3.5 bg-slate-50/80 border border-slate-200/70 rounded-xl flex flex-col gap-2.5">
+        <form class="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl flex flex-col gap-3">
             <on_submit action="XHR">
                 <method>POST</method>
                 <url>https://jsonplaceholder.typicode.com/posts</url>
@@ -34,12 +34,12 @@
                 <reset path="data.new_post_body" />
             </on_submit>
 
-            <span class="text-xs font-black text-slate-700">➕ Create New Post (POST /posts)</span>
-            <input type="text" bind="data.new_post_title" placeholder="Post title..." class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
-            <textarea bind="data.new_post_body" placeholder="Post body content..." rows="2" class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"></textarea>
+            <span class="text-xs font-black text-white">➕ Create New Post (POST /posts)</span>
+            <input type="text" bind="data.new_post_title" placeholder="Post title..." class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500" />
+            <textarea bind="data.new_post_body" placeholder="Post body content..." rows="2" class="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 resize-none"></textarea>
             
             <flex direction="row" justify="end">
-                <button type="submit" class="{const.btn_primary}">
+                <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-indigo-600/20">
                     <span>Publish Post</span>
                 </button>
             </flex>
@@ -47,25 +47,25 @@
 
         <!-- Loading / Error Indicators -->
         <if condition="{data.posts_loading} == true">
-            <span class="text-xs text-blue-600 font-bold p-3 text-center">Fetching JSONPlaceholder API...</span>
+            <span class="text-xs text-indigo-400 font-bold p-3 text-center">Fetching JSONPlaceholder API...</span>
         </if>
         <if condition="{data.posts_error} != ''">
-            <span class="text-xs text-rose-600 font-bold p-3 text-center">Error: {data.posts_error}</span>
+            <span class="text-xs text-rose-400 font-bold p-3 text-center">Error: {data.posts_error}</span>
         </if>
 
         <!-- Dynamic Posts List (GET, DELETE Endpoints) -->
         <flex direction="column" gap="8">
             <for_each items="{data.posts}" var="post">
-                <flex direction="row" justify="between" align="start" class="p-3 bg-white border border-slate-200/80 rounded-xl hover:border-slate-300 transition-all shadow-2xs">
+                <flex direction="row" justify="between" align="start" class="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl hover:border-slate-700 transition-all shadow-sm">
                     <flex direction="column" gap="2" class="flex-1 pr-3">
                         <flex direction="row" align="center" gap="6">
-                            <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-[10px] rounded-md">ID #{post.id}</span>
-                            <span class="text-xs font-bold text-slate-800 capitalize">{post.title}</span>
+                            <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-bold text-[10px] rounded-md border border-indigo-500/30">ID #{post.id}</span>
+                            <span class="text-xs font-bold text-white capitalize">{post.title}</span>
                         </flex>
-                        <span class="text-xs text-slate-600 leading-relaxed">{post.body}</span>
+                        <span class="text-xs text-slate-400 leading-relaxed">{post.body}</span>
                     </flex>
 
-                    <button class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0">
+                    <button class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-xs rounded-lg transition-colors cursor-pointer shrink-0 border border-rose-500/20">
                         <span>🗑️ Delete</span>
                         <on_click action="XHR">
                             <method>DELETE</method>

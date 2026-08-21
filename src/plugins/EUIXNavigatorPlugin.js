@@ -31,7 +31,7 @@ export const EUIXNavigatorPlugin = {
             this.initNavigatorState(target, { trackNetwork, trackBattery, trackGeo });
         };
 
-        // 2. Programmatic & Declarative State Initializer
+        // 2. Programmatic & Declarative State Initializer with $device reactive bridge
         engineClass.prototype.initNavigatorState = function(targetKey = "navigator", options = {}) {
             if (typeof window === "undefined" && typeof navigator === "undefined") {
                 return;
@@ -42,8 +42,24 @@ export const EUIXNavigatorPlugin = {
 
             const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
 
+            const getPrefersDark = () => {
+                try {
+                    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                } catch (_) {
+                    return true;
+                }
+            };
+
+            const getReducedMotion = () => {
+                try {
+                    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                } catch (_) {
+                    return false;
+                }
+            };
+
             const readNetworkInfo = () => ({
-                online: !!nav.onLine,
+                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
                 effectiveType: (conn && conn.effectiveType) || (nav.onLine ? "4g" : "none"),
                 downlink: (conn && conn.downlink) || 10,
                 rtt: (conn && conn.rtt) || 50,
@@ -51,38 +67,58 @@ export const EUIXNavigatorPlugin = {
             });
 
             const readHardwareInfo = () => ({
-                cores: Number(nav.hardwareConcurrency) || 4,
+                cores: Number(nav.hardwareConcurrency) || 8,
+                hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
                 memory: Number(nav.deviceMemory) || 8,
+                deviceMemory: Number(nav.deviceMemory) || 8,
                 touch: (nav.maxTouchPoints || 0) > 0,
                 language: String(nav.language || "en"),
                 languages: Array.isArray(nav.languages) ? Array.from(nav.languages) : [String(nav.language || "en")],
                 cookieEnabled: !!nav.cookieEnabled,
-                pdfViewerEnabled: !!nav.pdfViewerEnabled
+                pdfViewerEnabled: !!nav.pdfViewerEnabled,
+                prefersDark: getPrefersDark(),
+                reducedMotion: getReducedMotion()
             });
 
             const current = this.getState(targetKey) || {};
+            const net = readNetworkInfo();
+            const hw = readHardwareInfo();
             const nextState = {
                 ...current,
-                network: readNetworkInfo(),
-                hardware: readHardwareInfo()
+                ...net,
+                ...hw,
+                batteryLevel: 1,
+                batteryCharging: false,
+                batteryChargingTime: "Instant",
+                network: net,
+                hardware: hw
             };
 
-            if (this._stateMap && !this._stateMap.has(targetKey)) {
-                this._stateMap.set(targetKey, { type: "object", value: nextState });
-            }
             if (this._rawState) {
                 this._rawState[targetKey] = nextState;
+                this._rawState["$device"] = nextState;
+                this._rawState["device"] = nextState;
             }
             this.setState(targetKey, nextState);
+            this.setState("$device", nextState);
+            this.setState("device", nextState);
+
+            this.$device = nextState;
+            this.device = nextState;
 
             // Network Change Tracking
             if (options.trackNetwork !== false) {
                 const updateNetwork = () => {
-                    const latest = this.getState(targetKey) || {};
-                    this.setState(targetKey, {
+                    const latest = this.getState("$device") || {};
+                    const newNet = readNetworkInfo();
+                    const updated = {
                         ...latest,
-                        network: readNetworkInfo()
-                    });
+                        ...newNet,
+                        network: newNet
+                    };
+                    this.setState(targetKey, updated);
+                    this.setState("$device", updated);
+                    this.setState("device", updated);
                 };
 
                 window.addEventListener("online", updateNetwork);
@@ -91,79 +127,102 @@ export const EUIXNavigatorPlugin = {
                     conn.addEventListener("change", updateNetwork);
                 }
 
-                this.onUnmount(() => {
-                    window.removeEventListener("online", updateNetwork);
-                    window.removeEventListener("offline", updateNetwork);
-                    if (conn && conn.removeEventListener) {
-                        conn.removeEventListener("change", updateNetwork);
-                    }
-                });
+                if (typeof this.onUnmount === "function") {
+                    this.onUnmount(() => {
+                        window.removeEventListener("online", updateNetwork);
+                        window.removeEventListener("offline", updateNetwork);
+                        if (conn && conn.removeEventListener) {
+                            conn.removeEventListener("change", updateNetwork);
+                        }
+                    });
+                }
             }
 
             // Battery Change Tracking
-            if (options.trackBattery && typeof nav.getBattery === "function") {
-                nav.getBattery().then(battery => {
-                    const updateBattery = () => {
-                        const latest = this.getState(targetKey) || {};
-                        this.setState(targetKey, {
-                            ...latest,
-                            battery: {
-                                level: Math.round((battery.level || 1) * 100),
-                                charging: !!battery.charging,
-                                chargingTime: battery.chargingTime || 0,
-                                dischargingTime: battery.dischargingTime || Infinity
+            if (typeof nav.getBattery === "function") {
+                try {
+                    const batteryPromise = nav.getBattery();
+                    if (batteryPromise && typeof batteryPromise.then === "function") {
+                        batteryPromise.then(battery => {
+                            if (!battery) return;
+                            const updateBattery = () => {
+                                const latest = this.getState("$device") || {};
+                                const batLevel = battery.level !== undefined ? battery.level : 1;
+                                const updated = {
+                                    ...latest,
+                                    batteryLevel: batLevel,
+                                    batteryCharging: !!battery.charging,
+                                    batteryChargingTime: (battery.chargingTime && battery.chargingTime !== Infinity) ? `${Math.round(battery.chargingTime / 60)} min` : "Instant",
+                                    battery: {
+                                        level: Math.round(batLevel * 100),
+                                        charging: !!battery.charging,
+                                        chargingTime: battery.chargingTime || 0,
+                                        dischargingTime: battery.dischargingTime || Infinity
+                                    }
+                                };
+                                this.setState(targetKey, updated);
+                                this.setState("$device", updated);
+                                this.setState("device", updated);
+                            };
+
+                            updateBattery();
+
+                            battery.addEventListener("levelchange", updateBattery);
+                            battery.addEventListener("chargingchange", updateBattery);
+
+                            if (typeof this.onUnmount === "function") {
+                                this.onUnmount(() => {
+                                    battery.removeEventListener("levelchange", updateBattery);
+                                    battery.removeEventListener("chargingchange", updateBattery);
+                                });
                             }
-                        });
-                    };
-
-                    updateBattery();
-
-                    battery.addEventListener("levelchange", updateBattery);
-                    battery.addEventListener("chargingchange", updateBattery);
-
-                    this.onUnmount(() => {
-                        battery.removeEventListener("levelchange", updateBattery);
-                        battery.removeEventListener("chargingchange", updateBattery);
-                    });
-                }).catch(() => {});
+                        }).catch(() => {});
+                    }
+                } catch (_) {}
             }
 
             // Geolocation Watch Tracking
             if (options.trackGeo && nav.geolocation && typeof nav.geolocation.watchPosition === "function") {
                 const watchId = nav.geolocation.watchPosition(
                     pos => {
-                        const latest = this.getState(targetKey) || {};
-                        this.setState(targetKey, {
+                        const latest = this.getState("$device") || {};
+                        const coords = {
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy,
+                            altitude: pos.coords.altitude,
+                            heading: pos.coords.heading,
+                            speed: pos.coords.speed,
+                            timestamp: pos.timestamp
+                        };
+                        const updated = {
                             ...latest,
-                            geolocation: {
-                                latitude: pos.coords.latitude,
-                                longitude: pos.coords.longitude,
-                                accuracy: pos.coords.accuracy,
-                                altitude: pos.coords.altitude,
-                                heading: pos.coords.heading,
-                                speed: pos.coords.speed,
-                                timestamp: pos.timestamp
-                            }
-                        });
+                            geolocation: coords,
+                            coords
+                        };
+                        this.setState(targetKey, updated);
+                        this.setState("$device", updated);
+                        this.setState("device", updated);
                     },
                     err => {
-                        const latest = this.getState(targetKey) || {};
-                        this.setState(targetKey, {
-                            ...latest,
-                            geolocationError: err.message
-                        });
+                        const latest = this.getState("$device") || {};
+                        this.setState("$device", { ...latest, geolocationError: err.message });
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
 
-                this.onUnmount(() => {
-                    nav.geolocation.clearWatch(watchId);
-                });
+                if (typeof this.onUnmount === "function") {
+                    this.onUnmount(() => {
+                        if (typeof nav.geolocation.clearWatch === "function") {
+                            nav.geolocation.clearWatch(watchId);
+                        }
+                    });
+                }
             }
         };
 
         // 3. Declarative Actions
-        // Action: CLIPBOARD_COPY / COPY_TO_CLIPBOARD
+        // Action: CLIPBOARD_COPY / CLIPBOARD_WRITE / COPY_TO_CLIPBOARD
         const handleClipboardCopy = async function(actionNode, context) {
             const rawText = actionNode.getAttribute("text") || actionNode.getAttribute("value") || "";
             const textNode = this.getChild(actionNode, "text") || this.getChild(actionNode, "value");
@@ -188,6 +247,8 @@ export const EUIXNavigatorPlugin = {
             return text;
         };
         engineClass.registerAction("CLIPBOARD_COPY", handleClipboardCopy);
+        engineClass.registerAction("CLIPBOARD_WRITE", handleClipboardCopy);
+        engineClass.registerAction("WRITE_CLIPBOARD", handleClipboardCopy);
         engineClass.registerAction("COPY_TO_CLIPBOARD", handleClipboardCopy);
 
         // Action: CLIPBOARD_READ / READ_CLIPBOARD
@@ -328,7 +389,7 @@ export const EUIXNavigatorPlugin = {
             });
         });
 
-        // Register custom XML tag parser for <navigator_config> and <device_config>
+        // Auto-initialize navigator state on engine data model boot
         const originalInitDataModel = engineClass.prototype.initDataModel;
         if (typeof originalInitDataModel === "function") {
             engineClass.prototype.initDataModel = function(doc, isMainDoc) {
@@ -339,7 +400,11 @@ export const EUIXNavigatorPlugin = {
                         || (targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : null);
                     if (navConfig && typeof this._processNavigatorTag === "function") {
                         this._processNavigatorTag(navConfig);
+                    } else if (typeof this.initNavigatorState === "function") {
+                        this.initNavigatorState("$device");
                     }
+                } else if (typeof this.initNavigatorState === "function") {
+                    this.initNavigatorState("$device");
                 }
                 return res;
             };

@@ -1,12 +1,12 @@
 <component_def name="app-header">
-    <flex direction="row" align="center" justify="between" class="w-full pb-4 border-b border-slate-100">
+    <flex direction="row" align="center" justify="between" class="w-full pb-4 border-b border-slate-800">
         <flex direction="row" align="center" gap="12">
-            <div class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-blue-500/20">
-                E
+            <div class="w-10 h-10 bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-500/25">
+                <i data-lucide="zap" class="w-5 h-5 text-white"></i>
             </div>
             <flex direction="column">
-                <h1 class="text-xl font-black text-slate-800 tracking-tight">EUIX Engine Demo</h1>
-                <span class="text-xs font-medium text-slate-500">Ultra-Lightweight Declarative Framework</span>
+                <h1 class="text-xl font-black text-white tracking-tight">EUIX Engine Demo</h1>
+                <span class="text-xs font-medium text-slate-400">Ultra-Lightweight Declarative Framework</span>
             </flex>
         </flex>
         <user-badge title="Senior Developer" badge_label="EUIX Core" avatar="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&amp;auto=format&amp;fit=crop&amp;q=80" />

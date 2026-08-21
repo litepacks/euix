@@ -7,75 +7,89 @@
         <state id="last_notification">None</state>
     </data_model>
 
-    <flex direction="column" class="w-full">
-        <collapse bind="data.composer_open" title="⚡ Action Composer (Reusable Workflows &amp; Subroutines)" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4">
+    <!-- Composed Action Definitions -->
+    <actions>
+        <!-- Workflow 1: Reusable Notification & Log Action -->
+        <action_def name="LogAndNotify">
+            <param name="message" required="true" />
+            <param name="type" default="info" />
 
-        <!-- Composed Action Definitions -->
-        <actions>
-            <!-- Workflow 1: Reusable Notification & Log Action -->
-            <action_def name="LogAndNotify">
-                <param name="message" required="true" />
-                <param name="type" default="info" />
+            <step action="SET_STATE">
+                <path>data.last_notification</path>
+                <value>{args.message}</value>
+            </step>
 
-                <step action="SET_STATE">
-                    <path>data.last_notification</path>
-                    <value>{args.message}</value>
-                </step>
+            <step action="MUTATE_STATE">
+                <path>data.action_logs</path>
+                <operation>UNSHIFT</operation>
+                <value>{"text": "[{args.type}] {args.message}"}</value>
+            </step>
+        </action_def>
 
-                <step action="MUTATE_STATE">
-                    <path>data.action_logs</path>
-                    <operation>UNSHIFT</operation>
-                    <value>{"text": "[{args.type}] {args.message}"}</value>
-                </step>
-            </action_def>
+        <!-- Workflow 2: Complex Task Saving Subroutine -->
+        <action_def name="SaveTaskWorkflow">
+            <param name="taskTitle" required="true" />
+            <param name="category" default="General" />
 
-            <!-- Workflow 2: Complex Task Saving Subroutine -->
-            <action_def name="SaveTaskWorkflow">
-                <param name="taskTitle" required="true" />
-                <param name="category" default="General" />
+            <!-- Step 1: Update status state -->
+            <step action="SET_STATE">
+                <path>data.composer_status</path>
+                <value>Saving task '{args.taskTitle}'...</value>
+            </step>
 
-                <!-- Step 1: Update status state -->
-                <step action="SET_STATE">
-                    <path>data.composer_status</path>
-                    <value>Saving task '{args.taskTitle}'...</value>
-                </step>
+            <!-- Step 2: Push task to tasks array state -->
+            <step action="MUTATE_STATE">
+                <path>data.composer_tasks</path>
+                <operation>UNSHIFT</operation>
+                <value>{"id": "{data.composer_tasks.length + 1}", "title": "{args.taskTitle}", "category": "{args.category}"}</value>
+            </step>
 
-                <!-- Step 2: Push task to tasks array state -->
-                <step action="MUTATE_STATE">
-                    <path>data.composer_tasks</path>
-                    <operation>UNSHIFT</operation>
-                    <value>{"id": "{data.composer_tasks.length + 1}", "title": "{args.taskTitle}", "category": "{args.category}"}</value>
-                </step>
+            <!-- Step 3: Invoke nested action workflow (LogAndNotify) -->
+            <step action="EXECUTE_ACTION" name="LogAndNotify">
+                <arg name="message">Task '{args.taskTitle}' created under {args.category}</arg>
+                <arg name="type">success</arg>
+            </step>
 
-                <!-- Step 3: Invoke nested action workflow (LogAndNotify) -->
-                <step action="EXECUTE_ACTION" name="LogAndNotify">
-                    <arg name="message">Task '{args.taskTitle}' created under {args.category}</arg>
-                    <arg name="type">success</arg>
-                </step>
+            <!-- Step 4: Final status update -->
+            <step action="SET_STATE">
+                <path>data.composer_status</path>
+                <value>Task '{args.taskTitle}' saved successfully!</value>
+            </step>
 
-                <!-- Step 4: Final status update -->
-                <step action="SET_STATE">
-                    <path>data.composer_status</path>
-                    <value>Task '{args.taskTitle}' saved successfully!</value>
-                </step>
+            <return>{args.taskTitle}</return>
+        </action_def>
+    </actions>
 
-                <return>{args.taskTitle}</return>
-            </action_def>
-        </actions>
+    <flex direction="column" gap="24" class="w-full">
+        <!-- Hero Header -->
+        <flex class="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+            <flex direction="column" gap="4">
+                <flex direction="row" align="center" gap="8" class="flex-wrap">
+                    <span class="px-3 py-1 bg-rose-500/15 text-rose-400 font-extrabold text-xs rounded-full border border-rose-500/20 uppercase tracking-wider">
+                        ⚡ EUIX Action Composer
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">Reusable Subroutines &amp; Workflow Steps</span>
+                </flex>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Declarative Action Workflows</h1>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                    Define reusable subroutines (<code class="text-rose-400 font-mono">&lt;action_def&gt;</code>), parameter validation, sequential multi-step executions, nested action dispatching, and audit logging.
+                </p>
+            </flex>
 
-        <!-- Section Header Explanation -->
-        <flex direction="column" gap="4">
-            <span class="text-sm font-bold text-slate-800">⚡ Action Composer Workflow System</span>
-            <span class="text-[11px] text-slate-500">Demonstrating reusable workflows (&lt;action_def&gt;), parameter passing, nested action calls, and state mutation.</span>
+            <!-- Status Indicator -->
+            <div class="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 shrink-0 min-w-[220px]">
+                <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">⚡ Status State</span>
+                <p class="text-xs font-bold text-rose-400 mt-1">{data.composer_status}</p>
+            </div>
         </flex>
 
-        <!-- Triggers Section: Demonstrating reuse from multiple UI elements -->
-        <flex direction="column" gap="10" class="p-3.5 bg-slate-50/80 border border-slate-200/70 rounded-xl">
-            <span class="text-xs font-bold text-slate-700">Quick Workflow Triggers (Reusing <code class="text-indigo-600 font-mono">SaveTaskWorkflow</code>)</span>
-
-            <flex direction="row" gap="8" wrap="wrap">
+        <!-- Quick Workflow Triggers Dashboard -->
+        <flex direction="column" gap="14" class="p-6 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Workflow Invocation Triggers</span>
+            <flex direction="row" gap="10" class="flex-wrap">
                 <!-- Trigger 1: Save Bug Fix Task -->
-                <button class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm">
+                <button class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-lg shadow-indigo-600/20 border border-indigo-500/30 flex items-center gap-2">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                     <span>➕ Add Bugfix Task</span>
                     <on_click action="EXECUTE_ACTION" name="SaveTaskWorkflow">
                         <arg name="taskTitle">Fix API Cache Invalidation</arg>
@@ -84,7 +98,8 @@
                 </button>
 
                 <!-- Trigger 2: Save Design Task (Short-hand direct invocation) -->
-                <button class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm">
+                <button class="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-lg shadow-sky-600/20 border border-sky-500/30 flex items-center gap-2">
+                    <i data-lucide="palette" class="w-3.5 h-3.5"></i>
                     <span>🎨 Add Design Task</span>
                     <on_click action="SaveTaskWorkflow">
                         <arg name="taskTitle">Redesign Dashboard Layout</arg>
@@ -93,47 +108,70 @@
                 </button>
 
                 <!-- Trigger 3: Invoke LogAndNotify Directly -->
-                <button class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-lg transition-colors cursor-pointer shadow-sm">
-                    <span>🔔 Send Custom Alert</span>
+                <button class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold text-xs rounded-xl transition cursor-pointer border border-slate-700 shadow-md flex items-center gap-2">
+                    <i data-lucide="bell" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>🔔 Send System Alert</span>
                     <on_click action="LogAndNotify">
-                        <arg name="message">System backup initiated</arg>
+                        <arg name="message">System snapshot created at {new Date().toLocaleTimeString()}</arg>
                         <arg name="type">system</arg>
+                    </on_click>
+                </button>
+
+                <!-- Clear Logs -->
+                <button class="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 text-rose-400 font-bold text-xs rounded-xl transition cursor-pointer border border-rose-500/20 flex items-center gap-2 ml-auto">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>Clear Logs</span>
+                    <on_click action="RUN_SCRIPT">
+                        $data.action_logs = [];
+                        $data.last_notification = "Cleared";
                     </on_click>
                 </button>
             </flex>
         </flex>
 
         <!-- Dynamic Output Section: Task List & Activity Audit Trail -->
-        <grid cols="2" gap="12" class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
             <!-- Left: Created Tasks List -->
-            <flex direction="column" gap="6" class="p-3 bg-white border border-slate-200/80 rounded-xl">
-                <flex direction="row" align="center" justify="between">
-                    <span class="text-xs font-bold text-slate-700">Created Tasks ({data.composer_tasks.length})</span>
-                    <span class="text-[11px] text-slate-500 font-medium">{data.composer_status}</span>
+            <flex direction="column" gap="14" class="p-6 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-xl">
+                <flex direction="row" align="center" justify="between" class="pb-3 border-b border-slate-800">
+                    <span class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="check-square" class="w-4 h-4 text-indigo-400"></i> Workflow Generated Tasks
+                    </span>
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/30">
+                        {data.composer_tasks.length} Items
+                    </span>
                 </flex>
 
-                <flex direction="column" gap="4" class="max-h-40 overflow-y-auto">
+                <div class="flex flex-col gap-2.5 max-h-64 overflow-y-auto pr-1">
                     <for_each items="{data.composer_tasks}" var="task">
-                        <flex direction="row" align="center" justify="between" class="p-2 bg-slate-50 border border-slate-200/60 rounded-lg">
-                            <span class="text-xs font-semibold text-slate-800">{task.title}</span>
-                            <span class="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-700 font-bold rounded-full">{task.category}</span>
+                        <flex direction="row" align="center" justify="between" class="p-3 bg-slate-950/80 border border-slate-800/80 rounded-2xl">
+                            <span class="text-xs font-semibold text-white">{task.title}</span>
+                            <span class="text-[10px] px-2.5 py-1 bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 rounded-full">{task.category}</span>
                         </flex>
                     </for_each>
-                </flex>
+                </div>
             </flex>
 
             <!-- Right: Action Workflow Execution Logs -->
-            <flex direction="column" gap="6" class="p-3 bg-white border border-slate-200/80 rounded-xl">
-                <span class="text-xs font-bold text-slate-700">Action Trace &amp; Audit Log</span>
-                <span class="text-[11px] text-slate-500 font-medium">Last Notification: <strong class="text-indigo-600">{data.last_notification}</strong></span>
-
-                <flex direction="column" gap="4" class="max-h-40 overflow-y-auto">
-                    <for_each items="{data.action_logs}" var="log">
-                        <span class="text-[11px] text-slate-600 border-b border-slate-100 pb-1">⚡ {log.text}</span>
-                    </for_each>
+            <flex direction="column" gap="14" class="p-6 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-xl">
+                <flex direction="row" align="center" justify="between" class="pb-3 border-b border-slate-800">
+                    <span class="text-sm font-bold text-white flex items-center gap-2">
+                        <i data-lucide="activity" class="w-4 h-4 text-rose-400"></i> Action Trace &amp; Audit Log
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium truncate max-w-[180px]">
+                        Last: <strong class="text-rose-400">{data.last_notification}</strong>
+                    </span>
                 </flex>
+
+                <div class="flex flex-col gap-2 max-h-64 overflow-y-auto font-mono text-xs pr-1">
+                    <for_each items="{data.action_logs}" var="log">
+                        <div class="p-2.5 bg-slate-950/80 border border-slate-800/60 rounded-xl text-slate-300 flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                            <span class="text-[11px] leading-tight text-slate-200">{log.text}</span>
+                        </div>
+                    </for_each>
+                </div>
             </flex>
-        </grid>
-        </collapse>
+        </div>
     </flex>
 </component_def>
