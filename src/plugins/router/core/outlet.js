@@ -113,6 +113,35 @@ export function createOutletRenderer(engine, routerInstance) {
                     } else if (engine._customComponents?.has(lowerSpec) || engine.constructor._globalCustomComponents?.has(lowerSpec)) {
                         const handler = engine._customComponents?.get(lowerSpec) || engine.constructor._globalCustomComponents?.get(lowerSpec);
                         el = handler.call(engine, xmlNode, childContext, engine);
+                    } else if (engine.constructor._lazyRegistry && engine.constructor._lazyRegistry.has(lowerSpec)) {
+                        const placeholder = document.createElement("div");
+                        placeholder.className = "euix-outlet-loading";
+                        placeholder.style.display = "contents";
+
+                        if (match.route.pendingNode) {
+                            const pendingEl = engine.createHTMLElement(match.route.pendingNode, childContext);
+                            if (pendingEl) placeholder.appendChild(pendingEl);
+                        }
+
+                        el = placeholder;
+
+                        engine.constructor.loadLazyComponent(lowerSpec).then(loaded => {
+                            let specNode = engine._componentSpecs?.get(lowerSpec) || 
+                                           engine.constructor._globalComponentSpecs?.get(lowerSpec) || loaded;
+                            if (specNode && specNode.documentElement) specNode = specNode.documentElement;
+                            if (specNode && placeholder.parentNode === container) {
+                                const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
+                                if (rendered) {
+                                    container.replaceChild(rendered, placeholder);
+                                    currentChildEl = rendered;
+                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                        window.lucide.createIcons();
+                                    }
+                                }
+                            }
+                        }).catch(err => {
+                            console.error(`[EUIXRouter] Failed to load lazy route component (${lowerSpec}):`, err);
+                        });
                     } else if (targetSpec.endsWith(".xml") || targetSpec.startsWith("./") || targetSpec.startsWith("/")) {
                         // Async / Lazy XML component loading
                         const placeholder = document.createElement("div");
@@ -138,13 +167,20 @@ export function createOutletRenderer(engine, routerInstance) {
 
                         el = placeholder;
 
-                        engine.constructor.loadComponent(match.id || targetSpec, targetSpec).then(specDoc => {
+                        const compKey = (match.id || targetSpec).toLowerCase();
+                        engine.constructor.loadComponent(compKey, targetSpec).then(specDoc => {
                             if (pendingTimer) clearTimeout(pendingTimer);
-                            if (specDoc && placeholder.parentNode === container) {
-                                const rendered = engine.renderComponentSpec(specDoc, xmlNode, childContext);
+                            let specNode = engine._componentSpecs?.get(compKey) || 
+                                           engine.constructor._globalComponentSpecs?.get(compKey) || specDoc;
+                            if (specNode && specNode.documentElement) specNode = specNode.documentElement;
+                            if (specNode && placeholder.parentNode === container) {
+                                const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
                                 if (rendered) {
                                     container.replaceChild(rendered, placeholder);
                                     currentChildEl = rendered;
+                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                        window.lucide.createIcons();
+                                    }
                                 }
                             }
                         }).catch(err => {

@@ -30,19 +30,19 @@
         </item_map>
     </on_mount>
 
-    <flex direction="column" gap="16" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+    <flex direction="column" gap="16" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
         <!-- Header & Action Controls -->
-        <flex class="border-b border-slate-100 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
+        <flex class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
             <flex direction="row" align="center" gap="12">
                 <span class="text-3xl">🛍️</span>
                 <flex direction="column">
-                    <h2 class="font-extrabold text-slate-800 text-lg">E-Commerce Catalog &amp; Interactive Cart</h2>
-                    <span class="text-xs text-slate-500">XHR Products Fetch, SWR API Revalidation &amp; Fine-grained Cart Mutations</span>
+                    <h2 class="font-extrabold text-white text-lg">E-Commerce Catalog &amp; Interactive Cart</h2>
+                    <span class="text-xs text-slate-400">XHR Products Fetch, SWR API Revalidation &amp; Fine-grained Cart Mutations</span>
                 </flex>
             </flex>
             <flex direction="row" align="center" gap="8" class="flex-wrap">
-                <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-lg border border-indigo-200/60 hidden sm:inline-block">📄 179 Lines XML</span>
-                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                <span class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 font-extrabold text-xs rounded-xl border border-indigo-500/30 hidden sm:inline-block">📄 179 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-colors border border-slate-700 flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
                         <value>E-Commerce Catalog &amp; Cart (components/EcommerceSection.xml)</value>
@@ -62,7 +62,7 @@
                     </on_click>
                     🔍 View XML Code
                 </button>
-                <button type="button" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-lg text-xs border border-blue-200 cursor-pointer transition-colors">
+                <button type="button" class="px-3 py-1.5 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 font-bold rounded-xl text-xs border border-indigo-500/30 cursor-pointer transition-colors">
                     <on_click action="REVALIDATE_API">
                         <target>data.ecommerce_products</target>
                     </on_click>
@@ -72,41 +72,41 @@
         </flex>
 
         <!-- Shopping Cart Drawer / Panel -->
-        <collapse bind="data.cart_open" title="🛒 Shopping Cart ({data.cart_items.length} items)" class="border border-blue-100 bg-blue-50/40 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-3.5 bg-blue-100/60 font-bold text-blue-900 cursor-pointer text-xs" body_class="p-4 flex flex-col gap-3">
+        <collapse bind="data.cart_open" title="🛒 Shopping Cart ({data.cart_items.length} items)" class="border border-slate-800 bg-slate-950/80 rounded-2xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-3.5 bg-slate-900 font-bold text-indigo-300 cursor-pointer text-xs" body_class="p-4 flex flex-col gap-3">
             <if condition="{data.cart_items.length} == 0">
-                <span class="text-xs text-slate-500 italic py-2 text-center">Your shopping cart is currently empty. Add some products below!</span>
+                <span class="text-xs text-slate-400 italic py-2 text-center">Your shopping cart is currently empty. Add some products below!</span>
             </if>
 
             <if condition="{data.cart_items.length} > 0">
                 <flex direction="column" gap="8" class="w-full max-h-[220px] overflow-y-auto pr-1">
                     <for_each items="{data.cart_items}" var="item">
-                        <flex direction="row" align="center" justify="between" class="p-2.5 bg-white rounded-lg border border-slate-200 shadow-sm text-xs gap-3">
+                        <flex direction="row" align="center" justify="between" class="p-2.5 bg-slate-900/90 rounded-xl border border-slate-800 shadow-sm text-xs gap-3">
                             <flex direction="row" align="center" gap="10" class="flex-1 min-w-0">
-                                <img src="{item.thumbnail}" class="w-9 h-9 object-cover rounded-md border border-slate-100 shrink-0" alt="{item.title}" />
+                                <img src="{item.thumbnail}" class="w-9 h-9 object-cover rounded-md border border-slate-800 shrink-0 bg-slate-950" alt="{item.title}" />
                                 <flex direction="column" class="min-w-0">
                                     <flex direction="row" align="center" gap="6">
-                                        <span class="font-bold text-slate-800 truncate">{item.title}</span>
-                                        <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 font-black rounded text-[10px] shrink-0">x{item.quantity}</span>
+                                        <span class="font-bold text-white truncate">{item.title}</span>
+                                        <span class="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 font-black rounded text-[10px] shrink-0 border border-indigo-500/30">x{item.quantity}</span>
                                     </flex>
-                                    <span class="text-[11px] text-emerald-600 font-extrabold">${item.price}</span>
+                                    <span class="text-[11px] text-emerald-400 font-extrabold">${item.price}</span>
                                 </flex>
                             </flex>
                             <flex direction="row" align="center" gap="4" class="shrink-0">
-                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded cursor-pointer" title="Decrease Quantity">
+                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded cursor-pointer" title="Decrease Quantity">
                                     <on_click action="MUTATE_STATE" operation="DECREMENT">
                                         <path>data.cart_items</path>
                                         <index>{item._index}</index>
                                     </on_click>
                                     -
                                 </button>
-                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded cursor-pointer" title="Increase Quantity">
+                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded cursor-pointer" title="Increase Quantity">
                                     <on_click action="MUTATE_STATE" operation="INCREMENT">
                                         <path>data.cart_items</path>
                                         <index>{item._index}</index>
                                     </on_click>
                                     +
                                 </button>
-                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded cursor-pointer ml-1" title="Remove Item">
+                                <button type="button" class="w-6 h-6 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold rounded cursor-pointer ml-1 border border-rose-500/20" title="Remove Item">
                                     <on_click action="MUTATE_STATE" operation="REMOVE">
                                         <path>data.cart_items</path>
                                         <index>{item._index}</index>
@@ -118,16 +118,16 @@
                     </for_each>
                 </flex>
 
-                <flex direction="row" align="center" justify="between" class="pt-3 border-t border-blue-200/80">
-                    <span class="text-xs font-extrabold text-blue-950">Cart Total Items: {data.cart_items.length}</span>
+                <flex direction="row" align="center" justify="between" class="pt-3 border-t border-slate-800">
+                    <span class="text-xs font-extrabold text-white">Cart Total Items: {data.cart_items.length}</span>
                     <flex direction="row" align="center" gap="8">
-                        <button type="button" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors">
+                        <button type="button" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors">
                             <on_click action="MUTATE_STATE" operation="CLEAR">
                                 <path>data.cart_items</path>
                             </on_click>
                             🧹 Clear Cart
                         </button>
-                        <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors shadow-sm">
+                        <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-sm">
                             <on_click action="RUN_SCRIPT">
                                 if (window.confetti) window.confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
                             </on_click>
@@ -143,7 +143,7 @@
 
         <!-- Loading State -->
         <if condition="{data.ecommerce_loading} == 'true'">
-            <flex direction="row" align="center" justify="center" gap="8" class="p-8 text-blue-600 font-bold text-sm bg-blue-50/50 rounded-xl border border-blue-100">
+            <flex direction="row" align="center" justify="center" gap="8" class="p-8 text-indigo-400 font-bold text-sm bg-slate-950/80 rounded-2xl border border-slate-800">
                 <span class="animate-spin text-lg">🌀</span> Loading E-Commerce Catalog...
             </flex>
         </if>
@@ -151,20 +151,20 @@
         <!-- Products Grid (1 col on mobile, 2 on desktop) -->
         <grid cols="2" gap="12" class="w-full grid grid-cols-1 sm:grid-cols-2">
             <for_each items="{data.ecommerce_products}" var="product">
-                <flex direction="column" justify="between" class="p-3.5 bg-slate-50/80 hover:bg-white rounded-xl border border-slate-200/80 hover:border-blue-300 shadow-sm hover:shadow-md transition-all gap-3">
+                <flex direction="column" justify="between" class="p-4 bg-slate-950/80 hover:bg-slate-900 rounded-2xl border border-slate-800 hover:border-indigo-500/40 shadow-sm hover:shadow-md transition-all gap-3">
                     <flex direction="column" gap="8">
-                        <img src="{product.thumbnail}" class="w-full h-32 object-cover rounded-lg bg-white border border-slate-100" alt="{product.title}" />
+                        <img src="{product.thumbnail}" class="w-full h-32 object-cover rounded-xl bg-slate-900 border border-slate-800" alt="{product.title}" />
                         <flex direction="column" gap="2">
                             <flex direction="row" align="center" justify="between">
-                                <span class="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded text-[10px] uppercase tracking-wider">{product.category}</span>
-                                <span class="text-xs font-extrabold text-amber-500">⭐ {product.rating}</span>
+                                <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 font-bold rounded text-[10px] uppercase tracking-wider border border-indigo-500/30">{product.category}</span>
+                                <span class="text-xs font-extrabold text-amber-400">⭐ {product.rating}</span>
                             </flex>
-                            <span class="text-xs font-bold text-slate-800 line-clamp-1">{product.title}</span>
-                            <span class="text-sm font-black text-emerald-600">${product.price}</span>
+                            <span class="text-xs font-bold text-white line-clamp-1">{product.title}</span>
+                            <span class="text-sm font-black text-emerald-400">${product.price}</span>
                         </flex>
                     </flex>
 
-                    <button type="button" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                    <button type="button" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/20">
                         <on_click action="MUTATE_STATE" operation="PUSH">
                             <path>data.cart_items</path>
                             <where equals="{product.id}" />

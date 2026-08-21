@@ -4,48 +4,48 @@
         <state id="timer_status">Active (1s Tick)</state>
     </data_model>
 
-    <flex direction="column" gap="16" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
-        <flex direction="row" align="center" justify="between" class="border-b border-slate-100 pb-3">
-            <flex direction="row" align="center" gap="8">
-                <span class="text-xl">⏱️</span>
+    <flex direction="column" gap="16" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
+        <flex direction="row" align="center" justify="between" class="border-b border-slate-800 pb-4 flex-wrap gap-2">
+            <flex direction="row" align="center" gap="12">
+                <span class="text-3xl">⏱️</span>
                 <flex direction="column">
-                    <h2 class="font-extrabold text-slate-800 text-base">Live Countdown Timer Demo (&lt;on_interval&gt;)</h2>
-                    <span class="text-xs text-slate-500">Declarative 1-second interval timer hook with auto-cleanup</span>
+                    <h2 class="font-extrabold text-white text-lg">Live Countdown Timer Demo (&lt;on_interval&gt;)</h2>
+                    <span class="text-xs text-slate-400">Declarative 1-second interval timer hook with auto-cleanup</span>
                 </flex>
             </flex>
-            <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-bold rounded-lg text-xs border border-amber-200/60 font-mono">
+            <span class="px-2.5 py-1 bg-amber-500/20 text-amber-300 font-bold rounded-xl text-xs border border-amber-500/30 font-mono">
                 Status: {data.timer_status}
             </span>
         </flex>
 
-        <flex direction="column" align="center" gap="12" class="bg-slate-50 p-6 rounded-xl border border-slate-100">
+        <flex direction="column" align="center" gap="12" class="bg-slate-950/80 p-6 rounded-2xl border border-slate-800">
             <!-- Declarative 1-second recurring interval hook with condition -->
             <on_interval ms="1000" if="{data.timer_seconds} &gt; 0" action="SET_STATE">
                 <path>data.timer_seconds</path>
                 <value>{data.timer_seconds} - 1</value>
             </on_interval>
 
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Remaining Time</span>
-            <span class="text-5xl font-black text-amber-600 font-mono tracking-tight bg-amber-50 px-6 py-3 rounded-2xl border border-amber-200/60 shadow-inner">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Remaining Time</span>
+            <span class="text-5xl font-black text-amber-400 font-mono tracking-tight bg-slate-900 px-6 py-3 rounded-2xl border border-slate-800 shadow-inner">
                 {data.timer_seconds}s
             </span>
 
-            <flex direction="row" gap="8" class="mt-2">
-                <button class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1">
+            <flex direction="row" gap="8" class="mt-2 flex-wrap justify-center">
+                <button class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center gap-1 shadow-lg shadow-amber-600/20">
                     <on_click action="SET_STATE">
                         <path>data.timer_seconds</path>
                         <value>60</value>
                     </on_click>
                     🔄 Reset (60s)
                 </button>
-                <button class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer">
+                <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-slate-700">
                     <on_click action="SET_STATE">
                         <path>data.timer_seconds</path>
                         <value>30</value>
                     </on_click>
                     ⚡ Set 30s
                 </button>
-                <button class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs transition-colors cursor-pointer">
+                <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer border border-slate-700">
                     <on_click action="SET_STATE">
                         <path>data.timer_seconds</path>
                         <value>10</value>

@@ -401,66 +401,76 @@ export const EUIXChartPlugin = {
             canvasNode.addEventListener("click", onCanvasClick);
             canvasNode.addEventListener("mousemove", onCanvasMouseMove);
 
-            try {
-                currentChart = new ChartConstructor(canvasNode, activeConfig);
-                this._charts.set(chartId, currentChart);
-                _chartElements.set(containerNode, currentChart);
-            } catch (initErr) {
-                const structuredErr = new EUIXChartError(
-                    `Failed to initialize Chart "${chartId}": ${initErr.message}`,
-                    "CHART_INITIALIZATION_ERROR",
-                    { chartId, originalError: initErr }
-                );
-                if (typeof this.handleStructuredError === "function") {
-                    this.handleStructuredError(structuredErr, xmlNode);
+            const initOrUpdateChart = (cfg) => {
+                const conf = cfg || resolveConfig(this, rawConfigAttr, context);
+                if (!conf || typeof conf !== "object") return;
+
+                const cType = conf.type || "line";
+                const cData = conf.data || { labels: [], datasets: [] };
+                const cOptions = {
+                    responsive: responsiveAttr !== null ? (responsiveAttr !== "false") : (conf.options?.responsive ?? true),
+                    maintainAspectRatio: maintainAspectAttr !== null ? (maintainAspectAttr === "true") : (conf.options?.maintainAspectRatio ?? false),
+                    ...(conf.options || {})
+                };
+                const cPlugins = conf.plugins || [];
+
+                if (!currentChart) {
+                    try {
+                        activeConfig = { type: cType, data: cData, options: cOptions, plugins: cPlugins };
+                        currentChart = new ChartConstructor(canvasNode, activeConfig);
+                        this._charts.set(chartId, currentChart);
+                        _chartElements.set(containerNode, currentChart);
+                    } catch (initErr) {
+                        console.warn(`[EUIXChartPlugin] Deferred initialization for "${chartId}":`, initErr);
+                    }
+                } else {
+                    if (currentChart.config && currentChart.config.type !== cType) {
+                        try { currentChart.destroy(); } catch (_) {}
+                        activeConfig = { type: cType, data: cData, options: cOptions, plugins: cPlugins };
+                        currentChart = new ChartConstructor(canvasNode, activeConfig);
+                        this._charts.set(chartId, currentChart);
+                        _chartElements.set(containerNode, currentChart);
+                    } else {
+                        currentChart.data = cData;
+                        currentChart.options = { ...(currentChart.options || {}), ...cOptions };
+                        try { currentChart.update("none"); } catch (_) {}
+                    }
                 }
-                console.error(structuredErr);
+            };
+
+            initOrUpdateChart(initialConfig);
+
+            // Auto-resize and deterministic layout sync when container becomes visible in DOM
+            let resizeObserver = null;
+            if (typeof ResizeObserver !== "undefined") {
+                resizeObserver = new ResizeObserver((entries) => {
+                    for (const entry of entries) {
+                        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
+                            if (currentChart) {
+                                try {
+                                    currentChart.resize();
+                                } catch (_) {}
+                            } else {
+                                initOrUpdateChart();
+                            }
+                        }
+                    }
+                });
+                resizeObserver.observe(containerNode);
+            }
+
+            if (typeof requestAnimationFrame !== "undefined") {
+                requestAnimationFrame(() => {
+                    initOrUpdateChart();
+                    if (currentChart) {
+                        try { currentChart.resize(); currentChart.update(); } catch (_) {}
+                    }
+                });
             }
 
             // Fine-grained state change listener & updater
             const applyChartUpdate = (newRawConfig) => {
-                const resolved = resolveConfig(this, newRawConfig, context);
-                if (!resolved || typeof resolved !== "object") return;
-
-                const newType = resolved.type || "line";
-                const mode = xmlNode.getAttribute("update_mode") || updateModeAttr || "default";
-                const effectiveMode = mode === "default" ? undefined : mode;
-
-                // Re-create instance only if chart type fundamentally changes
-                if (currentChart && currentChart.config && currentChart.config.type !== newType) {
-                    try { currentChart.destroy(); } catch (_) {}
-                    activeConfig = {
-                        type: newType,
-                        data: resolved.data || { labels: [], datasets: [] },
-                        options: {
-                            responsive: responsiveAttr !== null ? (responsiveAttr !== "false") : (resolved.options?.responsive ?? true),
-                            maintainAspectRatio: maintainAspectAttr !== null ? (maintainAspectAttr === "true") : (resolved.options?.maintainAspectRatio ?? false),
-                            ...(resolved.options || {})
-                        },
-                        plugins: resolved.plugins || []
-                    };
-                    currentChart = new ChartConstructor(canvasNode, activeConfig);
-                    this._charts.set(chartId, currentChart);
-                    _chartElements.set(containerNode, currentChart);
-                    return;
-                }
-
-                if (currentChart) {
-                    if (resolved.data) {
-                        currentChart.data = resolved.data;
-                    }
-                    if (resolved.options) {
-                        currentChart.options = {
-                            ...(currentChart.options || {}),
-                            ...resolved.options
-                        };
-                    }
-                    try {
-                        currentChart.update(effectiveMode);
-                    } catch (updateErr) {
-                        console.warn(`[EUIXChartPlugin] Update warning for "${chartId}":`, updateErr);
-                    }
-                }
+                initOrUpdateChart(resolveConfig(this, newRawConfig, context));
             };
 
             const boundKey = extractStatePath(rawConfigAttr);
@@ -472,6 +482,10 @@ export const EUIXChartPlugin = {
 
             // Cleanup on destroy / unmount
             const cleanupFn = () => {
+                if (resizeObserver) {
+                    try { resizeObserver.disconnect(); } catch (_) {}
+                    resizeObserver = null;
+                }
                 canvasNode.removeEventListener("click", onCanvasClick);
                 canvasNode.removeEventListener("mousemove", onCanvasMouseMove);
                 if (currentChart) {
@@ -496,10 +510,22 @@ export const EUIXChartPlugin = {
 
             const chartId = actionNode.getAttribute("chart") ||
                 actionNode.getAttribute("chart_id") ||
-                actionNode.getAttribute("id") ||
-                this.interpolate(actionNode.getAttribute("target") || "", context);
+                actionNode.getAttribute("id");
 
-            const chart = chartId ? this._charts.get(chartId) : (this._charts.values().next().value);
+            let chart = chartId ? this._charts.get(chartId) : (this._charts.values().next().value);
+
+            if (!chart && chartId && typeof document !== "undefined") {
+                const el = document.getElementById(chartId) ||
+                    document.querySelector(`[data-chart-id="${chartId}"]`) ||
+                    document.querySelector(`[id="${chartId}"]`);
+                if (el) {
+                    chart = _chartElements.get(el) || el._chartInstance || (el.querySelector && el.querySelector("canvas") && el.querySelector("canvas")._chartInstance);
+                }
+            }
+
+            if (!chart && this._charts.size > 0) {
+                chart = this._charts.values().next().value;
+            }
 
             if (!chart && actionName !== "CHART_DESTROY") {
                 console.warn(`[EUIXChartPlugin] Action "${actionName}" target chart "${chartId}" not found.`);
@@ -565,15 +591,38 @@ export const EUIXChartPlugin = {
                     }
                     return true;
 
+                case "CHART_EXPORT":
+                case "EXPORT_CHART":
+                case "CHART_EXPORT_PNG":
                 case "CHART_EXPORT_IMAGE": {
-                    const targetState = actionNode.getAttribute("target") || actionNode.getAttribute("bind") || actionNode.getAttribute("to") || actionNode.getAttribute("target_state");
+                    const targetState = actionNode.getAttribute("target") ||
+                        actionNode.getAttribute("bind") ||
+                        actionNode.getAttribute("to") ||
+                        actionNode.getAttribute("target_state");
                     const imgType = actionNode.getAttribute("type") || "image/png";
                     const quality = Number(actionNode.getAttribute("quality")) || 1;
-                    if (typeof chart.toBase64Image === "function") {
-                        const base64 = chart.toBase64Image(imgType, quality);
+                    const download = actionNode.getAttribute("download") === "true" || actionNode.getAttribute("save") === "true";
+                    const filename = actionNode.getAttribute("filename") || (chartId ? `${chartId}.png` : "chart.png");
+
+                    let base64 = null;
+                    if (chart && typeof chart.toBase64Image === "function") {
+                        base64 = chart.toBase64Image(imgType, quality);
+                    } else if (chart && chart.canvas && typeof chart.canvas.toDataURL === "function") {
+                        base64 = chart.canvas.toDataURL(imgType, quality);
+                    }
+
+                    if (base64) {
                         if (targetState && typeof this.setState === "function") {
-                            const cleanPath = targetState.replace(/^(data|state)\./, "");
+                            const cleanPath = targetState.replace(/^(?:parent\.)?(?:data|state)\./, "");
                             this.setState(cleanPath, base64);
+                        }
+                        if (download && typeof document !== "undefined") {
+                            const a = document.createElement("a");
+                            a.href = base64;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
                         }
                         return base64;
                     }
@@ -594,6 +643,9 @@ export const EUIXChartPlugin = {
             "CHART_HIDE_DATASET",
             "CHART_TOGGLE_DATASET",
             "CHART_TOGGLE_DATA",
+            "CHART_EXPORT",
+            "EXPORT_CHART",
+            "CHART_EXPORT_PNG",
             "CHART_EXPORT_IMAGE"
         ];
 

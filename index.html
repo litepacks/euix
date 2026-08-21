@@ -1,100 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EUIX Engine - Declarative XML UI Runtime &amp; Frontend Engine</title>
-    <meta name="description" content="EUIX Engine is a lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, direct DOM updates, and zero Virtual DOM reconciliation.">
+    <title>EUIX Engine - Declarative XML UI &amp; Ecosystem Portal</title>
+    <meta name="description" content="EUIX Engine is an ultra-lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, direct DOM updates, and zero Virtual DOM reconciliation.">
     <meta name="keywords" content="EUIX, EUIX Engine, XML UI Runtime, Declarative UI, Frontend Engine, Zero VDOM, Fine-Grained Reactivity, AI UI DSL, Structured XML Framework, JavaScript UI DSL">
     <meta name="author" content="Litepacks">
-    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-title" content="EUIX Engine">
-    <link rel="canonical" href="https://litepacks.github.io/euix/">
+    <meta name="theme-color" content="#090d16">
 
     <!-- Performance Preconnect Hints -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://tile.openstreetmap.org">
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://litepacks.github.io/euix/">
-    <meta property="og:title" content="EUIX Engine - Declarative XML UI Runtime">
-    <meta property="og:description" content="Build reactive web interfaces using structured XML. Zero external dependencies, direct DOM updates, REST API client, and AI-agent ready DSL.">
-    <meta property="og:site_name" content="EUIX Engine">
-    <meta property="og:locale" content="en_US">
+    <!-- Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://litepacks.github.io/euix/">
-    <meta name="twitter:title" content="EUIX Engine - Declarative XML UI Runtime">
-    <meta name="twitter:description" content="Build reactive web interfaces using structured XML. Zero external dependencies, direct DOM updates, REST API client, and AI-agent ready DSL.">
+    <!-- Leaflet & Leaflet.Draw Stylesheets -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="" />
 
-    <!-- JSON-LD Structured Data Schema -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "EUIX Engine",
-      "alternateName": ["euixjs", "EUIX"],
-      "applicationCategory": "DeveloperApplication",
-      "operatingSystem": "Web Browser",
-      "url": "https://litepacks.github.io/euix/",
-      "codeRepository": "https://github.com/litepacks/euix",
-      "license": "https://opensource.org/licenses/MIT",
-      "softwareVersion": "0.0.5",
-      "offers": {
-        "@type": "Offer",
-        "price": "0",
-        "priceCurrency": "USD"
-      },
-      "author": {
-        "@type": "Organization",
-        "name": "Litepacks",
-        "url": "https://github.com/litepacks"
-      },
-      "description": "A lightweight declarative UI runtime built around structured XML with fine-grained reactive state, REST API integration, and zero Virtual DOM reconciliation."
-    }
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
     </script>
 
-    <!-- Tailwind CSS (CDN for quick Demo styling) -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <!-- Highlight.js CDN for Syntax Highlighting -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
+    <!-- Chart.js v4.4.1 (UMD) & Leaflet GIS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" crossorigin=""></script>
+
+    <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background-color: #090d16;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Active Route Styling */
+        route-link.active, a.active {
+            background-color: rgba(99, 102, 241, 0.2) !important;
+            border-color: rgba(99, 102, 241, 0.4) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
         }
     </style>
 </head>
 
-<body
-    class="bg-slate-950 text-white min-h-screen py-3 px-2 sm:py-6 sm:px-4 md:px-6 flex flex-col items-center justify-start max-w-full overflow-x-hidden">
-    <!-- Static Fallback Content for Crawlers & Search Engines -->
-    <noscript>
-        <header style="padding: 20px; font-family: sans-serif; text-align: center;">
-            <h1>EUIX Engine - Declarative XML UI Runtime</h1>
-            <p>Build reactive web interfaces using structured XML specs with zero Virtual DOM overhead.</p>
-            <p><strong>NPM Package:</strong> <code>npm install euixjs</code></p>
-            <a href="https://github.com/litepacks/euix">GitHub Repository</a> | <a href="./.agents/AGENTS.md">AGENTS.md Architecture Guide</a> | <a href="./playground.html">Interactive Playground</a>
-        </header>
-    </noscript>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
 
-    <div id="app" class="w-full max-w-6xl xl:max-w-7xl min-w-0 overflow-hidden"></div>
+    <!-- Unified Master App Mount Point -->
+    <div id="app" class="w-full flex-1 flex flex-col min-w-0"></div>
 
-    <!-- EUIX Şablonu (Auto-Init) -->
+    <!-- EUIX Master Application Specification -->
     <script type="application/euix" target="#app">
-    <uid_spec id="doc_portal_app">
+    <uid_spec id="euix_master_portal">
         <constants src="./public/data/app-tokens.json">
-            <const id="card_box">w-full bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100</const>
-            <const id="btn_primary">px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-colors cursor-pointer</const>
-            <const id="badge_blue">px-2.5 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg text-xs</const>
+            <const id="card_box">w-full bg-slate-900/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-slate-800</const>
+            <const id="btn_primary">px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-indigo-600/30 flex items-center gap-2</const>
+            <const id="badge_blue">px-2.5 py-1 bg-indigo-500/15 text-indigo-400 font-semibold rounded-lg text-xs border border-indigo-500/20</const>
         </constants>
 
         <data_model src="./public/data/app-config.json">
@@ -107,30 +112,208 @@
 
         <imports>
             <import name="doc-portal-section" src="components/DocPortalSection.xml" />
-            <import name="action-composer-section" src="components/ActionComposerSection.xml" />
+            <import name="documentation-section" src="components/DocumentationSection.xml" lazy="true" />
+            <import name="playground-section" src="components/PlaygroundSection.xml" lazy="true" />
+            <import name="chart-section" src="components/ChartSection.xml" lazy="true" />
+            <import name="map-section" src="components/MapSection.xml" lazy="true" />
+            <import name="date-section" src="components/DateSection.xml" lazy="true" />
+            <import name="navigator-section" src="components/NavigatorSection.xml" lazy="true" />
+            <import name="action-composer-section" src="components/ActionComposerSection.xml" lazy="true" />
+            <import name="router-section" src="components/RouterSection.xml" lazy="true" />
             <import name="help-modal" src="components/HelpModal.xml" />
             <import name="code-viewer-modal" src="components/CodeViewerModal.xml" />
         </imports>
 
-        <flex direction="column" gap="20" class="w-full">
-            <doc-portal-section />
-            <help-modal />
-            <code-viewer-modal />
-        </flex>
+        <!-- EUIX Web Router Configuration -->
+        <router mode="hash" base="/">
+            <route id="root" path="/" layout="master-layout">
+                <index id="home-view" component="doc-portal-section" />
+                <route id="docs-view" path="docs" component="documentation-section" />
+                <route id="playground-view" path="playground" component="playground-section" />
+                <route id="charts-view" path="charts" component="chart-section" />
+                <route id="maps-view" path="maps" component="map-section" />
+                <route id="date-view" path="date" component="date-section" />
+                <route id="navigator-view" path="navigator" component="navigator-section" />
+                <route id="actions-view" path="actions" component="action-composer-section" />
+                <route id="router-showcase-view" path="router-showcase" component="router-section" />
+                <route id="not-found" path="*" component="doc-portal-section" />
+            </route>
+        </router>
+
+        <!-- Master App Layout Shell -->
+        <component_def name="master-layout">
+            <flex direction="column" class="w-full min-h-screen">
+                <!-- Unified Top Navigation Bar -->
+                <header class="sticky top-0 z-50 w-full border-b border-slate-800/80 bg-slate-950/85 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <route-link to="/" exact="true" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity text-white no-underline">
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 via-purple-600 to-pink-500 flex items-center justify-center font-black text-white text-base shadow-lg shadow-brand-500/25">
+                                <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-extrabold text-white text-base tracking-tight leading-none flex items-center gap-2">
+                                    EUIX Engine <span class="px-2 py-0.5 text-[10px] bg-brand-500/10 text-brand-400 font-bold border border-brand-500/20 rounded-md">Master Hub</span>
+                                </span>
+                                <span class="text-[11px] text-slate-400 font-medium hidden sm:inline">Declarative XML UI &amp; Ecosystem</span>
+                            </div>
+                        </route-link>
+                    </div>
+
+                    <!-- SPA Route Navigation Links -->
+                    <nav class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar py-1 text-xs font-semibold">
+                        <route-link to="/" exact="true" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="home" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Home</span>
+                        </route-link>
+
+                        <route-link to="/docs" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="book-open" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Docs</span>
+                        </route-link>
+
+                        <route-link to="/playground" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="play" class="w-3.5 h-3.5 text-amber-400"></i> <span>Playground</span>
+                        </route-link>
+
+                        <a href="./live-editor.html" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all" title="Monaco IDE Live Studio">
+                            <i data-lucide="code-2" class="w-3.5 h-3.5 text-blue-400"></i> <span>Studio ↗</span>
+                        </a>
+
+                        <route-link to="/charts" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5 text-indigo-400"></i> <span>Charts</span>
+                        </route-link>
+
+                        <route-link to="/maps" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="map" class="w-3.5 h-3.5 text-emerald-400"></i> <span>Maps</span>
+                        </route-link>
+
+                        <route-link to="/date" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-teal-400"></i> <span>Date</span>
+                        </route-link>
+
+                        <route-link to="/navigator" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="smartphone" class="w-3.5 h-3.5 text-sky-400"></i> <span>Navigator</span>
+                        </route-link>
+
+                        <route-link to="/actions" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="workflow" class="w-3.5 h-3.5 text-rose-400"></i> <span>Actions</span>
+                        </route-link>
+
+                        <route-link to="/router-showcase" class="px-3 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1.5 transition-all">
+                            <i data-lucide="git-branch" class="w-3.5 h-3.5 text-purple-400"></i> <span>Router</span>
+                        </route-link>
+
+                        <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all ml-1 flex items-center justify-center" title="GitHub">
+                            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                        </a>
+                    </nav>
+                </header>
+
+                <!-- Active Route Dynamic Content Outlet -->
+                <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 min-w-0">
+                    <outlet />
+                </main>
+
+                <help-modal />
+                <code-viewer-modal />
+            </flex>
+        </component_def>
     </uid_spec>
     </script>
 
-    <!-- EUIX Engine & DevTools Script (Auto-Init & Inspector) -->
-    <script type="module" src="./src/EUIXEngine.js"></script>
+    <!-- Load Full EUIX Engine & DevTools -->
     <script type="module">
-        import { EUIXEngine } from './src/EUIXEngine.js';
+        import { EUIXEngineCore } from './src/core/EUIXEngineCore.js';
+        import { EUIXRouterPlugin } from './src/plugins/EUIXRouterPlugin.js';
+        import { EUIXChartPlugin } from './src/plugins/EUIXChartPlugin.js';
+        import { EUIXLeafletPlugin } from './src/plugins/EUIXLeafletPlugin.js';
+        import { EUIXDatePlugin } from './src/plugins/EUIXDatePlugin.js';
+        import { EUIXNavigatorPlugin } from './src/plugins/EUIXNavigatorPlugin.js';
+        import { EUIXComposerPlugin } from './src/plugins/EUIXComposerPlugin.js';
+        import { EUIXApiPlugin } from './src/plugins/EUIXApiPlugin.js';
+        import { EUIXStoragePlugin } from './src/plugins/EUIXStoragePlugin.js';
+        import { EUIXCollapsePlugin } from './src/plugins/EUIXCollapsePlugin.js';
+        import { EUIXDialogPlugin } from './src/plugins/EUIXDialogPlugin.js';
+        import { EUIXReactivePlugin } from './src/plugins/EUIXReactivePlugin.js';
+        import { EUIXAnimationPlugin } from './src/plugins/EUIXAnimationPlugin.js';
+        import { EUIXLazyPlugin } from './src/plugins/EUIXLazyPlugin.js';
         import { EUIXDevTools } from './src/EUIXDevTools.js';
 
+        // Register All Plugins on Core Engine
+        EUIXEngineCore
+            .use(EUIXRouterPlugin)
+            .use(EUIXLazyPlugin)
+            .use(EUIXChartPlugin)
+            .use(EUIXLeafletPlugin)
+            .use(EUIXDatePlugin)
+            .use(EUIXNavigatorPlugin)
+            .use(EUIXComposerPlugin)
+            .use(EUIXApiPlugin)
+            .use(EUIXStoragePlugin)
+            .use(EUIXCollapsePlugin)
+            .use(EUIXDialogPlugin)
+            .use(EUIXReactivePlugin)
+            .use(EUIXAnimationPlugin);
+
+        // Safe Lucide Icon Renderer with Debounce and Tag Checking
+        let lucideRenderTimer = null;
+        function renderIconsSafely() {
+            if (!window.lucide) return;
+            if (lucideRenderTimer) clearTimeout(lucideRenderTimer);
+            lucideRenderTimer = setTimeout(() => {
+                const unrenderedIcons = document.querySelectorAll('i[data-lucide]');
+                if (unrenderedIcons.length > 0) {
+                    window.lucide.createIcons();
+                }
+            }, 100);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            if (window.EUIXEngine && window.EUIXEngine.instance) {
-                const engine = window.EUIXEngine.instance;
-                EUIXDevTools.init(engine);
+            renderIconsSafely();
+
+            // Mount Single XML Spec Instance
+            const specEl = document.querySelector('script[type="application/euix"]');
+            if (specEl) {
+                const target = specEl.getAttribute('target') || '#app';
+                const container = document.querySelector(target);
+                if (container && !container._euixMounted) {
+                    container._euixMounted = true;
+                    const engine = EUIXEngineCore.mount(specEl.textContent, container);
+                    window.EUIXEngine = { instance: engine };
+                    EUIXDevTools.init(engine);
+                }
             }
+
+            // Re-render icons only when new nodes containing i[data-lucide] are inserted
+            const observer = new MutationObserver((mutations) => {
+                let hasLucideIcon = false;
+                for (const mutation of mutations) {
+                    for (const node of mutation.addedNodes) {
+                        if (node.nodeType === 1) {
+                            if (node.matches && node.matches('i[data-lucide]')) {
+                                hasLucideIcon = true;
+                                break;
+                            }
+                            if (node.querySelector && node.querySelector('i[data-lucide]')) {
+                                hasLucideIcon = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hasLucideIcon) break;
+                }
+                if (hasLucideIcon) {
+                    renderIconsSafely();
+                }
+            });
+
+            const app = document.getElementById('app');
+            if (app) {
+                observer.observe(app, { childList: true, subtree: true });
+            }
+
+            // Listen to Hash Changes for Instant SPA Icon Rendering
+            window.addEventListener('hashchange', () => {
+                setTimeout(renderIconsSafely, 50);
+            });
         });
     </script>
 </body>

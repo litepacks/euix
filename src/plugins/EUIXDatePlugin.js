@@ -656,7 +656,11 @@ export const EUIXDatePlugin = {
                 formatToParts: (v, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) => 
                     self._dateFormatter.formatToParts(v, opt, loc, tz),
                 relative: (v, opt = {}, loc = config.locale) => 
-                    self._dateFormatter.formatRelative(v, new Date(), opt, loc),
+                    self._dateFormatter.formatRelative(v, new Date(), typeof opt === "string" ? { style: opt } : opt, loc),
+                fromNow: (v, loc = config.locale) => 
+                    self._dateFormatter.formatRelative(v, new Date(), {}, loc),
+                formatRelative: (v, base = new Date(), opt = {}, loc = config.locale) => 
+                    self._dateFormatter.formatRelative(v, base, typeof opt === "string" ? { style: opt } : opt, loc),
                 range: (s, e, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) => 
                     self._dateFormatter.formatRange(s, e, opt, loc, tz),
                 add: (v, amt, unit) => self._dateFormatter.add(v, amt, unit),

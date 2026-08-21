@@ -17,15 +17,32 @@ export class ViewTransitionManager {
 
         try {
             const transition = document.startViewTransition(() => {
-                updateDOMCallback();
+                try {
+                    updateDOMCallback();
+                } catch (_) {}
             });
 
-            transition.finished.finally(() => {
-                this._manageFocus();
-            });
+            // Catch promise rejections on all View Transition lifecycle phases
+            if (transition.ready && typeof transition.ready.catch === "function") {
+                transition.ready.catch(() => {});
+            }
+            if (transition.updateCallbackDone && typeof transition.updateCallbackDone.catch === "function") {
+                transition.updateCallbackDone.catch(() => {});
+            }
+            if (transition.finished && typeof transition.finished.catch === "function") {
+                transition.finished
+                    .catch(() => {}) // Safely ignore AbortError on fast navigation / hashchange
+                    .finally(() => {
+                        this._manageFocus();
+                    });
+            }
 
-            await transition.updateCallbackDone;
-        } catch (_) {
+            try {
+                await transition.updateCallbackDone;
+            } catch (_) {
+                // AbortError: Transition was skipped
+            }
+        } catch (err) {
             updateDOMCallback();
             this._manageFocus();
         }

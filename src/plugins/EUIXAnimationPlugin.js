@@ -177,6 +177,15 @@ export const EUIXAnimationPlugin = {
             window.EUIXAnimationRegistry = EUIXAnimationRegistry;
         }
 
+        if (typeof engineClass.registerAction === "function") {
+            engineClass.registerAction("ANIMATE", function(actionNode, context) {
+                return this._handleAnimateAction(actionNode, context);
+            });
+            engineClass.registerAction("TRANSITION", function(actionNode, context) {
+                return this._handleAnimateAction(actionNode, context);
+            });
+        }
+
         const proto = engineClass.prototype;
 
         proto._initAnimationPlugin = function() {

@@ -1,10 +1,10 @@
 <component_def name="counter-section">
-    <collapse bind="data.counter_open" title="🔢 Counter Example" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-4 items-center">
-        <flex direction="column" align="center" gap="12" class="w-full p-6 bg-slate-50/80 border border-slate-200/60 rounded-xl">
-            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Live Counter Value</span>
+    <collapse bind="data.counter_open" title="🔢 Counter Example" class="border border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-slate-950/80 mb-6" header_class="w-full flex items-center justify-between p-4 bg-slate-900 border-none font-bold text-white hover:bg-slate-800/80 cursor-pointer text-sm" body_class="p-4 sm:p-5 flex flex-col gap-4 items-center">
+        <flex direction="column" align="center" gap="12" class="w-full p-6 bg-slate-900/90 border border-slate-800 rounded-2xl">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Live Counter Value</span>
             
             <flex direction="row" align="center" gap="16">
-                <button class="w-10 h-10 bg-rose-500 hover:bg-rose-600 text-white font-black text-lg rounded-xl shadow-md transition-transform active:scale-95 cursor-pointer flex items-center justify-center">
+                <button class="w-12 h-12 bg-rose-600 hover:bg-rose-500 text-white font-black text-xl rounded-2xl shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center justify-center shadow-rose-600/20">
                     -
                     <on_click action="SET_STATE">
                         <path>data.counter_value</path>
@@ -12,9 +12,9 @@
                     </on_click>
                 </button>
                 
-                <span class="text-4xl font-black text-slate-800 min-w-[70px] text-center font-mono">{data.counter_value}</span>
+                <span class="text-5xl font-black text-white min-w-[80px] text-center font-mono">{data.counter_value}</span>
 
-                <button class="w-10 h-10 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-lg rounded-xl shadow-md transition-transform active:scale-95 cursor-pointer flex items-center justify-center">
+                <button class="w-12 h-12 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xl rounded-2xl shadow-lg transition-transform active:scale-95 cursor-pointer flex items-center justify-center shadow-emerald-600/20">
                     +
                     <on_click action="SET_STATE">
                         <path>data.counter_value</path>
@@ -23,22 +23,22 @@
                 </button>
             </flex>
 
-            <flex direction="row" gap="8" class="mt-2">
-                <button class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+            <flex direction="row" gap="8" class="mt-2 flex-wrap justify-center">
+                <button class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-slate-700">
                     Reset (0)
                     <on_click action="SET_STATE">
                         <path>data.counter_value</path>
                         <value>0</value>
                     </on_click>
                 </button>
-                <button class="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+                <button class="px-4 py-2 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-indigo-500/30">
                     +5 Add
                     <on_click action="SET_STATE">
                         <path>data.counter_value</path>
                         <value>{data.counter_value} + 5</value>
                     </on_click>
                 </button>
-                <button class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs rounded-lg transition-colors cursor-pointer">
+                <button class="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold text-xs rounded-xl transition-colors cursor-pointer border border-amber-500/30">
                     -5 Subtract
                     <on_click action="SET_STATE">
                         <path>data.counter_value</path>

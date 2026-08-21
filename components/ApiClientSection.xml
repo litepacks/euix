@@ -12,24 +12,24 @@
         <state id="api_error"></state>
     </data_model>
 
-    <flex direction="column" gap="16" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
-        <flex class="border-b border-slate-100 pb-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
-            <flex direction="row" align="center" gap="8">
-                <span class="text-xl">🌐</span>
+    <flex direction="column" gap="16" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
+        <flex class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
+            <flex direction="row" align="center" gap="12">
+                <span class="text-3xl">🌐</span>
                 <flex direction="column">
-                    <h2 class="font-extrabold text-slate-800 text-base">API Client Demo (&lt;api_config&gt;)</h2>
-                    <span class="text-xs text-slate-500">Centralized BaseURL, Default Headers, Credentials options &amp; Timeout</span>
+                    <h2 class="font-extrabold text-white text-lg">API Client Demo (&lt;api_config&gt;)</h2>
+                    <span class="text-xs text-slate-400">Centralized BaseURL, Default Headers, Credentials options &amp; Timeout</span>
                 </flex>
             </flex>
-            <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-bold rounded-lg text-xs border border-indigo-200/60">
+            <span class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 font-bold rounded-xl text-xs border border-indigo-500/30">
                 🚀 Configured BaseURL: jsonplaceholder.typicode.com
             </span>
         </flex>
 
-        <flex direction="column" gap="12" class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+        <flex direction="column" gap="12" class="bg-slate-950/80 p-4 sm:p-5 rounded-2xl border border-slate-800">
             <flex class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
-                <span class="text-xs font-bold text-slate-700">Relative Endpoint Test: <code class="bg-slate-200 px-1 py-0.5 rounded text-blue-600">GET /users?_limit=3</code></span>
-                <button class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1.5">
+                <span class="text-xs font-bold text-slate-300">Relative Endpoint Test: <code class="bg-slate-900 px-2 py-0.5 rounded-lg text-indigo-400 border border-slate-800">GET /users?_limit=3</code></span>
+                <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-lg shadow-indigo-600/20">
                     <on_click action="XHR">
                         <method>GET</method>
                         <url>/users?_limit=3</url>
@@ -43,20 +43,20 @@
 
             <!-- Loading & Error -->
             <if condition="{data.api_loading} == true">
-                <span class="text-xs text-indigo-600 font-bold p-2 text-center">Fetching from API via configured BaseURL...</span>
+                <span class="text-xs text-indigo-400 font-bold p-2 text-center">Fetching from API via configured BaseURL...</span>
             </if>
             <if condition="{data.api_error} != ''">
-                <span class="text-xs text-rose-600 font-bold p-2 text-center">Error: {data.api_error}</span>
+                <span class="text-xs text-rose-400 font-bold p-2 text-center">Error: {data.api_error}</span>
             </if>
 
             <flex direction="column" gap="8">
                 <for_each items="{data.api_users}" var="user">
-                    <flex direction="row" align="center" justify="between" class="p-3 bg-white border border-slate-200 rounded-lg text-xs">
+                    <flex direction="row" align="center" justify="between" class="p-3.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs">
                         <flex direction="column">
-                            <span class="font-bold text-slate-800">{user.name}</span>
-                            <span class="text-slate-500 font-mono">{user.email}</span>
+                            <span class="font-bold text-white">{user.name}</span>
+                            <span class="text-slate-400 font-mono">{user.email}</span>
                         </flex>
-                        <span class="px-2 py-0.5 bg-slate-100 text-slate-600 font-mono text-[10px] rounded font-bold">
+                        <span class="px-2.5 py-1 bg-slate-800 text-slate-300 font-mono text-[10px] rounded-lg font-bold border border-slate-700">
                             ID: #{user.id}
                         </span>
                     </flex>

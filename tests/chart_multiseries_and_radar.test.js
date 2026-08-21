@@ -150,4 +150,34 @@ describe('EUIXChartPlugin - Radar, Donut, Multi-series Actions and Interactions'
 
         expect(engine.getState('last_clicked_index')).toBe(1);
     });
+
+    it('should support CHART_EXPORT alias with target state and download option', async () => {
+        const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="exported_png"></state>
+                <state id="chart_cfg" type="object">{
+                    "type": "bar",
+                    "data": { "labels": ["Q1"], "datasets": [{"data": [100]}] }
+                }</state>
+            </data_model>
+            <flex direction="column">
+                <chart id="sales_chart" config="{data.chart_cfg}" />
+                <button id="export_alias_btn">
+                    <on_click action="CHART_EXPORT" chart="sales_chart" target="data.exported_png" download="true" filename="sales.png" />
+                </button>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        container.querySelector('#export_alias_btn').click();
+
+        expect(engine.getState('exported_png')).toBe('data:image/png;base64,mockChartImage');
+        expect(clickSpy).toHaveBeenCalled();
+
+        clickSpy.mockRestore();
+    });
 });

@@ -1,0 +1,158 @@
+<component_def name="date-section">
+    <data_model>
+        <state id="sampleDate">2026-08-20T14:30:00Z</state>
+        <state id="startDate">2026-08-01</state>
+        <state id="endDate">2026-08-20</state>
+        <state id="currentLocale">en-US</state>
+        <state id="currentTimeZone">UTC</state>
+        <state id="calcResult">2026-08-20T14:30:00Z</state>
+        <state id="customFormatPattern">DD/MM/YYYY HH:mm</state>
+        <state id="logs" type="array">[
+            {"id": "1", "msg": "Intl & Date Suite initialized", "time": "2026-08-20T14:30:00Z"}
+        ]</state>
+    </data_model>
+
+    <flex direction="column" gap="24" class="w-full">
+        <!-- Hero Header -->
+        <flex class="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+            <flex direction="column" gap="4">
+                <flex direction="row" align="center" gap="8" class="flex-wrap">
+                    <span class="px-3 py-1 bg-emerald-500/15 text-emerald-400 font-extrabold text-xs rounded-full border border-emerald-500/20 uppercase tracking-wider">
+                        📅 EUIX Intl Date Plugin
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">Standard Ecma-402 &amp; Day.js Compatible</span>
+                </flex>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Declarative Date, Time &amp; Localization</h1>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                    Format timestamps, compute relative durations, query calendars, leap years, quarters, and manipulate dates reactively without heavy bundle size.
+                </p>
+            </flex>
+
+            <!-- Active Locale Badge -->
+            <flex direction="column" gap="2" class="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 shrink-0 min-w-[200px]">
+                <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">🌐 Current Context</span>
+                <span class="text-xs font-semibold text-emerald-400">Locale: {data.currentLocale}</span>
+                <span class="text-xs font-semibold text-teal-400">Timezone: {data.currentTimeZone}</span>
+            </flex>
+        </flex>
+
+        <!-- Controls Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Locale Switcher -->
+            <flex direction="column" gap="2" class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Locale</span>
+                <select bind="currentLocale" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500">
+                    <option value="en-US">🇺🇸 English (en-US)</option>
+                    <option value="tr-TR">🇹🇷 Turkish (tr-TR)</option>
+                    <option value="de-DE">🇩🇪 German (de-DE)</option>
+                    <option value="ja-JP">🇯🇵 Japanese (ja-JP)</option>
+                    <option value="fr-FR">🇫🇷 French (fr-FR)</option>
+                    <option value="es-ES">🇪🇸 Spanish (es-ES)</option>
+                </select>
+            </flex>
+
+            <!-- Timezone Switcher -->
+            <flex direction="column" gap="2" class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Timezone</span>
+                <select bind="currentTimeZone" class="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:border-emerald-500">
+                    <option value="UTC">🌐 UTC</option>
+                    <option value="Europe/Istanbul">🇹🇷 Europe / Istanbul</option>
+                    <option value="America/New_York">🇺🇸 America / New York</option>
+                    <option value="Europe/Berlin">🇩🇪 Europe / Berlin</option>
+                    <option value="Asia/Tokyo">🇯🇵 Asia / Tokyo</option>
+                </select>
+            </flex>
+
+            <!-- Quick Jump Actions -->
+            <flex direction="column" gap="2" class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Presets</span>
+                <flex direction="row" gap="4">
+                    <button class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-slate-700">
+                        <on_click action="RUN_SCRIPT">
+                            $data.sampleDate = new Date().toISOString();
+                        </on_click>
+                        Now
+                    </button>
+                    <button class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-slate-700">
+                        <on_click action="RUN_SCRIPT">
+                            $data.sampleDate = "2026-01-01T00:00:00Z";
+                        </on_click>
+                        New Year
+                    </button>
+                </flex>
+            </flex>
+
+            <!-- Date Math Shortcut -->
+            <flex direction="column" gap="2" class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Days</span>
+                <flex direction="row" gap="4">
+                    <button class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-emerald-500">
+                        <on_click action="RUN_SCRIPT">
+                            $data.sampleDate = $date.add($data.sampleDate, 7, 'day').toISOString();
+                        </on_click>
+                        +7 Days
+                    </button>
+                    <button class="flex-1 py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-rose-500">
+                        <on_click action="RUN_SCRIPT">
+                            $data.sampleDate = $date.subtract($data.sampleDate, 7, 'day').toISOString();
+                        </on_click>
+                        -7 Days
+                    </button>
+                </flex>
+            </flex>
+        </div>
+
+        <!-- Date Formatting & Relative Time Cards -->
+        <grid class="grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Formats Matrix -->
+            <flex direction="column" gap="16" class="bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <span class="text-emerald-400">✨</span> Ecma-402 Intl Format Presets
+                </h2>
+                <div class="flex flex-col gap-3 font-mono text-xs">
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Full Format:</span>
+                        <span class="text-emerald-300 font-bold">{$date.format(data.sampleDate, 'full', data.currentLocale, data.currentTimeZone)}</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Long Format:</span>
+                        <span class="text-teal-300 font-bold">{$date.format(data.sampleDate, 'long', data.currentLocale, data.currentTimeZone)}</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Medium Format:</span>
+                        <span class="text-cyan-300 font-bold">{$date.format(data.sampleDate, 'medium', data.currentLocale, data.currentTimeZone)}</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Short Date:</span>
+                        <span class="text-indigo-300 font-bold">{$date.format(data.sampleDate, 'short', data.currentLocale, data.currentTimeZone)}</span>
+                    </div>
+                </div>
+            </flex>
+
+            <!-- Relative Time & Calendar Calculations -->
+            <flex direction="column" gap="16" class="bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h2 class="text-base font-bold text-white flex items-center gap-2">
+                    <span class="text-teal-400">⏱️</span> Relative Time &amp; Calendar Metrics
+                </h2>
+                <div class="flex flex-col gap-3 font-mono text-xs">
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Relative from Now:</span>
+                        <span class="text-amber-400 font-bold">{$date.fromNow(data.sampleDate, data.currentLocale)}</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Days in Month:</span>
+                        <span class="text-emerald-400 font-bold">{$date.daysInMonth(data.sampleDate)} days</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Quarter &amp; Week:</span>
+                        <span class="text-purple-400 font-bold">Q{$date.quarter(data.sampleDate)} | Week {$date.weekOfYear(data.sampleDate)}</span>
+                    </div>
+                    <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <span class="text-slate-400 font-sans">Leap Year Status:</span>
+                        <span class="text-sky-400 font-bold">{$date.isLeapYear(data.sampleDate) ? 'Leap Year (366 days)' : 'Standard Year (365 days)'}</span>
+                    </div>
+                </div>
+            </flex>
+        </grid>
+    </flex>
+</component_def>

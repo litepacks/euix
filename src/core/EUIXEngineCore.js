@@ -459,7 +459,7 @@ function getCompiledTemplate(text) {
     let compiled = _templateTokensCache.get(text);
     if (compiled !== undefined) return compiled;
 
-    if (/[?!=><+\-*/(),]/.test(text)) {
+    if (/[?!=><+*\/(),&|%-]/.test(text)) {
         if (_templateTokensCache.size > 1000) _templateTokensCache.clear();
         _templateTokensCache.set(text, null);
         return null;
@@ -481,7 +481,7 @@ function getCompiledTemplate(text) {
                 chunks.push({ type: "static", val: text.slice(lastIdx, i) });
             }
             const rawInner = text.slice(i + 1, closeIdx).trim();
-            if (!rawInner || /[?!=><+\-*/(),\[\]]/.test(rawInner)) {
+            if (!rawInner || /[?!=><+*\/(),\[\]&|%-]/.test(rawInner)) {
                 isPureSimple = false;
                 break;
             }
@@ -562,7 +562,9 @@ const ACTION_DISPATCH_TABLE = {
     "TRY": "_handleTryCatchFinally",
     "RETHROW": "_handleRethrowAction",
     "THROW": "_handleThrowAction",
-    "SET_TITLE": "_handleSetTitleAction"
+    "SET_TITLE": "_handleSetTitleAction",
+    "ANIMATE": "_handleAnimateAction",
+    "TRANSITION": "_handleAnimateAction"
 };
 
 /**
@@ -1494,7 +1496,28 @@ class EUIXEngineCore {
     async loadComponentFile(name, url) {
         const compName = await EUIXEngineCore.loadComponent(name, url);
         if (compName && EUIXEngineCore._globalComponentSpecs.has(compName)) {
-            this._componentSpecs.set(compName, EUIXEngineCore._globalComponentSpecs.get(compName));
+            const specNode = EUIXEngineCore._globalComponentSpecs.get(compName);
+            this._componentSpecs.set(compName, specNode);
+
+            if (isFn(this.registerActionDef)) {
+                const actionDefNodes = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : []);
+                actionDefNodes.forEach(def => {
+                    const actName = def.getAttribute("name") || def.getAttribute("id");
+                    if (actName) {
+                        this.registerActionDef(actName, def);
+                    }
+                });
+            }
+
+            if (isFn(this.registerAnimationDef)) {
+                const animNodes = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("animation_def, keyframe_def") : []);
+                animNodes.forEach(def => {
+                    const animName = def.getAttribute("name") || def.getAttribute("id");
+                    if (animName) {
+                        this.registerAnimationDef(animName, def);
+                    }
+                });
+            }
         }
         return compName;
     }
@@ -1511,6 +1534,16 @@ class EUIXEngineCore {
                     const actName = def.getAttribute("name") || def.getAttribute("id");
                     if (actName) {
                         this.registerActionDef(actName, def);
+                    }
+                });
+            }
+
+            if (isFn(this.registerAnimationDef)) {
+                const animNodes = Array.from(specNode.querySelectorAll ? specNode.querySelectorAll("animation_def, keyframe_def") : []);
+                animNodes.forEach(def => {
+                    const animName = def.getAttribute("name") || def.getAttribute("id");
+                    if (animName) {
+                        this.registerAnimationDef(animName, def);
                     }
                 });
             }
@@ -1769,6 +1802,30 @@ class EUIXEngineCore {
         }
         if (path === "$date" || path === "date") {
             return this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
+        }
+        if (path.startsWith("$device.") || path.startsWith("device.")) {
+            let dev = this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
+            if (!dev && typeof navigator !== "undefined") {
+                const nav = navigator;
+                dev = {
+                    online: typeof nav.onLine === "boolean" ? nav.onLine : true,
+                    hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
+                    cores: Number(nav.hardwareConcurrency) || 8,
+                    deviceMemory: Number(nav.deviceMemory) || 8,
+                    memory: Number(nav.deviceMemory) || 8,
+                    batteryLevel: 1,
+                    batteryCharging: false,
+                    prefersDark: true,
+                    reducedMotion: false
+                };
+            }
+            const prop = path.replace(/^(\$device|device)\./, "");
+            if (!dev) return undefined;
+            if (!prop) return dev;
+            return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), dev);
+        }
+        if (path === "$device" || path === "device") {
+            return this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
         }
         if (path.startsWith("api.") || path.startsWith("$api.")) {
             const clean = path.replace(/^(\$api|api)\./, "");
@@ -2506,7 +2563,16 @@ class EUIXEngineCore {
             importNodes.forEach(imp => {
                 const src = imp.getAttribute("src");
                 const name = imp.getAttribute("name") || imp.getAttribute("as");
-                if (src && name) this._pendingAsyncLoads.push(this.loadComponentFile(name, src));
+                const isLazy = imp.getAttribute("lazy") === "true" || imp.getAttribute("mode") === "lazy";
+                if (src && name) {
+                    if (isLazy) {
+                        if (typeof EUIXEngineCore.registerLazyComponent === "function") {
+                            EUIXEngineCore.registerLazyComponent(name, src, imp.getAttribute("fallback"));
+                        }
+                    } else {
+                        this._pendingAsyncLoads.push(this.loadComponentFile(name, src));
+                    }
+                }
             });
         }
 
@@ -3095,7 +3161,7 @@ class EUIXEngineCore {
                 const root = this.getState("$router") || (context && context["$router"]);
                 return root !== undefined && root !== null ? JSON.stringify(root, null, 2) : "{}";
             }
-            if (!/[?!=><+\-*/(),]/.test(inner) && !inner.includes("{")) {
+            if (!/[?!=><+*\/(),&|%-]/.test(inner) && !inner.includes("{")) {
                 const dotIdx = inner.indexOf(".");
                 if (dotIdx === -1) {
                     if (context && context[inner] !== undefined) {
@@ -3174,6 +3240,19 @@ class EUIXEngineCore {
                             curr = curr[p];
                         }
                         out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : String(curr)) : "");
+                    }
+                } else if (c.scope === "$device" || c.scope === "device") {
+                    const dev = this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
+                    if (dev && c.prop) {
+                        const parts = c.parts;
+                        let curr = dev;
+                        for (let p of parts) {
+                            if (curr === undefined || curr === null) break;
+                            curr = curr[p];
+                        }
+                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : String(curr)) : "");
+                    } else if (dev && !c.prop) {
+                        out += typeof dev === "object" ? JSON.stringify(dev) : String(dev);
                     }
                 } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
                     const v = this.getState(c.prop);
@@ -3265,7 +3344,7 @@ class EUIXEngineCore {
         const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
         if (jitFn) {
             const res = jitFn(this, context, (p) => this.resolveValueFromPath(p, context));
-            if (res !== undefined && res !== null) return res;
+            if (res !== undefined && res !== null && res !== "") return res;
         }
 
         let result = text;
@@ -3378,7 +3457,7 @@ class EUIXEngineCore {
                 });
             }
 
-            if (/[?!=><+\-*/]/.test(resolvedExpr) || resolvedExpr.includes(".") || resolvedExpr.includes("data.") || resolvedExpr.includes("local.") || resolvedExpr.includes("api.")) {
+            if (/[?!=><+*\/&|%-]/.test(resolvedExpr) || resolvedExpr.includes(".") || resolvedExpr.includes("data.") || resolvedExpr.includes("local.") || resolvedExpr.includes("api.")) {
                 try {
                     const evaluated = EUIXExpressionParser.eval(resolvedExpr, (name) => {
                         if (name.startsWith("api.") || name.startsWith("$api.")) {
@@ -3413,6 +3492,30 @@ class EUIXEngineCore {
                         }
                         if (name === "$date" || name === "date") {
                             return this.$date || this.date || (isFn(this.getState) ? this.getState("$date") : null) || (isFn(this.getState) ? this.getState("date") : null);
+                        }
+                        if (name.startsWith("$device.") || name.startsWith("device.")) {
+                            let dev = this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
+                            if (!dev && typeof navigator !== "undefined") {
+                                const nav = navigator;
+                                dev = {
+                                    online: typeof nav.onLine === "boolean" ? nav.onLine : true,
+                                    hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
+                                    cores: Number(nav.hardwareConcurrency) || 8,
+                                    deviceMemory: Number(nav.deviceMemory) || 8,
+                                    memory: Number(nav.deviceMemory) || 8,
+                                    batteryLevel: 1,
+                                    batteryCharging: false,
+                                    prefersDark: true,
+                                    reducedMotion: false
+                                };
+                            }
+                            const prop = name.replace(/^(\$device|device)\./, "");
+                            if (!dev) return undefined;
+                            if (!prop) return dev;
+                            return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), dev);
+                        }
+                        if (name === "$device" || name === "device") {
+                            return this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
                         }
 
                         const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
@@ -5551,31 +5654,39 @@ class EUIXEngineCore {
             if (!id) return;
             const scope = node.getAttribute("scope");
             const isStateLocal = isIsolated || scope === "local" || scope === "isolated" || scope === "scoped";
+            const type = node.getAttribute("type");
+
+            let parsedValue;
+            if (type === "array") {
+                parsedValue = this.getChildren(node, "item").map(item => {
+                    const obj = {};
+                    Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
+                    return obj;
+                });
+            } else if (type === "number" || type === "int" || type === "float") {
+                const txt = node.textContent.trim();
+                parsedValue = txt !== "" ? Number(txt) : 0;
+            } else if (type === "boolean" || type === "bool") {
+                const txt = node.textContent.trim().toLowerCase();
+                parsedValue = txt === "true";
+            } else if (type === "object" || type === "json") {
+                const txt = node.textContent.trim();
+                try {
+                    parsedValue = txt ? JSON.parse(txt) : {};
+                } catch (_) {
+                    parsedValue = {};
+                }
+            } else {
+                parsedValue = node.textContent.trim() || "";
+            }
+
             if (isStateLocal && scope !== "global") {
                 hasLocalState = true;
-                const type = node.getAttribute("type");
-                if (type === "array") {
-                    const items = this.getChildren(node, "item").map(item => {
-                        const obj = {};
-                        Array.from(item.attributes).forEach(attr => obj[attr.name] = attr.value);
-                        return obj;
-                    });
-                    localRawState[id] = items;
-                } else if (type === "number" || type === "int" || type === "float") {
-                    const txt = node.textContent.trim();
-                    localRawState[id] = txt !== "" ? Number(txt) : 0;
-                } else if (type === "boolean" || type === "bool") {
-                    const txt = node.textContent.trim().toLowerCase();
-                    localRawState[id] = txt === "true";
-                } else if (type === "object" || type === "json") {
-                    const txt = node.textContent.trim();
-                    try {
-                        localRawState[id] = txt ? JSON.parse(txt) : {};
-                    } catch (_) {
-                        localRawState[id] = {};
-                    }
-                } else {
-                    localRawState[id] = node.textContent.trim() || "";
+                localRawState[id] = parsedValue;
+            } else {
+                // Register into global data model if not already present
+                if (this.getState(id) === undefined) {
+                    this.setState(id, parsedValue);
                 }
             }
         });
@@ -5597,10 +5708,16 @@ class EUIXEngineCore {
 
         const childContext = {
             ...context,
+            data: this.data,
+            $data: this.data,
             parent: context,
             $parent: context,
             props,
             ...props,
+            $device: this.$device || (context && context.$device),
+            device: this.$device || (context && context.device),
+            $date: this.$date || (context && context.$date),
+            date: this.$date || (context && context.date),
             _instanceId: instanceId,
             _localState: reactiveLocalState,
             local: reactiveLocalState,
@@ -5978,7 +6095,19 @@ class EUIXEngineCore {
         }
 
         if (nextValue === "") {
-            nextValue = this.interpolate(rawValue, context);
+            if (rawValue.includes("{")) {
+                nextValue = this.interpolate(rawValue, context);
+            } else if (rawValue.includes("(") && rawValue.includes(")")) {
+                try {
+                    const fn = new Function("$data", "data", "$date", "date", "context", `return (${rawValue});`);
+                    const evaluated = fn(this.data, this.data, this.$date || this.date, this.$date || this.date, context);
+                    nextValue = evaluated !== undefined ? evaluated : "";
+                } catch (_) {
+                    nextValue = this.interpolate(rawValue, context);
+                }
+            } else {
+                nextValue = this.interpolate(rawValue, context);
+            }
         }
 
         this._setScopedState(rawPath, path, nextValue, context);

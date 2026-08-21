@@ -18,86 +18,86 @@
         </animation_def>
     </animations>
 
-    <collapse bind="data.anim_open" title="🎭 Declarative Animation System (&lt;animation_def&gt;, enter/leave, WAAPI)" class="border border-purple-200/80 rounded-2xl overflow-hidden shadow-md bg-white" header_class="w-full flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-purple-100 font-extrabold text-purple-950 hover:bg-purple-100/60 cursor-pointer text-sm" body_class="p-5 flex flex-col gap-5">
+    <collapse bind="data.anim_open" title="🎭 Declarative Animation System (&lt;animation_def&gt;, enter/leave, WAAPI)" class="border border-slate-800 rounded-3xl overflow-hidden shadow-xl bg-slate-900/90 backdrop-blur-md" header_class="w-full flex items-center justify-between p-5 bg-slate-900 border-b border-slate-800 font-extrabold text-white hover:bg-slate-800/80 cursor-pointer text-sm" body_class="p-6 flex flex-col gap-6">
         <flex direction="column" gap="16" class="w-full">
-            <flex direction="row" align="center" justify="between" class="p-3 bg-purple-50/50 rounded-xl border border-purple-100">
-                <span class="text-xs font-bold text-purple-900">Native Web Animations API (WAAPI) keyframes, enter &amp; deferred leave lifecycle transitions.</span>
-                <span class="px-2.5 py-1 bg-purple-600 text-white font-extrabold text-[10px] rounded-md uppercase tracking-wider">EUIXAnimationPlugin</span>
+            <flex direction="row" align="center" justify="between" class="p-3.5 bg-purple-500/10 rounded-2xl border border-purple-500/20">
+                <span class="text-xs font-bold text-purple-300">Native Web Animations API (WAAPI) keyframes, enter &amp; deferred leave lifecycle transitions.</span>
+                <span class="px-2.5 py-1 bg-purple-500/20 text-purple-300 font-extrabold text-[10px] rounded-lg uppercase tracking-wider border border-purple-500/30">EUIXAnimationPlugin</span>
             </flex>
 
             <grid cols="2" gap="16" class="w-full grid-cols-1 lg:grid-cols-2">
                 <!-- Preset & Custom Animation Controls -->
-                <flex direction="column" gap="12" class="p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                    <span class="text-xs font-black text-slate-700 uppercase tracking-wider">1. Built-in Preset Animations</span>
+                <flex direction="column" gap="12" class="p-5 bg-slate-950/80 border border-slate-800 rounded-2xl">
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-wider">1. Built-in Preset Animations</span>
 
                     <flex direction="row" gap="6" class="flex-wrap">
-                        <button type="button" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="fade-in" duration="300" />
                             fade-in
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="fade-out" duration="300" />
                             fade-out
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="slide-in-down" duration="350" />
                             slide-in-down
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="slide-in-up" duration="350" />
                             slide-in-up
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="slide-in-left" duration="350" />
                             slide-in-left
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="slide-in-right" duration="350" />
                             slide-in-right
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="scale-in" duration="300" />
                             scale-in
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="scale-out" duration="250" />
                             scale-out
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="shake" duration="400" />
                             shake
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="pulse" duration="400" />
                             pulse
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="spin" duration="600" />
                             spin
                         </button>
-                        <button type="button" class="px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-sm">
+                        <button type="button" class="px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-sm">
                             <on_click action="ANIMATE" target="#anim-target-box" name="bounce" duration="600" />
                             bounce
                         </button>
                     </flex>
 
-                    <span class="text-xs font-black text-slate-700 uppercase tracking-wider pt-2 border-t border-slate-200">Custom &lt;animation_def&gt; Declarations</span>
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-800">Custom &lt;animation_def&gt; Declarations</span>
 
                     <flex direction="row" gap="8" class="flex-wrap">
-                        <button type="button" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-purple-300 font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer border border-slate-700">
+                        <button type="button" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-purple-300 font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer border border-slate-700">
                             <on_click action="ANIMATE" target="#anim-target-box" name="pulseGlow" />
-                            customPulse
+                            pulseGlow
                         </button>
-                        <button type="button" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer border border-slate-700">
+                        <button type="button" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer border border-slate-700">
                             <on_click action="ANIMATE" target="#anim-target-box" name="bounceScale" />
                             bounceScale
                         </button>
                     </flex>
 
-                    <span class="text-xs font-black text-slate-700 uppercase tracking-wider pt-2 border-t border-slate-200">2. Deferred Leave Lifecycle Transition</span>
+                    <span class="text-xs font-black text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-800">2. Deferred Leave Lifecycle Transition</span>
 
                     <flex direction="row" align="center" gap="8">
-                        <button type="button" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition-all active:scale-95 cursor-pointer shadow-md">
+                        <button type="button" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl transition-all active:scale-95 cursor-pointer shadow-md">
                             <on_click action="TOGGLE_STATE">
                                 <path>data.show_card</path>
                             </on_click>
@@ -107,7 +107,7 @@
                 </flex>
 
                 <!-- Interactive Target Box Display -->
-                <flex direction="column" align="center" justify="center" gap="16" class="p-8 bg-slate-900 text-white border border-slate-800 rounded-xl min-h-[260px] justify-between">
+                <flex direction="column" align="center" justify="center" gap="16" class="p-8 bg-slate-950/80 text-white border border-slate-800 rounded-2xl min-h-[260px] justify-between">
                     <div id="anim-target-box" class="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-extrabold text-sm rounded-2xl shadow-xl shadow-purple-500/20 text-center select-none border border-white/10 w-full max-w-xs">
                         ✨ Animation Target Box
                     </div>
@@ -115,7 +115,7 @@
                     <!-- Deferred Leave Conditional Card -->
                     <flex direction="column" align="center" class="min-h-[60px] justify-center w-full">
                         <if condition="{data.show_card} == 'true'">
-                            <div id="leave-demo-card" enter_animation="slide-in-down" leave_animation="fade-out" class="p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 font-bold text-xs flex flex-col items-center gap-1 text-center w-full max-w-xs">
+                            <div id="leave-demo-card" enter_animation="slide-in-down" leave_animation="fade-out" class="p-4 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-emerald-300 font-bold text-xs flex flex-col items-center gap-1 text-center w-full max-w-xs">
                                 <span>✅ Active Component Card</span>
                                 <span class="text-[10px] text-emerald-400/80 font-normal">enter_animation="slide-in-down" | leave_animation="fade-out"</span>
                             </div>

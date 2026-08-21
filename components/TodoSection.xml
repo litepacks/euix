@@ -1,20 +1,21 @@
 <component_def name="todo-section">
     <constants>
-        <const id="quick_btn">px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer</const>
+        <const id="quick_btn">px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-slate-700</const>
+        <const id="btn_primary">px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-indigo-600/20 shrink-0</const>
     </constants>
-    <flex direction="column" gap="12" class="w-full bg-white p-3.5 sm:p-5 md:p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 mb-6">
+    <flex direction="column" gap="12" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
         <!-- Header Bar -->
-        <flex class="border-b border-slate-100 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
+        <flex class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">
             <flex direction="row" align="center" gap="12">
                 <span class="text-3xl">📝</span>
                 <flex direction="column">
-                    <h2 class="font-extrabold text-slate-800 text-lg">Interactive Todo Manager</h2>
-                    <span class="text-xs text-slate-500">Task additions, inline editing, array mutations &amp; quick actions</span>
+                    <h2 class="font-extrabold text-white text-lg">Interactive Todo Manager</h2>
+                    <span class="text-xs text-slate-400">Task additions, inline editing, array mutations &amp; quick actions</span>
                 </flex>
             </flex>
             <flex direction="row" align="center" gap="8" class="flex-wrap">
-                <span class="px-2.5 py-1 bg-blue-50 text-blue-700 font-extrabold text-xs rounded-lg border border-blue-200/60 hidden sm:inline-block">📄 140 Lines XML</span>
-                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                <span class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 font-extrabold text-xs rounded-xl border border-indigo-500/30 hidden sm:inline-block">📄 140 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-colors border border-slate-700 flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
                         <value>Interactive Todo Manager (components/TodoSection.xml)</value>
@@ -43,7 +44,7 @@
                 <operation>PUSH</operation>
                 <item text="{data.new_todo_input}" completed="false" />
             </on_submit>
-            <input type="text" bind="data.new_todo_input" placeholder="Enter a new task..." class="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all" />
+            <input type="text" bind="data.new_todo_input" placeholder="Enter a new task..." class="flex-1 px-4 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-indigo-500 transition-all" />
             <button type="submit" class="{const.btn_primary}">
                 Add Task
             </button>
@@ -59,7 +60,7 @@
                         <item text="Quick Task {data.todos.length + 1}" completed="false" />
                     </on_click>
                 </button>
-                <button class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
+                <button class="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-rose-500/20">
                     Clear All Tasks
                     <on_click action="SET_STATE">
                         <path>data.confirm_modal_open</path>
@@ -69,14 +70,14 @@
             </flex>
         </flex>
 
-        <collapse bind="data.todos_open" title="Todo List" class="border border-slate-200/80 rounded-xl overflow-hidden shadow-sm" header_class="w-full flex items-center justify-between p-4 bg-slate-50/70 border-none font-bold text-slate-700 hover:bg-slate-50 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-2">
+        <collapse bind="data.todos_open" title="Todo List" class="border border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-slate-950/80" header_class="w-full flex items-center justify-between p-4 bg-slate-900 border-none font-bold text-white hover:bg-slate-800/80 cursor-pointer text-sm" body_class="p-4 flex flex-col gap-2">
             <flex direction="column" gap="8">
                 <for_each items="{data.todos}" var="todo">
-                    <flex direction="row" align="center" justify="between" gap="8" class="p-3 bg-white hover:bg-slate-50/50 border border-slate-100 rounded-lg transition-all shadow-sm">
+                    <flex direction="row" align="center" justify="between" gap="8" class="p-3 bg-slate-900/90 hover:bg-slate-800/60 border border-slate-800 rounded-xl transition-all shadow-sm">
                         <if condition="{data.editing_id} == {todo.id}">
-                            <input type="text" bind="data.edit_todo_input" placeholder="Edit task..." autofocus="true" class="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                            <input type="text" bind="data.edit_todo_input" placeholder="Edit task..." autofocus="true" class="flex-1 px-3 py-1.5 bg-slate-950 border border-slate-700 text-white rounded-lg text-xs focus:outline-none focus:border-indigo-500" />
                             <flex direction="row" gap="6">
-                                <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg text-xs cursor-pointer">
+                                <button class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs cursor-pointer shadow-sm">
                                     Save
                                     <on_click action="MUTATE_STATE">
                                         <path>data.todos</path>
@@ -85,7 +86,7 @@
                                         <fields text="{data.edit_todo_input}" />
                                     </on_click>
                                 </button>
-                                <button class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-lg text-xs cursor-pointer">
+                                <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs cursor-pointer border border-slate-700">
                                     Cancel
                                     <on_click action="SET_STATE">
                                         <path>data.editing_id</path>
@@ -98,15 +99,15 @@
                                 </button>
                             </flex>
                             <else>
-                                <input type="checkbox" bind="todo.completed" class="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500/20 cursor-pointer" />
+                                <input type="checkbox" bind="todo.completed" class="w-4 h-4 rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-500" />
                                 <if condition="{todo.completed} == true">
-                                    <span class="flex-1 text-sm text-slate-400 line-through pl-1">{todo.text}</span>
+                                    <span class="flex-1 text-xs text-slate-500 line-through pl-1">{todo.text}</span>
                                     <else>
-                                        <span class="flex-1 text-sm text-slate-700 font-medium pl-1">{todo.text}</span>
+                                        <span class="flex-1 text-xs text-slate-200 font-medium pl-1">{todo.text}</span>
                                     </else>
                                 </if>
                                 <flex direction="row" gap="6">
-                                    <button class="px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
+                                    <button class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
                                         Edit
                                         <on_click action="SET_STATE">
                                             <path>data.editing_id</path>
@@ -118,7 +119,7 @@
                                             <focus>data.edit_todo_input</focus>
                                         </on_click>
                                     </button>
-                                    <button class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold rounded-lg text-xs transition-colors cursor-pointer">
+                                    <button class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold rounded-lg text-xs transition-colors cursor-pointer border border-rose-500/20">
                                         Delete
                                         <on_click action="SET_STATE">
                                             <path>data.selected_todo_id</path>

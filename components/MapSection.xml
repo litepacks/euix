@@ -1,0 +1,140 @@
+<component_def name="map-section">
+    <data_model>
+        <state id="selections" type="array">[
+            {"id":"poly-ist-sultanahmet","name":"Sultanahmet Historical Zone","country":"TR","city":"Istanbul","area":28540.5,"displayArea":"2.85 ha","latlngs":[[41.0062,28.9755],[41.0088,28.9772],[41.0076,28.9808],[41.0048,28.9792]],"color":"#286247","fillColor":"#d9ef62","fillOpacity":0.35}
+        ]</state>
+        <state id="status">Focused on Istanbul, Turkey. Use polygon tool to measure.</state>
+        <state id="active_country">TR</state>
+        <state id="selected_id"></state>
+        <state id="toast_msg"></state>
+        <state id="toast_visible">false</state>
+    </data_model>
+
+    <actions>
+        <action_def name="SwitchCity">
+            <param name="country" required="true" />
+            <param name="city" required="true" />
+            <param name="lat" required="true" />
+            <param name="lng" required="true" />
+            <param name="zoom" default="13" />
+
+            <step action="SET_STATE">
+                <path>data.active_country</path>
+                <value>{args.country}</value>
+            </step>
+            <step action="SET_STATE">
+                <path>data.status</path>
+                <value>'Centered view on ' + {args.city}</value>
+            </step>
+            <step action="MAP_PAN">
+                <map_id>spatial_map</map_id>
+                <lat>{args.lat}</lat>
+                <lng>{args.lng}</lng>
+                <zoom>{args.zoom}</zoom>
+            </step>
+        </action_def>
+    </actions>
+
+    <flex direction="column" gap="24" class="w-full">
+        <!-- Hero Header -->
+        <flex class="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+            <flex direction="column" gap="4">
+                <flex direction="row" align="center" gap="8" class="flex-wrap">
+                    <span class="px-3 py-1 bg-emerald-500/15 text-emerald-400 font-extrabold text-xs rounded-full border border-emerald-500/20 uppercase tracking-wider">
+                        🗺️ EUIX Leaflet GIS Suite
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">Declarative Vector Map &amp; Polygon Engine</span>
+                </flex>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">Geospatial Mapping &amp; Area Measurement</h1>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                    Bind vector polygons, calculate geodesic surface areas, and pan across global coordinates declaratively with &lt;leaflet_map&gt;.
+                </p>
+            </flex>
+
+            <!-- Quick City Switcher -->
+            <flex direction="row" gap="2" class="flex-wrap">
+                <button class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                    <on_click action="SwitchCity">
+                        <arg name="country">TR</arg>
+                        <arg name="city">Istanbul, Turkey</arg>
+                        <arg name="lat">41.0082</arg>
+                        <arg name="lng">28.9784</arg>
+                        <arg name="zoom">13</arg>
+                    </on_click>
+                    🇹🇷 Istanbul
+                </button>
+                <button class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                    <on_click action="SwitchCity">
+                        <arg name="country">UK</arg>
+                        <arg name="city">London, UK</arg>
+                        <arg name="lat">51.5074</arg>
+                        <arg name="lng">-0.1278</arg>
+                        <arg name="zoom">13</arg>
+                    </on_click>
+                    🇬🇧 London
+                </button>
+                <button class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                    <on_click action="SwitchCity">
+                        <arg name="country">DE</arg>
+                        <arg name="city">Berlin, Germany</arg>
+                        <arg name="lat">52.5200</arg>
+                        <arg name="lng">13.4050</arg>
+                        <arg name="zoom">13</arg>
+                    </on_click>
+                    🇩🇪 Berlin
+                </button>
+            </flex>
+        </flex>
+
+        <!-- Map & Polygons Grid -->
+        <grid class="grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Map Container (2 cols) -->
+            <div class="lg:col-span-2 h-[340px] sm:h-[480px] bg-slate-900/80 rounded-3xl border border-slate-800 shadow-xl overflow-hidden relative">
+                <leaflet_map 
+                    id="spatial_map" 
+                    lat="41.0082" 
+                    lng="28.9784" 
+                    zoom="13" 
+                    bind="data.selections" 
+                    draw="true" 
+                    draw_color="#6366f1" 
+                    draw_fill_color="#818cf8" 
+                    draw_fill_opacity="0.35" 
+                    class="w-full h-full"
+                />
+            </div>
+
+            <!-- Sidebar Polygons List (1 col) -->
+            <flex direction="column" gap="16" class="bg-slate-900/80 backdrop-blur-md p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <flex direction="row" justify="between" align="center">
+                    <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                        <span class="text-emerald-400">📍</span> Measured Polygons ({data.selections.length})
+                    </h2>
+                </flex>
+
+                <div class="flex-1 flex flex-col gap-2 max-h-[320px] overflow-y-auto pr-1 font-mono text-xs">
+                    <for_each items="{data.selections}" var="item" key="id">
+                        <div class="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex justify-between items-center">
+                            <flex direction="column" gap="1">
+                                <span class="font-bold text-slate-200 font-sans">{item.name}</span>
+                                <span class="text-[11px] text-emerald-400 font-bold">{item.displayArea || item.display_area}</span>
+                            </flex>
+                            <button class="w-6 h-6 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 text-xs font-bold transition flex items-center justify-center cursor-pointer">
+                                <on_click action="MUTATE_STATE">
+                                    <path>selections</path>
+                                    <operation>REMOVE</operation>
+                                    <where field="id" equals="{item.id}" />
+                                </on_click>
+                                ×
+                            </button>
+                        </div>
+                    </for_each>
+                </div>
+
+                <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+                    Status: <span class="text-slate-200">{data.status}</span>
+                </div>
+            </flex>
+        </grid>
+    </flex>
+</component_def>

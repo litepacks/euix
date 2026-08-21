@@ -1,21 +1,28 @@
 <component_def name="table-section">
     <constants>
-        <const id="table_th">px-4 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-50/80 border-b border-slate-100</const>
-        <const id="table_td">px-4 py-3.5 text-xs text-slate-700 border-b border-slate-100/70 align-middle</const>
-        <const id="badge_active">px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-lg text-[11px] border border-emerald-200/60 inline-flex items-center gap-1</const>
-        <const id="badge_offline">px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg text-[11px] border border-slate-200 inline-flex items-center gap-1</const>
+        <const id="table_th">px-4 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-950 border-b border-slate-800</const>
+        <const id="table_td">px-4 py-3.5 text-xs text-slate-300 border-b border-slate-800/70 align-middle</const>
+        <const id="badge_active">px-2.5 py-1 bg-emerald-500/15 text-emerald-400 font-bold rounded-xl text-[11px] border border-emerald-500/20 inline-flex items-center gap-1</const>
+        <const id="badge_offline">px-2.5 py-1 bg-slate-800 text-slate-400 font-bold rounded-xl text-[11px] border border-slate-700 inline-flex items-center gap-1</const>
     </constants>
 
-    <flex direction="column" gap="12" class="w-full">
+    <flex direction="column" gap="12" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
         <!-- Section Header -->
         <flex direction="row" align="center" justify="between" class="cursor-pointer select-none">
             <on_click action="SET_STATE">
                 <path>data.table_open</path>
                 <value>{data.table_open === 'true' ? 'false' : 'true'}</value>
             </on_click>
+            <flex direction="row" align="center" gap="10">
+                <span class="p-2 bg-indigo-500/20 text-indigo-400 rounded-2xl text-lg border border-indigo-500/30">📊</span>
+                <flex direction="column">
+                    <h2 class="text-base font-black text-white tracking-tight">Data Table &amp; Employee Roster</h2>
+                    <p class="text-xs text-slate-400 font-medium">Fine-grained row insertions, deletions and active status indicators.</p>
+                </flex>
+            </flex>
             <flex direction="row" align="center" gap="8">
-                <span class="px-2.5 py-1 bg-amber-50 text-amber-700 font-extrabold text-xs rounded-lg border border-amber-200/60 hidden sm:inline-block">📄 115 Lines XML</span>
-                <button type="button" class="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-xs cursor-pointer transition-colors flex items-center gap-1">
+                <span class="px-2.5 py-1 bg-amber-500/20 text-amber-300 font-extrabold text-xs rounded-xl border border-amber-500/30 hidden sm:inline-block">📄 115 Lines XML</span>
+                <button type="button" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-colors border border-slate-700 flex items-center gap-1">
                     <on_click action="SET_STATE">
                         <path>data.code_modal_title</path>
                         <value>Data Table &amp; Roster (components/TableSection.xml)</value>
@@ -40,13 +47,13 @@
         </flex>
 
         <if condition="{data.table_open} == 'true'">
-            <flex direction="column" gap="14" class="p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+            <flex direction="column" gap="14" class="p-4 sm:p-5 bg-slate-950/80 rounded-2xl border border-slate-800">
                 <!-- Add New User Form Bar -->
                 <flex direction="row" align="center" gap="8" wrap="true" class="w-full">
-                    <input type="text" placeholder="Employee Name" bind="data.new_emp_name" class="flex-1 min-w-[140px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <input type="text" placeholder="Role (e.g. Architect)" bind="data.new_emp_role" class="flex-1 min-w-[120px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <input type="text" placeholder="Dept (e.g. R&amp;D)" bind="data.new_emp_dept" class="flex-1 min-w-[100px] px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-500" />
-                    <button class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0">
+                    <input type="text" placeholder="Employee Name" bind="data.new_emp_name" class="flex-1 min-w-[140px] px-3.5 py-2 text-xs bg-slate-900 border border-slate-800 text-white rounded-xl outline-none focus:border-indigo-500" />
+                    <input type="text" placeholder="Role (e.g. Architect)" bind="data.new_emp_role" class="flex-1 min-w-[120px] px-3.5 py-2 text-xs bg-slate-900 border border-slate-800 text-white rounded-xl outline-none focus:border-indigo-500" />
+                    <input type="text" placeholder="Dept (e.g. R&amp;D)" bind="data.new_emp_dept" class="flex-1 min-w-[100px] px-3.5 py-2 text-xs bg-slate-900 border border-slate-800 text-white rounded-xl outline-none focus:border-indigo-500" />
+                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer whitespace-nowrap shrink-0 shadow-lg shadow-indigo-600/20">
                         <on_click action="MUTATE_STATE" operation="PUSH">
                             <path>data.employees</path>
                             <value name="{data.new_emp_name}" role="{data.new_emp_role}" dept="{data.new_emp_dept}" status="Active" />
@@ -68,7 +75,7 @@
                 </flex>
 
                 <!-- Data Table -->
-                <div class="w-full overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+                <div class="w-full overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/90 shadow-sm">
                     <table class="w-full border-collapse text-left">
                         <thead>
                             <tr>
@@ -82,21 +89,21 @@
                         </thead>
                         <tbody>
                             <for_each items="{data.employees}" var="emp">
-                                <tr class="hover:bg-slate-50/80 transition-colors">
-                                    <td class="{const.table_td} font-mono font-bold text-slate-400">#{emp._index + 1}</td>
-                                    <td class="{const.table_td} font-bold text-slate-800">{emp.name}</td>
-                                    <td class="{const.table_td} text-slate-600">{emp.role}</td>
-                                    <td class="{const.table_td}"><span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[11px] font-semibold">{emp.dept}</span></td>
+                                <tr class="hover:bg-slate-800/60 transition-colors">
+                                    <td class="{const.table_td} font-mono font-bold text-slate-500">#{emp._index + 1}</td>
+                                    <td class="{const.table_td} font-bold text-white">{emp.name}</td>
+                                    <td class="{const.table_td} text-slate-300">{emp.role}</td>
+                                    <td class="{const.table_td}"><span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold border border-slate-700">{emp.dept}</span></td>
                                     <td class="{const.table_td}">
                                         <if condition="{emp.status} == 'Active'">
-                                            <span class="{const.badge_active}"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active</span>
+                                            <span class="{const.badge_active}"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Active</span>
                                         </if>
                                         <if condition="{emp.status} != 'Active'">
                                             <span class="{const.badge_offline}">Offline</span>
                                         </if>
                                     </td>
                                     <td class="{const.table_td} text-right">
-                                        <button class="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] rounded-md transition-colors cursor-pointer">
+                                        <button class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-[11px] rounded-lg transition-colors cursor-pointer border border-rose-500/20">
                                             <on_click action="MUTATE_STATE" operation="REMOVE">
                                                 <path>data.employees</path>
                                                 <index>{emp._index}</index>
