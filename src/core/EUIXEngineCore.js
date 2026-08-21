@@ -2295,7 +2295,8 @@ class EUIXEngineCore {
             if (kind === "multi_template") {
                 const template = el.dataset.euixMultiTemplate;
                 if (template) {
-                    el.textContent = this.interpolate(template);
+                    const nextVal = this.interpolate(template);
+                    if (el.textContent !== nextVal) el.textContent = nextVal;
                 }
                 continue;
             }
@@ -2304,11 +2305,13 @@ class EUIXEngineCore {
                 const htmlTemplate = el.dataset.euixHtmlTemplate || el.dataset.xuiHtmlTemplate;
                 const textTemplate = el.dataset.euixTextTemplate || el.dataset.xuiTextTemplate;
                 if (htmlTemplate) {
-                    el.innerHTML = htmlTemplate.replace(/\{\s*value\s*\}/g, this.escapeHtml(text));
+                    const nextHtml = htmlTemplate.replace(/\{\s*value\s*\}/g, this.escapeHtml(text));
+                    if (el.innerHTML !== nextHtml) el.innerHTML = nextHtml;
                 } else if (textTemplate) {
-                    el.textContent = textTemplate.replace(/\{\s*value\s*\}/g, text);
+                    const nextTxt = textTemplate.replace(/\{\s*value\s*\}/g, text);
+                    if (el.textContent !== nextTxt) el.textContent = nextTxt;
                 } else {
-                    el.textContent = text;
+                    if (el.textContent !== text) el.textContent = text;
                 }
             }
         }
@@ -3213,14 +3216,14 @@ class EUIXEngineCore {
                 } else if (c.isSimple) {
                     if (context && context[c.scope] !== undefined) {
                         const v = context[c.scope];
-                        out += (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
+                        out += (typeof v === "string" || typeof v === "number") ? v : (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""));
                     } else if (this.constants && this.constants.has(c.scope)) {
                         out += this.constants.get(c.scope);
                     } else if (EUIXEngineCore._globalConstants && EUIXEngineCore._globalConstants.has(c.scope)) {
                         out += EUIXEngineCore._globalConstants.get(c.scope);
                     } else {
                         const v = this.getState(c.scope);
-                        out += (v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "");
+                        out += (v !== undefined ? ((typeof v === "string" || typeof v === "number") ? v : (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""))) : "");
                     }
                 } else if (c.scope === "const" || c.scope === "constants" || c.scope === "var" || c.scope === "vars" || c.scope === "constant" || c.scope === "variable") {
                     if (context && context.constants && context.constants[c.prop] !== undefined) {
@@ -3233,30 +3236,30 @@ class EUIXEngineCore {
                 } else if (c.scope === "$route" || c.scope === "$router" || c.scope === "$fetcher") {
                     const root = this.getState(c.scope) || (context && context[c.scope]);
                     if (root !== undefined && root !== null) {
-                        const parts = c.parts || (c.prop.includes(".") ? c.prop.split(".") : [c.prop]);
+                        const parts = c.parts || [c.prop];
                         let curr = root;
-                        for (let p of parts) {
+                        for (let pIdx = 0; pIdx < parts.length; pIdx++) {
                             if (curr === undefined || curr === null) break;
-                            curr = curr[p];
+                            curr = curr[parts[pIdx]];
                         }
-                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : String(curr)) : "");
+                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : curr) : "");
                     }
                 } else if (c.scope === "$device" || c.scope === "device") {
                     const dev = this.$device || this.device || (isFn(this.getState) ? (this.getState("$device") || this.getState("device")) : null) || (context && (context.$device || context.device));
                     if (dev && c.prop) {
-                        const parts = c.parts;
+                        const parts = c.parts || [c.prop];
                         let curr = dev;
-                        for (let p of parts) {
+                        for (let pIdx = 0; pIdx < parts.length; pIdx++) {
                             if (curr === undefined || curr === null) break;
-                            curr = curr[p];
+                            curr = curr[parts[pIdx]];
                         }
-                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : String(curr)) : "");
+                        out += (curr !== undefined && curr !== null ? (typeof curr === "object" ? JSON.stringify(curr) : curr) : "");
                     } else if (dev && !c.prop) {
                         out += typeof dev === "object" ? JSON.stringify(dev) : String(dev);
                     }
                 } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
                     const v = this.getState(c.prop);
-                    out += (v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "");
+                    out += (v !== undefined ? ((typeof v === "string" || typeof v === "number") ? v : (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? ""))) : "");
                 } else if (c.scope === "parent") {
                     const clean = c.prop.replace(/^data\./, "");
                     const v = this.getState(clean);
@@ -3951,9 +3954,9 @@ class EUIXEngineCore {
         }
 
         if (attrName === "value" && ("value" in el) && el.namespaceURI !== SVG_NAMESPACE) {
-            el.value = newAttrVal;
+            if (el.value !== newAttrVal) el.value = newAttrVal;
         } else if (attrName === "class" && el.namespaceURI !== SVG_NAMESPACE) {
-            el.className = newAttrVal;
+            if (el.className !== newAttrVal) el.className = newAttrVal;
         } else if (attrName === "style") {
             let styleVal = newAttrVal;
             if (typeof styleVal === "string" && styleVal.trim().startsWith("{") && styleVal.trim().endsWith("}")) {
@@ -3972,9 +3975,9 @@ class EUIXEngineCore {
                     .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
                     .join(" ");
             }
-            el.setAttribute("style", styleVal);
+            if (el.getAttribute("style") !== styleVal) el.setAttribute("style", styleVal);
         } else {
-            el.setAttribute(attrName, newAttrVal);
+            if (el.getAttribute(attrName) !== newAttrVal) el.setAttribute(attrName, newAttrVal);
         }
     }
 
