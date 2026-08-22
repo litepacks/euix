@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { isBool, isFn, isStr, splitPath } from "../utils/constants.js";
+import { EMPTY_ARR, isBool, isFn, isStr, splitPath } from "../utils/constants.js";
 import { applyArrayMutation } from "./Mutations.js";
 
 export function getState(engine, key) {
@@ -414,12 +414,19 @@ export function setState(engine, key, value, options = {}) {
 
 export function registerBinding(engine, path, el, kind, updateFn = null) {
     if (!path || !el) return;
-    if (!engine._bindings.has(path)) engine._bindings.set(path, []);
+
+    let list = engine._bindings.get(path);
+    if (!list) {
+        list = [];
+        engine._bindings.set(path, list);
+    }
+
     const depMask = engine.getKeyMask(path);
-    engine._bindings.get(path).push({ el, kind, updateFn, depMask });
-    if (el.dataset) {
-        el.dataset.xuiKey = path;
-        el.dataset.xuiBind = kind;
+    list.push({ el, kind, updateFn, depMask });
+
+    if (typeof el.setAttribute === "function") {
+        el.setAttribute("data-xui-key", path);
+        el.setAttribute("data-xui-bind", kind);
     }
 }
 
@@ -505,15 +512,27 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
 }
 
 export function mutateState(engine, key, operation, payload = {}) {
-    const cleanKey = String(key || "").replace(/^(data|state)\./, "");
-    if (!cleanKey || !operation) return;
+    if (!key || !operation) return;
+    const strKey = String(key).trim();
+    const cleanKey = strKey.startsWith("data.")
+        ? strKey.slice(5)
+        : strKey.startsWith("state.")
+          ? strKey.slice(6)
+          : strKey;
+
+    const op = String(operation).toUpperCase();
+    if (op === "CLEAR" || op === "EMPTY" || op === "RESET") {
+        engine.setState(cleanKey, EMPTY_ARR);
+        return EMPTY_ARR;
+    }
+
     const raw = engine._rawState ? engine._rawState[cleanKey] : null;
     const current = Array.isArray(raw)
         ? raw.slice()
-        : Array.isArray(engine.getState(cleanKey))
+        : Array.isArray(engine.getState?.(cleanKey))
           ? engine.getState(cleanKey).slice()
           : [];
-    const mutated = applyArrayMutation(current, operation, payload);
+    const mutated = applyArrayMutation(current, op, payload);
     engine.setState(cleanKey, mutated);
     return mutated;
 }

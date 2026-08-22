@@ -70,9 +70,12 @@ export function escapeRegExp(str) {
 
 export function getKeyMask(engine, key) {
     if (!key) return 0;
-    const cleanKey = String(key)
-        .replace(/^(?:data\.|local\.)/, "")
-        .trim();
+    const strKey = String(key).trim();
+    const cleanKey = strKey.startsWith("data.")
+        ? strKey.slice(5)
+        : strKey.startsWith("local.")
+          ? strKey.slice(6)
+          : strKey;
     let bitIndex = engine._stateKeyBits.get(cleanKey);
     if (bitIndex === undefined) {
         bitIndex = engine._nextStateBitIndex++ & 31;

@@ -82,5 +82,5 @@ export {
     toggleState,
 } from "./state/ReactiveStore.js";
 export { onStateChange, triggerStateWatchers, watch } from "./state/Watchers.js";
-export { MUTATION_OPS } from "./utils/constants.js";
+export { EMPTY_ARR, EMPTY_OBJ, MUTATION_OPS } from "./utils/constants.js";
 export { getChild, getChildren, reportError } from "./utils/domHelpers.js";
