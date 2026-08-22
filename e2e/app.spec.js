@@ -4,6 +4,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/playground');
+    await page.locator('h1').first().waitFor();
     await euix(page).waitForIdle();
   });
 

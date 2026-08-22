@@ -561,18 +561,10 @@ export function renderForEach(engine, xmlNode, context = {}) {
     let getItemKey;
     if (!keyAttr || keyAttr === "id") {
         getItemKey = (item, idx) =>
-            item && item.id !== undefined && item.id !== null
-                ? String(item.id)
-                : item && item._key !== undefined
-                  ? String(item._key)
-                  : `__idx_${idx}`;
+            item && item.id != null ? item.id : item && item._key != null ? item._key : `__idx_${idx}`;
     } else if (!keyAttr.includes("{")) {
         getItemKey = (item, idx) =>
-            item && item[keyAttr] !== undefined && item[keyAttr] !== null
-                ? String(item[keyAttr])
-                : item && item.id !== undefined && item.id !== null
-                  ? String(item.id)
-                  : `__idx_${idx}`;
+            item && item[keyAttr] != null ? item[keyAttr] : item && item.id != null ? item.id : `__idx_${idx}`;
     } else {
         getItemKey = (item, idx) => {
             const childContext = {

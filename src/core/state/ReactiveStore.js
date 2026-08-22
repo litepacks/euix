@@ -468,12 +468,14 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
         }
 
         if (kind === "checkbox") {
-            el.checked = engine.isTruthy(text);
+            const boolVal = engine.isTruthy(text);
+            if (el.checked !== boolVal) el.checked = boolVal;
             continue;
         }
 
         if (kind === "radio") {
-            el.checked = String(el.value || "") === text;
+            const boolVal = String(el.value || "") === text;
+            if (el.checked !== boolVal) el.checked = boolVal;
             continue;
         }
 
@@ -481,22 +483,37 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
             const template = el.dataset.euixMultiTemplate;
             if (template) {
                 const nextVal = engine.interpolate(template);
-                if (el.textContent !== nextVal) el.textContent = nextVal;
+                if (el._euixVal !== nextVal) {
+                    el._euixVal = nextVal;
+                    if (el.nodeType === 3) {
+                        el.nodeValue = nextVal;
+                    } else if (el.textContent !== nextVal) {
+                        el.textContent = nextVal;
+                    }
+                }
             }
             continue;
         }
 
         if (kind === "text") {
+            if (el._euixVal === text) continue;
             const htmlTemplate = el.dataset.euixHtmlTemplate || el.dataset.xuiHtmlTemplate;
             const textTemplate = el.dataset.euixTextTemplate || el.dataset.xuiTextTemplate;
             if (htmlTemplate) {
                 const nextHtml = htmlTemplate.replace(/\{\s*value\s*\}/g, engine.escapeHtml(text));
                 if (el.innerHTML !== nextHtml) el.innerHTML = nextHtml;
+                el._euixVal = text;
             } else if (textTemplate) {
                 const nextTxt = textTemplate.replace(/\{\s*value\s*\}/g, text);
                 if (el.textContent !== nextTxt) el.textContent = nextTxt;
+                el._euixVal = text;
             } else {
-                if (el.textContent !== text) el.textContent = text;
+                el._euixVal = text;
+                if (el.nodeType === 3) {
+                    el.nodeValue = text;
+                } else if (el.textContent !== text) {
+                    el.textContent = text;
+                }
             }
         }
     }

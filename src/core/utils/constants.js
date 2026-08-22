@@ -66,18 +66,19 @@ export const isCycleError = (err) => {
 };
 
 export const getForEachItemHash = (item) => {
-    if (isObj(item)) {
-        if (item.__v !== undefined) return item.__v;
-        let h = "";
-        for (const k in item) {
-            if (k !== "_index" && k !== "index") {
-                const v = item[k];
-                h += `${k}:${isObj(v) ? (v.id ?? v.key ?? Object.keys(v).length) : v};`;
-            }
-        }
-        return h;
+    if (item === null || typeof item !== "object") {
+        return item;
     }
-    return String(item);
+    if (item.__v !== undefined) return item.__v;
+    if (item._hash !== undefined) return item._hash;
+    let h = "";
+    for (const k in item) {
+        if (k !== "_index" && k !== "index") {
+            const v = item[k];
+            h += `${k}:${v !== null && typeof v === "object" ? (v.id ?? v.key ?? "") : v};`;
+        }
+    }
+    return h;
 };
 
 export const ALLOWED_HTML_TAGS = new Set([

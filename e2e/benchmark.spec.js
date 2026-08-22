@@ -4,6 +4,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 test.describe('EUIX Engine Real Chrome Browser Benchmark Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/playground');
+    await page.locator('h1').first().waitFor();
     await euix(page).waitForIdle();
   });
 

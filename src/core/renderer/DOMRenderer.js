@@ -255,42 +255,69 @@ export function interpolate(engine, text, context = {}) {
             if (dotIdx === -1) {
                 if (context && context[inner] !== undefined) {
                     const v = context[inner];
-                    return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                    return typeof v === "string"
+                        ? v
+                        : typeof v === "number"
+                          ? String(v)
+                          : typeof v === "object" && v !== null
+                            ? JSON.stringify(v)
+                            : String(v ?? "");
                 }
                 const v = engine.getState(inner);
-                if (v !== undefined) return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                if (v !== undefined) {
+                    return typeof v === "string"
+                        ? v
+                        : typeof v === "number"
+                          ? String(v)
+                          : typeof v === "object" && v !== null
+                            ? JSON.stringify(v)
+                            : String(v ?? "");
+                }
             } else {
                 const scope = inner.slice(0, dotIdx);
                 const prop = inner.slice(dotIdx + 1);
                 if (scope === "data" || scope === "state" || scope === "global" || scope === "$global") {
                     if (!prop.includes("[")) {
                         const v = engine.getState(prop);
-                        if (v !== undefined)
-                            return typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+                        if (v !== undefined) {
+                            return typeof v === "string"
+                                ? v
+                                : typeof v === "number"
+                                  ? String(v)
+                                  : typeof v === "object" && v !== null
+                                    ? JSON.stringify(v)
+                                    : String(v ?? "");
+                        }
                     }
                 } else if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
                     const root = engine.getState(scope) || context?.[scope];
                     if (root !== undefined && root !== null) {
                         const parts = prop.split(".");
                         let curr = root;
-                        for (const p of parts) {
+                        for (let pIdx = 0; pIdx < parts.length; pIdx++) {
                             if (curr === undefined || curr === null) break;
-                            curr = curr[p];
+                            curr = curr[parts[pIdx]];
                         }
                         if (curr !== undefined)
-                            return typeof curr === "object" && curr !== null
-                                ? JSON.stringify(curr)
-                                : String(curr ?? "");
+                            return typeof curr === "string"
+                                ? curr
+                                : typeof curr === "object" && curr !== null
+                                  ? JSON.stringify(curr)
+                                  : String(curr ?? "");
                     }
                 } else if (context && context[scope] !== undefined && context[scope] !== null) {
                     let curr = context[scope];
                     const parts = prop.split(".");
-                    for (const p of parts) {
+                    for (let pIdx = 0; pIdx < parts.length; pIdx++) {
                         if (curr === undefined || curr === null) break;
-                        curr = curr[p];
+                        curr = curr[parts[pIdx]];
                     }
                     if (curr !== undefined)
-                        return typeof curr === "object" && curr !== null ? JSON.stringify(curr) : String(curr ?? "");
+                        return typeof curr === "string"
+                            ? curr
+                            : typeof curr === "object" && curr !== null
+                              ? JSON.stringify(curr)
+                              : String(curr ?? "");
                 }
             }
         }
@@ -300,7 +327,8 @@ export function interpolate(engine, text, context = {}) {
     const compiled = getCompiledTemplate(text);
     if (compiled) {
         let out = "";
-        for (let i = 0; i < compiled.length; i++) {
+        const cLen = compiled.length;
+        for (let i = 0; i < cLen; i++) {
             const c = compiled[i];
             if (c.type === "static") {
                 out += c.val;
