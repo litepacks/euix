@@ -6,7 +6,7 @@
  * enter/leave transitions, and prefers-reduced-motion support.
  */
 
-import { EUIXStructuredError, EUIXExpressionParser } from "../core/EUIXEngineCore.js";
+import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
 
 /**
  * Built-in Preset Animations
@@ -15,68 +15,62 @@ export const EUIXAnimationPresets = {
     "fade-in": {
         duration: 300,
         easing: "ease-out",
-        keyframes: [
-            { opacity: 0 },
-            { opacity: 1 }
-        ]
+        keyframes: [{ opacity: 0 }, { opacity: 1 }],
     },
     "fade-out": {
         duration: 300,
         easing: "ease-in",
-        keyframes: [
-            { opacity: 1 },
-            { opacity: 0 }
-        ]
+        keyframes: [{ opacity: 1 }, { opacity: 0 }],
     },
     "slide-in-down": {
         duration: 350,
         easing: "cubic-bezier(0.25, 1, 0.5, 1)",
         keyframes: [
             { opacity: 0, transform: "translateY(-30px)" },
-            { opacity: 1, transform: "translateY(0)" }
-        ]
+            { opacity: 1, transform: "translateY(0)" },
+        ],
     },
     "slide-in-up": {
         duration: 350,
         easing: "cubic-bezier(0.25, 1, 0.5, 1)",
         keyframes: [
             { opacity: 0, transform: "translateY(30px)" },
-            { opacity: 1, transform: "translateY(0)" }
-        ]
+            { opacity: 1, transform: "translateY(0)" },
+        ],
     },
     "slide-in-left": {
         duration: 350,
         easing: "cubic-bezier(0.25, 1, 0.5, 1)",
         keyframes: [
             { opacity: 0, transform: "translateX(-30px)" },
-            { opacity: 1, transform: "translateX(0)" }
-        ]
+            { opacity: 1, transform: "translateX(0)" },
+        ],
     },
     "slide-in-right": {
         duration: 350,
         easing: "cubic-bezier(0.25, 1, 0.5, 1)",
         keyframes: [
             { opacity: 0, transform: "translateX(30px)" },
-            { opacity: 1, transform: "translateX(0)" }
-        ]
+            { opacity: 1, transform: "translateX(0)" },
+        ],
     },
     "scale-in": {
         duration: 300,
         easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
         keyframes: [
             { opacity: 0, transform: "scale(0.85)" },
-            { opacity: 1, transform: "scale(1)" }
-        ]
+            { opacity: 1, transform: "scale(1)" },
+        ],
     },
     "scale-out": {
         duration: 250,
         easing: "ease-in",
         keyframes: [
             { opacity: 1, transform: "scale(1)" },
-            { opacity: 0, transform: "scale(0.85)" }
-        ]
+            { opacity: 0, transform: "scale(0.85)" },
+        ],
     },
-    "shake": {
+    shake: {
         duration: 400,
         easing: "ease-in-out",
         keyframes: [
@@ -85,27 +79,20 @@ export const EUIXAnimationPresets = {
             { transform: "translateX(8px)" },
             { transform: "translateX(-6px)" },
             { transform: "translateX(6px)" },
-            { transform: "translateX(0)" }
-        ]
+            { transform: "translateX(0)" },
+        ],
     },
-    "pulse": {
+    pulse: {
         duration: 400,
         easing: "ease-in-out",
-        keyframes: [
-            { transform: "scale(1)" },
-            { transform: "scale(1.08)" },
-            { transform: "scale(1)" }
-        ]
+        keyframes: [{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }],
     },
-    "spin": {
+    spin: {
         duration: 600,
         easing: "linear",
-        keyframes: [
-            { transform: "rotate(0deg)" },
-            { transform: "rotate(360deg)" }
-        ]
+        keyframes: [{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }],
     },
-    "bounce": {
+    bounce: {
         duration: 600,
         easing: "cubic-bezier(0.28, 0.84, 0.42, 1)",
         keyframes: [
@@ -113,25 +100,25 @@ export const EUIXAnimationPresets = {
             { transform: "translateY(-20px)" },
             { transform: "translateY(0)" },
             { transform: "translateY(-10px)" },
-            { transform: "translateY(0)" }
-        ]
+            { transform: "translateY(0)" },
+        ],
     },
     "collapse-down": {
         duration: 300,
         easing: "cubic-bezier(0.4, 0, 0.2, 1)",
         keyframes: [
             { opacity: 0, maxHeight: "0px" },
-            { opacity: 1, maxHeight: "500px" }
-        ]
+            { opacity: 1, maxHeight: "500px" },
+        ],
     },
     "collapse-up": {
         duration: 300,
         easing: "cubic-bezier(0.4, 0, 0.2, 1)",
         keyframes: [
             { opacity: 1, maxHeight: "500px" },
-            { opacity: 0, maxHeight: "0px" }
-        ]
-    }
+            { opacity: 0, maxHeight: "0px" },
+        ],
+    },
 };
 
 /**
@@ -178,17 +165,17 @@ export const EUIXAnimationPlugin = {
         }
 
         if (typeof engineClass.registerAction === "function") {
-            engineClass.registerAction("ANIMATE", function(actionNode, context) {
+            engineClass.registerAction("ANIMATE", function (actionNode, context) {
                 return this._handleAnimateAction(actionNode, context);
             });
-            engineClass.registerAction("TRANSITION", function(actionNode, context) {
+            engineClass.registerAction("TRANSITION", function (actionNode, context) {
                 return this._handleAnimateAction(actionNode, context);
             });
         }
 
         const proto = engineClass.prototype;
 
-        proto._initAnimationPlugin = function() {
+        proto._initAnimationPlugin = function () {
             if (!this._animationRegistry) {
                 this._animationRegistry = new EUIXAnimationRegistry();
             }
@@ -200,12 +187,12 @@ export const EUIXAnimationPlugin = {
             }
         };
 
-        proto.setReducedMotion = function(enabled) {
+        proto.setReducedMotion = function (enabled) {
             this._reducedMotion = Boolean(enabled);
             return this;
         };
 
-        proto.isReducedMotion = function() {
+        proto.isReducedMotion = function () {
             if (this._reducedMotion !== null) return this._reducedMotion;
             if (typeof window !== "undefined" && window.matchMedia) {
                 return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -213,34 +200,47 @@ export const EUIXAnimationPlugin = {
             return false;
         };
 
-        proto.registerAnimationDef = function(name, xmlNodeOrObj) {
+        proto.registerAnimationDef = function (name, xmlNodeOrObj) {
             this._initAnimationPlugin();
 
             if (typeof name === "string" && xmlNodeOrObj) {
                 let parsedDef = xmlNodeOrObj;
 
-                if (xmlNodeOrObj.nodeType === 1) { // XML Element Node
+                if (xmlNodeOrObj.nodeType === 1) {
+                    // XML Element Node
                     const durationAttr = xmlNodeOrObj.getAttribute("duration");
                     const delayAttr = xmlNodeOrObj.getAttribute("delay");
                     const easingAttr = xmlNodeOrObj.getAttribute("easing");
                     const fillAttr = xmlNodeOrObj.getAttribute("fill");
-                    const iterationsAttr = xmlNodeOrObj.getAttribute("iterations") || xmlNodeOrObj.getAttribute("iteration_count");
+                    const iterationsAttr =
+                        xmlNodeOrObj.getAttribute("iterations") || xmlNodeOrObj.getAttribute("iteration_count");
 
-                    const keyframeNodes = Array.from(xmlNodeOrObj.childNodes || []).filter(c => c.nodeType === 1 && (c.nodeName.toLowerCase() === "keyframe" || c.tagName?.toLowerCase() === "keyframe"));
-                    const keyframes = keyframeNodes.map(kf => {
+                    const keyframeNodes = Array.from(xmlNodeOrObj.childNodes || []).filter(
+                        (c) =>
+                            c.nodeType === 1 &&
+                            (c.nodeName.toLowerCase() === "keyframe" || c.tagName?.toLowerCase() === "keyframe"),
+                    );
+                    const keyframes = keyframeNodes.map((kf) => {
                         const kfObj = {};
                         const offsetAttr = kf.getAttribute("offset");
                         if (offsetAttr !== null) kfObj.offset = parseFloat(offsetAttr);
 
-                        const propNodes = Array.from(kf.childNodes || []).filter(c => c.nodeType === 1 && (c.nodeName.toLowerCase() === "property" || c.nodeName.toLowerCase() === "prop" || c.tagName?.toLowerCase() === "property" || c.tagName?.toLowerCase() === "prop"));
+                        const propNodes = Array.from(kf.childNodes || []).filter(
+                            (c) =>
+                                c.nodeType === 1 &&
+                                (c.nodeName.toLowerCase() === "property" ||
+                                    c.nodeName.toLowerCase() === "prop" ||
+                                    c.tagName?.toLowerCase() === "property" ||
+                                    c.tagName?.toLowerCase() === "prop"),
+                        );
                         if (propNodes.length > 0) {
-                            propNodes.forEach(p => {
+                            propNodes.forEach((p) => {
                                 const propName = p.getAttribute("name") || p.getAttribute("key");
                                 const propVal = p.textContent.trim() || p.getAttribute("value");
                                 if (propName) kfObj[propName] = propVal;
                             });
                         } else {
-                            Array.from(kf.attributes || []).forEach(attr => {
+                            Array.from(kf.attributes || []).forEach((attr) => {
                                 if (attr.name !== "offset") kfObj[attr.name] = attr.value;
                             });
                         }
@@ -252,8 +252,12 @@ export const EUIXAnimationPlugin = {
                         delay: delayAttr ? parseInt(delayAttr, 10) : undefined,
                         easing: easingAttr || undefined,
                         fill: fillAttr || undefined,
-                        iterations: iterationsAttr ? (iterationsAttr === "infinite" ? Infinity : parseFloat(iterationsAttr)) : undefined,
-                        keyframes
+                        iterations: iterationsAttr
+                            ? iterationsAttr === "infinite"
+                                ? Infinity
+                                : parseFloat(iterationsAttr)
+                            : undefined,
+                        keyframes,
                     };
                 }
 
@@ -261,7 +265,7 @@ export const EUIXAnimationPlugin = {
             }
         };
 
-        proto.animate = function(target, keyframesOrName, options = {}, context = {}) {
+        proto.animate = function (target, keyframesOrName, options = {}, context = {}) {
             this._initAnimationPlugin();
 
             // 1. Target Resolution
@@ -294,7 +298,7 @@ export const EUIXAnimationPlugin = {
                     message: `Animation target not found: '${target}'`,
                     code: "ANIMATION_TARGET_NOT_FOUND",
                     originatingAction: "ANIMATE",
-                    component: context._componentName
+                    component: context._componentName,
                 });
                 this.reportError(err, "Animation Execution");
                 return Promise.reject(err);
@@ -311,7 +315,7 @@ export const EUIXAnimationPlugin = {
                         message: `Unknown animation definition or preset: '${keyframesOrName}'`,
                         code: "ANIMATION_CONFIG_ERROR",
                         originatingAction: "ANIMATE",
-                        component: context._componentName
+                        component: context._componentName,
                     });
                     this.reportError(err, "Animation Configuration");
                     return Promise.reject(err);
@@ -322,7 +326,7 @@ export const EUIXAnimationPlugin = {
                     easing: namedDef.easing,
                     fill: namedDef.fill,
                     iterations: namedDef.iterations,
-                    ...options
+                    ...options,
                 };
             } else if (Array.isArray(keyframesOrName)) {
                 keyframes = keyframesOrName;
@@ -341,10 +345,10 @@ export const EUIXAnimationPlugin = {
             const commit = animOptions.commit === true || animOptions.commit === "true";
             const interruptPolicy = animOptions.interrupt || animOptions.on_interrupt || "cancel";
 
-            if (isNaN(duration) || duration < 0) {
+            if (Number.isNaN(duration) || duration < 0) {
                 const err = new EUIXStructuredError({
                     message: `Invalid animation duration: '${animOptions.duration}'`,
-                    code: "ANIMATION_CONFIG_ERROR"
+                    code: "ANIMATION_CONFIG_ERROR",
                 });
                 this.reportError(err, "Animation Configuration");
                 return Promise.reject(err);
@@ -360,9 +364,17 @@ export const EUIXAnimationPlugin = {
             if (this._activeAnimations.has(targetEl)) {
                 const active = this._activeAnimations.get(targetEl);
                 if (interruptPolicy === "finish" && active.animation && typeof active.animation.finish === "function") {
-                    try { active.animation.finish(); } catch (_) {}
-                } else if (interruptPolicy === "cancel" && active.animation && typeof active.animation.cancel === "function") {
-                    try { active.animation.cancel(); } catch (_) {}
+                    try {
+                        active.animation.finish();
+                    } catch (_) {}
+                } else if (
+                    interruptPolicy === "cancel" &&
+                    active.animation &&
+                    typeof active.animation.cancel === "function"
+                ) {
+                    try {
+                        active.animation.cancel();
+                    } catch (_) {}
                 }
                 this._activeAnimations.delete(targetEl);
             }
@@ -374,7 +386,7 @@ export const EUIXAnimationPlugin = {
                     easing,
                     fill,
                     iterations: iterations === "infinite" ? Infinity : parseFloat(iterations),
-                    direction
+                    direction,
                 };
 
                 let animation;
@@ -384,7 +396,7 @@ export const EUIXAnimationPlugin = {
                     } catch (err) {
                         const structured = EUIXStructuredError.from(err, {
                             code: "ANIMATION_EXECUTION_ERROR",
-                            originatingAction: "ANIMATE"
+                            originatingAction: "ANIMATE",
                         });
                         this.reportError(structured, "Web Animations API Call");
                         return reject(structured);
@@ -396,27 +408,43 @@ export const EUIXAnimationPlugin = {
                     animation = {
                         onfinish: null,
                         oncancel: null,
-                        cancel: function() { if (this.oncancel) this.oncancel(); },
-                        finish: function() { if (this.onfinish) this.onfinish(); },
-                        commitStyles: function() {}
+                        cancel: function () {
+                            if (this.oncancel) this.oncancel();
+                        },
+                        finish: function () {
+                            if (this.onfinish) this.onfinish();
+                        },
+                        commitStyles: () => {},
                     };
-                    setTimeout(() => {
-                        if (commit && keyframes.length > 0) {
-                            const finalKf = keyframes[keyframes.length - 1];
-                            Object.assign(targetEl.style, finalKf);
-                        }
-                        if (animation.onfinish) animation.onfinish();
-                    }, Math.max(0, duration));
-                } else {
-                    const isJSDOM = typeof window !== "undefined" && window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes("jsdom");
-                    if (isJSDOM) {
-                        let timerId = setTimeout(() => {
-                            if (animation && typeof animation.onfinish === "function") {
-                                try { animation.onfinish(); } catch (_) {}
+                    setTimeout(
+                        () => {
+                            if (commit && keyframes.length > 0) {
+                                const finalKf = keyframes[keyframes.length - 1];
+                                Object.assign(targetEl.style, finalKf);
                             }
-                        }, Math.max(10, duration + delay));
+                            if (animation.onfinish) animation.onfinish();
+                        },
+                        Math.max(0, duration),
+                    );
+                } else {
+                    const isJSDOM =
+                        typeof window !== "undefined" &&
+                        window.navigator &&
+                        window.navigator.userAgent &&
+                        window.navigator.userAgent.includes("jsdom");
+                    if (isJSDOM) {
+                        const timerId = setTimeout(
+                            () => {
+                                if (animation && typeof animation.onfinish === "function") {
+                                    try {
+                                        animation.onfinish();
+                                    } catch (_) {}
+                                }
+                            },
+                            Math.max(10, duration + delay),
+                        );
                         const origCancel = animation.cancel;
-                        animation.cancel = function() {
+                        animation.cancel = function () {
                             clearTimeout(timerId);
                             if (typeof origCancel === "function") origCancel.call(animation);
                             if (this.oncancel) this.oncancel();
@@ -432,23 +460,27 @@ export const EUIXAnimationPlugin = {
                         target: targetEl.tagName,
                         duration,
                         easing,
-                        keyframesCount: keyframes.length
+                        keyframesCount: keyframes.length,
                     });
                 }
 
                 // Cancellation Controller Signal Tracking
                 let isCancelledBySignal = false;
-                const signal = context._cancellationSignal || (this._currentActionContext && this._currentActionContext._cancellationSignal);
+                const signal =
+                    context._cancellationSignal ||
+                    (this._currentActionContext && this._currentActionContext._cancellationSignal);
                 let unbindSignal = null;
                 if (signal) {
                     unbindSignal = signal.onCancel((reason) => {
                         isCancelledBySignal = true;
-                        try { animation.cancel(); } catch (_) {}
+                        try {
+                            animation.cancel();
+                        } catch (_) {}
                         this._activeAnimations.delete(targetEl);
                         const cancelErr = new EUIXStructuredError({
-                            message: `Animation cancelled: ${reason || 'Signal aborted'}`,
+                            message: `Animation cancelled: ${reason || "Signal aborted"}`,
                             code: "ANIMATION_CANCELLED",
-                            originatingAction: "ANIMATE"
+                            originatingAction: "ANIMATE",
                         });
                         reject(cancelErr);
                     });
@@ -460,7 +492,9 @@ export const EUIXAnimationPlugin = {
                     this._activeAnimations.delete(targetEl);
 
                     if (commit && typeof animation.commitStyles === "function") {
-                        try { animation.commitStyles(); } catch (_) {}
+                        try {
+                            animation.commitStyles();
+                        } catch (_) {}
                     }
 
                     if (this._devtools && this._devtools.enabled) {
@@ -479,38 +513,50 @@ export const EUIXAnimationPlugin = {
         };
 
         // Declarative Action Handler for <animate> / <transition> tags
-        proto._handleAnimateAction = function(actionNode, context = {}) {
-            const targetAttr = actionNode.getAttribute("target") || actionNode.getAttribute("for") || actionNode.getAttribute("element");
+        proto._handleAnimateAction = function (actionNode, context = {}) {
+            const targetAttr =
+                actionNode.getAttribute("target") ||
+                actionNode.getAttribute("for") ||
+                actionNode.getAttribute("element");
             const targetNode = this.getChild(actionNode, "target");
-            const target = targetNode ? targetNode.textContent.trim() : (targetAttr || context._targetEl);
+            const target = targetNode ? targetNode.textContent.trim() : targetAttr || context._targetEl;
 
-            const nameAttr = actionNode.getAttribute("name") || actionNode.getAttribute("preset") || actionNode.getAttribute("type");
+            const nameAttr =
+                actionNode.getAttribute("name") || actionNode.getAttribute("preset") || actionNode.getAttribute("type");
             const nameNode = this.getChild(actionNode, "name") || this.getChild(actionNode, "preset");
             const name = nameNode ? nameNode.textContent.trim() : nameAttr;
 
-            const durationAttr = actionNode.getAttribute("duration") || this.getChild(actionNode, "duration")?.textContent.trim();
-            const delayAttr = actionNode.getAttribute("delay") || this.getChild(actionNode, "delay")?.textContent.trim();
-            const easingAttr = actionNode.getAttribute("easing") || this.getChild(actionNode, "easing")?.textContent.trim();
+            const durationAttr =
+                actionNode.getAttribute("duration") || this.getChild(actionNode, "duration")?.textContent.trim();
+            const delayAttr =
+                actionNode.getAttribute("delay") || this.getChild(actionNode, "delay")?.textContent.trim();
+            const easingAttr =
+                actionNode.getAttribute("easing") || this.getChild(actionNode, "easing")?.textContent.trim();
             const fillAttr = actionNode.getAttribute("fill") || this.getChild(actionNode, "fill")?.textContent.trim();
 
-            const keyframeNodes = Array.from(actionNode.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === "keyframe");
+            const keyframeNodes = Array.from(actionNode.children || []).filter(
+                (c) => c.tagName && c.tagName.toLowerCase() === "keyframe",
+            );
             let keyframes = null;
 
             if (keyframeNodes.length > 0) {
-                keyframes = keyframeNodes.map(kf => {
+                keyframes = keyframeNodes.map((kf) => {
                     const kfObj = {};
                     const offsetAttr = kf.getAttribute("offset");
                     if (offsetAttr !== null) kfObj.offset = parseFloat(offsetAttr);
 
-                    const propNodes = Array.from(kf.children || []).filter(c => c.tagName && (c.tagName.toLowerCase() === "property" || c.tagName.toLowerCase() === "prop"));
+                    const propNodes = Array.from(kf.children || []).filter(
+                        (c) =>
+                            c.tagName && (c.tagName.toLowerCase() === "property" || c.tagName.toLowerCase() === "prop"),
+                    );
                     if (propNodes.length > 0) {
-                        propNodes.forEach(p => {
+                        propNodes.forEach((p) => {
                             const propName = p.getAttribute("name") || p.getAttribute("key");
                             const propVal = p.textContent.trim() || p.getAttribute("value");
                             if (propName) kfObj[propName] = this.interpolate(propVal, context);
                         });
                     } else {
-                        Array.from(kf.attributes || []).forEach(attr => {
+                        Array.from(kf.attributes || []).forEach((attr) => {
                             if (attr.name !== "offset") kfObj[attr.name] = this.interpolate(attr.value, context);
                         });
                     }
@@ -522,14 +568,14 @@ export const EUIXAnimationPlugin = {
                 duration: durationAttr ? this.interpolate(durationAttr, context) : undefined,
                 delay: delayAttr ? this.interpolate(delayAttr, context) : undefined,
                 easing: easingAttr ? this.interpolate(easingAttr, context) : undefined,
-                fill: fillAttr ? this.interpolate(fillAttr, context) : undefined
+                fill: fillAttr ? this.interpolate(fillAttr, context) : undefined,
             };
 
             return this.animate(target, keyframes || name, options, context);
         };
 
         // Lifecycle Leave Transition Hook for Deferred Removal
-        proto._runLeaveTransitionThenRemove = function(element, callback) {
+        proto._runLeaveTransitionThenRemove = function (element, callback) {
             if (!element || element.nodeType !== 1) {
                 callback?.();
                 return;
@@ -537,7 +583,12 @@ export const EUIXAnimationPlugin = {
 
             const findTargetWithLeave = (node) => {
                 if (!node || node.nodeType !== 1) return null;
-                if (node.getAttribute && (node.getAttribute("leave_animation") || node.getAttribute("on_leave_preset") || node.getAttribute("on_leave"))) {
+                if (
+                    node.getAttribute &&
+                    (node.getAttribute("leave_animation") ||
+                        node.getAttribute("on_leave_preset") ||
+                        node.getAttribute("on_leave"))
+                ) {
                     return node;
                 }
                 if (node.querySelector) {
@@ -554,8 +605,17 @@ export const EUIXAnimationPlugin = {
                 return;
             }
 
-            const leaveAnimName = targetEl.getAttribute ? (targetEl.getAttribute("leave_animation") || targetEl.getAttribute("on_leave_preset") || targetEl.getAttribute("on_leave")) : null;
-            const onLeaveChild = (targetEl.tagName && targetEl.tagName.toLowerCase() === "on_leave") ? targetEl : (targetEl.querySelector ? targetEl.querySelector("on_leave") : null);
+            const leaveAnimName = targetEl.getAttribute
+                ? targetEl.getAttribute("leave_animation") ||
+                  targetEl.getAttribute("on_leave_preset") ||
+                  targetEl.getAttribute("on_leave")
+                : null;
+            const onLeaveChild =
+                targetEl.tagName && targetEl.tagName.toLowerCase() === "on_leave"
+                    ? targetEl
+                    : targetEl.querySelector
+                      ? targetEl.querySelector("on_leave")
+                      : null;
 
             let animPromise;
             if (onLeaveChild) {
@@ -573,13 +633,13 @@ export const EUIXAnimationPlugin = {
             }
         };
 
-function safeCancelAnimation(record) {
-    try {
-        record?.animation?.cancel?.();
-    } catch (_) {}
-}
+        function safeCancelAnimation(record) {
+            try {
+                record?.animation?.cancel?.();
+            } catch (_) {}
+        }
 
-        proto.disposeComponentAnimations = function(componentNameOrEl) {
+        proto.disposeComponentAnimations = function (componentNameOrEl) {
             if (!this._activeAnimations) return;
             if (componentNameOrEl && componentNameOrEl.nodeType === 1) {
                 if (this._activeAnimations.has(componentNameOrEl)) {
@@ -593,7 +653,7 @@ function safeCancelAnimation(record) {
                 this._activeAnimations.delete(el);
             }
         };
-    }
+    },
 };
 
 export default EUIXAnimationPlugin;

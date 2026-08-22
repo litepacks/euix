@@ -3,8 +3,8 @@
  * Browser, Hash, and Memory History implementations for EUIX Web Router.
  */
 
-import { parsePath, createPath, normalizePath } from "./utils.js";
-import { createLocation, createKey } from "./location.js";
+import { createKey, createLocation } from "./location.js";
+import { createPath, normalizePath, parsePath } from "./utils.js";
 
 /**
  * Base History abstraction managing listeners.
@@ -23,7 +23,7 @@ class BaseHistory {
 
     notify(location, action) {
         this.action = action;
-        this.listeners.forEach(fn => {
+        this.listeners.forEach((fn) => {
             try {
                 fn({ location, action });
             } catch (err) {
@@ -37,7 +37,7 @@ class BaseHistory {
             return pathname || "/";
         }
         const stripped = pathname.slice(this.base.length);
-        return stripped.startsWith("/") ? stripped : "/" + stripped;
+        return stripped.startsWith("/") ? stripped : `/${stripped}`;
     }
 
     prependBase(pathname) {
@@ -77,7 +77,7 @@ export class BrowserHistory extends BaseHistory {
             search,
             hash,
             state: state?._usr !== undefined ? state._usr : state,
-            key: state?._key || createKey()
+            key: state?._key || createKey(),
         });
     }
 
@@ -158,14 +158,14 @@ export class HashHistory extends BaseHistory {
             search: parsed.search,
             hash: parsed.hash,
             state: null,
-            key: createKey()
+            key: createKey(),
         });
     }
 
     createHref(to) {
         const path = typeof to === "string" ? to : createPath(to);
         const fullPath = this.prependBase(path);
-        return "#" + (fullPath.startsWith("/") ? fullPath : "/" + fullPath);
+        return `#${fullPath.startsWith("/") ? fullPath : `/${fullPath}`}`;
     }
 
     _handleHashChange() {
@@ -183,7 +183,7 @@ export class HashHistory extends BaseHistory {
 
         if (typeof window !== "undefined") {
             this._ignoreHashChange = true;
-            window.location.hash = fullPath.startsWith("/") ? fullPath : "/" + fullPath;
+            window.location.hash = fullPath.startsWith("/") ? fullPath : `/${fullPath}`;
         }
         this.notify(nextLoc, "PUSH");
     }
@@ -195,7 +195,7 @@ export class HashHistory extends BaseHistory {
         if (typeof window !== "undefined") {
             this._ignoreHashChange = true;
             const url = new URL(window.location.href);
-            url.hash = fullPath.startsWith("/") ? fullPath : "/" + fullPath;
+            url.hash = fullPath.startsWith("/") ? fullPath : `/${fullPath}`;
             window.location.replace(url.href);
         }
         this.notify(nextLoc, "REPLACE");
@@ -229,7 +229,7 @@ export class HashHistory extends BaseHistory {
 export class MemoryHistory extends BaseHistory {
     constructor({ base = "/", initialEntries = ["/"], initialIndex = 0 } = {}) {
         super(base);
-        this.entries = initialEntries.map(entry => createLocation(entry));
+        this.entries = initialEntries.map((entry) => createLocation(entry));
         this.index = Math.min(Math.max(0, initialIndex), this.entries.length - 1);
     }
 
@@ -274,8 +274,8 @@ export class MemoryHistory extends BaseHistory {
 
 /**
  * Factory to instantiate the appropriate history instance.
- * 
- * @param {{ mode?: 'history'|'hash'|'memory', base?: string, initialEntries?: string[], initialIndex?: number }} options 
+ *
+ * @param {{ mode?: 'history'|'hash'|'memory', base?: string, initialEntries?: string[], initialIndex?: number }} options
  * @returns {BrowserHistory | HashHistory | MemoryHistory}
  */
 export function createHistory(options = {}) {

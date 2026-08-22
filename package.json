@@ -127,7 +127,10 @@
     "test:mutation": "stryker run",
     "test:package": "node scripts/validate-package.js",
     "verify:release": "node scripts/verify-release.js",
-    "bench": "vitest bench"
+    "bench": "vitest bench",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "format": "biome format --write src"
   },
   "keywords": [
     "euix",
@@ -147,6 +150,7 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "^2.5.10",
     "@playwright/test": "^1.62.1",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",

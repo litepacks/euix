@@ -70,14 +70,16 @@ export class NavigationBlockerManager extends EventTarget {
 
         if (isBlocked) {
             this.state = "blocked";
-            this.dispatchEvent(new CustomEvent("blocked", {
-                detail: {
-                    ...navigationDetails,
-                    message,
-                    proceed: () => this.proceed(navigationDetails),
-                    cancel: () => this.cancel()
-                }
-            }));
+            this.dispatchEvent(
+                new CustomEvent("blocked", {
+                    detail: {
+                        ...navigationDetails,
+                        message,
+                        proceed: () => this.proceed(navigationDetails),
+                        cancel: () => this.cancel(),
+                    },
+                }),
+            );
 
             if (typeof window !== "undefined" && typeof window.confirm === "function") {
                 const confirmed = window.confirm(message);

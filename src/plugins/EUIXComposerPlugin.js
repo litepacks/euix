@@ -3,8 +3,6 @@
  * Action Composer Subroutines & Workflow System Plugin for EUIX Engine.
  */
 
-import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
-
 const EMPTY_OBJ = Object.freeze({});
 const EMPTY_ARR = Object.freeze([]);
 
@@ -29,7 +27,7 @@ export class EUIXActionContext {
         this.params = this.args;
         this.engine = engine;
         this.parent = parent || null;
-        this.depth = parent ? (parent.depth + 1) : 1;
+        this.depth = parent ? parent.depth + 1 : 1;
         this.callChain = new Set(parent ? parent.callChain : EMPTY_ARR);
         if (name) this.callChain.add(name);
 
@@ -60,21 +58,29 @@ export class EUIXActionValidator {
         // Recursion loop detection via callChain
         if (context.parent && context.parent.callChain.has(actionDef.name)) {
             const chainStr = Array.from(context.parent.callChain).concat(actionDef.name).join(" -> ");
-            throw new EUIXActionRecursionError(`[EUIX Action Composer] Circular action recursion detected: ${chainStr}`);
+            throw new EUIXActionRecursionError(
+                `[EUIX Action Composer] Circular action recursion detected: ${chainStr}`,
+            );
         }
 
         // Recursion depth limit guard
         if (context.depth > (engine?._maxActionDepth || 25)) {
-            throw new EUIXActionRecursionError(`[EUIX Action Composer] Maximum action recursion depth (${engine?._maxActionDepth || 25}) exceeded for action <${actionDef.name}>`);
+            throw new EUIXActionRecursionError(
+                `[EUIX Action Composer] Maximum action recursion depth (${engine?._maxActionDepth || 25}) exceeded for action <${actionDef.name}>`,
+            );
         }
 
         // Parameter requirements validation
-        const req = actionDef._requiredParams || (Array.isArray(actionDef.params) ? actionDef.params.filter(p => p.required) : EMPTY_ARR);
+        const req =
+            actionDef._requiredParams ||
+            (Array.isArray(actionDef.params) ? actionDef.params.filter((p) => p.required) : EMPTY_ARR);
         for (let i = 0; i < req.length; i++) {
             const param = req[i];
             const val = args[param.name];
             if (val === undefined || val === null || val === "") {
-                throw new EUIXActionValidationError(`[EUIX Action Composer] Missing required argument '${param.name}' for action '${actionDef.name}'`);
+                throw new EUIXActionValidationError(
+                    `[EUIX Action Composer] Missing required argument '${param.name}' for action '${actionDef.name}'`,
+                );
             }
         }
     }
@@ -100,8 +106,8 @@ export class EUIXActionRegistry {
                 steps: xmlNodeOrObj.steps || EMPTY_ARR,
                 returnExpr: xmlNodeOrObj.returnExpr || "",
                 rawNode: xmlNodeOrObj.rawNode || null,
-                _requiredParams: Array.isArray(p) ? p.filter(item => item.required) : EMPTY_ARR,
-                _defaultParams: Array.isArray(p) ? p.filter(item => item.default !== undefined) : EMPTY_ARR
+                _requiredParams: Array.isArray(p) ? p.filter((item) => item.required) : EMPTY_ARR,
+                _defaultParams: Array.isArray(p) ? p.filter((item) => item.default !== undefined) : EMPTY_ARR,
             };
         } else {
             return null;
@@ -134,37 +140,55 @@ export class EUIXActionRegistry {
         let returnExpr = "";
 
         const paramNodes = Array.from(xmlNode.querySelectorAll("param, arg_def, parameter"));
-        paramNodes.forEach(pNode => {
+        paramNodes.forEach((pNode) => {
             const pName = pNode.getAttribute("name") || pNode.getAttribute("id");
             if (pName) {
-                const defaultVal = pNode.getAttribute("default") || pNode.getAttribute("value") || pNode.textContent.trim() || undefined;
+                const defaultVal =
+                    pNode.getAttribute("default") ||
+                    pNode.getAttribute("value") ||
+                    pNode.textContent.trim() ||
+                    undefined;
                 const required = pNode.getAttribute("required") === "true" || pNode.hasAttribute("required");
                 const type = pNode.getAttribute("type") || "string";
                 params.push({ name: pName, default: defaultVal, required, type });
             }
         });
 
-        const returnNode = Array.from(xmlNode.childNodes).find(n => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && n.tagName && n.tagName.toLowerCase() === "return");
+        const returnNode = Array.from(xmlNode.childNodes).find(
+            (n) =>
+                n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
+                n.tagName &&
+                n.tagName.toLowerCase() === "return",
+        );
         if (returnNode) {
-            returnExpr = returnNode.textContent.trim() || returnNode.getAttribute("value") || returnNode.getAttribute("expr") || "";
+            returnExpr =
+                returnNode.textContent.trim() ||
+                returnNode.getAttribute("value") ||
+                returnNode.getAttribute("expr") ||
+                "";
         }
 
-        const childNodes = Array.from(xmlNode.childNodes).filter(n => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1));
-        childNodes.forEach(child => {
+        const childNodes = Array.from(xmlNode.childNodes).filter(
+            (n) => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1),
+        );
+        childNodes.forEach((child) => {
             const tag = child.tagName ? child.tagName.toLowerCase() : "";
             if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
             child._cachedTag = tag;
             if (tag === "if") {
                 child._cachedCond = child.getAttribute("condition") || child.getAttribute("test") || null;
                 const innerElse = child.querySelector ? child.querySelector("else") : null;
-                const nextElse = (child.nextElementSibling && child.nextElementSibling.tagName?.toLowerCase() === "else") ? child.nextElementSibling : null;
+                const nextElse =
+                    child.nextElementSibling && child.nextElementSibling.tagName?.toLowerCase() === "else"
+                        ? child.nextElementSibling
+                        : null;
                 child._cachedElseNode = innerElse || nextElse || null;
             }
             steps.push(child);
         });
 
-        const requiredParams = params.filter(p => p.required);
-        const defaultParams = params.filter(p => p.default !== undefined);
+        const requiredParams = params.filter((p) => p.required);
+        const defaultParams = params.filter((p) => p.default !== undefined);
 
         return {
             name,
@@ -173,21 +197,21 @@ export class EUIXActionRegistry {
             returnExpr,
             rawNode: xmlNode,
             _requiredParams: requiredParams.length > 0 ? requiredParams : EMPTY_ARR,
-            _defaultParams: defaultParams.length > 0 ? defaultParams : EMPTY_ARR
+            _defaultParams: defaultParams.length > 0 ? defaultParams : EMPTY_ARR,
         };
     }
 }
 
 export class EUIXActionComposer {
     static async execute(actionDef, rawArgs = EMPTY_OBJ, engine = null, parentEventContext = EMPTY_OBJ) {
-        const startTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+        const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
 
         // 1. Resolve arguments in caller context & apply param defaults
         const evaluatedArgs = {};
         const callerContext = parentEventContext instanceof EUIXActionContext ? parentEventContext : parentEventContext;
 
         if (Array.isArray(actionDef.params)) {
-            actionDef.params.forEach(p => {
+            actionDef.params.forEach((p) => {
                 let val = rawArgs[p.name];
                 if (val === undefined && p.default !== undefined) {
                     val = engine ? engine.interpolate(String(p.default), callerContext) : p.default;
@@ -199,21 +223,24 @@ export class EUIXActionComposer {
             });
         }
 
-        Object.keys(rawArgs).forEach(k => {
+        Object.keys(rawArgs).forEach((k) => {
             if (evaluatedArgs[k] === undefined) {
                 const val = rawArgs[k];
-                evaluatedArgs[k] = (typeof val === "string" && engine) ? engine.interpolate(val, callerContext) : val;
+                evaluatedArgs[k] = typeof val === "string" && engine ? engine.interpolate(val, callerContext) : val;
             }
         });
 
         // 2. Build invocation context
-        const parentActionContext = parentEventContext instanceof EUIXActionContext ? parentEventContext : (parentEventContext._actionCtx || null);
+        const parentActionContext =
+            parentEventContext instanceof EUIXActionContext
+                ? parentEventContext
+                : parentEventContext._actionCtx || null;
         const invocationCtx = new EUIXActionContext({
             name: actionDef.name,
             args: evaluatedArgs,
             engine,
             parent: parentActionContext,
-            eventContext: parentEventContext
+            eventContext: parentEventContext,
         });
 
         const mergedContext = {
@@ -221,7 +248,7 @@ export class EUIXActionComposer {
             args: invocationCtx.args,
             params: invocationCtx.args,
             result: invocationCtx.result,
-            _actionCtx: invocationCtx
+            _actionCtx: invocationCtx,
         };
 
         // 3. Validation
@@ -240,7 +267,8 @@ export class EUIXActionComposer {
             for (let sIdx = 0; sIdx < stepLen; sIdx++) {
                 const step = steps[sIdx];
                 mergedContext.result = invocationCtx.result;
-                const tag = step._cachedTag !== undefined ? step._cachedTag : (step.tagName ? step.tagName.toLowerCase() : "");
+                const tag =
+                    step._cachedTag !== undefined ? step._cachedTag : step.tagName ? step.tagName.toLowerCase() : "";
 
                 if (tag === "else") {
                     if (skipNextElse) {
@@ -253,7 +281,10 @@ export class EUIXActionComposer {
                 }
 
                 if (tag === "if") {
-                    const cond = step._cachedCond !== undefined ? step._cachedCond : (step.getAttribute("condition") || step.getAttribute("test"));
+                    const cond =
+                        step._cachedCond !== undefined
+                            ? step._cachedCond
+                            : step.getAttribute("condition") || step.getAttribute("test");
                     const isTrue = !cond || !engine || engine.evalCondition(cond, mergedContext);
 
                     if (isTrue) {
@@ -262,7 +293,13 @@ export class EUIXActionComposer {
                         if (res !== undefined) invocationCtx.result = res;
                     } else {
                         skipNextElse = false;
-                        const elseNode = step._cachedElseNode !== undefined ? step._cachedElseNode : (engine.getChild(step, "else") || (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else" ? step.nextElementSibling : null));
+                        const elseNode =
+                            step._cachedElseNode !== undefined
+                                ? step._cachedElseNode
+                                : engine.getChild(step, "else") ||
+                                  (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else"
+                                      ? step.nextElementSibling
+                                      : null);
                         if (elseNode) {
                             const elseRes = await engine._handleActionInternal(elseNode, mergedContext);
                             if (elseRes !== undefined) invocationCtx.result = elseRes;
@@ -303,7 +340,7 @@ export class EUIXActionComposer {
         } finally {
             if (engine) engine._currentActionContext = prevContext;
 
-            const endTime = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+            const endTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
             const durationMs = Math.round((endTime - startTime) * 100) / 100;
 
             if (typeof window !== "undefined" && typeof window.__EUIX_DEVTOOLS_LOG_ACTION__ === "function") {
@@ -316,7 +353,7 @@ export class EUIXActionComposer {
                         result: invocationCtx.result,
                         durationMs,
                         error: executionError ? executionError.message : null,
-                        depth: invocationCtx.depth
+                        depth: invocationCtx.depth,
                     });
                 } catch (_) {}
             }
@@ -325,12 +362,16 @@ export class EUIXActionComposer {
                 try {
                     engine._devtools.logAction("ActionComposer", {
                         name: actionDef.name,
-                        caller: parentActionContext ? parentActionContext.name : (invocationCtx._targetEl ? invocationCtx._targetEl.tagName : "engine"),
+                        caller: parentActionContext
+                            ? parentActionContext.name
+                            : invocationCtx._targetEl
+                              ? invocationCtx._targetEl.tagName
+                              : "engine",
                         args: invocationCtx.args,
                         result: invocationCtx.result,
                         durationMs,
                         error: executionError ? executionError.message : null,
-                        depth: invocationCtx.depth
+                        depth: invocationCtx.depth,
                     });
                 } catch (_) {}
             }
@@ -347,28 +388,30 @@ export const EUIXComposerPlugin = {
             engineClass._globalActionRegistry = new EUIXActionRegistry();
         }
 
-        engineClass.registerActionDef = function(name, xmlNodeOrObj) {
+        engineClass.registerActionDef = (name, xmlNodeOrObj) => {
             if (!engineClass._globalActionRegistry) engineClass._globalActionRegistry = new EUIXActionRegistry();
             return engineClass._globalActionRegistry.register(name, xmlNodeOrObj);
         };
 
         const proto = engineClass.prototype || engineClass;
 
-        proto.registerActionDef = function(name, xmlNodeOrObj) {
+        proto.registerActionDef = function (name, xmlNodeOrObj) {
             if (!this._actionRegistry) this._actionRegistry = new EUIXActionRegistry();
             const def = this._actionRegistry.register(name, xmlNodeOrObj);
             engineClass.registerActionDef(name, xmlNodeOrObj);
             return def;
         };
 
-        proto.hasActionDef = function(name) {
+        proto.hasActionDef = function (name) {
             if (!name) return false;
             const normalized = String(name).trim();
-            return (this._actionRegistry && this._actionRegistry.has(normalized)) ||
-                (engineClass._globalActionRegistry && engineClass._globalActionRegistry.has(normalized));
+            return (
+                (this._actionRegistry && this._actionRegistry.has(normalized)) ||
+                (engineClass._globalActionRegistry && engineClass._globalActionRegistry.has(normalized))
+            );
         };
 
-        proto.getActionDef = function(name) {
+        proto.getActionDef = function (name) {
             if (!name) return undefined;
             const normalized = String(name).trim();
             if (this._actionRegistry && this._actionRegistry.has(normalized)) {
@@ -380,26 +423,27 @@ export const EUIXComposerPlugin = {
             return undefined;
         };
 
-        proto.executeAction = async function(actionName, args = {}, context = {}) {
+        proto.executeAction = async function (actionName, args = {}, context = {}) {
             const actionDef = this.getActionDef(actionName);
             if (!actionDef) {
                 const err = new EUIXActionValidationError(`[EUIX Action Composer] Unknown action: '${actionName}'`);
                 this.reportError(err, "Action Execution");
                 throw err;
             }
-            const effectiveCtx = (context && (context instanceof EUIXActionContext || context._actionCtx))
-                ? context
-                : (this._currentActionContext || context);
+            const effectiveCtx =
+                context && (context instanceof EUIXActionContext || context._actionCtx)
+                    ? context
+                    : this._currentActionContext || context;
             return await EUIXActionComposer.execute(actionDef, args, this, effectiveCtx);
         };
 
-        proto.initActionRegistry = function() {
+        proto.initActionRegistry = function () {
             if (!this._actionRegistry) this._actionRegistry = new EUIXActionRegistry();
             if (!engineClass._globalActionRegistry) engineClass._globalActionRegistry = new EUIXActionRegistry();
 
             if (!this.xmlDoc) return;
             const actionDefNodes = Array.from(this.xmlDoc.querySelectorAll("action_def, workflow_def"));
-            actionDefNodes.forEach(node => {
+            actionDefNodes.forEach((node) => {
                 const name = node.getAttribute("name") || node.getAttribute("id");
                 if (name) {
                     this._actionRegistry.register(name, node);
@@ -412,7 +456,7 @@ export const EUIXComposerPlugin = {
             const args = {};
 
             if (actionNode.attributes) {
-                Array.from(actionNode.attributes).forEach(attr => {
+                Array.from(actionNode.attributes).forEach((attr) => {
                     const attrName = attr.name;
                     if (["action", "name", "action_name", "class", "id", "target"].includes(attrName)) return;
 
@@ -420,35 +464,63 @@ export const EUIXComposerPlugin = {
                     if (key.startsWith("arg-") || key.startsWith("param-")) {
                         key = key.slice(4);
                     }
-                    args[key] = (engine && typeof engine.interpolate === "function") ? engine.interpolate(attr.value, context) : attr.value;
+                    args[key] =
+                        engine && typeof engine.interpolate === "function"
+                            ? engine.interpolate(attr.value, context)
+                            : attr.value;
                 });
             }
 
             const argNodes = [
-                ...(engine && typeof engine.getChildren === "function" ? engine.getChildren(actionNode, "arg") : Array.from(actionNode.querySelectorAll ? actionNode.querySelectorAll("arg") : actionNode.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === "arg")),
-                ...(engine && typeof engine.getChildren === "function" ? engine.getChildren(actionNode, "param") : Array.from(actionNode.querySelectorAll ? actionNode.querySelectorAll("param") : actionNode.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === "param")),
-                ...(engine && typeof engine.getChildren === "function" ? engine.getChildren(actionNode, "argument") : Array.from(actionNode.querySelectorAll ? actionNode.querySelectorAll("argument") : actionNode.children || []).filter(c => c.tagName && c.tagName.toLowerCase() === "argument"))
+                ...(engine && typeof engine.getChildren === "function"
+                    ? engine.getChildren(actionNode, "arg")
+                    : Array.from(
+                          actionNode.querySelectorAll ? actionNode.querySelectorAll("arg") : actionNode.children || [],
+                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "arg")),
+                ...(engine && typeof engine.getChildren === "function"
+                    ? engine.getChildren(actionNode, "param")
+                    : Array.from(
+                          actionNode.querySelectorAll
+                              ? actionNode.querySelectorAll("param")
+                              : actionNode.children || [],
+                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "param")),
+                ...(engine && typeof engine.getChildren === "function"
+                    ? engine.getChildren(actionNode, "argument")
+                    : Array.from(
+                          actionNode.querySelectorAll
+                              ? actionNode.querySelectorAll("argument")
+                              : actionNode.children || [],
+                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "argument")),
             ];
 
-            argNodes.forEach(node => {
+            argNodes.forEach((node) => {
                 const name = node.getAttribute("name") || node.getAttribute("id");
                 if (name) {
                     const rawVal = node.getAttribute("value") || node.getAttribute("expr") || node.textContent.trim();
-                    args[name] = (engine && typeof engine.interpolate === "function") ? engine.interpolate(rawVal, context) : rawVal;
+                    args[name] =
+                        engine && typeof engine.interpolate === "function"
+                            ? engine.interpolate(rawVal, context)
+                            : rawVal;
                 }
             });
 
             return args;
         };
 
-        proto._extractActionArgs = function(actionNode, context = {}) {
+        proto._extractActionArgs = function (actionNode, context = {}) {
             return extractActionArgs(this, actionNode, context);
         };
 
-        const handleComposerCall = async function(actionNode, context) {
-            const actionName = actionNode.getAttribute("name") || actionNode.getAttribute("action_name") || actionNode.getAttribute("target") || (this.getChild && this.getChild(actionNode, "name")?.textContent.trim());
+        const handleComposerCall = async function (actionNode, context) {
+            const actionName =
+                actionNode.getAttribute("name") ||
+                actionNode.getAttribute("action_name") ||
+                actionNode.getAttribute("target") ||
+                (this.getChild && this.getChild(actionNode, "name")?.textContent.trim());
             if (!actionName) return;
-            const rawArgs = this._extractActionArgs ? this._extractActionArgs(actionNode, context) : extractActionArgs(this, actionNode, context);
+            const rawArgs = this._extractActionArgs
+                ? this._extractActionArgs(actionNode, context)
+                : extractActionArgs(this, actionNode, context);
             return this.executeAction(actionName, rawArgs, context);
         };
 
@@ -456,7 +528,7 @@ export const EUIXComposerPlugin = {
         engineClass.registerAction("CALL_ACTION", handleComposerCall);
         engineClass.registerAction("RUN_WORKFLOW", handleComposerCall);
         engineClass.registerAction("ACTION", handleComposerCall);
-    }
+    },
 };
 
 export default EUIXComposerPlugin;

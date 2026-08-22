@@ -36,7 +36,10 @@ export class EuixPlaywrightWrapper {
     constructor(pageOrLocator, scopeSelector = "") {
         this.context = pageOrLocator;
         this.scopeSelector = scopeSelector;
-        this.page = typeof pageOrLocator.evaluate === "function" && typeof pageOrLocator.locator === "function" ? pageOrLocator : pageOrLocator.page();
+        this.page =
+            typeof pageOrLocator.evaluate === "function" && typeof pageOrLocator.locator === "function"
+                ? pageOrLocator
+                : pageOrLocator.page();
     }
 
     /**
@@ -94,16 +97,19 @@ export class EuixPlaywrightWrapper {
         const timeout = options.timeout || 10000;
         const page = this.page;
 
-        await page.waitForFunction(() => {
-            const dev = window.__EUIX_DEVTOOLS__;
-            if (!dev) return true;
-            return (
-                (dev.pendingActions || 0) === 0 &&
-                (dev.pendingLoaders || 0) === 0 &&
-                (dev.pendingRevalidations || 0) === 0 &&
-                !dev.routeTransition
-            );
-        }, { timeout });
+        await page.waitForFunction(
+            () => {
+                const dev = window.__EUIX_DEVTOOLS__;
+                if (!dev) return true;
+                return (
+                    (dev.pendingActions || 0) === 0 &&
+                    (dev.pendingLoaders || 0) === 0 &&
+                    (dev.pendingRevalidations || 0) === 0 &&
+                    !dev.routeTransition
+                );
+            },
+            { timeout },
+        );
 
         return this;
     }
@@ -133,7 +139,7 @@ export class EuixPlaywrightWrapper {
                 component: el.dataset?.euixComponent || el.dataset?.xuiComponent || "Unknown",
                 tagName: el.tagName.toLowerCase(),
                 testId: el.getAttribute("data-euix-test") || el.getAttribute("test-id"),
-                action: el.getAttribute("data-euix-action") || el.getAttribute("action")
+                action: el.getAttribute("data-euix-action") || el.getAttribute("action"),
             };
         }, selector);
 

@@ -10,7 +10,11 @@ export class RouteDataCache {
     }
 
     _makeKey(routeId, pathname = "/", search = "") {
-        const normPath = pathname ? (pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname) : "/";
+        const normPath = pathname
+            ? pathname.length > 1 && pathname.endsWith("/")
+                ? pathname.slice(0, -1)
+                : pathname
+            : "/";
         const normSearch = search && search !== "?" ? search : "";
         return `${routeId}:${normPath}:${normSearch}`;
     }
@@ -36,7 +40,7 @@ export class RouteDataCache {
         this._entries.set(key, {
             data,
             timestamp: Date.now(),
-            stale: false
+            stale: false,
         });
     }
 

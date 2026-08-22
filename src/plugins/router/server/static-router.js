@@ -3,18 +3,17 @@
  * Headless Static Router for Server-Side Rendering (Node.js, Cloudflare, Deno, Bun).
  */
 
-import { RouteMatcher } from "../core/matcher.js";
 import { MemoryHistory } from "../core/history.js";
-import { createLocation } from "../core/location.js";
-import { RouteLoaderManager } from "../data/loader.js";
-import { RouteDataCache } from "../data/cache.js";
+import { RouteMatcher } from "../core/matcher.js";
 import { RouterRedirect } from "../core/navigation.js";
+import { RouteDataCache } from "../data/cache.js";
+import { RouteLoaderManager } from "../data/loader.js";
 import { serializeHydrationState } from "./hydration.js";
 
 /**
  * Creates and resolves a static router for SSR execution.
- * 
- * @param {object} options 
+ *
+ * @param {object} options
  * @returns {Promise<{ matches: Array, location: object, loaderData: Record<string, any>, errors: Record<string, any>, redirect?: string, html?: string, scriptTag: string }>}
  */
 export async function createStaticRouter({ url = "/", routes = [], request, context = {}, engine } = {}) {
@@ -44,7 +43,7 @@ export async function createStaticRouter({ url = "/", routes = [], request, cont
                     match,
                     location,
                     signal,
-                    context
+                    context,
                 });
                 match.data = data;
                 loaderData[match.id] = data;
@@ -56,7 +55,7 @@ export async function createStaticRouter({ url = "/", routes = [], request, cont
                 match.error = err;
                 errors[match.id] = {
                     message: err.message || String(err),
-                    status: err.status || 500
+                    status: err.status || 500,
                 };
             }
         }
@@ -64,9 +63,9 @@ export async function createStaticRouter({ url = "/", routes = [], request, cont
 
     const hydrationData = {
         location,
-        matches: matches.map(m => ({ id: m.id, pathname: m.pathname, params: m.params })),
+        matches: matches.map((m) => ({ id: m.id, pathname: m.pathname, params: m.params })),
         loaderData,
-        errors
+        errors,
     };
 
     return {
@@ -76,6 +75,6 @@ export async function createStaticRouter({ url = "/", routes = [], request, cont
         errors,
         redirect: redirectUrl,
         hydrationData,
-        scriptTag: serializeHydrationState(hydrationData)
+        scriptTag: serializeHydrationState(hydrationData),
     };
 }

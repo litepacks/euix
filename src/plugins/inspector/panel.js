@@ -3,8 +3,8 @@
  * Interactive DevTools Drawer & Inspector Panel UI for EUIX Inspector.
  */
 
+import { buildComponentTree, getElementMetadata } from "./metadata.js";
 import { generateSelectors } from "./selectors.js";
-import { getElementMetadata, buildComponentTree } from "./metadata.js";
 
 export class InspectorPanel {
     constructor(inspector) {
@@ -155,17 +155,21 @@ export class InspectorPanel {
             { id: "logs", label: `⚡ Actions (${this.inspector.actionLogs.length})` },
             { id: "state", label: "📊 State" },
             { id: "search", label: "🔎 Search" },
-            { id: "perf", label: "⚡ Perf" }
+            { id: "perf", label: "⚡ Perf" },
         ];
 
         this.panelEl.innerHTML = `
             <div style="background:#1e293b;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1);gap:6px;overflow-x:auto;">
                 <div style="display:flex;gap:4px;align-items:center;">
-                    ${tabs.map(t => `
-                        <button id="euix-tab-${t.id}" style="background:${(this.activeTab === t.id || (this.activeTab === 'actions' && t.id === 'logs')) ? '#38bdf8' : '#334155'};color:${(this.activeTab === t.id || (this.activeTab === 'actions' && t.id === 'logs')) ? '#0f172a' : '#f8fafc'};border:none;padding:4px 8px;border-radius:6px;font-weight:700;font-size:10px;cursor:pointer;white-space:nowrap;">
+                    ${tabs
+                        .map(
+                            (t) => `
+                        <button id="euix-tab-${t.id}" style="background:${this.activeTab === t.id || (this.activeTab === "actions" && t.id === "logs") ? "#38bdf8" : "#334155"};color:${this.activeTab === t.id || (this.activeTab === "actions" && t.id === "logs") ? "#0f172a" : "#f8fafc"};border:none;padding:4px 8px;border-radius:6px;font-weight:700;font-size:10px;cursor:pointer;white-space:nowrap;">
                             ${t.label}
                         </button>
-                    `).join("")}
+                    `,
+                        )
+                        .join("")}
                 </div>
                 <button id="euix-panel-close" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:bold;padding:2px 6px;">✕</button>
             </div>
@@ -174,7 +178,7 @@ export class InspectorPanel {
             </div>
         `;
 
-        tabs.forEach(t => {
+        tabs.forEach((t) => {
             const btn = document.getElementById(`euix-tab-${t.id}`);
             if (btn) {
                 btn.onclick = () => {
@@ -218,7 +222,7 @@ export class InspectorPanel {
                     <div style="color:#38bdf8;font-weight:bold;margin-top:2px;">
                         &lt;${this.escape(meta.tagName)}&gt; ${meta.ref ? `<span style="color:#f59e0b;">ref="${this.escape(meta.ref)}"</span>` : ""}
                     </div>
-                    ${meta.source ? `<div style="color:#94a3b8;font-size:10px;margin-top:2px;">📍 ${this.escape(meta.source.file || '')}:${meta.source.line || ''}</div>` : ""}
+                    ${meta.source ? `<div style="color:#94a3b8;font-size:10px;margin-top:2px;">📍 ${this.escape(meta.source.file || "")}:${meta.source.line || ""}</div>` : ""}
                     ${meta.route ? `<div style="color:#34d399;font-size:10px;margin-top:2px;">🧭 Route: ${this.escape(meta.route)}</div>` : ""}
                 </div>
 
@@ -226,11 +230,13 @@ export class InspectorPanel {
                 <div>
                     <div style="color:#38bdf8;font-weight:bold;margin-bottom:6px;font-size:11px;">🎯 Stable E2E Selectors</div>
                     <div style="display:flex;flex-direction:column;gap:6px;">
-                        ${selectors.map((s, idx) => `
-                            <div style="background:#1e293b;border:1px solid ${s.isUnique ? 'rgba(52,211,153,0.3)' : 'rgba(245,158,11,0.3)'};border-radius:6px;padding:6px 8px;">
+                        ${selectors
+                            .map(
+                                (s, idx) => `
+                            <div style="background:#1e293b;border:1px solid ${s.isUnique ? "rgba(52,211,153,0.3)" : "rgba(245,158,11,0.3)"};border-radius:6px;padding:6px 8px;">
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                                    <span style="color:${s.isUnique ? '#34d399' : '#fbbf24'};font-weight:bold;font-size:10px;">
-                                        ${s.isUnique ? '✓ Unique' : `⚠ Matches ${s.matchCount} elements`} &bull; ${s.label} (${s.score}%)
+                                    <span style="color:${s.isUnique ? "#34d399" : "#fbbf24"};font-weight:bold;font-size:10px;">
+                                        ${s.isUnique ? "✓ Unique" : `⚠ Matches ${s.matchCount} elements`} &bull; ${s.label} (${s.score}%)
                                     </span>
                                     <div style="display:flex;gap:4px;">
                                         <button class="euix-copy-btn" data-copy="${this.escape(s.playwright)}" style="background:#334155;border:none;color:#38bdf8;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Playwright</button>
@@ -240,43 +246,61 @@ export class InspectorPanel {
                                 </div>
                                 <code style="color:#f8fafc;font-size:10px;word-break:break-all;">${this.escape(s.selector)}</code>
                             </div>
-                        `).join("")}
+                        `,
+                            )
+                            .join("")}
                     </div>
                 </div>
 
                 <!-- Props & State -->
-                ${Object.keys(meta.props || {}).length > 0 ? `
+                ${
+                    Object.keys(meta.props || {}).length > 0
+                        ? `
                     <div>
                         <div style="color:#c084fc;font-weight:bold;margin-bottom:4px;">📦 Props</div>
                         <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(JSON.stringify(meta.props, null, 2))}</pre>
                     </div>
-                ` : ""}
+                `
+                        : ""
+                }
 
-                ${meta.localState ? `
+                ${
+                    meta.localState
+                        ? `
                     <div>
                         <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;">🔒 Local State</div>
                         <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(JSON.stringify(meta.localState, null, 2))}</pre>
                     </div>
-                ` : ""}
+                `
+                        : ""
+                }
 
                 <!-- Bindings & Actions -->
-                ${meta.bindings && meta.bindings.length > 0 ? `
+                ${
+                    meta.bindings && meta.bindings.length > 0
+                        ? `
                     <div>
                         <div style="color:#60a5fa;font-weight:bold;margin-bottom:4px;">🔗 Reactive Bindings</div>
                         <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                            ${meta.bindings.map(b => `<span style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#93c5fd;font-size:10px;">${this.escape(b)}</span>`).join("")}
+                            ${meta.bindings.map((b) => `<span style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#93c5fd;font-size:10px;">${this.escape(b)}</span>`).join("")}
                         </div>
                     </div>
-                ` : ""}
+                `
+                        : ""
+                }
 
-                ${meta.actions && meta.actions.length > 0 ? `
+                ${
+                    meta.actions && meta.actions.length > 0
+                        ? `
                     <div>
                         <div style="color:#fbbf24;font-weight:bold;margin-bottom:4px;">⚡ Actions / Events</div>
                         <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                            ${meta.actions.map(a => `<span style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#fde047;font-size:10px;">${this.escape(a)}</span>`).join("")}
+                            ${meta.actions.map((a) => `<span style="background:#1e293b;padding:2px 6px;border-radius:4px;color:#fde047;font-size:10px;">${this.escape(a)}</span>`).join("")}
                         </div>
                     </div>
-                ` : ""}
+                `
+                        : ""
+                }
             </div>
         `;
     }
@@ -291,13 +315,13 @@ export class InspectorPanel {
             const isSelected = this.selectedElement === node.element;
             return `
                 <div style="margin-left:${depth * 14}px;margin-bottom:4px;">
-                    <div class="euix-tree-node" data-inst="${this.escape(node.instanceId)}" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:${isSelected ? '#1e3a8a' : '#1e293b'};cursor:pointer;">
-                        <span style="color:${isSelected ? '#93c5fd' : '#c084fc'};font-weight:bold;">
+                    <div class="euix-tree-node" data-inst="${this.escape(node.instanceId)}" style="display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:4px;background:${isSelected ? "#1e3a8a" : "#1e293b"};cursor:pointer;">
+                        <span style="color:${isSelected ? "#93c5fd" : "#c084fc"};font-weight:bold;">
                             🧩 &lt;${this.escape(node.name)}&gt;
                         </span>
                         <span style="color:#64748b;font-size:9px;">${this.escape(node.instanceId)}</span>
                     </div>
-                    ${node.children && node.children.length > 0 ? node.children.map(c => renderNode(c, depth + 1)).join("") : ""}
+                    ${node.children && node.children.length > 0 ? node.children.map((c) => renderNode(c, depth + 1)).join("") : ""}
                 </div>
             `;
         };
@@ -305,7 +329,7 @@ export class InspectorPanel {
         return `
             <div style="display:flex;flex-direction:column;gap:2px;">
                 <div style="color:#94a3b8;font-size:10px;margin-bottom:6px;">Click component to highlight and inspect:</div>
-                ${tree.map(n => renderNode(n, 0)).join("")}
+                ${tree.map((n) => renderNode(n, 0)).join("")}
             </div>
         `;
     }
@@ -322,8 +346,12 @@ export class InspectorPanel {
                     <span style="color:#94a3b8;font-size:10px;">Recent actions (${logs.length}):</span>
                     <button id="euix-clear-logs" style="background:#334155;border:none;color:#f8fafc;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">🧹 Clear</button>
                 </div>
-                ${logs.slice().reverse().map(l => `
-                    <div style="background:#1e293b;padding:6px 8px;border-radius:6px;border-left:3px solid ${l.status === 'error' ? '#ef4444' : '#38bdf8'};">
+                ${logs
+                    .slice()
+                    .reverse()
+                    .map(
+                        (l) => `
+                    <div style="background:#1e293b;padding:6px 8px;border-radius:6px;border-left:3px solid ${l.status === "error" ? "#ef4444" : "#38bdf8"};">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <span style="color:#60a5fa;font-weight:bold;">⚡ ${this.escape(l.action)}</span>
                             <span style="color:#64748b;font-size:9px;">${l.time} (${(l.duration || 0).toFixed(1)}ms)</span>
@@ -331,7 +359,9 @@ export class InspectorPanel {
                         ${l.info ? `<div style="color:#cbd5e1;font-size:10px;margin-top:2px;word-break:break-all;">${this.escape(l.info)}</div>` : ""}
                         ${l.error ? `<div style="color:#f87171;font-size:10px;margin-top:2px;">❌ ${this.escape(l.error.message || l.error)}</div>` : ""}
                     </div>
-                `).join("")}
+                `,
+                    )
+                    .join("")}
             </div>
         `;
     }
@@ -341,22 +371,30 @@ export class InspectorPanel {
         let keys = Object.keys(rawState);
         if (this.stateFilterQuery) {
             const q = this.stateFilterQuery.toLowerCase();
-            keys = keys.filter(k => k.toLowerCase().includes(q));
+            keys = keys.filter((k) => k.toLowerCase().includes(q));
         }
 
         return `
             <div style="display:flex;flex-direction:column;gap:8px;">
                 <input id="euix-state-filter" type="text" placeholder="🔍 Search state key..." value="${this.escape(this.stateFilterQuery)}" style="width:100%;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 8px;border-radius:6px;font-size:11px;outline:none;box-sizing:border-box;" />
-                ${keys.length === 0 ? '<div style="color:#64748b;text-align:center;padding:20px;">No matching state variables</div>' : `
+                ${
+                    keys.length === 0
+                        ? '<div style="color:#64748b;text-align:center;padding:20px;">No matching state variables</div>'
+                        : `
                     <div style="display:flex;flex-direction:column;gap:6px;">
-                        ${keys.map(k => `
+                        ${keys
+                            .map(
+                                (k) => `
                             <div style="background:#1e293b;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
                                 <div style="color:#38bdf8;font-weight:bold;font-size:10px;margin-bottom:2px;">🔑 ${this.escape(k)}</div>
-                                <pre style="margin:0;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;">${this.escape(typeof rawState[k] === 'object' ? JSON.stringify(rawState[k], null, 2) : String(rawState[k]))}</pre>
+                                <pre style="margin:0;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;">${this.escape(typeof rawState[k] === "object" ? JSON.stringify(rawState[k], null, 2) : String(rawState[k]))}</pre>
                             </div>
-                        `).join("")}
+                        `,
+                            )
+                            .join("")}
                     </div>
-                `}
+                `
+                }
             </div>
         `;
     }
@@ -368,7 +406,7 @@ export class InspectorPanel {
         if (query) {
             // 1. Search components
             const compElements = Array.from(document.querySelectorAll("[data-euix-component], [data-xui-component]"));
-            compElements.forEach(el => {
+            compElements.forEach((el) => {
                 const name = el.dataset.euixComponent || el.dataset.xuiComponent;
                 if (name && name.toLowerCase().includes(query)) {
                     results.push({ type: "Component", label: `<${name}>`, element: el });
@@ -377,7 +415,7 @@ export class InspectorPanel {
 
             // 2. Search actions
             const actionElements = Array.from(document.querySelectorAll("[data-euix-action], [action]"));
-            actionElements.forEach(el => {
+            actionElements.forEach((el) => {
                 const act = el.getAttribute("data-euix-action") || el.getAttribute("action");
                 if (act && act.toLowerCase().includes(query)) {
                     results.push({ type: "Action", label: `⚡ ${act} on <${el.tagName.toLowerCase()}>`, element: el });
@@ -386,8 +424,9 @@ export class InspectorPanel {
 
             // 3. Search test-ids
             const testElements = Array.from(document.querySelectorAll("[data-euix-test], [test-id], [data-testid]"));
-            testElements.forEach(el => {
-                const id = el.getAttribute("data-euix-test") || el.getAttribute("test-id") || el.getAttribute("data-testid");
+            testElements.forEach((el) => {
+                const id =
+                    el.getAttribute("data-euix-test") || el.getAttribute("test-id") || el.getAttribute("data-testid");
                 if (id && id.toLowerCase().includes(query)) {
                     results.push({ type: "Test ID", label: `🏷️ ${id} on <${el.tagName.toLowerCase()}>`, element: el });
                 }
@@ -397,26 +436,37 @@ export class InspectorPanel {
         return `
             <div style="display:flex;flex-direction:column;gap:8px;">
                 <input id="euix-search-input" type="text" placeholder="🔍 Search component, action, test-id, binding..." value="${this.escape(this.searchQuery)}" style="width:100%;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 8px;border-radius:6px;font-size:11px;outline:none;box-sizing:border-box;" />
-                ${!query ? '<div style="color:#64748b;text-align:center;padding:20px;">Type a keyword to search components, actions, and test IDs.</div>' : (
-                    results.length === 0 ? '<div style="color:#64748b;text-align:center;padding:20px;">No matches found.</div>' : `
+                ${
+                    !query
+                        ? '<div style="color:#64748b;text-align:center;padding:20px;">Type a keyword to search components, actions, and test IDs.</div>'
+                        : results.length === 0
+                          ? '<div style="color:#64748b;text-align:center;padding:20px;">No matches found.</div>'
+                          : `
                         <div style="display:flex;flex-direction:column;gap:6px;">
-                            ${results.map((r, i) => `
+                            ${results
+                                .map(
+                                    (r, i) => `
                                 <div class="euix-search-result" data-idx="${i}" style="background:#1e293b;padding:6px 8px;border-radius:6px;cursor:pointer;border-left:3px solid #38bdf8;">
                                     <div style="color:#38bdf8;font-size:9px;font-weight:bold;">${this.escape(r.type)}</div>
                                     <div style="color:#f8fafc;font-size:11px;font-weight:bold;margin-top:2px;">${this.escape(r.label)}</div>
                                 </div>
-                            `).join("")}
+                            `,
+                                )
+                                .join("")}
                         </div>
                     `
-                )}
+                }
             </div>
         `;
     }
 
     renderPerfTab() {
-        const metrics = (this.engine && typeof this.engine.getPerformanceMetrics === "function") ? this.engine.getPerformanceMetrics() : null;
-        const mountMs = metrics ? metrics.mountDuration : (this.engine?._mountDuration || 0);
-        const bindingsCount = metrics ? metrics.activeBindingsCount : (this.engine?._bindings?.size || 0);
+        const metrics =
+            this.engine && typeof this.engine.getPerformanceMetrics === "function"
+                ? this.engine.getPerformanceMetrics()
+                : null;
+        const mountMs = metrics ? metrics.mountDuration : this.engine?._mountDuration || 0;
+        const bindingsCount = metrics ? metrics.activeBindingsCount : this.engine?._bindings?.size || 0;
         const astRatio = metrics ? (metrics.astCache.hitRatio * 100).toFixed(1) : "0.0";
         const memory = metrics?.memory?.usedJSHeapSize || "N/A";
 
@@ -445,7 +495,7 @@ export class InspectorPanel {
     bindTabEvents() {
         // Copy buttons
         const copyBtns = this.panelEl.querySelectorAll(".euix-copy-btn");
-        copyBtns.forEach(btn => {
+        copyBtns.forEach((btn) => {
             btn.onclick = (e) => {
                 e.stopPropagation();
                 const text = btn.getAttribute("data-copy");
@@ -453,17 +503,21 @@ export class InspectorPanel {
                     navigator.clipboard.writeText(text);
                     const original = btn.textContent;
                     btn.textContent = "Copied! ✓";
-                    setTimeout(() => { btn.textContent = original; }, 1200);
+                    setTimeout(() => {
+                        btn.textContent = original;
+                    }, 1200);
                 }
             };
         });
 
         // Tree nodes click
         const treeNodes = this.panelEl.querySelectorAll(".euix-tree-node");
-        treeNodes.forEach(node => {
+        treeNodes.forEach((node) => {
             node.onclick = () => {
                 const instId = node.getAttribute("data-inst");
-                const targetEl = document.querySelector(`[data-euix-instance="${instId}"]`) || document.querySelector(`[data-euix-component]`);
+                const targetEl =
+                    document.querySelector(`[data-euix-instance="${instId}"]`) ||
+                    document.querySelector(`[data-euix-component]`);
                 if (targetEl) {
                     targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
                     this.inspector.select(targetEl);
@@ -476,7 +530,8 @@ export class InspectorPanel {
         if (stateInput) {
             stateInput.oninput = (e) => {
                 this.stateFilterQuery = e.target.value;
-                const body = document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
                 if (body) body.innerHTML = this.renderStateTab();
                 this.bindTabEvents();
             };
@@ -487,7 +542,8 @@ export class InspectorPanel {
         if (searchInput) {
             searchInput.oninput = (e) => {
                 this.searchQuery = e.target.value;
-                const body = document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
                 if (body) body.innerHTML = this.renderSearchTab();
                 this.bindTabEvents();
             };
@@ -504,17 +560,36 @@ export class InspectorPanel {
 
         // Search results click
         const searchResults = this.panelEl.querySelectorAll(".euix-search-result");
-        searchResults.forEach(res => {
+        searchResults.forEach((res) => {
             res.onclick = () => {
                 const query = this.searchQuery.toLowerCase().trim();
-                const compElements = Array.from(document.querySelectorAll("[data-euix-component], [data-xui-component]"));
+                const compElements = Array.from(
+                    document.querySelectorAll("[data-euix-component], [data-xui-component]"),
+                );
                 const actionElements = Array.from(document.querySelectorAll("[data-euix-action], [action]"));
-                const testElements = Array.from(document.querySelectorAll("[data-euix-test], [test-id], [data-testid]"));
+                const testElements = Array.from(
+                    document.querySelectorAll("[data-euix-test], [test-id], [data-testid]"),
+                );
 
                 const all = [
-                    ...compElements.filter(el => (el.dataset.euixComponent || el.dataset.xuiComponent || '').toLowerCase().includes(query)),
-                    ...actionElements.filter(el => (el.getAttribute('data-euix-action') || el.getAttribute('action') || '').toLowerCase().includes(query)),
-                    ...testElements.filter(el => (el.getAttribute('data-euix-test') || el.getAttribute('test-id') || el.getAttribute('data-testid') || '').toLowerCase().includes(query))
+                    ...compElements.filter((el) =>
+                        (el.dataset.euixComponent || el.dataset.xuiComponent || "").toLowerCase().includes(query),
+                    ),
+                    ...actionElements.filter((el) =>
+                        (el.getAttribute("data-euix-action") || el.getAttribute("action") || "")
+                            .toLowerCase()
+                            .includes(query),
+                    ),
+                    ...testElements.filter((el) =>
+                        (
+                            el.getAttribute("data-euix-test") ||
+                            el.getAttribute("test-id") ||
+                            el.getAttribute("data-testid") ||
+                            ""
+                        )
+                            .toLowerCase()
+                            .includes(query),
+                    ),
                 ];
 
                 const idx = Number(res.getAttribute("data-idx"));
@@ -533,10 +608,6 @@ export class InspectorPanel {
     }
 
     escape(str) {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 }

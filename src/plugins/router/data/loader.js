@@ -3,8 +3,8 @@
  * Programmatic and declarative data loaders with AbortSignal cancellation.
  */
 
-import { RouterRedirect, RouterError } from "../core/navigation.js";
 import { parseSearchParams } from "../core/location.js";
+import { RouterError, RouterRedirect } from "../core/navigation.js";
 
 export class RouteLoaderManager {
     constructor({ cache, engine } = {}) {
@@ -19,8 +19,8 @@ export class RouteLoaderManager {
 
     /**
      * Executes a loader for a specific route match.
-     * 
-     * @param {object} param0 
+     *
+     * @param {object} param0
      * @returns {Promise<any>}
      */
     async executeLoader({ match, location, signal, context = {} }) {
@@ -35,16 +35,18 @@ export class RouteLoaderManager {
         }
 
         const searchParams = parseSearchParams(search);
-        const hasValidOrigin = typeof window !== "undefined" && window.location && typeof window.location.origin === "string" && window.location.origin.startsWith("http");
+        const hasValidOrigin =
+            typeof window !== "undefined" &&
+            window.location &&
+            typeof window.location.origin === "string" &&
+            window.location.origin.startsWith("http");
         const originUrl = hasValidOrigin ? window.location.origin : "http://localhost";
-        const normalizedPath = pathname ? (pathname.startsWith("/") ? pathname : "/" + pathname) : "/";
+        const normalizedPath = pathname ? (pathname.startsWith("/") ? pathname : `/${pathname}`) : "/";
         const fullUrl = `${originUrl}${normalizedPath}${search || ""}`;
 
         let request;
         try {
-            request = typeof Request !== "undefined"
-                ? new Request(fullUrl, { signal })
-                : { url: fullUrl, signal };
+            request = typeof Request !== "undefined" ? new Request(fullUrl, { signal }) : { url: fullUrl, signal };
         } catch (_) {
             request = { url: fullUrl, signal };
         }
@@ -56,10 +58,10 @@ export class RouteLoaderManager {
             signal,
             route,
             location,
-            context
+            context,
         };
 
-        let result = undefined;
+        let result;
 
         // 1. Programmatic Loader
         const loaderCandidate = match.loader || route.loader;
@@ -77,7 +79,7 @@ export class RouteLoaderManager {
         if (result instanceof RouterRedirect) {
             throw result;
         }
-        if (result instanceof Response && (result.status >= 300 && result.status < 400)) {
+        if (result instanceof Response && result.status >= 300 && result.status < 400) {
             const redirectUrl = result.headers.get("Location") || "/";
             throw new RouterRedirect(redirectUrl);
         }
@@ -96,7 +98,7 @@ export class RouteLoaderManager {
         const asKey = xmlNode.getAttribute("as");
 
         // Interpolate params into request URL
-        Object.keys(params).forEach(k => {
+        Object.keys(params).forEach((k) => {
             requestUrl = requestUrl.replace(`{{ params.${k} }}`, params[k]).replace(`{params.${k}}`, params[k]);
         });
 

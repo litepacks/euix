@@ -7,11 +7,15 @@
 export const EUIXCollapsePlugin = {
     name: "collapse",
     install(engineClass) {
-        engineClass.prototype.renderCollapse = function(xmlNode, context = {}) {
+        engineClass.prototype.renderCollapse = function (xmlNode, context = {}) {
             const rawBind = xmlNode.getAttribute("bind") || "";
             const interpolatedBind = this.interpolate(rawBind, context);
             const bindPath = this.parseBindPath(interpolatedBind);
-            let open = bindPath ? (this.getState(bindPath) !== undefined ? this.isTruthy(this.getState(bindPath)) : true) : true;
+            let open = bindPath
+                ? this.getState(bindPath) !== undefined
+                    ? this.isTruthy(this.getState(bindPath))
+                    : true
+                : true;
 
             const summaryNode = this.getChild(xmlNode, "summary");
             const titleAttr = xmlNode.getAttribute("title") || "";
@@ -35,9 +39,9 @@ export const EUIXCollapsePlugin = {
             };
             updateTitle();
 
-            const titlePlaceholders = (titleTemplate.match(/\{([^}]+)\}/g) || []).map(m => m.slice(1, -1).trim());
-            titlePlaceholders.forEach(expr => {
-                const cleanKey = expr.replace(/^(?:parent\.)?data\./, "").split('.')[0];
+            const titlePlaceholders = (titleTemplate.match(/\{([^}]+)\}/g) || []).map((m) => m.slice(1, -1).trim());
+            titlePlaceholders.forEach((expr) => {
+                const cleanKey = expr.replace(/^(?:parent\.)?data\./, "").split(".")[0];
                 if (cleanKey) {
                     this.watch(cleanKey, updateTitle);
                 }
@@ -51,8 +55,12 @@ export const EUIXCollapsePlugin = {
 
             const renderBodyChildren = () => {
                 body.innerHTML = "";
-                Array.from(xmlNode.childNodes).forEach(child => {
-                    if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && child.tagName.toLowerCase() === "summary") return;
+                Array.from(xmlNode.childNodes).forEach((child) => {
+                    if (
+                        child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
+                        child.tagName.toLowerCase() === "summary"
+                    )
+                        return;
                     const el = this.createHTMLElement(child, context);
                     if (el) body.appendChild(el);
                 });
@@ -60,7 +68,9 @@ export const EUIXCollapsePlugin = {
 
             const updateCollapseState = (isOpen) => {
                 open = isOpen;
-                root.className = ["euix-collapse", open ? "is-open" : "is-closed", extraClass].filter(Boolean).join(" ");
+                root.className = ["euix-collapse", open ? "is-open" : "is-closed", extraClass]
+                    .filter(Boolean)
+                    .join(" ");
                 header.setAttribute("aria-expanded", open ? "true" : "false");
                 chevron.textContent = open ? "▼" : "▶";
                 if (open) {
@@ -90,7 +100,7 @@ export const EUIXCollapsePlugin = {
 
             return root;
         };
-    }
+    },
 };
 
 export default EUIXCollapsePlugin;

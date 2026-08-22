@@ -1,7 +1,7 @@
 /**
  * EUIXNavigatorPlugin.js
  * Browser Navigator & Device Capabilities Plugin for EUIX Engine.
- * 
+ *
  * Provides declarative access to:
  * - Network status & connection info (online/offline, effectiveType, downlink, rtt, saveData)
  * - Battery status (level, charging, chargingTime, dischargingTime)
@@ -21,30 +21,40 @@ export const EUIXNavigatorPlugin = {
     name: "navigator",
     install(engineClass) {
         // 1. Tag Pre-Processor: <navigator_config> / <device_config>
-        engineClass.prototype._processNavigatorTag = function(xmlNode) {
+        engineClass.prototype._processNavigatorTag = function (xmlNode) {
             if (!xmlNode) return;
-            const target = xmlNode.getAttribute("bind_target") || xmlNode.getAttribute("target") || xmlNode.getAttribute("bind") || "navigator";
+            const target =
+                xmlNode.getAttribute("bind_target") ||
+                xmlNode.getAttribute("target") ||
+                xmlNode.getAttribute("bind") ||
+                "navigator";
             const trackNetwork = xmlNode.getAttribute("track_network") !== "false";
             const trackBattery = xmlNode.getAttribute("track_battery") === "true";
-            const trackGeo = xmlNode.getAttribute("track_geolocation") === "true" || xmlNode.getAttribute("track_geo") === "true";
+            const trackGeo =
+                xmlNode.getAttribute("track_geolocation") === "true" || xmlNode.getAttribute("track_geo") === "true";
 
             this.initNavigatorState(target, { trackNetwork, trackBattery, trackGeo });
         };
 
         // 2. Programmatic & Declarative State Initializer with $device reactive bridge
-        engineClass.prototype.initNavigatorState = function(targetKey = "navigator", options = {}) {
+        engineClass.prototype.initNavigatorState = function (targetKey = "navigator", options = {}) {
             if (typeof window === "undefined" && typeof navigator === "undefined") {
                 return;
             }
 
-            const nav = typeof navigator !== "undefined" ? navigator : (typeof window !== "undefined" ? window.navigator : null);
+            const nav =
+                typeof navigator !== "undefined" ? navigator : typeof window !== "undefined" ? window.navigator : null;
             if (!nav) return;
 
             const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
 
             const getPrefersDark = () => {
                 try {
-                    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+                    return (
+                        typeof window !== "undefined" &&
+                        window.matchMedia &&
+                        window.matchMedia("(prefers-color-scheme: dark)").matches
+                    );
                 } catch (_) {
                     return true;
                 }
@@ -52,7 +62,11 @@ export const EUIXNavigatorPlugin = {
 
             const getReducedMotion = () => {
                 try {
-                    return typeof window !== "undefined" && window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+                    return (
+                        typeof window !== "undefined" &&
+                        window.matchMedia &&
+                        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                    );
                 } catch (_) {
                     return false;
                 }
@@ -63,7 +77,7 @@ export const EUIXNavigatorPlugin = {
                 effectiveType: (conn && conn.effectiveType) || (nav.onLine ? "4g" : "none"),
                 downlink: (conn && conn.downlink) || 10,
                 rtt: (conn && conn.rtt) || 50,
-                saveData: (conn && !!conn.saveData) || false
+                saveData: (conn && !!conn.saveData) || false,
             });
 
             const readHardwareInfo = () => ({
@@ -77,7 +91,7 @@ export const EUIXNavigatorPlugin = {
                 cookieEnabled: !!nav.cookieEnabled,
                 pdfViewerEnabled: !!nav.pdfViewerEnabled,
                 prefersDark: getPrefersDark(),
-                reducedMotion: getReducedMotion()
+                reducedMotion: getReducedMotion(),
             });
 
             const current = this.getState(targetKey) || {};
@@ -91,13 +105,13 @@ export const EUIXNavigatorPlugin = {
                 batteryCharging: false,
                 batteryChargingTime: "Instant",
                 network: net,
-                hardware: hw
+                hardware: hw,
             };
 
             if (this._rawState) {
                 this._rawState[targetKey] = nextState;
-                this._rawState["$device"] = nextState;
-                this._rawState["device"] = nextState;
+                this._rawState.$device = nextState;
+                this._rawState.device = nextState;
             }
             this.setState(targetKey, nextState);
             this.setState("$device", nextState);
@@ -114,7 +128,7 @@ export const EUIXNavigatorPlugin = {
                     const updated = {
                         ...latest,
                         ...newNet,
-                        network: newNet
+                        network: newNet,
                     };
                     this.setState(targetKey, updated);
                     this.setState("$device", updated);
@@ -143,40 +157,45 @@ export const EUIXNavigatorPlugin = {
                 try {
                     const batteryPromise = nav.getBattery();
                     if (batteryPromise && typeof batteryPromise.then === "function") {
-                        batteryPromise.then(battery => {
-                            if (!battery) return;
-                            const updateBattery = () => {
-                                const latest = this.getState("$device") || {};
-                                const batLevel = battery.level !== undefined ? battery.level : 1;
-                                const updated = {
-                                    ...latest,
-                                    batteryLevel: batLevel,
-                                    batteryCharging: !!battery.charging,
-                                    batteryChargingTime: (battery.chargingTime && battery.chargingTime !== Infinity) ? `${Math.round(battery.chargingTime / 60)} min` : "Instant",
-                                    battery: {
-                                        level: Math.round(batLevel * 100),
-                                        charging: !!battery.charging,
-                                        chargingTime: battery.chargingTime || 0,
-                                        dischargingTime: battery.dischargingTime || Infinity
-                                    }
+                        batteryPromise
+                            .then((battery) => {
+                                if (!battery) return;
+                                const updateBattery = () => {
+                                    const latest = this.getState("$device") || {};
+                                    const batLevel = battery.level !== undefined ? battery.level : 1;
+                                    const updated = {
+                                        ...latest,
+                                        batteryLevel: batLevel,
+                                        batteryCharging: !!battery.charging,
+                                        batteryChargingTime:
+                                            battery.chargingTime && battery.chargingTime !== Infinity
+                                                ? `${Math.round(battery.chargingTime / 60)} min`
+                                                : "Instant",
+                                        battery: {
+                                            level: Math.round(batLevel * 100),
+                                            charging: !!battery.charging,
+                                            chargingTime: battery.chargingTime || 0,
+                                            dischargingTime: battery.dischargingTime || Infinity,
+                                        },
+                                    };
+                                    this.setState(targetKey, updated);
+                                    this.setState("$device", updated);
+                                    this.setState("device", updated);
                                 };
-                                this.setState(targetKey, updated);
-                                this.setState("$device", updated);
-                                this.setState("device", updated);
-                            };
 
-                            updateBattery();
+                                updateBattery();
 
-                            battery.addEventListener("levelchange", updateBattery);
-                            battery.addEventListener("chargingchange", updateBattery);
+                                battery.addEventListener("levelchange", updateBattery);
+                                battery.addEventListener("chargingchange", updateBattery);
 
-                            if (typeof this.onUnmount === "function") {
-                                this.onUnmount(() => {
-                                    battery.removeEventListener("levelchange", updateBattery);
-                                    battery.removeEventListener("chargingchange", updateBattery);
-                                });
-                            }
-                        }).catch(() => {});
+                                if (typeof this.onUnmount === "function") {
+                                    this.onUnmount(() => {
+                                        battery.removeEventListener("levelchange", updateBattery);
+                                        battery.removeEventListener("chargingchange", updateBattery);
+                                    });
+                                }
+                            })
+                            .catch(() => {});
                     }
                 } catch (_) {}
             }
@@ -184,7 +203,7 @@ export const EUIXNavigatorPlugin = {
             // Geolocation Watch Tracking
             if (options.trackGeo && nav.geolocation && typeof nav.geolocation.watchPosition === "function") {
                 const watchId = nav.geolocation.watchPosition(
-                    pos => {
+                    (pos) => {
                         const latest = this.getState("$device") || {};
                         const coords = {
                             latitude: pos.coords.latitude,
@@ -193,22 +212,22 @@ export const EUIXNavigatorPlugin = {
                             altitude: pos.coords.altitude,
                             heading: pos.coords.heading,
                             speed: pos.coords.speed,
-                            timestamp: pos.timestamp
+                            timestamp: pos.timestamp,
                         };
                         const updated = {
                             ...latest,
                             geolocation: coords,
-                            coords
+                            coords,
                         };
                         this.setState(targetKey, updated);
                         this.setState("$device", updated);
                         this.setState("device", updated);
                     },
-                    err => {
+                    (err) => {
                         const latest = this.getState("$device") || {};
                         this.setState("$device", { ...latest, geolocationError: err.message });
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
                 );
 
                 if (typeof this.onUnmount === "function") {
@@ -223,12 +242,18 @@ export const EUIXNavigatorPlugin = {
 
         // 3. Declarative Actions
         // Action: CLIPBOARD_COPY / CLIPBOARD_WRITE / COPY_TO_CLIPBOARD
-        const handleClipboardCopy = async function(actionNode, context) {
+        const handleClipboardCopy = async function (actionNode, context) {
             const rawText = actionNode.getAttribute("text") || actionNode.getAttribute("value") || "";
             const textNode = this.getChild(actionNode, "text") || this.getChild(actionNode, "value");
-            const text = textNode ? this.interpolate(textNode.textContent, context) : this.interpolate(rawText, context);
+            const text = textNode
+                ? this.interpolate(textNode.textContent, context)
+                : this.interpolate(rawText, context);
 
-            if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+            if (
+                typeof navigator !== "undefined" &&
+                navigator.clipboard &&
+                typeof navigator.clipboard.writeText === "function"
+            ) {
                 await navigator.clipboard.writeText(text);
             } else if (typeof document !== "undefined") {
                 const textArea = document.createElement("textarea");
@@ -252,10 +277,14 @@ export const EUIXNavigatorPlugin = {
         engineClass.registerAction("COPY_TO_CLIPBOARD", handleClipboardCopy);
 
         // Action: CLIPBOARD_READ / READ_CLIPBOARD
-        const handleClipboardRead = async function(actionNode, context) {
+        const handleClipboardRead = async function (actionNode, context) {
             const targetPath = actionNode.getAttribute("target") || actionNode.getAttribute("path") || "";
             let text = "";
-            if (typeof navigator !== "undefined" && navigator.clipboard && typeof navigator.clipboard.readText === "function") {
+            if (
+                typeof navigator !== "undefined" &&
+                navigator.clipboard &&
+                typeof navigator.clipboard.readText === "function"
+            ) {
                 text = await navigator.clipboard.readText();
             }
             if (targetPath) {
@@ -267,18 +296,28 @@ export const EUIXNavigatorPlugin = {
         engineClass.registerAction("READ_CLIPBOARD", handleClipboardRead);
 
         // Action: WEB_SHARE / SHARE
-        const handleWebShare = async function(actionNode, context) {
+        const handleWebShare = async function (actionNode, context) {
             const titleNode = this.getChild(actionNode, "title");
             const textNode = this.getChild(actionNode, "text");
             const urlNode = this.getChild(actionNode, "url");
 
             const shareData = {
-                title: titleNode ? this.interpolate(titleNode.textContent, context) : this.interpolate(actionNode.getAttribute("title") || "", context),
-                text: textNode ? this.interpolate(textNode.textContent, context) : this.interpolate(actionNode.getAttribute("text") || "", context),
-                url: urlNode ? this.interpolate(urlNode.textContent, context) : this.interpolate(actionNode.getAttribute("url") || "", context)
+                title: titleNode
+                    ? this.interpolate(titleNode.textContent, context)
+                    : this.interpolate(actionNode.getAttribute("title") || "", context),
+                text: textNode
+                    ? this.interpolate(textNode.textContent, context)
+                    : this.interpolate(actionNode.getAttribute("text") || "", context),
+                url: urlNode
+                    ? this.interpolate(urlNode.textContent, context)
+                    : this.interpolate(actionNode.getAttribute("url") || "", context),
             };
 
-            if (typeof navigator !== "undefined" && navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+            if (
+                typeof navigator !== "undefined" &&
+                navigator.share &&
+                (!navigator.canShare || navigator.canShare(shareData))
+            ) {
                 await navigator.share(shareData);
                 return true;
             }
@@ -288,10 +327,12 @@ export const EUIXNavigatorPlugin = {
         engineClass.registerAction("SHARE", handleWebShare);
 
         // Action: VIBRATE
-        engineClass.registerAction("VIBRATE", function(actionNode, context) {
+        engineClass.registerAction("VIBRATE", function (actionNode, context) {
             const rawPattern = actionNode.getAttribute("pattern") || actionNode.getAttribute("duration") || "50";
             const patternNode = this.getChild(actionNode, "pattern") || this.getChild(actionNode, "duration");
-            const patternStr = patternNode ? this.interpolate(patternNode.textContent, context) : this.interpolate(rawPattern, context);
+            const patternStr = patternNode
+                ? this.interpolate(patternNode.textContent, context)
+                : this.interpolate(rawPattern, context);
 
             let pattern;
             try {
@@ -308,8 +349,14 @@ export const EUIXNavigatorPlugin = {
         });
 
         // Action: WAKE_LOCK
-        engineClass.registerAction("WAKE_LOCK", async function(actionNode, context) {
-            const op = (actionNode.getAttribute("type") || actionNode.getAttribute("mode") || actionNode.getAttribute("op") || (actionNode.getAttribute("action") !== "WAKE_LOCK" ? actionNode.getAttribute("action") : null) || "request").toLowerCase();
+        engineClass.registerAction("WAKE_LOCK", async function (actionNode, context) {
+            const op = (
+                actionNode.getAttribute("type") ||
+                actionNode.getAttribute("mode") ||
+                actionNode.getAttribute("op") ||
+                (actionNode.getAttribute("action") !== "WAKE_LOCK" ? actionNode.getAttribute("action") : null) ||
+                "request"
+            ).toLowerCase();
             if (typeof navigator === "undefined" || !navigator.wakeLock) return false;
 
             if (op === "request") {
@@ -335,14 +382,14 @@ export const EUIXNavigatorPlugin = {
         });
 
         // Action: SET_APP_BADGE / CLEAR_APP_BADGE
-        engineClass.registerAction("SET_APP_BADGE", async function(actionNode, context) {
+        engineClass.registerAction("SET_APP_BADGE", async function (actionNode, context) {
             const rawVal = actionNode.getAttribute("value") || actionNode.getAttribute("count") || "";
             const valNode = this.getChild(actionNode, "value") || this.getChild(actionNode, "count");
             const valStr = valNode ? this.interpolate(valNode.textContent, context) : this.interpolate(rawVal, context);
             const count = parseInt(valStr, 10);
 
             if (typeof navigator !== "undefined" && typeof navigator.setAppBadge === "function") {
-                if (!isNaN(count) && count > 0) {
+                if (!Number.isNaN(count) && count > 0) {
                     await navigator.setAppBadge(count);
                 } else {
                     await navigator.clearAppBadge();
@@ -351,7 +398,7 @@ export const EUIXNavigatorPlugin = {
             }
             return false;
         });
-        engineClass.registerAction("CLEAR_APP_BADGE", async function() {
+        engineClass.registerAction("CLEAR_APP_BADGE", async () => {
             if (typeof navigator !== "undefined" && typeof navigator.clearAppBadge === "function") {
                 await navigator.clearAppBadge();
                 return true;
@@ -360,14 +407,14 @@ export const EUIXNavigatorPlugin = {
         });
 
         // Action: GET_GEOLOCATION
-        engineClass.registerAction("GET_GEOLOCATION", function(actionNode, context) {
+        engineClass.registerAction("GET_GEOLOCATION", function (actionNode, context) {
             const targetPath = actionNode.getAttribute("target") || actionNode.getAttribute("path") || "geolocation";
             return new Promise((resolve, reject) => {
                 if (typeof navigator === "undefined" || !navigator.geolocation) {
                     return resolve(null);
                 }
                 navigator.geolocation.getCurrentPosition(
-                    pos => {
+                    (pos) => {
                         const coords = {
                             latitude: pos.coords.latitude,
                             longitude: pos.coords.longitude,
@@ -375,16 +422,16 @@ export const EUIXNavigatorPlugin = {
                             altitude: pos.coords.altitude,
                             heading: pos.coords.heading,
                             speed: pos.coords.speed,
-                            timestamp: pos.timestamp
+                            timestamp: pos.timestamp,
                         };
                         this.setState(this.parseBindPath(targetPath), coords);
                         resolve(coords);
                     },
-                    err => {
-                        this.setState(this.parseBindPath(targetPath + "_error"), err.message);
+                    (err) => {
+                        this.setState(this.parseBindPath(`${targetPath}_error`), err.message);
                         resolve(null);
                     },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
                 );
             });
         });
@@ -392,12 +439,16 @@ export const EUIXNavigatorPlugin = {
         // Auto-initialize navigator state on engine data model boot
         const originalInitDataModel = engineClass.prototype.initDataModel;
         if (typeof originalInitDataModel === "function") {
-            engineClass.prototype.initDataModel = function(doc, isMainDoc) {
+            engineClass.prototype.initDataModel = function (doc, isMainDoc) {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
                 if (targetDoc) {
-                    const navConfig = (targetDoc.getElementsByTagName ? (targetDoc.getElementsByTagName("navigator_config")[0] || targetDoc.getElementsByTagName("device_config")[0]) : null) 
-                        || (targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : null);
+                    const navConfig =
+                        (targetDoc.getElementsByTagName
+                            ? targetDoc.getElementsByTagName("navigator_config")[0] ||
+                              targetDoc.getElementsByTagName("device_config")[0]
+                            : null) ||
+                        (targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : null);
                     if (navConfig && typeof this._processNavigatorTag === "function") {
                         this._processNavigatorTag(navConfig);
                     } else if (typeof this.initNavigatorState === "function") {
@@ -409,7 +460,7 @@ export const EUIXNavigatorPlugin = {
                 return res;
             };
         }
-    }
+    },
 };
 
 export default EUIXNavigatorPlugin;

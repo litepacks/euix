@@ -5,43 +5,48 @@
  */
 
 import { EUIXEngineCore, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError } from "./core/EUIXEngineCore.js";
-import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
-import {
-    EUIXComposerPlugin,
-    EUIXActionRecursionError,
-    EUIXActionValidationError,
-    EUIXActionContext,
-    EUIXActionValidator,
-    EUIXActionRegistry,
-    EUIXActionComposer
-} from "./plugins/EUIXComposerPlugin.js";
-import { EUIXDragDropPlugin } from "./plugins/EUIXDragDropPlugin.js";
-import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
-import { EUIXCollapsePlugin } from "./plugins/EUIXCollapsePlugin.js";
-import { EUIXDialogPlugin } from "./plugins/EUIXDialogPlugin.js";
-import { EUIXResiliencePlugin, EUIXCancellationController } from "./plugins/EUIXResiliencePlugin.js";
-import { EUIXReactivePlugin, EUIXDependencyGraph, EUIXComputedNode, EUIXWatchNode } from "./plugins/EUIXReactivePlugin.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
-import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
-import { EUIXLeafletPlugin, calculatePolygonArea, formatMetricArea } from "./plugins/EUIXLeafletPlugin.js";
-import { EUIXNavigatorPlugin } from "./plugins/EUIXNavigatorPlugin.js";
-import { EUIXChartPlugin, EUIXChartError } from "./plugins/EUIXChartPlugin.js";
+import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
+import { EUIXChartError, EUIXChartPlugin } from "./plugins/EUIXChartPlugin.js";
+import { EUIXCollapsePlugin } from "./plugins/EUIXCollapsePlugin.js";
 import {
-    EUIXRouterPlugin,
-    EUIXRouter,
+    EUIXActionComposer,
+    EUIXActionContext,
+    EUIXActionRecursionError,
+    EUIXActionRegistry,
+    EUIXActionValidationError,
+    EUIXActionValidator,
+    EUIXComposerPlugin,
+} from "./plugins/EUIXComposerPlugin.js";
+import { DATE_PRESETS, EUIXDateFormatter, EUIXDatePlugin } from "./plugins/EUIXDatePlugin.js";
+import { EUIXDialogPlugin } from "./plugins/EUIXDialogPlugin.js";
+import { EUIXDragDropPlugin } from "./plugins/EUIXDragDropPlugin.js";
+import { EUIXHeadPlugin, EUIXHelmetPlugin } from "./plugins/EUIXHeadPlugin.js";
+import { EUIXLazyPlugin } from "./plugins/EUIXLazyPlugin.js";
+import { EUIXLeafletPlugin } from "./plugins/EUIXLeafletPlugin.js";
+import { EUIXNavigatorPlugin } from "./plugins/EUIXNavigatorPlugin.js";
+import {
+    EUIXComputedNode,
+    EUIXDependencyGraph,
+    EUIXReactivePlugin,
+    EUIXWatchNode,
+} from "./plugins/EUIXReactivePlugin.js";
+import { EUIXCancellationController, EUIXResiliencePlugin } from "./plugins/EUIXResiliencePlugin.js";
+import {
     createMemoryRouter,
+    createPath,
     createStaticRouter,
-    RouterRedirect,
-    RouterError,
+    EUIXRouter,
+    EUIXRouterPlugin,
+    generatePath,
     matchPath,
     matchRoutes,
-    generatePath,
+    parsePath,
+    RouterError,
+    RouterRedirect,
     resolvePath,
-    createPath,
-    parsePath
 } from "./plugins/EUIXRouterPlugin.js";
-import { EUIXDatePlugin, EUIXDateFormatter, DATE_PRESETS } from "./plugins/EUIXDatePlugin.js";
-import { EUIXLazyPlugin } from "./plugins/EUIXLazyPlugin.js";
+import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -103,50 +108,49 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 }
 
 export {
-    EUIXEngine,
-    EUIXEngineCore,
-    EUIXExpressionParser,
-    EUIXStructuredError,
-    EUIXXMLParseError,
-    EUIXCancellationController,
-    EUIXApiPlugin,
-    EUIXComposerPlugin,
-    EUIXDragDropPlugin,
-    EUIXStoragePlugin,
-    EUIXCollapsePlugin,
-    EUIXDialogPlugin,
-    EUIXResiliencePlugin,
-    EUIXReactivePlugin,
+    createMemoryRouter,
+    createPath,
+    createStaticRouter,
+    DATE_PRESETS,
+    EUIXActionComposer,
+    EUIXActionContext,
+    EUIXActionRecursionError,
+    EUIXActionRegistry,
+    EUIXActionValidationError,
+    EUIXActionValidator,
     EUIXAnimationPlugin,
     EUIXAnimationPresets,
     EUIXAnimationRegistry,
-    EUIXDependencyGraph,
-    EUIXComputedNode,
-    EUIXWatchNode,
-    EUIXActionRecursionError,
-    EUIXActionValidationError,
-    EUIXActionContext,
-    EUIXActionValidator,
-    EUIXActionRegistry,
-    EUIXActionComposer,
-    EUIXChartPlugin,
+    EUIXApiPlugin,
+    EUIXCancellationController,
     EUIXChartError,
-    EUIXRouterPlugin,
+    EUIXChartPlugin,
+    EUIXCollapsePlugin,
+    EUIXComposerPlugin,
+    EUIXComputedNode,
+    EUIXDateFormatter,
+    EUIXDatePlugin,
+    EUIXDependencyGraph,
+    EUIXDialogPlugin,
+    EUIXDragDropPlugin,
+    EUIXEngine,
+    EUIXEngineCore,
+    EUIXExpressionParser,
+    EUIXReactivePlugin,
+    EUIXResiliencePlugin,
     EUIXRouter,
-    createMemoryRouter,
-    createStaticRouter,
-    RouterRedirect,
-    RouterError,
+    EUIXRouterPlugin,
+    EUIXStoragePlugin,
+    EUIXStructuredError,
+    EUIXWatchNode,
+    EUIXXMLParseError,
+    generatePath,
     matchPath,
     matchRoutes,
-    generatePath,
-    resolvePath,
-    createPath,
     parsePath,
-    EUIXDatePlugin,
-    EUIXDateFormatter,
-    DATE_PRESETS
+    RouterError,
+    RouterRedirect,
+    resolvePath,
 };
 
 export default EUIXEngine;
-

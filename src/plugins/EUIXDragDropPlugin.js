@@ -9,7 +9,7 @@ export const EUIXDragDropPlugin = {
     install(engineClass) {
         const proto = engineClass.prototype;
 
-        proto.enableDraggable = function(el, isDraggable, context = {}) {
+        proto.enableDraggable = function (el, isDraggable, context = {}) {
             el.draggable = isDraggable;
             if (!isDraggable) return;
 
@@ -19,7 +19,8 @@ export const EUIXDragDropPlugin = {
 
             el.addEventListener("pointerdown", (e) => {
                 if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) return;
-                const taskId = (context && context.task && context.task.id) ? context.task.id : (el.getAttribute("data-id") || el.id);
+                const taskId =
+                    context && context.task && context.task.id ? context.task.id : el.getAttribute("data-id") || el.id;
                 if (taskId) {
                     this.setState("dragged_id", String(taskId));
 
@@ -28,7 +29,10 @@ export const EUIXDragDropPlugin = {
                     const startY = e.clientY;
 
                     const onMove = (moveEvt) => {
-                        if (!ghost && (Math.abs(moveEvt.clientX - startX) > 3 || Math.abs(moveEvt.clientY - startY) > 3)) {
+                        if (
+                            !ghost &&
+                            (Math.abs(moveEvt.clientX - startX) > 3 || Math.abs(moveEvt.clientY - startY) > 3)
+                        ) {
                             const old = document.getElementById("euix-drag-ghost");
                             if (old) old.remove();
 
@@ -43,7 +47,8 @@ export const EUIXDragDropPlugin = {
                             ghost.style.pointerEvents = "none";
                             ghost.style.zIndex = "999999";
                             ghost.style.opacity = "0.95";
-                            ghost.style.boxShadow = "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)";
+                            ghost.style.boxShadow =
+                                "0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)";
                             ghost.style.width = `${cardWidth}px`;
                             ghost.style.minWidth = `${cardWidth}px`;
                             ghost.style.maxWidth = `${cardWidth}px`;
@@ -74,18 +79,26 @@ export const EUIXDragDropPlugin = {
             });
         };
 
-        proto.handleDragEvent = function(eventType, e, el, context) {
+        proto.handleDragEvent = function (eventType, e, el, context) {
             if (["dragover", "dragenter", "drop"].includes(eventType)) {
                 e.preventDefault();
                 if (e.dataTransfer) {
-                    try { e.dataTransfer.dropEffect = "move"; } catch (_) {}
+                    try {
+                        e.dataTransfer.dropEffect = "move";
+                    } catch (_) {}
                 }
             }
             if (eventType === "dragstart") {
-                const dragEl = (e.target && typeof e.target.closest === "function") ? (e.target.closest('[draggable="true"]') || el) : el;
-                const dragVal = (context && context.task && context.task.id) 
-                    ? context.task.id 
-                    : (dragEl ? (dragEl.getAttribute("data-id") || dragEl.id) : "");
+                const dragEl =
+                    e.target && typeof e.target.closest === "function"
+                        ? e.target.closest('[draggable="true"]') || el
+                        : el;
+                const dragVal =
+                    context && context.task && context.task.id
+                        ? context.task.id
+                        : dragEl
+                          ? dragEl.getAttribute("data-id") || dragEl.id
+                          : "";
                 if (dragVal) {
                     this.setState("dragged_id", String(dragVal));
                 }
@@ -109,14 +122,16 @@ export const EUIXDragDropPlugin = {
             }
         };
 
-        proto.setupDropListener = function(el, eventMap, context) {
+        proto.setupDropListener = function (el, eventMap, context) {
             if (!eventMap.has("drop")) return;
 
             if (!eventMap.has("dragover")) {
                 el.addEventListener("dragover", (e) => {
                     e.preventDefault();
                     if (e.dataTransfer) {
-                        try { e.dataTransfer.dropEffect = "move"; } catch (_) {}
+                        try {
+                            e.dataTransfer.dropEffect = "move";
+                        } catch (_) {}
                     }
                 });
             }
@@ -124,14 +139,14 @@ export const EUIXDragDropPlugin = {
                 const draggedId = this.getState("dragged_id");
                 if (draggedId) {
                     const dropHandlers = eventMap.get("drop") || [];
-                    dropHandlers.forEach(node => {
+                    dropHandlers.forEach((node) => {
                         this.handleAction(node, context);
                     });
                     this.setState("dragged_id", "");
                 }
             });
         };
-    }
+    },
 };
 
 export default EUIXDragDropPlugin;

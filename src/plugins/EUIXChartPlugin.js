@@ -1,7 +1,7 @@
 /**
  * EUIXChartPlugin.js
  * Declarative Chart.js (v4.x) Integration Plugin for EUIX Engine.
- * 
+ *
  * Provides pure, reactive, buildless Chart.js integration:
  * - <chart id="..." config="{data.chart_config}" width="100%" height="320" update_mode="none" />
  * - Declarative Actions: CHART_UPDATE, CHART_RESIZE, CHART_DESTROY, CHART_SHOW_DATASET, CHART_HIDE_DATASET, CHART_TOGGLE_DATASET, CHART_TOGGLE_DATA, CHART_EXPORT_IMAGE
@@ -46,7 +46,7 @@ function resolveConfig(engine, rawConfig, context = {}) {
     if (!rawConfig) return null;
     if (typeof rawConfig === "object" && rawConfig !== null) return rawConfig;
 
-    let clean = String(rawConfig).trim();
+    const clean = String(rawConfig).trim();
     if (clean.startsWith("{") && clean.endsWith("}")) {
         const inner = clean.slice(1, -1).trim();
         if (inner.startsWith("data.") || inner.startsWith("state.")) {
@@ -114,9 +114,11 @@ export const EUIXChartPlugin = {
         /**
          * Initialize chart map and helper namespace
          */
-        const originalInit = proto._initChartStore || function() {
-            if (!this._charts) this._charts = new Map();
-        };
+        const _originalInit =
+            proto._initChartStore ||
+            function () {
+                if (!this._charts) this._charts = new Map();
+            };
 
         // Expose public imperative API on engine instance: engine.chart.*
         Object.defineProperty(proto, "chart", {
@@ -149,7 +151,9 @@ export const EUIXChartPlugin = {
                         destroy(id) {
                             const chart = this.get(id);
                             if (chart) {
-                                try { chart.destroy(); } catch (_) {}
+                                try {
+                                    chart.destroy();
+                                } catch (_) {}
                                 engine._charts.delete(id);
                                 return true;
                             }
@@ -185,7 +189,8 @@ export const EUIXChartPlugin = {
                             const chart = this.get(id);
                             if (chart) {
                                 const idx = Number(datasetIndex);
-                                const isVisible = typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(idx) : true;
+                                const isVisible =
+                                    typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(idx) : true;
                                 if (typeof chart.setDatasetVisibility === "function") {
                                     chart.setDatasetVisibility(idx, !isVisible);
                                     chart.update();
@@ -212,15 +217,15 @@ export const EUIXChartPlugin = {
                                 return chart.toBase64Image(type, quality);
                             }
                             return null;
-                        }
+                        },
                     };
                 }
                 return this._chartApi;
             },
-            configurable: true
+            configurable: true,
         });
 
-        const renderChartHandler = function(xmlNode, context = {}, engine = null) {
+        const renderChartHandler = function (xmlNode, context = {}, engine = null) {
             const eng = engine || this;
             return eng.renderChart(xmlNode, context);
         };
@@ -233,14 +238,15 @@ export const EUIXChartPlugin = {
         /**
          * Render Declarative Chart Element (<chart ... />)
          */
-        proto.renderChart = function(xmlNode, context = {}) {
+        proto.renderChart = function (xmlNode, context = {}) {
             if (!this._charts) this._charts = new Map();
 
             const chartId = xmlNode.getAttribute("id") || `chart_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-            const rawConfigAttr = xmlNode.getAttribute("config") || xmlNode.getAttribute("bind") || xmlNode.getAttribute("data") || "";
+            const rawConfigAttr =
+                xmlNode.getAttribute("config") || xmlNode.getAttribute("bind") || xmlNode.getAttribute("data") || "";
             const rawWidth = xmlNode.getAttribute("width") || "100%";
             const rawHeight = xmlNode.getAttribute("height") || "320";
-            const updateModeAttr = xmlNode.getAttribute("update_mode") || "default";
+            const _updateModeAttr = xmlNode.getAttribute("update_mode") || "default";
             const extraClass = xmlNode.getAttribute("class") || "";
             const extraStyle = xmlNode.getAttribute("style") || "";
             const responsiveAttr = xmlNode.getAttribute("responsive");
@@ -248,11 +254,15 @@ export const EUIXChartPlugin = {
 
             const widthVal = this.interpolate(rawWidth, context).trim();
             const heightVal = this.interpolate(rawHeight, context).trim();
-            const widthCss = isNaN(Number(widthVal)) ? widthVal : `${widthVal}px`;
-            const heightCss = isNaN(Number(heightVal)) ? heightVal : `${heightVal}px`;
+            const widthCss = Number.isNaN(Number(widthVal)) ? widthVal : `${widthVal}px`;
+            const heightCss = Number.isNaN(Number(heightVal)) ? heightVal : `${heightVal}px`;
 
             // SSR / Non-DOM environment graceful fallback
-            if (typeof window === "undefined" || typeof document === "undefined" || typeof HTMLCanvasElement === "undefined") {
+            if (
+                typeof window === "undefined" ||
+                typeof document === "undefined" ||
+                typeof HTMLCanvasElement === "undefined"
+            ) {
                 const ssrPlaceholder = document ? document.createElement("div") : { tagName: "DIV" };
                 if (ssrPlaceholder.setAttribute) {
                     ssrPlaceholder.setAttribute("class", `euix-chart ${extraClass}`.trim());
@@ -266,13 +276,14 @@ export const EUIXChartPlugin = {
                 const err = new EUIXChartError(
                     `Chart.js library is not available. Please load Chart.js via <script> or configure via EUIXChartPlugin.configure({ Chart }).`,
                     "CHARTJS_NOT_AVAILABLE",
-                    { chartId }
+                    { chartId },
                 );
                 if (typeof this.handleStructuredError === "function") {
                     this.handleStructuredError(err, xmlNode);
                 }
                 const errEl = document.createElement("div");
-                errEl.className = "euix-chart-error p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200 font-mono";
+                errEl.className =
+                    "euix-chart-error p-3 bg-rose-50 text-rose-700 text-xs rounded-xl border border-rose-200 font-mono";
                 errEl.textContent = `[CHARTJS_NOT_AVAILABLE] ${err.message}`;
                 return errEl;
             }
@@ -294,10 +305,10 @@ export const EUIXChartPlugin = {
             canvasNode.style.height = "100%";
             containerNode.appendChild(canvasNode);
 
-            let initialConfig = resolveConfig(this, rawConfigAttr, context) || {
+            const initialConfig = resolveConfig(this, rawConfigAttr, context) || {
                 type: "line",
                 data: { labels: [], datasets: [] },
-                options: {}
+                options: {},
             };
 
             // Clone top-level config to avoid mutating user-provided frozen objects
@@ -305,11 +316,17 @@ export const EUIXChartPlugin = {
                 type: initialConfig.type || "line",
                 data: initialConfig.data || { labels: [], datasets: [] },
                 options: {
-                    responsive: responsiveAttr !== null ? (responsiveAttr !== "false") : (initialConfig.options?.responsive ?? true),
-                    maintainAspectRatio: maintainAspectAttr !== null ? (maintainAspectAttr === "true") : (initialConfig.options?.maintainAspectRatio ?? false),
-                    ...(initialConfig.options || {})
+                    responsive:
+                        responsiveAttr !== null
+                            ? responsiveAttr !== "false"
+                            : (initialConfig.options?.responsive ?? true),
+                    maintainAspectRatio:
+                        maintainAspectAttr !== null
+                            ? maintainAspectAttr === "true"
+                            : (initialConfig.options?.maintainAspectRatio ?? false),
+                    ...(initialConfig.options || {}),
                 },
-                plugins: initialConfig.plugins || []
+                plugins: initialConfig.plugins || [],
             };
 
             let currentChart = null;
@@ -326,7 +343,7 @@ export const EUIXChartPlugin = {
                     label: null,
                     value: null,
                     dataset: null,
-                    element: null
+                    element: null,
                 };
 
                 if (elements && elements.length > 0) {
@@ -346,7 +363,7 @@ export const EUIXChartPlugin = {
                         label: lbl,
                         value: val,
                         dataset: ds,
-                        element: first
+                        element: first,
                     };
                 }
 
@@ -354,7 +371,7 @@ export const EUIXChartPlugin = {
                 containerNode.dispatchEvent(customEvt);
 
                 // Execute declarative action tags matching the event
-                const childTags = Array.from(xmlNode.children || []).filter(c => {
+                const childTags = Array.from(xmlNode.children || []).filter((c) => {
                     const tag = c.tagName ? c.tagName.toLowerCase() : "";
                     if (eventName === "chart_click" && (tag === "on_chart_click" || tag === "on_click")) return true;
                     if (eventName === "chart_hover" && (tag === "on_chart_hover" || tag === "on_hover")) return true;
@@ -362,14 +379,14 @@ export const EUIXChartPlugin = {
                     return false;
                 });
 
-                childTags.forEach(actionTag => {
+                childTags.forEach((actionTag) => {
                     const actionContext = {
                         ...context,
                         ...detail,
                         detail,
                         $evt: customEvt,
                         _evt: customEvt,
-                        _targetEl: containerNode
+                        _targetEl: containerNode,
                     };
                     if (typeof this.handleAction === "function") {
                         this.handleAction(actionTag, actionContext);
@@ -408,9 +425,13 @@ export const EUIXChartPlugin = {
                 const cType = conf.type || "line";
                 const cData = conf.data || { labels: [], datasets: [] };
                 const cOptions = {
-                    responsive: responsiveAttr !== null ? (responsiveAttr !== "false") : (conf.options?.responsive ?? true),
-                    maintainAspectRatio: maintainAspectAttr !== null ? (maintainAspectAttr === "true") : (conf.options?.maintainAspectRatio ?? false),
-                    ...(conf.options || {})
+                    responsive:
+                        responsiveAttr !== null ? responsiveAttr !== "false" : (conf.options?.responsive ?? true),
+                    maintainAspectRatio:
+                        maintainAspectAttr !== null
+                            ? maintainAspectAttr === "true"
+                            : (conf.options?.maintainAspectRatio ?? false),
+                    ...(conf.options || {}),
                 };
                 const cPlugins = conf.plugins || [];
 
@@ -425,7 +446,9 @@ export const EUIXChartPlugin = {
                     }
                 } else {
                     if (currentChart.config && currentChart.config.type !== cType) {
-                        try { currentChart.destroy(); } catch (_) {}
+                        try {
+                            currentChart.destroy();
+                        } catch (_) {}
                         activeConfig = { type: cType, data: cData, options: cOptions, plugins: cPlugins };
                         currentChart = new ChartConstructor(canvasNode, activeConfig);
                         this._charts.set(chartId, currentChart);
@@ -433,7 +456,9 @@ export const EUIXChartPlugin = {
                     } else {
                         currentChart.data = cData;
                         currentChart.options = { ...(currentChart.options || {}), ...cOptions };
-                        try { currentChart.update("none"); } catch (_) {}
+                        try {
+                            currentChart.update("none");
+                        } catch (_) {}
                     }
                 }
             };
@@ -463,7 +488,10 @@ export const EUIXChartPlugin = {
                 requestAnimationFrame(() => {
                     initOrUpdateChart();
                     if (currentChart) {
-                        try { currentChart.resize(); currentChart.update(); } catch (_) {}
+                        try {
+                            currentChart.resize();
+                            currentChart.update();
+                        } catch (_) {}
                     }
                 });
             }
@@ -483,13 +511,17 @@ export const EUIXChartPlugin = {
             // Cleanup on destroy / unmount
             const cleanupFn = () => {
                 if (resizeObserver) {
-                    try { resizeObserver.disconnect(); } catch (_) {}
+                    try {
+                        resizeObserver.disconnect();
+                    } catch (_) {}
                     resizeObserver = null;
                 }
                 canvasNode.removeEventListener("click", onCanvasClick);
                 canvasNode.removeEventListener("mousemove", onCanvasMouseMove);
                 if (currentChart) {
-                    try { currentChart.destroy(); } catch (_) {}
+                    try {
+                        currentChart.destroy();
+                    } catch (_) {}
                     currentChart = null;
                 }
                 if (this._charts) {
@@ -505,21 +537,26 @@ export const EUIXChartPlugin = {
         /**
          * Declarative Action Dispatcher Handlers
          */
-        proto.executeChartAction = function(actionName, actionNode, context = {}) {
+        proto.executeChartAction = function (actionName, actionNode, context = {}) {
             if (!this._charts) this._charts = new Map();
 
-            const chartId = actionNode.getAttribute("chart") ||
+            const chartId =
+                actionNode.getAttribute("chart") ||
                 actionNode.getAttribute("chart_id") ||
                 actionNode.getAttribute("id");
 
-            let chart = chartId ? this._charts.get(chartId) : (this._charts.values().next().value);
+            let chart = chartId ? this._charts.get(chartId) : this._charts.values().next().value;
 
             if (!chart && chartId && typeof document !== "undefined") {
-                const el = document.getElementById(chartId) ||
+                const el =
+                    document.getElementById(chartId) ||
                     document.querySelector(`[data-chart-id="${chartId}"]`) ||
                     document.querySelector(`[id="${chartId}"]`);
                 if (el) {
-                    chart = _chartElements.get(el) || el._chartInstance || (el.querySelector && el.querySelector("canvas") && el.querySelector("canvas")._chartInstance);
+                    chart =
+                        _chartElements.get(el) ||
+                        el._chartInstance ||
+                        (el.querySelector && el.querySelector("canvas") && el.querySelector("canvas")._chartInstance);
                 }
             }
 
@@ -535,7 +572,11 @@ export const EUIXChartPlugin = {
             const rawMode = actionNode.getAttribute("mode") || actionNode.getAttribute("update_mode") || "default";
             const mode = rawMode === "default" ? undefined : rawMode;
 
-            const datasetIdxAttr = actionNode.getAttribute("dataset_index") || actionNode.getAttribute("dataset") || actionNode.getAttribute("index") || "0";
+            const datasetIdxAttr =
+                actionNode.getAttribute("dataset_index") ||
+                actionNode.getAttribute("dataset") ||
+                actionNode.getAttribute("index") ||
+                "0";
             const datasetIndex = Number(this.interpolate(datasetIdxAttr, context)) || 0;
 
             const dataIdxAttr = actionNode.getAttribute("data_index") || actionNode.getAttribute("index") || "0";
@@ -552,7 +593,9 @@ export const EUIXChartPlugin = {
 
                 case "CHART_DESTROY":
                     if (chart) {
-                        try { chart.destroy(); } catch (_) {}
+                        try {
+                            chart.destroy();
+                        } catch (_) {}
                         if (chartId) this._charts.delete(chartId);
                     }
                     return true;
@@ -576,7 +619,8 @@ export const EUIXChartPlugin = {
                     return true;
 
                 case "CHART_TOGGLE_DATASET": {
-                    const isVis = typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(datasetIndex) : true;
+                    const isVis =
+                        typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(datasetIndex) : true;
                     if (typeof chart.setDatasetVisibility === "function") {
                         chart.setDatasetVisibility(datasetIndex, !isVis);
                         chart.update(mode);
@@ -595,13 +639,15 @@ export const EUIXChartPlugin = {
                 case "EXPORT_CHART":
                 case "CHART_EXPORT_PNG":
                 case "CHART_EXPORT_IMAGE": {
-                    const targetState = actionNode.getAttribute("target") ||
+                    const targetState =
+                        actionNode.getAttribute("target") ||
                         actionNode.getAttribute("bind") ||
                         actionNode.getAttribute("to") ||
                         actionNode.getAttribute("target_state");
                     const imgType = actionNode.getAttribute("type") || "image/png";
                     const quality = Number(actionNode.getAttribute("quality")) || 1;
-                    const download = actionNode.getAttribute("download") === "true" || actionNode.getAttribute("save") === "true";
+                    const download =
+                        actionNode.getAttribute("download") === "true" || actionNode.getAttribute("save") === "true";
                     const filename = actionNode.getAttribute("filename") || (chartId ? `${chartId}.png` : "chart.png");
 
                     let base64 = null;
@@ -646,17 +692,17 @@ export const EUIXChartPlugin = {
             "CHART_EXPORT",
             "EXPORT_CHART",
             "CHART_EXPORT_PNG",
-            "CHART_EXPORT_IMAGE"
+            "CHART_EXPORT_IMAGE",
         ];
 
-        chartActions.forEach(actionName => {
+        chartActions.forEach((actionName) => {
             if (typeof engineClass.registerAction === "function") {
-                engineClass.registerAction(actionName, function(actionNode, context) {
+                engineClass.registerAction(actionName, function (actionNode, context) {
                     return this.executeChartAction(actionName, actionNode, context);
                 });
             }
         });
-    }
+    },
 };
 
 export default EUIXChartPlugin;

@@ -7,7 +7,7 @@ const _compilePathCache = new Map();
 
 /**
  * Fast-path URI component decoder avoiding V8 native C++ transitions if '%' is absent.
- * @param {string} str 
+ * @param {string} str
  * @returns {string}
  */
 export function fastDecode(str) {
@@ -17,7 +17,7 @@ export function fastDecode(str) {
 
 /**
  * Parses a string URL or path into pathname, search, and hash components.
- * @param {string} urlOrPath 
+ * @param {string} urlOrPath
  * @returns {{ pathname: string, search: string, hash: string }}
  */
 export function parsePath(urlOrPath = "") {
@@ -48,13 +48,13 @@ export function parsePath(urlOrPath = "") {
     return {
         pathname: pathname || "/",
         search: search === "?" ? "" : search,
-        hash: hash === "#" ? "" : hash
+        hash: hash === "#" ? "" : hash,
     };
 }
 
 /**
  * Creates a normalized URL path string from path components.
- * @param {{ pathname?: string, search?: string, hash?: string }} param0 
+ * @param {{ pathname?: string, search?: string, hash?: string }} param0
  * @returns {string}
  */
 export function createPath({ pathname = "/", search = "", hash = "" } = {}) {
@@ -70,12 +70,12 @@ export function createPath({ pathname = "/", search = "", hash = "" } = {}) {
 
 /**
  * Normalizes slashes in a pathname with fast-path for already canonical paths.
- * @param {string} path 
+ * @param {string} path
  * @returns {string}
  */
 export function normalizePath(path = "") {
     if (!path || path === "/") return "/";
-    
+
     // Fast path: canonical absolute path without duplicate slashes or trailing slash
     if (path.charCodeAt(0) === 47 /* '/' */ && path.indexOf("//") === -1) {
         if (!path.endsWith("/")) return path;
@@ -88,7 +88,7 @@ export function normalizePath(path = "") {
         normalized = normalized.slice(0, -1);
     }
     if (!normalized.startsWith("/") && !normalized.startsWith(".")) {
-        normalized = "/" + normalized;
+        normalized = `/${normalized}`;
     }
     return normalized;
 }
@@ -96,8 +96,8 @@ export function normalizePath(path = "") {
 /**
  * Resolves a relative target path against a current base path.
  * Supports '.', '..', and relative subpaths.
- * @param {string|{ pathname?: string, search?: string, hash?: string }} to 
- * @param {string} fromPath 
+ * @param {string|{ pathname?: string, search?: string, hash?: string }} to
+ * @param {string} fromPath
  * @returns {string}
  */
 export function resolvePath(to, fromPath = "/") {
@@ -109,18 +109,18 @@ export function resolvePath(to, fromPath = "/") {
         return createPath({
             pathname: normalizePath(toPath),
             search: toParsed.search,
-            hash: toParsed.hash
+            hash: toParsed.hash,
         });
     }
 
     // Fast-path simple subpath (no '.' or '..')
     if (toPath.indexOf(".") === -1) {
         const base = normalizePath(fromPath);
-        const resolved = base === "/" ? "/" + toPath : base + "/" + toPath;
+        const resolved = base === "/" ? `/${toPath}` : `${base}/${toPath}`;
         return createPath({
             pathname: normalizePath(resolved),
             search: toParsed.search,
-            hash: toParsed.hash
+            hash: toParsed.hash,
         });
     }
 
@@ -132,7 +132,6 @@ export function resolvePath(to, fromPath = "/") {
     for (let i = 0; i < toSegments.length; i++) {
         const seg = toSegments[i];
         if (seg === ".") {
-            continue;
         } else if (seg === "..") {
             resultSegments.pop();
         } else {
@@ -140,19 +139,19 @@ export function resolvePath(to, fromPath = "/") {
         }
     }
 
-    const resolvedPath = "/" + resultSegments.join("/");
+    const resolvedPath = `/${resultSegments.join("/")}`;
     return createPath({
         pathname: normalizePath(resolvedPath),
         search: toParsed.search,
-        hash: toParsed.hash
+        hash: toParsed.hash,
     });
 }
 
 /**
  * Interpolates parameters into a parameterized path pattern.
  * Single-pass regex with static path fast-path.
- * @param {string} pattern 
- * @param {Record<string, any>} params 
+ * @param {string} pattern
+ * @param {Record<string, any>} params
  * @returns {string}
  */
 export function generatePath(pattern = "/", params = {}) {
@@ -192,7 +191,7 @@ export function generatePath(pattern = "/", params = {}) {
 
 /**
  * Compiles a single route pattern into a regex and param names with memoization.
- * @param {string} pattern 
+ * @param {string} pattern
  * @param {boolean} end - Whether match must be exact end-of-string
  * @returns {{ regex: RegExp, keys: string[], score: number }}
  */
@@ -229,7 +228,7 @@ export function compilePath(pattern = "/", end = true) {
                 regexStr += "\\/([^\\/]+)";
             } else {
                 score += 100; // Static segment (highest priority)
-                regexStr += "\\/" + escapeRegex(seg);
+                regexStr += `\\/${escapeRegex(seg)}`;
             }
         }
     }
@@ -248,7 +247,7 @@ export function compilePath(pattern = "/", end = true) {
     const compiled = {
         regex: new RegExp(regexStr),
         keys,
-        score
+        score,
     };
 
     if (_compilePathCache.size < 512) {
@@ -264,9 +263,9 @@ function escapeRegex(str) {
 
 /**
  * Matches a pattern against a pathname.
- * @param {string|{ regex: RegExp, keys: string[] }} pattern 
- * @param {string} pathname 
- * @param {{ end?: boolean }} options 
+ * @param {string|{ regex: RegExp, keys: string[] }} pattern
+ * @param {string} pathname
+ * @param {{ end?: boolean }} options
  * @returns {{ path: string, pathname: string, params: Record<string, string>, isExact: boolean } | null}
  */
 export function matchPath(pattern, pathname, { end = true } = {}) {
@@ -288,9 +287,9 @@ export function matchPath(pattern, pathname, { end = true } = {}) {
     }
 
     return {
-        path: typeof pattern === "string" ? pattern : (pattern.path || ""),
+        path: typeof pattern === "string" ? pattern : pattern.path || "",
         pathname: matchedPathname,
         params,
-        isExact: pathname === matchedPathname || pathname.replace(/\/$/, "") === matchedPathname.replace(/\/$/, "")
+        isExact: pathname === matchedPathname || pathname.replace(/\/$/, "") === matchedPathname.replace(/\/$/, ""),
     };
 }

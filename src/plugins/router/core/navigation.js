@@ -3,8 +3,8 @@
  * Navigation lifecycle coordinator, AbortController manager, and state machine.
  */
 
-import { parsePath, createPath, normalizePath, resolvePath } from "./utils.js";
 import { createLocation } from "./location.js";
+import { createPath } from "./utils.js";
 
 /**
  * Custom Navigation Error / Redirect Carrier
@@ -21,7 +21,7 @@ export class RouterRedirect {
 
 export class RouterError extends Error {
     constructor(status, messageOrObj) {
-        const msg = typeof messageOrObj === "string" ? messageOrObj : (messageOrObj?.message || `Router Error ${status}`);
+        const msg = typeof messageOrObj === "string" ? messageOrObj : messageOrObj?.message || `Router Error ${status}`;
         super(msg);
         this.status = status;
         this.data = typeof messageOrObj === "object" ? messageOrObj : { message: msg };
@@ -47,11 +47,11 @@ export class NavigationController extends EventTarget {
 
         this.state = "idle"; // 'idle' | 'loading' | 'submitting'
         this.location = this.history ? this.history.location : createLocation("/");
-        this.matches = this.matcher ? (this.matcher.match(this.location.pathname) || []) : [];
+        this.matches = this.matcher ? this.matcher.match(this.location.pathname) || [] : [];
         this.navigation = {
             state: "idle",
             location: null,
-            formData: null
+            formData: null,
         };
 
         this._registeredGuards = new Map();
@@ -89,9 +89,9 @@ export class NavigationController extends EventTarget {
 
     /**
      * Imperative navigation method.
-     * 
-     * @param {string|object} to 
-     * @param {{ replace?: boolean, state?: any, formData?: FormData, preserveScroll?: boolean, fromHistory?: boolean, viewTransition?: boolean }} options 
+     *
+     * @param {string|object} to
+     * @param {{ replace?: boolean, state?: any, formData?: FormData, preserveScroll?: boolean, fromHistory?: boolean, viewTransition?: boolean }} options
      */
     async navigate(to, options = {}) {
         const nextLoc = createLocation(this.location, to, options.state);
@@ -102,7 +102,7 @@ export class NavigationController extends EventTarget {
             const blocked = await this.blockerManager.shouldBlock({
                 currentLocation: this.location,
                 nextLocation: nextLoc,
-                historyAction: options.replace ? "REPLACE" : "PUSH"
+                historyAction: options.replace ? "REPLACE" : "PUSH",
             });
             if (blocked) return false;
         }
@@ -126,7 +126,7 @@ export class NavigationController extends EventTarget {
         this.navigation = {
             state: this.state,
             location: nextLoc,
-            formData: options.formData || null
+            formData: options.formData || null,
         };
         this.emit("navigation:start", { location: nextLoc, matches, navigationId });
 
@@ -136,15 +136,23 @@ export class NavigationController extends EventTarget {
                 const middlewareFns = [];
                 for (const match of matches) {
                     if (match.middleware) {
-                        const mList = String(match.middleware).split(",").map(s => s.trim()).filter(Boolean);
+                        const mList = String(match.middleware)
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
                         for (const mName of mList) {
                             const mFn = this._registeredMiddleware.get(mName);
                             if (mFn) {
-                                middlewareFns.push((ctx, next) => mFn({
-                                    ...ctx,
-                                    params: match.params,
-                                    route: match.route
-                                }, next));
+                                middlewareFns.push((ctx, next) =>
+                                    mFn(
+                                        {
+                                            ...ctx,
+                                            params: match.params,
+                                            route: match.route,
+                                        },
+                                        next,
+                                    ),
+                                );
                             }
                         }
                     }
@@ -174,7 +182,10 @@ export class NavigationController extends EventTarget {
                 for (const match of matches) {
                     if (signal.aborted || this._navigationId !== navigationId) return false;
                     if (match.guard) {
-                        const gList = String(match.guard).split(",").map(s => s.trim()).filter(Boolean);
+                        const gList = String(match.guard)
+                            .split(",")
+                            .map((s) => s.trim())
+                            .filter(Boolean);
                         for (const gName of gList) {
                             const gFn = this._registeredGuards.get(gName);
                             if (gFn) {
@@ -183,7 +194,7 @@ export class NavigationController extends EventTarget {
                                     params: match.params,
                                     route: match.route,
                                     signal,
-                                    context: this.context || {}
+                                    context: this.context || {},
                                 });
 
                                 if (gRes instanceof RouterRedirect) {
@@ -205,7 +216,7 @@ export class NavigationController extends EventTarget {
                 if (leaf.redirect) {
                     let targetRedirect = leaf.redirect;
                     // Interpolate params into dynamic redirect if needed
-                    Object.keys(leaf.params).forEach(k => {
+                    Object.keys(leaf.params).forEach((k) => {
                         targetRedirect = targetRedirect.replace(`:${k}`, leaf.params[k]);
                     });
                     return this.navigate(targetRedirect, { replace: true });
@@ -220,7 +231,7 @@ export class NavigationController extends EventTarget {
                         matches,
                         location: nextLoc,
                         signal,
-                        formData: options.formData
+                        formData: options.formData,
                     });
                     this.emit("loader:end", { location: nextLoc, matches });
                 } catch (dataErr) {
@@ -269,14 +280,13 @@ export class NavigationController extends EventTarget {
                 this.scrollManager.handleNavigation({
                     location: nextLoc,
                     preserveScroll: options.preserveScroll,
-                    isPop: options.fromHistory && options.historyAction === "POP"
+                    isPop: options.fromHistory && options.historyAction === "POP",
                 });
             }
 
             this._resetNavigationState();
             this.emit("navigation:end", { location: nextLoc, matches: this.matches, navigationId });
             return true;
-
         } catch (err) {
             if (signal.aborted || this._navigationId !== navigationId) {
                 return false;
@@ -312,7 +322,7 @@ export class NavigationController extends EventTarget {
         this.navigation = {
             state: "idle",
             location: null,
-            formData: null
+            formData: null,
         };
     }
 
