@@ -3,13 +3,7 @@
  * Keyed reconciliation, longest increasing subsequence diffing, virtual scrolling, and <for_each> renderer for EUIX Engine.
  */
 
-import {
-    _getNodeAtPath,
-    _getStaticNodeResolver,
-    getChildNodes,
-    getForEachItemHash,
-    isElem,
-} from "../utils/constants.js";
+import { _getNodeAtPath, _getStaticNodeResolver, getForEachItemHash } from "../utils/constants.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 
@@ -607,16 +601,28 @@ export function renderForEach(engine, xmlNode, context = {}) {
     const compiled = _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildContext, context);
     const pooledItemContext = Object.create(baseChildContext);
 
-    const templateChildren = xmlNode.children ? Array.from(xmlNode.children) : getChildNodes(xmlNode).filter(isElem);
+    const rawTemplateChildren = xmlNode.children || xmlNode.childNodes || EMPTY_ARR;
+    const templateChildren = [];
+    for (let tcIdx = 0; tcIdx < rawTemplateChildren.length; tcIdx++) {
+        const tc = rawTemplateChildren[tcIdx];
+        if (tc.nodeType === 1) templateChildren.push(tc);
+    }
+
     const createItemNodes = (item, idx) => {
         if (compiled?.canClone) {
             pooledItemContext[varName] = item;
             pooledItemContext._index = idx;
             pooledItemContext.index = idx;
-            const protoLen = compiled.prototypes.length;
+            const protos = compiled.prototypes;
+            const protoLen = protos.length;
+            if (protoLen === 1) {
+                const nodes = [protos[0].cloneNode(true)];
+                _applyForEachSlots(engine, nodes, compiled, item, pooledItemContext, varName);
+                return nodes;
+            }
             const nodes = new Array(protoLen);
             for (let pIdx = 0; pIdx < protoLen; pIdx++) {
-                nodes[pIdx] = compiled.prototypes[pIdx].cloneNode(true);
+                nodes[pIdx] = protos[pIdx].cloneNode(true);
             }
             _applyForEachSlots(engine, nodes, compiled, item, pooledItemContext, varName);
             return nodes;
@@ -681,12 +687,6 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 for (let i = startIndex; i < endIndex; i++) {
                     const item = list[i];
                     if (!item) continue;
-                    if (typeof item === "object" && item !== null) {
-                        try {
-                            item._index = i;
-                            item.index = i;
-                        } catch (_) {}
-                    }
                     const key = getItemKey(item, i);
                     const hash = getItemHash(item);
                     activeKeys.add(key);
@@ -698,11 +698,10 @@ export function renderForEach(engine, xmlNode, context = {}) {
                         if (existing.hash === hash) {
                             nodes = existing.nodes;
                         } else if (compiled?.canClone) {
-                            const childContext = Object.create(baseChildContext);
-                            childContext[varName] = item;
-                            childContext._index = i;
-                            childContext.index = i;
-                            _applyForEachSlots(engine, existing.nodes, compiled, item, childContext, varName);
+                            pooledItemContext[varName] = item;
+                            pooledItemContext._index = i;
+                            pooledItemContext.index = i;
+                            _applyForEachSlots(engine, existing.nodes, compiled, item, pooledItemContext, varName);
                             nodes = existing.nodes;
                         } else {
                             nodes = createItemNodes(item, i);
@@ -773,27 +772,28 @@ export function renderForEach(engine, xmlNode, context = {}) {
         const newKeyedMap = new Map();
         const newKeys = [];
 
-        // Fast-Path 1: Initial Mount / Empty Container
         const oldLen = oldKeys.length;
+        const listLen = list.length;
+
+        // Fast-Path 1: Initial Mount / Empty Container
         if (oldLen === 0) {
             const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
-            for (let idx = 0; idx < list.length; idx++) {
+            for (let idx = 0; idx < listLen; idx++) {
                 const item = list[idx];
-                if (typeof item === "object" && item !== null) {
-                    try {
-                        item._index = idx;
-                        item.index = idx;
-                    } catch (_) {}
+                if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                    item._index = idx;
+                    item.index = idx;
                 }
                 const key = getItemKey(item, idx);
-                const hash = getItemHash(item);
+                const hash = (item && (item._hash ?? item.__v ?? item.id)) ?? getItemHash(item);
                 const nodes = createItemNodes(item, idx);
                 newKeys.push(key);
                 newKeyedMap.set(key, { nodes, hash, index: idx });
+                const nLen = nodes.length;
                 if (fragment) {
-                    for (let n = 0; n < nodes.length; n++) fragment.appendChild(nodes[n]);
+                    for (let n = 0; n < nLen; n++) fragment.appendChild(nodes[n]);
                 } else {
-                    for (let n = 0; n < nodes.length; n++) listContainer.appendChild(nodes[n]);
+                    for (let n = 0; n < nLen; n++) listContainer.appendChild(nodes[n]);
                 }
             }
             if (fragment) listContainer.appendChild(fragment);
@@ -803,7 +803,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
         }
 
         // Fast-Path 2: Pure Append to existing list
-        if (list.length > oldLen) {
+        if (listLen > oldLen) {
             let isPureAppend = true;
             for (let i = 0; i < oldLen; i++) {
                 if (getItemKey(list[i], i) !== oldKeys[i]) {
@@ -813,23 +813,22 @@ export function renderForEach(engine, xmlNode, context = {}) {
             }
             if (isPureAppend) {
                 const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
-                for (let idx = oldLen; idx < list.length; idx++) {
+                for (let idx = oldLen; idx < listLen; idx++) {
                     const item = list[idx];
-                    if (typeof item === "object" && item !== null) {
-                        try {
-                            item._index = idx;
-                            item.index = idx;
-                        } catch (_) {}
+                    if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                        item._index = idx;
+                        item.index = idx;
                     }
                     const key = getItemKey(item, idx);
-                    const hash = getItemHash(item);
+                    const hash = (item && (item._hash ?? item.__v ?? item.id)) ?? getItemHash(item);
                     const nodes = createItemNodes(item, idx);
                     oldKeys.push(key);
                     oldKeyedMap.set(key, { nodes, hash, index: idx });
+                    const nLen = nodes.length;
                     if (fragment) {
-                        for (let n = 0; n < nodes.length; n++) fragment.appendChild(nodes[n]);
+                        for (let n = 0; n < nLen; n++) fragment.appendChild(nodes[n]);
                     } else {
-                        for (let n = 0; n < nodes.length; n++) listContainer.appendChild(nodes[n]);
+                        for (let n = 0; n < nLen; n++) listContainer.appendChild(nodes[n]);
                     }
                 }
                 if (fragment) listContainer.appendChild(fragment);
@@ -838,17 +837,50 @@ export function renderForEach(engine, xmlNode, context = {}) {
             }
         }
 
+        // Fast-Path 3: Identical Keys In-Place Patch (Zero DOM moves)
+        if (listLen === oldLen && compiled?.canClone) {
+            let isSameKeyOrder = true;
+            for (let i = 0; i < oldLen; i++) {
+                if (getItemKey(list[i], i) !== oldKeys[i]) {
+                    isSameKeyOrder = false;
+                    break;
+                }
+            }
+            if (isSameKeyOrder) {
+                const hasExtKeys = Boolean(compiled?.externalKeys && compiled.externalKeys.size > 0);
+                for (let idx = 0; idx < oldLen; idx++) {
+                    const item = list[idx];
+                    if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                        item._index = idx;
+                        item.index = idx;
+                    }
+                    const key = oldKeys[idx];
+                    const existing = oldKeyedMap.get(key);
+                    const hash = getItemHash(item);
+                    if (existing) {
+                        if (existing.hash !== hash || hasExtKeys) {
+                            pooledItemContext[varName] = item;
+                            pooledItemContext._index = idx;
+                            pooledItemContext.index = idx;
+                            _applyForEachSlots(engine, existing.nodes, compiled, item, pooledItemContext, varName);
+                            existing.hash = hash;
+                            existing.index = idx;
+                        }
+                    }
+                }
+                return;
+            }
+        }
+
         for (let idx = 0; idx < list.length; idx++) {
             const item = list[idx];
-            if (typeof item === "object" && item !== null) {
-                try {
-                    item._index = idx;
-                    item.index = idx;
-                } catch (_) {}
+            if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                item._index = idx;
+                item.index = idx;
             }
-
             const key = getItemKey(item, idx);
             newKeys.push(key);
+
 
             const existing = oldKeyedMap.get(key);
             let nodes;
