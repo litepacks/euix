@@ -3,21 +3,44 @@
  * DOM node selection, query, and reporting utilities for EUIX Engine.
  */
 
-import { getChildNodes, getChildrenList, getTagName, isElem, isFn } from "./constants.js";
+import { isFn } from "./constants.js";
 
 export function getChild(node, tagName) {
-    if (!node) return null;
+    if (!node || !tagName) return null;
     const tag = tagName.toLowerCase();
-    const list = node.children && node.children.length > 0 ? getChildrenList(node) : getChildNodes(node).filter(isElem);
-    return list.find((c) => getTagName(c) === tag) || null;
+    const children = node.children || node.childNodes;
+    if (!children) return null;
+    const len = children.length;
+    for (let i = 0; i < len; i++) {
+        const c = children[i];
+        if (
+            c &&
+            (c.nodeType === 1 || c.nodeType === undefined) &&
+            (c.tagName ? c.tagName.toLowerCase() : "") === tag
+        ) {
+            return c;
+        }
+    }
+    return null;
 }
 
 export function getChildren(node, tagName) {
     if (!node) return [];
-    const list = node.children && node.children.length > 0 ? getChildrenList(node) : getChildNodes(node).filter(isElem);
-    if (!tagName) return list;
-    const tag = tagName.toLowerCase();
-    return list.filter((c) => getTagName(c) === tag);
+    const children = node.children || node.childNodes;
+    if (!children) return [];
+    const len = children.length;
+    const result = [];
+    const tag = tagName ? tagName.toLowerCase() : null;
+
+    for (let i = 0; i < len; i++) {
+        const c = children[i];
+        if (c && (c.nodeType === 1 || c.nodeType === undefined)) {
+            if (!tag || (c.tagName ? c.tagName.toLowerCase() : "") === tag) {
+                result.push(c);
+            }
+        }
+    }
+    return result;
 }
 
 export function reportError(engine, error, contextInfo = "") {

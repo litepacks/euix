@@ -881,7 +881,6 @@ export function renderForEach(engine, xmlNode, context = {}) {
             const key = getItemKey(item, idx);
             newKeys.push(key);
 
-
             const existing = oldKeyedMap.get(key);
             let nodes;
 
