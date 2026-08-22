@@ -31,10 +31,28 @@
         <state id="confirm_modal_open" type="string">false</state>
         <state id="delete_modal_open" type="string">false</state>
         <state id="deleting_todo_id" type="string"></state>
-        <state id="search_query" type="string"></state>
-        <state id="search_results" type="array"></state>
-        <state id="search_loading" type="string">false</state>
-        <state id="search_error" type="string"></state>
+        <state id="employees" type="array">
+            <item name="Ahmet Yilmaz" role="Lead Architect" dept="Core Runtime" status="Active" />
+            <item name="Zeynep Kaya" role="UI Engineer" dept="Component DSL" status="Active" />
+            <item name="Can Demir" role="QA Specialist" dept="Performance" status="Offline" />
+        </state>
+        <state id="new_emp_name" type="string"></state>
+        <state id="new_emp_role" type="string"></state>
+        <state id="new_emp_dept" type="string"></state>
+        <state id="counter_open" type="string">true</state>
+        <state id="table_open" type="string">true</state>
+        <state id="virtual_open" type="string">true</state>
+        <state id="virtual_list_open" type="string">true</state>
+        <state id="virtual_items" type="array"></state>
+        <state id="virtual_render_time" type="string">0.00</state>
+        <state id="ecommerce_open" type="string">true</state>
+        <state id="countdown_open" type="string">true</state>
+        <state id="persistence_open" type="string">true</state>
+        <state id="api_client_open" type="string">true</state>
+        <state id="actions_open" type="string">true</state>
+        <state id="animation_open" type="string">true</state>
+        <state id="reactive_open" type="string">true</state>
+        <state id="kanban_open" type="string">true</state>
         <state id="counter_value" type="number">10</state>
         <state id="seconds" type="number">0</state>
         <state id="seconds_running" type="string">true</state>

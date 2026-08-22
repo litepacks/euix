@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine Real Chrome Browser Benchmark Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/playground.html');
+    await page.goto('/#/playground');
     await euix(page).waitForIdle();
   });
 
@@ -19,10 +19,10 @@ test.describe('EUIX Engine Real Chrome Browser Benchmark Suite', () => {
   });
 
   test('should benchmark Real Chrome Fine-Grained Single State Mutation', async ({ page }) => {
-    const counterSpan = page.locator('.text-4xl.font-mono');
+    const counterSpan = page.locator('.text-5xl.font-black.font-mono').first();
     await expect(counterSpan).toHaveText('0');
 
-    // Click +1
+    // Click +
     await page.locator('button:text-is("+")').click();
     await euix(page).waitForIdle();
     await expect(counterSpan).toHaveText('1');

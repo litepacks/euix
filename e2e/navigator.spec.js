@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine - Navigator & Device Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/navigator_demo.html');
+    await page.goto('/#/navigator');
     await euix(page).waitForIdle();
   });
 
@@ -12,12 +12,12 @@ test.describe('EUIX Engine - Navigator & Device Plugin End-to-End (E2E) Browser 
     const headerTitle = page.locator('h1');
     await expect(headerTitle).toContainText('Browser & Device Intelligence');
 
-    // 2. Check metrics card
-    const statusCard = page.locator('.container').first();
-    await expect(statusCard).toBeVisible();
+    // 2. Check metrics cards exist
+    const cards = page.locator('.grid > *');
+    await expect(cards.first()).toBeVisible();
 
     // 3. Online status badge
-    const onlineBadge = page.locator('span:has-text("Online")').first();
+    const onlineBadge = page.locator('span:has-text("ONLINE"), span:has-text("Online")').first();
     await expect(onlineBadge).toBeVisible();
   });
 
