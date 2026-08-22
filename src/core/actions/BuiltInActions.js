@@ -338,7 +338,10 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             `task-${Date.now()}`;
         const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId };
         if (valItem?.attributes) {
-            Array.from(valItem.attributes).forEach((attr) => {
+            const vAttrs = valItem.attributes;
+            const vaLen = vAttrs.length;
+            for (let vaIdx = 0; vaIdx < vaLen; vaIdx++) {
+                const attr = vAttrs[vaIdx];
                 const interpolatedVal = this.interpolate(attr.value, context);
                 if (
                     interpolatedVal !== undefined &&
@@ -347,7 +350,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
                 ) {
                     newItem[attr.name] = interpolatedVal;
                 }
-            });
+            }
         }
         if (valItem && typeof valItem.getAttribute === "function") {
             const textAttr = valItem.getAttribute("text");
@@ -536,9 +539,14 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
         const updates = {};
-        Array.from(fieldsNode.attributes).forEach((attr) => {
-            updates[attr.name] = this.interpolate(attr.value, context);
-        });
+        const fnAttrs = fieldsNode.attributes;
+        if (fnAttrs) {
+            const fnLen = fnAttrs.length;
+            for (let fnIdx = 0; fnIdx < fnLen; fnIdx++) {
+                const attr = fnAttrs[fnIdx];
+                updates[attr.name] = this.interpolate(attr.value, context);
+            }
+        }
 
         if (updates.text !== undefined && !String(updates.text).trim()) return;
 

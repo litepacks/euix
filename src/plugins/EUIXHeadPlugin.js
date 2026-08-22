@@ -209,14 +209,17 @@ export const EUIXHeadPlugin = {
          */
         engineClass.prototype.parseHeadMetadata = function (rootSpecNode) {
             if (!rootSpecNode || !rootSpecNode.children) return;
-            Array.from(rootSpecNode.children).forEach((child) => {
+            const children = rootSpecNode.children;
+            const len = children.length;
+            for (let i = 0; i < len; i++) {
+                const child = children[i];
                 const tag = (child.tagName || "").toLowerCase();
                 if (tag === "head" || tag === "helmet") {
                     this.renderHead(child);
                 } else if (tag === "title") {
                     this.renderHeadTitle(child);
                 }
-            });
+            }
         };
     },
 };

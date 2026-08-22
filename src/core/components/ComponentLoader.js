@@ -143,20 +143,29 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
 
     const props = {};
 
-    Array.from(usageNode.attributes || []).forEach((attr) => {
-        if (attr.name !== "type" && attr.name !== "class") {
-            props[attr.name] = engine.interpolate(attr.value, context);
+    const uAttrs = usageNode.attributes;
+    if (uAttrs) {
+        const uLen = uAttrs.length;
+        for (let uIdx = 0; uIdx < uLen; uIdx++) {
+            const attr = uAttrs[uIdx];
+            if (attr.name !== "type" && attr.name !== "class") {
+                props[attr.name] = engine.interpolate(attr.value, context);
+            }
         }
-    });
+    }
 
     const compConstants = {};
-    const constsNodes = Array.from(
-        specNode.querySelectorAll("constants > const, constants > constant, vars > var, variables > variable"),
-    );
-    constsNodes.forEach((node) => {
-        const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
-        if (id) compConstants[id] = node.textContent.trim();
-    });
+    const constsNodes = specNode.querySelectorAll
+        ? specNode.querySelectorAll("constants > const, constants > constant, vars > var, variables > variable")
+        : null;
+    if (constsNodes) {
+        const cnLen = constsNodes.length;
+        for (let i = 0; i < cnLen; i++) {
+            const node = constsNodes[i];
+            const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
+            if (id) compConstants[id] = node.textContent.trim();
+        }
+    }
 
     const compDepth = (context._compDepth || 0) + 1;
     const compName = getAttr(specNode, "name", "id") || getTagName(usageNode) || "component";
@@ -210,11 +219,22 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
 
         let parsedValue;
         if (type === "array") {
-            parsedValue = engine.getChildren(node, "item").map((item) => {
+            const items = engine.getChildren(node, "item");
+            const itLen = items.length;
+            parsedValue = new Array(itLen);
+            for (let itIdx = 0; itIdx < itLen; itIdx++) {
+                const item = items[itIdx];
                 const obj = {};
-                Array.from(item.attributes).forEach((attr) => (obj[attr.name] = attr.value));
-                return obj;
-            });
+                const itAttrs = item.attributes;
+                if (itAttrs) {
+                    const iaLen = itAttrs.length;
+                    for (let iaIdx = 0; iaIdx < iaLen; iaIdx++) {
+                        const attr = itAttrs[iaIdx];
+                        obj[attr.name] = attr.value;
+                    }
+                }
+                parsedValue[itIdx] = obj;
+            }
         } else if (type === "number" || type === "int" || type === "float") {
             const txt = node.textContent.trim();
             parsedValue = txt !== "" ? Number(txt) : 0;

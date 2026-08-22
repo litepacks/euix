@@ -55,15 +55,18 @@ export const EUIXCollapsePlugin = {
 
             const renderBodyChildren = () => {
                 body.innerHTML = "";
-                Array.from(xmlNode.childNodes).forEach((child) => {
+                const chNodes = xmlNode.childNodes;
+                const chLen = chNodes ? chNodes.length : 0;
+                for (let i = 0; i < chLen; i++) {
+                    const child = chNodes[i];
                     if (
                         child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
                         child.tagName.toLowerCase() === "summary"
                     )
-                        return;
+                        continue;
                     const el = this.createHTMLElement(child, context);
                     if (el) body.appendChild(el);
-                });
+                }
             };
 
             const updateCollapseState = (isOpen) => {

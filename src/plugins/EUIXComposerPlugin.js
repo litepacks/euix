@@ -442,23 +442,28 @@ export const EUIXComposerPlugin = {
             if (!engineClass._globalActionRegistry) engineClass._globalActionRegistry = new EUIXActionRegistry();
 
             if (!this.xmlDoc) return;
-            const actionDefNodes = Array.from(this.xmlDoc.querySelectorAll("action_def, workflow_def"));
-            actionDefNodes.forEach((node) => {
+            const actionDefNodes = this.xmlDoc.querySelectorAll("action_def, workflow_def");
+            const adLen = actionDefNodes ? actionDefNodes.length : 0;
+            for (let i = 0; i < adLen; i++) {
+                const node = actionDefNodes[i];
                 const name = node.getAttribute("name") || node.getAttribute("id");
                 if (name) {
                     this._actionRegistry.register(name, node);
                     engineClass._globalActionRegistry.register(name, node);
                 }
-            });
+            }
         };
 
         const extractActionArgs = (engine, actionNode, context = {}) => {
             const args = {};
 
             if (actionNode.attributes) {
-                Array.from(actionNode.attributes).forEach((attr) => {
+                const attrs = actionNode.attributes;
+                const aLen = attrs.length;
+                for (let aIdx = 0; aIdx < aLen; aIdx++) {
+                    const attr = attrs[aIdx];
                     const attrName = attr.name;
-                    if (["action", "name", "action_name", "class", "id", "target"].includes(attrName)) return;
+                    if (["action", "name", "action_name", "class", "id", "target"].includes(attrName)) continue;
 
                     let key = attrName;
                     if (key.startsWith("arg-") || key.startsWith("param-")) {
@@ -468,7 +473,7 @@ export const EUIXComposerPlugin = {
                         engine && typeof engine.interpolate === "function"
                             ? engine.interpolate(attr.value, context)
                             : attr.value;
-                });
+                }
             }
 
             const argNodes = [

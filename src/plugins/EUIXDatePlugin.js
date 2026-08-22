@@ -757,11 +757,16 @@ export const EUIXDatePlugin = {
             const styleAttr = xmlNode.getAttribute("style");
             if (styleAttr) el.style.cssText = this.interpolate(styleAttr, context);
 
-            Array.from(xmlNode.attributes || []).forEach((attr) => {
-                if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
-                    el.setAttribute(attr.name, this.interpolate(attr.value, context));
+            const attrs = xmlNode.attributes;
+            if (attrs) {
+                const aLen = attrs.length;
+                for (let aIdx = 0; aIdx < aLen; aIdx++) {
+                    const attr = attrs[aIdx];
+                    if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
+                        el.setAttribute(attr.name, this.interpolate(attr.value, context));
+                    }
                 }
-            });
+            }
 
             const rawVal =
                 xmlNode.getAttribute("value") ||
@@ -909,11 +914,16 @@ export const EUIXDatePlugin = {
             const styleAttr = xmlNode.getAttribute("style");
             if (styleAttr) el.style.cssText = this.interpolate(styleAttr, context);
 
-            Array.from(xmlNode.attributes || []).forEach((attr) => {
-                if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
-                    el.setAttribute(attr.name, this.interpolate(attr.value, context));
+            const rangeAttrs = xmlNode.attributes;
+            if (rangeAttrs) {
+                const raLen = rangeAttrs.length;
+                for (let raIdx = 0; raIdx < raLen; raIdx++) {
+                    const attr = rangeAttrs[raIdx];
+                    if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
+                        el.setAttribute(attr.name, this.interpolate(attr.value, context));
+                    }
                 }
-            });
+            }
 
             const rawStart = xmlNode.getAttribute("start") || xmlNode.getAttribute("from") || "";
             const rawEnd = xmlNode.getAttribute("end") || xmlNode.getAttribute("to") || "";
