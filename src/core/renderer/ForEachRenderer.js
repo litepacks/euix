@@ -679,6 +679,10 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 for (let i = startIndex; i < endIndex; i++) {
                     const item = list[i];
                     if (!item) continue;
+                    if (typeof item === "object" && Object.isExtensible(item)) {
+                        item._index = i;
+                        item.index = i;
+                    }
                     const key = getItemKey(item, i);
                     const hash = getItemHash(item);
                     activeKeys.add(key);
@@ -770,13 +774,20 @@ export function renderForEach(engine, xmlNode, context = {}) {
         // Fast-Path 1: Initial Mount / Empty Container
         if (oldLen === 0) {
             const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+            const seenKeys = new Set();
             for (let idx = 0; idx < listLen; idx++) {
                 const item = list[idx];
-                if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                if (item && typeof item === "object" && Object.isExtensible(item)) {
                     item._index = idx;
                     item.index = idx;
                 }
-                const key = getItemKey(item, idx);
+                const rawKey = getItemKey(item, idx);
+                let key = rawKey;
+                if (seenKeys.has(key)) {
+                    key = `${rawKey}__dup_${idx}`;
+                }
+                seenKeys.add(key);
+
                 const hash = (item && (item._hash ?? item.__v ?? item.id)) ?? getItemHash(item);
                 const nodes = createItemNodes(item, idx);
                 newKeys.push(key);
@@ -805,13 +816,20 @@ export function renderForEach(engine, xmlNode, context = {}) {
             }
             if (isPureAppend) {
                 const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+                const seenKeys = new Set(oldKeys);
                 for (let idx = oldLen; idx < listLen; idx++) {
                     const item = list[idx];
-                    if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                    if (item && typeof item === "object" && Object.isExtensible(item)) {
                         item._index = idx;
                         item.index = idx;
                     }
-                    const key = getItemKey(item, idx);
+                    const rawKey = getItemKey(item, idx);
+                    let key = rawKey;
+                    if (seenKeys.has(key)) {
+                        key = `${rawKey}__dup_${idx}`;
+                    }
+                    seenKeys.add(key);
+
                     const hash = (item && (item._hash ?? item.__v ?? item.id)) ?? getItemHash(item);
                     const nodes = createItemNodes(item, idx);
                     oldKeys.push(key);
@@ -842,7 +860,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 const hasExtKeys = Boolean(compiled?.externalKeys && compiled.externalKeys.size > 0);
                 for (let idx = 0; idx < oldLen; idx++) {
                     const item = list[idx];
-                    if (item && typeof item === "object" && !Object.isFrozen(item)) {
+                    if (item && typeof item === "object" && Object.isExtensible(item)) {
                         item._index = idx;
                         item.index = idx;
                     }
@@ -864,13 +882,19 @@ export function renderForEach(engine, xmlNode, context = {}) {
             }
         }
 
+        const seenKeysInPass = new Set();
         for (let idx = 0; idx < list.length; idx++) {
             const item = list[idx];
-            if (item && typeof item === "object" && !Object.isFrozen(item)) {
+            if (item && typeof item === "object" && Object.isExtensible(item)) {
                 item._index = idx;
                 item.index = idx;
             }
-            const key = getItemKey(item, idx);
+            const rawKey = getItemKey(item, idx);
+            let key = rawKey;
+            if (seenKeysInPass.has(key)) {
+                key = `${rawKey}__dup_${idx}`;
+            }
+            seenKeysInPass.add(key);
             newKeys.push(key);
 
             const existing = oldKeyedMap.get(key);

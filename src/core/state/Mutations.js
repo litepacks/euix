@@ -29,12 +29,21 @@ export function applyArrayMutation(current, operation, payload = {}) {
             const idx = Number(payload.index);
             if (idx >= 0 && idx < current.length) current.splice(idx, 1);
         } else if (payload?.where) {
-            const { field, equals } = payload.where;
-            const eqStr = String(equals);
+            const { field, equals, op } = payload.where;
+            const isNeq = op === "neq" || op === "!=" || op === "ne";
             let w = 0;
             for (let r = 0; r < current.length; r++) {
                 const item = current[r];
-                if (!item || String(item[field]) !== eqStr) {
+                if (!item) continue;
+                const actual = item[field];
+                const isMatch =
+                    actual === equals ||
+                    (actual !== undefined &&
+                        actual !== null &&
+                        equals !== undefined &&
+                        equals !== null &&
+                        String(actual) === String(equals));
+                if (isNeq ? isMatch : !isMatch) {
                     current[w++] = item;
                 }
             }
@@ -59,12 +68,21 @@ export function applyArrayMutation(current, operation, payload = {}) {
     }
     if (op === MUTATION_OPS.UPDATE) {
         if (payload?.where) {
-            const { field, equals } = payload.where;
-            const eqStr = String(equals);
+            const { field, equals, op } = payload.where;
+            const isNeq = op === "neq" || op === "!=" || op === "ne";
             const isObjVal = typeof payload.value === "object" && payload.value !== null;
             for (let i = 0; i < current.length; i++) {
                 const item = current[i];
-                if (item && String(item[field]) === eqStr) {
+                if (!item) continue;
+                const actual = item[field];
+                const isMatch =
+                    actual === equals ||
+                    (actual !== undefined &&
+                        actual !== null &&
+                        equals !== undefined &&
+                        equals !== null &&
+                        String(actual) === String(equals));
+                if (isNeq ? !isMatch : isMatch) {
                     current[i] = isObjVal ? Object.assign({}, item, payload.value) : payload.value;
                 }
             }

@@ -449,7 +449,18 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             const matchValue = this.interpolate(rawMatch, context);
 
             this.batch(() => {
-                const nextList = list.filter((item) => String(item[field]) !== String(matchValue));
+                const nextList = list.filter((item) => {
+                    if (!item) return false;
+                    const actual = item[field];
+                    return !(
+                        actual === matchValue ||
+                        (actual !== undefined &&
+                            actual !== null &&
+                            matchValue !== undefined &&
+                            matchValue !== null &&
+                            String(actual) === String(matchValue))
+                    );
+                });
                 this.setState(path, nextList);
                 this.applyResets(actionNode);
                 if (String(this._rawState.editing_id) === String(matchValue)) {
@@ -552,6 +563,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         const matchesWhere = (item) => {
             if (!whereNode) return true;
+            if (!item) return false;
             const field = whereNode.getAttribute("field") || "id";
             const op = (whereNode.getAttribute("op") || "eq").toLowerCase();
             const rawMatch =
@@ -559,10 +571,18 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             const expected = this.interpolate(rawMatch, context);
             const actual = item[field];
 
+            const isMatch =
+                actual === expected ||
+                (actual !== undefined &&
+                    actual !== null &&
+                    expected !== undefined &&
+                    expected !== null &&
+                    String(actual) === String(expected));
+
             if (op === "neq" || op === "!=" || op === "ne") {
-                return String(actual) !== String(expected);
+                return !isMatch;
             }
-            return String(actual) === String(expected);
+            return isMatch;
         };
 
         const touchedIds = [];

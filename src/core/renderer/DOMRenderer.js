@@ -18,6 +18,7 @@ import {
     METADATA_AND_EVENT_TAGS,
     SVG_NAMESPACE,
     SVG_TAGS,
+    safeStringify,
 } from "../utils/constants.js";
 import { renderForEach } from "./ForEachRenderer.js";
 
@@ -244,11 +245,11 @@ export function interpolate(engine, text, context = {}) {
         const inner = text.slice(1, -1).trim();
         if (inner.startsWith("JSON.stringify($route") || inner === "$route") {
             const root = engine.getState("$route") || context?.$route;
-            return root !== undefined && root !== null ? JSON.stringify(root, null, 2) : "{}";
+            return root !== undefined && root !== null ? safeStringify(root, 2) : "{}";
         }
         if (inner.startsWith("JSON.stringify($router") || inner === "$router") {
             const root = engine.getState("$router") || context?.$router;
-            return root !== undefined && root !== null ? JSON.stringify(root, null, 2) : "{}";
+            return root !== undefined && root !== null ? safeStringify(root, 2) : "{}";
         }
         if (!/[?!=><+*/(),&|%-]/.test(inner) && !inner.includes("{")) {
             const dotIdx = inner.indexOf(".");
@@ -260,7 +261,7 @@ export function interpolate(engine, text, context = {}) {
                         : typeof v === "number"
                           ? String(v)
                           : typeof v === "object" && v !== null
-                            ? JSON.stringify(v)
+                            ? safeStringify(v)
                             : String(v ?? "");
                 }
                 const v = engine.getState(inner);
@@ -270,7 +271,7 @@ export function interpolate(engine, text, context = {}) {
                         : typeof v === "number"
                           ? String(v)
                           : typeof v === "object" && v !== null
-                            ? JSON.stringify(v)
+                            ? safeStringify(v)
                             : String(v ?? "");
                 }
             } else {
@@ -285,7 +286,7 @@ export function interpolate(engine, text, context = {}) {
                                 : typeof v === "number"
                                   ? String(v)
                                   : typeof v === "object" && v !== null
-                                    ? JSON.stringify(v)
+                                    ? safeStringify(v)
                                     : String(v ?? "");
                         }
                     }
@@ -302,7 +303,7 @@ export function interpolate(engine, text, context = {}) {
                             return typeof curr === "string"
                                 ? curr
                                 : typeof curr === "object" && curr !== null
-                                  ? JSON.stringify(curr)
+                                  ? safeStringify(curr)
                                   : String(curr ?? "");
                     }
                 } else if (context && context[scope] !== undefined && context[scope] !== null) {
@@ -316,7 +317,7 @@ export function interpolate(engine, text, context = {}) {
                         return typeof curr === "string"
                             ? curr
                             : typeof curr === "object" && curr !== null
-                              ? JSON.stringify(curr)
+                              ? safeStringify(curr)
                               : String(curr ?? "");
                 }
             }
@@ -339,7 +340,7 @@ export function interpolate(engine, text, context = {}) {
                         typeof v === "string" || typeof v === "number"
                             ? v
                             : typeof v === "object" && v !== null
-                              ? JSON.stringify(v)
+                              ? safeStringify(v)
                               : (v ?? "");
                 } else if (engine.constants?.has(c.scope)) {
                     out += engine.constants.get(c.scope);
@@ -352,7 +353,7 @@ export function interpolate(engine, text, context = {}) {
                             ? typeof v === "string" || typeof v === "number"
                                 ? v
                                 : typeof v === "object" && v !== null
-                                  ? JSON.stringify(v)
+                                  ? safeStringify(v)
                                   : (v ?? "")
                             : "";
                 }
@@ -383,7 +384,7 @@ export function interpolate(engine, text, context = {}) {
                     out +=
                         curr !== undefined && curr !== null
                             ? typeof curr === "object"
-                                ? JSON.stringify(curr)
+                                ? safeStringify(curr)
                                 : curr
                             : "";
                 }
@@ -403,11 +404,11 @@ export function interpolate(engine, text, context = {}) {
                     out +=
                         curr !== undefined && curr !== null
                             ? typeof curr === "object"
-                                ? JSON.stringify(curr)
+                                ? safeStringify(curr)
                                 : curr
                             : "";
                 } else if (dev && !c.prop) {
-                    out += typeof dev === "object" ? JSON.stringify(dev) : String(dev);
+                    out += typeof dev === "object" ? safeStringify(dev) : String(dev);
                 }
             } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
                 const v = engine.getState(c.prop);
@@ -416,26 +417,26 @@ export function interpolate(engine, text, context = {}) {
                         ? typeof v === "string" || typeof v === "number"
                             ? v
                             : typeof v === "object" && v !== null
-                              ? JSON.stringify(v)
+                              ? safeStringify(v)
                               : (v ?? "")
                         : "";
             } else if (c.scope === "parent") {
                 const clean = c.prop.replace(/^data\./, "");
                 const v = engine.getState(clean);
-                out += v !== undefined ? (typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "")) : "";
+                out += v !== undefined ? (typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "")) : "";
             } else if (c.scope === "props") {
                 const propsObj = context ? context.props || context : null;
                 if (propsObj && propsObj[c.prop] !== undefined) {
                     const v = propsObj[c.prop];
-                    out += typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "");
+                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
                 }
             } else if (c.scope === "local" || c.scope === "$local") {
                 if (context && context._localState && context._localState[c.prop] !== undefined) {
                     const v = context._localState[c.prop];
-                    out += typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "");
+                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
                 } else if (context && context.local && context.local[c.prop] !== undefined) {
                     const v = context.local[c.prop];
-                    out += typeof v === "object" && v !== null ? JSON.stringify(v) : (v ?? "");
+                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
                 }
             } else if (c.scope === "api" || c.scope === "$api") {
                 if (c.prop) {
@@ -785,14 +786,14 @@ export function interpolate(engine, text, context = {}) {
                 const val = context._localState[cleanKey];
                 return val !== undefined && val !== null
                     ? typeof val === "object"
-                        ? JSON.stringify(val)
+                        ? safeStringify(val)
                         : String(val)
                     : "";
             }
             const val = engine.getState(engine.parseBindPath(cleanKey));
             return val !== undefined && val !== null
                 ? typeof val === "object"
-                    ? JSON.stringify(val)
+                    ? safeStringify(val)
                     : String(val)
                 : "";
         }
@@ -803,7 +804,7 @@ export function interpolate(engine, text, context = {}) {
                 const val = context._localState[cleanKey];
                 return val !== undefined && val !== null
                     ? typeof val === "object"
-                        ? JSON.stringify(val)
+                        ? safeStringify(val)
                         : String(val)
                     : "";
             }
@@ -811,7 +812,7 @@ export function interpolate(engine, text, context = {}) {
                 const val = context.local[cleanKey];
                 return val !== undefined && val !== null
                     ? typeof val === "object"
-                        ? JSON.stringify(val)
+                        ? safeStringify(val)
                         : String(val)
                     : "";
             }

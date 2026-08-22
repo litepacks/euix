@@ -376,7 +376,7 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
     }
     if (eventType === "submit") {
         e.preventDefault();
-        const formEl = el.tagName === "FORM" ? el : el.closest("form");
+        const formEl = el.tagName === "FORM" ? el : el.closest ? el.closest("form") : null;
         if (formEl && isFn(formEl.checkValidity)) {
             if (!formEl.checkValidity()) {
                 if (isFn(formEl.reportValidity)) {
@@ -387,8 +387,11 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
         }
     }
 
-    if (eventType === "click" && (el.type === "submit" || (el.tagName === "BUTTON" && el.closest("form")))) {
-        const formEl = el.closest("form");
+    if (
+        eventType === "click" &&
+        (el.type === "submit" || (el.tagName === "BUTTON" && el.closest && el.closest("form")))
+    ) {
+        const formEl = el.closest ? el.closest("form") : null;
         if (formEl && isFn(formEl.checkValidity)) {
             if (!formEl.checkValidity()) {
                 if (isFn(formEl.reportValidity)) {
@@ -461,7 +464,13 @@ export function _setupContainerEventDelegation(engine, containerTarget) {
         const evtType = events[eIdx];
         containerTarget.addEventListener(evtType, (e) => {
             let target = e.target;
+            if (target && target.nodeType === 3) {
+                target = target.parentNode;
+            }
             while (target && target !== containerTarget) {
+                if (target.correspondingUseElement) {
+                    target = target.correspondingUseElement;
+                }
                 const handlerNodes = target.__euixEvents
                     ? target.__euixEvents[evtType]
                     : target._euixEventMap
@@ -474,7 +483,7 @@ export function _setupContainerEventDelegation(engine, containerTarget) {
                     executeEventHandlers(engine, handlerNodes, evtType, e, target, targetContext);
                     break;
                 }
-                target = target.parentNode;
+                target = target.parentNode || target.parentElement;
             }
         });
     }

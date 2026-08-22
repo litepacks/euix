@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { EMPTY_ARR, isBool, isFn, isStr, splitPath } from "../utils/constants.js";
+import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath } from "../utils/constants.js";
 import { applyArrayMutation } from "./Mutations.js";
 
 export function getState(engine, key) {
@@ -433,7 +433,8 @@ export function registerBinding(engine, path, el, kind, updateFn = null) {
 export function syncBindings(engine, path, value, sourceEl = null, executedFns = null) {
     const list = engine._bindings.get(path);
     if (!list || list.length === 0) return;
-    const text = value === undefined || value === null ? "" : String(value);
+    const text =
+        value === undefined || value === null ? "" : typeof value === "object" ? safeStringify(value) : String(value);
 
     let hasDeadNodes = false;
     for (let i = 0; i < list.length; i++) {

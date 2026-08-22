@@ -12,7 +12,12 @@ const _compilePathCache = new Map();
  */
 export function fastDecode(str) {
     if (!str) return "";
-    return str.indexOf("%") !== -1 ? decodeURIComponent(str) : str;
+    if (str.indexOf("%") === -1) return str;
+    try {
+        return decodeURIComponent(str);
+    } catch (_) {
+        return str;
+    }
 }
 
 /**
@@ -179,7 +184,10 @@ export function generatePath(pattern = "/", params = {}) {
         path = path.replace(/(\/)?\*$/, (_, slash) => {
             const splat = safeParams["*"];
             if (splat !== undefined && splat !== null) {
-                const cleanSplat = encodeURI(String(splat).replace(/^\//, ""));
+                let cleanSplat = String(splat).replace(/^\//, "");
+                try {
+                    cleanSplat = encodeURI(cleanSplat);
+                } catch (_) {}
                 return slash ? `/${cleanSplat}` : cleanSplat;
             }
             return "";

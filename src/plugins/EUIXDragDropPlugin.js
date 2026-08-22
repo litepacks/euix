@@ -18,7 +18,11 @@ export const EUIXDragDropPlugin = {
             el.style.webkitUserDrag = "element";
 
             el.addEventListener("pointerdown", (e) => {
-                if (e.target.closest("button") || e.target.closest("input") || e.target.closest("select")) return;
+                if (
+                    e.target?.closest &&
+                    (e.target.closest("button") || e.target.closest("input") || e.target.closest("select"))
+                )
+                    return;
                 const taskId =
                     context && context.task && context.task.id ? context.task.id : el.getAttribute("data-id") || el.id;
                 if (taskId) {
