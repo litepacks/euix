@@ -281,9 +281,11 @@ export function _isComplexForEachChild(engine, node) {
     ) {
         return true;
     }
-    const children = node.children ? Array.from(node.children) : getChildNodes(node).filter(isElem);
-    for (let i = 0; i < children.length; i++) {
-        if (_isComplexForEachChild(engine, children[i])) return true;
+    const children = node.children || node.childNodes || EMPTY_ARR;
+    const chLen = children.length;
+    for (let i = 0; i < chLen; i++) {
+        const c = children[i];
+        if (c.nodeType === 1 && _isComplexForEachChild(engine, c)) return true;
     }
     return false;
 }
@@ -293,15 +295,23 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
         return xmlNode._templatePrototype;
     }
 
-    const templateChildren = xmlNode.children ? Array.from(xmlNode.children) : getChildNodes(xmlNode).filter(isElem);
+    const templateChildren = [];
+    const rawChildren = xmlNode.children || xmlNode.childNodes || EMPTY_ARR;
+    const rawLen = rawChildren.length;
+    for (let i = 0; i < rawLen; i++) {
+        const c = rawChildren[i];
+        if (c.nodeType === 1) templateChildren.push(c);
+    }
+
     let hasComplexChild = false;
-    for (let i = 0; i < templateChildren.length; i++) {
+    const tLen = templateChildren.length;
+    for (let i = 0; i < tLen; i++) {
         if (_isComplexForEachChild(engine, templateChildren[i])) {
             hasComplexChild = true;
             break;
         }
     }
-    if (hasComplexChild || templateChildren.length === 0) {
+    if (hasComplexChild || tLen === 0) {
         xmlNode._templatePrototype = { canClone: false };
         return xmlNode._templatePrototype;
     }
@@ -351,9 +361,10 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
             }
 
             if (xNode.nodeType === 1) {
-                if (xNode.attributes) {
-                    for (let a = 0; a < xNode.attributes.length; a++) {
-                        const attr = xNode.attributes[a];
+                const attrs = xNode.attributes;
+                if (attrs) {
+                    for (let aIdx = 0; aIdx < attrs.length; aIdx++) {
+                        const attr = attrs[aIdx];
                         const attrName = attr.name;
                         const attrVal = attr.value;
                         if (attrVal?.includes("{") && !attrName.startsWith("on_")) {
@@ -395,9 +406,9 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
 
                 if (dNode._euixEventMap && dNode._euixEventMap.size > 0) {
                     const eventsObj = Object.create(null);
-                    dNode._euixEventMap.forEach((handlers, evType) => {
+                    for (const [evType, handlers] of dNode._euixEventMap) {
                         eventsObj[evType] = handlers;
-                    });
+                    }
                     dynamicSlots.push({
                         childIndex: cIdx,
                         path: [...path],
@@ -408,10 +419,15 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                     });
                 }
 
-                const xChildren = Array.from(xNode.childNodes).filter(_isVisualXmlChild);
-                const dChildren = Array.from(dNode.childNodes);
-
-                const len = Math.min(xChildren.length, dChildren.length);
+                const xChildNodes = xNode.childNodes;
+                const xChildren = [];
+                const xcLen = xChildNodes ? xChildNodes.length : 0;
+                for (let i = 0; i < xcLen; i++) {
+                    const c = xChildNodes[i];
+                    if (_isVisualXmlChild(c)) xChildren.push(c);
+                }
+                const dChildren = dNode.childNodes;
+                const len = Math.min(xChildren.length, dChildren ? dChildren.length : 0);
                 for (let i = 0; i < len; i++) {
                     recordSlots(xChildren[i], dChildren[i], [...path, i]);
                 }

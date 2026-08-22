@@ -306,12 +306,15 @@ export function _executeActionInternalBody(engine, actionNode, context = {}) {
         ) &&
         !actionAttr
     ) {
-        const steps = Array.from(actionNode.children || []).filter((c) => c.nodeType === 1);
-        if (steps.length > 0) {
+        const actionChildren = actionNode.children;
+        const acLen = actionChildren ? actionChildren.length : 0;
+        if (acLen > 0) {
             let lastResult;
-            for (const step of steps) {
-                if (step.tagName && step.tagName.toLowerCase() === "else") continue;
-                lastResult = _handleActionInternal(engine, step, context);
+            for (let i = 0; i < acLen; i++) {
+                const step = actionChildren[i];
+                if (step.nodeType === 1 && step.tagName.toLowerCase() !== "else") {
+                    lastResult = _handleActionInternal(engine, step, context);
+                }
             }
             return lastResult;
         }
@@ -427,13 +430,20 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
             if (actType === "XHR") engine.handleXHR(node, eventContext);
             else engine.handleAction(node, eventContext);
         } else {
-            const childActions = Array.from(node.children).filter(
-                (c) => c.tagName && c.tagName.toLowerCase() !== "confirm",
-            );
+            const childActions = [];
+            const nChildren = node.children;
+            const ncLen = nChildren ? nChildren.length : 0;
+            for (let cIdx = 0; cIdx < ncLen; cIdx++) {
+                const c = nChildren[cIdx];
+                if (c.tagName && c.tagName.toLowerCase() !== "confirm") {
+                    childActions.push(c);
+                }
+            }
             if (childActions.length) {
                 (async () => {
-                    for (const act of childActions) {
-                        await engine.handleAction(act, eventContext);
+                    const caLen = childActions.length;
+                    for (let aIdx = 0; aIdx < caLen; aIdx++) {
+                        await engine.handleAction(childActions[aIdx], eventContext);
                     }
                 })().catch((err) => engine.reportError(err, "Event Action Execution"));
             }
@@ -474,8 +484,9 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
 
     const eventMap = new Map();
     const childNodes = xmlNode.children || [];
+    const chLen = childNodes.length;
 
-    for (let i = 0; i < childNodes.length; i++) {
+    for (let i = 0; i < chLen; i++) {
         const child = childNodes[i];
         const tagName = child.tagName.toLowerCase();
         let eventType = null;
@@ -499,8 +510,12 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
         }
 
         if (eventType) {
-            if (!eventMap.has(eventType)) eventMap.set(eventType, []);
-            eventMap.get(eventType).push(child);
+            let list = eventMap.get(eventType);
+            if (!list) {
+                list = [];
+                eventMap.set(eventType, list);
+            }
+            list.push(child);
         }
     }
 
@@ -518,27 +533,26 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
     el._euixContext = context;
 
     const actionNames = [];
-    eventMap.forEach((handlerNodes) => {
-        handlerNodes.forEach((h) => {
-            const act = h.getAttribute && (h.getAttribute("action") || h.getAttribute("name"));
-            if (act && !actionNames.includes(act)) actionNames.push(act);
-        });
-    });
-    if (actionNames.length > 0 && !el.hasAttribute("data-euix-action")) {
-        el.setAttribute("data-euix-action", actionNames.join(","));
-    }
-
     const eventsObj = Object.create(null);
-    eventMap.forEach((handlerNodes, eventType) => {
-        eventsObj[eventType] = handlerNodes;
-    });
-    el.__euixEvents = eventsObj;
 
-    eventMap.forEach((handlerNodes, eventType) => {
+    for (const [eventType, handlerNodes] of eventMap) {
+        eventsObj[eventType] = handlerNodes;
+        const hLen = handlerNodes.length;
+        for (let i = 0; i < hLen; i++) {
+            const h = handlerNodes[i];
+            const act = h?.getAttribute ? h.getAttribute("action") || h.getAttribute("name") : null;
+            if (act && !actionNames.includes(act)) actionNames.push(act);
+        }
+
         el.addEventListener(eventType, (e) => {
             if (e._euixHandled) return;
             e._euixHandled = true;
             executeEventHandlers(engine, handlerNodes, eventType, e, el, context);
         });
-    });
+    }
+
+    if (actionNames.length > 0 && !el.hasAttribute("data-euix-action")) {
+        el.setAttribute("data-euix-action", actionNames.join(","));
+    }
+    el.__euixEvents = eventsObj;
 }

@@ -1027,11 +1027,14 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
     if (!el || !xmlNode || xmlNode.nodeType !== 1 || !xmlNode.attributes) return;
 
     const validationAttrs = ["pattern", "minlength", "maxlength", "min", "max", "step", "title", "autocomplete"];
+    const attrs = xmlNode.attributes;
+    const aLen = attrs.length;
 
-    Array.from(xmlNode.attributes).forEach((attr) => {
+    for (let aIdx = 0; aIdx < aLen; aIdx++) {
+        const attr = attrs[aIdx];
         const attrName = attr.name;
         const attrValue = attr.value;
-        if (attrValue === undefined || attrValue === null) return;
+        if (attrValue === undefined || attrValue === null) continue;
 
         const lowerAttrName = attrName.toLowerCase();
 
@@ -1155,8 +1158,11 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
             ),
         );
         if (matches.length > 0) {
-            const uniqueKeys = new Set(matches.map((m) => m[1]));
-            uniqueKeys.forEach((key) => {
+            const uniqueKeys = new Set();
+            for (let mIdx = 0; mIdx < matches.length; mIdx++) {
+                uniqueKeys.add(matches[mIdx][1]);
+            }
+            for (const key of uniqueKeys) {
                 if (
                     attrValue.includes("$route.") ||
                     attrValue.includes("$router.") ||
@@ -1200,17 +1206,17 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
                         engine.registerBinding(rootBindKey, el, "attribute", updateFn);
                     }
                     const innerBracketMatches = key.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
-                    innerBracketMatches.forEach((bm) => {
-                        const innerKey = bm.replace(/[[\]]|data\./g, "");
+                    for (let bIdx = 0; bIdx < innerBracketMatches.length; bIdx++) {
+                        const innerKey = innerBracketMatches[bIdx].replace(/[[\]]|data\./g, "");
                         if (!/^\d+$/.test(innerKey)) {
                             engine.registerBinding(innerKey, el, "attribute", updateFn);
                         }
-                    });
+                    }
                 }
-            });
+            }
             engine.updateAttributeBinding(el, attrName, attrValue, context);
         }
-    });
+    }
 }
 
 export function updateAttributeBinding(engine, el, attrName, template, context = {}) {
@@ -1494,13 +1500,16 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         engine.applyLayoutStyles(el, xmlNode, context);
         engine.bindEvents(xmlNode, el, context);
 
-        Array.from(xmlNode.childNodes).forEach((child) => {
+        const chNodes = xmlNode.childNodes;
+        const chLen = chNodes ? chNodes.length : 0;
+        for (let i = 0; i < chLen; i++) {
+            const child = chNodes[i];
             const childEl = engine.createHTMLElement(child, context);
             if (childEl) {
                 engine.applyItemChildStyles(childEl, child, context);
                 el.appendChild(childEl);
             }
-        });
+        }
 
         return engine.applyRef(el, xmlNode, context);
     }
@@ -1527,10 +1536,12 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             e.preventDefault();
         };
 
-        Array.from(xmlNode.childNodes).forEach((child) => {
-            const childEl = engine.createHTMLElement(child, context);
+        const chNodes = xmlNode.childNodes;
+        const chLen = chNodes ? chNodes.length : 0;
+        for (let i = 0; i < chLen; i++) {
+            const childEl = engine.createHTMLElement(chNodes[i], context);
             if (childEl) form.appendChild(childEl);
-        });
+        }
 
         return engine.applyRef(form, xmlNode, context);
     }
@@ -1551,10 +1562,12 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
         engine.bindEvents(xmlNode, sel, context);
 
-        Array.from(xmlNode.childNodes).forEach((child) => {
-            const childEl = engine.createHTMLElement(child, context);
+        const chNodes = xmlNode.childNodes;
+        const chLen = chNodes ? chNodes.length : 0;
+        for (let i = 0; i < chLen; i++) {
+            const childEl = engine.createHTMLElement(chNodes[i], context);
             if (childEl) sel.appendChild(childEl);
-        });
+        }
 
         if (bindPath) sel.value = engine.getState(bindPath) ?? "";
 
@@ -1661,9 +1674,12 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         if (btnType) el.type = btnType;
         engine.bindEvents(xmlNode, el, context);
 
-        Array.from(xmlNode.childNodes).forEach((child) => {
+        const chNodes = xmlNode.childNodes;
+        const chLen = chNodes ? chNodes.length : 0;
+        for (let i = 0; i < chLen; i++) {
+            const child = chNodes[i];
             if (
-                child.nodeType === Node.ELEMENT_NODE &&
+                child.nodeType === 1 &&
                 [
                     "on_click",
                     "on_change",
@@ -1681,11 +1697,11 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                     const lblText = engine.interpolate(child.textContent.trim(), context);
                     el.appendChild(document.createTextNode(lblText));
                 }
-                return;
+                continue;
             }
             const childEl = engine.createHTMLElement(child, context);
             if (childEl) el.appendChild(childEl);
-        });
+        }
 
         return engine.applyRef(el, xmlNode, context);
     }
@@ -1824,11 +1840,14 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
         if (type === "text" && bindPath) {
             const templateNode = engine.getChild(xmlNode, "template");
-            const inlineTemplate = Array.from(xmlNode.childNodes)
-                .filter(isTxtNode)
-                .map((n) => n.textContent)
-                .join("")
-                .trim();
+            let inlineTemplate = "";
+            const chNodes = xmlNode.childNodes;
+            const chLen = chNodes ? chNodes.length : 0;
+            for (let i = 0; i < chLen; i++) {
+                const n = chNodes[i];
+                if (isTxtNode(n)) inlineTemplate += n.textContent || "";
+            }
+            inlineTemplate = inlineTemplate.trim();
 
             if (templateNode) {
                 const html = templateNode.innerHTML.trim();
@@ -1844,9 +1863,12 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
         engine.bindEvents(xmlNode, el, context);
 
-        Array.from(xmlNode.childNodes).forEach((child) => {
+        const compChNodes = xmlNode.childNodes;
+        const compChLen = compChNodes ? compChNodes.length : 0;
+        for (let i = 0; i < compChLen; i++) {
+            const child = compChNodes[i];
             if (
-                child.nodeType === Node.ELEMENT_NODE &&
+                child.nodeType === 1 &&
                 [
                     "on_click",
                     "on_change",
@@ -1861,17 +1883,17 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                     "template",
                 ].includes(child.tagName.toLowerCase())
             ) {
-                return;
+                continue;
             }
             if (type === "text" && bindPath && isTxtNode(child)) {
-                return;
+                continue;
             }
             const childEl = engine.createHTMLElement(child, context);
             if (childEl) {
                 engine.applyItemChildStyles(childEl, child, context);
                 el.appendChild(childEl);
             }
-        });
+        }
 
         return engine.applyRef(el, xmlNode, context);
     }
@@ -1905,16 +1927,19 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
           ? { ...context, _isInsideCodeOrPre: true }
           : context;
 
-    getChildNodes(xmlNode).forEach((child) => {
+    const gChNodes = xmlNode.childNodes;
+    const gChLen = gChNodes ? gChNodes.length : 0;
+    for (let i = 0; i < gChLen; i++) {
+        const child = gChNodes[i];
         if (isElem(child) && (EVENT_TAGS.has(getTagName(child)) || METADATA_AND_EVENT_TAGS.has(getTagName(child)))) {
-            return;
+            continue;
         }
         const childEl = engine.createHTMLElement(child, childContext);
         if (childEl) {
             engine.applyItemChildStyles(childEl, child, childContext);
             div.appendChild(childEl);
         }
-    });
+    }
 
     const childElementNodes = getChildNodes(xmlNode).filter((n) => isElem(n) && !EVENT_TAGS.has(getTagName(n)));
 
