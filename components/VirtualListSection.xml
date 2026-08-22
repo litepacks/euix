@@ -46,7 +46,7 @@
             </flex>
         </flex>
 
-        <if condition="{data.virtual_list_open} == 'true'">
+        <if condition="{data.virtual_list_open} == true || {data.virtual_list_open} == 'true'">
             <flex direction="column" gap="16" class="p-4 sm:p-5 bg-slate-950/80 rounded-2xl border border-slate-800">
                 <!-- Action Controls & Generator Bar -->
                 <flex direction="row" align="center" justify="between" wrap="true" gap="10" class="w-full">

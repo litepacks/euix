@@ -30,7 +30,7 @@
                     <button class="w-full text-left px-4 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer {data.active_project_id == '1' ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-300'}">
                         <on_click action="SET_STATE">
                             <path>data.active_project_id</path>
-                            <value>'1'</value>
+                            <value>1</value>
                         </on_click>
                         <span>🚀 Next-Gen Core Engine</span>
                         <span class="text-[10px] opacity-75">/projects/1</span>
@@ -39,7 +39,7 @@
                     <button class="w-full text-left px-4 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer {data.active_project_id == '2' ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-300'}">
                         <on_click action="SET_STATE">
                             <path>data.active_project_id</path>
-                            <value>'2'</value>
+                            <value>2</value>
                         </on_click>
                         <span>🗺️ Spatial Leaflet Studio</span>
                         <span class="text-[10px] opacity-75">/projects/2</span>
@@ -48,7 +48,7 @@
                     <button class="w-full text-left px-4 py-3 rounded-xl border text-xs font-bold transition flex items-center justify-between cursor-pointer {data.active_project_id == '3' ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-600/30' : 'bg-slate-800/80 hover:bg-slate-800 border-slate-700 text-slate-300'}">
                         <on_click action="SET_STATE">
                             <path>data.active_project_id</path>
-                            <value>'3'</value>
+                            <value>3</value>
                         </on_click>
                         <span>🛡️ Resilient API Pipeline</span>
                         <span class="text-[10px] opacity-75">/projects/3</span>
@@ -61,21 +61,21 @@
                         <button class="flex-1 py-1.5 rounded-lg text-xs font-bold transition {data.active_tab == 'overview' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">
                             <on_click action="SET_STATE">
                                 <path>data.active_tab</path>
-                                <value>'overview'</value>
+                                <value>overview</value>
                             </on_click>
                             Overview
                         </button>
                         <button class="flex-1 py-1.5 rounded-lg text-xs font-bold transition {data.active_tab == 'tasks' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">
                             <on_click action="SET_STATE">
                                 <path>data.active_tab</path>
-                                <value>'tasks'</value>
+                                <value>tasks</value>
                             </on_click>
                             Tasks
                         </button>
                         <button class="flex-1 py-1.5 rounded-lg text-xs font-bold transition {data.active_tab == 'settings' ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}">
                             <on_click action="SET_STATE">
                                 <path>data.active_tab</path>
-                                <value>'settings'</value>
+                                <value>settings</value>
                             </on_click>
                             Settings
                         </button>

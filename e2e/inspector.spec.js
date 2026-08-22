@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Inspector & Playwright E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/playground.html');
+    await page.goto('/#/playground');
   });
 
   test('should inspect DOM elements with euix helper and verify component metadata', async ({ page }) => {
