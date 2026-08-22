@@ -400,9 +400,11 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
         }
     }
 
-    const eventContext = { ...context, _targetEl: el, _evt: e };
+    const eventContext = Object.assign(Object.create(context), { _targetEl: el, _evt: e });
+    const hLen = handlerNodes.length;
 
-    for (const node of handlerNodes) {
+    for (let i = 0; i < hLen; i++) {
+        const node = handlerNodes[i];
         const targetKey = node.getAttribute("key") || node.getAttribute("code");
         if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
             continue;
@@ -535,7 +537,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
     const actionNames = [];
     const eventsObj = Object.create(null);
 
-    for (const [eventType, handlerNodes] of eventMap) {
+    eventMap.forEach((handlerNodes, eventType) => {
         eventsObj[eventType] = handlerNodes;
         const hLen = handlerNodes.length;
         for (let i = 0; i < hLen; i++) {
@@ -549,7 +551,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
             e._euixHandled = true;
             executeEventHandlers(engine, handlerNodes, eventType, e, el, context);
         });
-    }
+    });
 
     if (actionNames.length > 0 && !el.hasAttribute("data-euix-action")) {
         el.setAttribute("data-euix-action", actionNames.join(","));

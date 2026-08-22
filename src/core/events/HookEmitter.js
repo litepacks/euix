@@ -10,28 +10,34 @@ export class EUIXHookEmitter {
 
     on(event, handler) {
         if (!event || typeof handler !== "function") return () => {};
-        if (!this._listeners.has(event)) {
-            this._listeners.set(event, new Set());
+        let handlers = this._listeners.get(event);
+        if (!handlers) {
+            handlers = [];
+            this._listeners.set(event, handlers);
         }
-        this._listeners.get(event).add(handler);
+        handlers.push(handler);
         return () => this.off(event, handler);
     }
 
     off(event, handler) {
-        if (!this._listeners.has(event)) return;
+        const handlers = this._listeners.get(event);
+        if (!handlers) return;
         if (handler) {
-            this._listeners.get(event).delete(handler);
+            const idx = handlers.indexOf(handler);
+            if (idx !== -1) handlers.splice(idx, 1);
+            if (handlers.length === 0) this._listeners.delete(event);
         } else {
             this._listeners.delete(event);
         }
     }
 
     emit(event, data) {
-        if (!this._listeners.has(event)) return;
         const handlers = this._listeners.get(event);
-        for (const fn of handlers) {
+        if (!handlers) return;
+        const len = handlers.length;
+        for (let i = 0; i < len; i++) {
             try {
-                fn(data);
+                handlers[i](data);
             } catch (err) {
                 if (typeof console !== "undefined" && console.error) {
                     console.error(`[EUIXEngine Hook Error] Error in '${event}' hook handler:`, err);
