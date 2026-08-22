@@ -89,4 +89,91 @@ describe('DOMRenderer & ForEach Keyed Reconciliation Master Suite', () => {
         const vBox = container.querySelector('#virtual-box');
         expect(vBox).toBeTruthy();
     });
+
+    it('should safely render and reconcile lists with duplicate keys and non-extensible frozen objects', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="dup_items" type="array"></state>
+            </data_model>
+            <div id="dup-list">
+                <for_each items="{data.dup_items}" var="row" key="id">
+                    <div class="dup-row">
+                        <span>{row.text}</span>
+                    </div>
+                </for_each>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+
+        // 1. Dondurulmuş (Frozen/Sealed/Non-Extensible) ve Mükerrer ID'li Nesneler
+        const frozenItem1 = Object.freeze({ id: 'same_id', text: 'First Duplicate' });
+        const frozenItem2 = Object.preventExtensions({ id: 'same_id', text: 'Second Duplicate' });
+        const sealedItem = Object.seal({ id: 'sealed_id', text: 'Sealed Item' });
+        const item3 = { id: 'unique_id', text: 'Third Item' };
+
+        engine.setState('dup_items', [frozenItem1, frozenItem2, sealedItem, item3]);
+
+        let rows = container.querySelectorAll('.dup-row');
+        expect(rows).toHaveLength(4);
+        expect(rows[0].querySelector('span').textContent).toBe('First Duplicate');
+        expect(rows[1].querySelector('span').textContent).toBe('Second Duplicate');
+        expect(rows[2].querySelector('span').textContent).toBe('Sealed Item');
+        expect(rows[3].querySelector('span').textContent).toBe('Third Item');
+
+        // 2. Reconcile / Mutate (Duplicate Key listesini güncelle)
+        engine.mutateState('dup_items', 'PUSH', Object.freeze({ id: 'same_id', text: 'Third Duplicate' }));
+        rows = container.querySelectorAll('.dup-row');
+        expect(rows).toHaveLength(5);
+        expect(rows[4].querySelector('span').textContent).toBe('Third Duplicate');
+    });
+
+    it('should safely handle loose vs strict equality and nullish values in MUTATE_STATE <where> operations', () => {
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="items" type="array"></state>
+            </data_model>
+            <div id="items-list">
+                <for_each items="{data.items}" var="item" key="id">
+                    <div class="item-row" data-id="{item.id}">
+                        <span>{item.title}</span>
+                    </div>
+                </for_each>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+
+        // 1. Sayısal id, string id ve eksik/null alanlar içeren liste
+        engine.setState('items', [
+            { id: 101, title: 'Item Numeric 101' },
+            { id: '102', title: 'Item String 102' },
+            { id: 0, title: 'Item Zero' },
+            { id: null, title: 'Item Null ID' },
+            { id: 'custom', title: 'Item Custom' }
+        ]);
+
+        let rows = container.querySelectorAll('.item-row');
+        expect(rows).toHaveLength(5);
+
+        // 2. String '101' ile numeric 101 elemanını sil (loose match)
+        engine.mutateState('items', 'REMOVE', { where: { field: 'id', equals: '101' } });
+        rows = container.querySelectorAll('.item-row');
+        expect(rows).toHaveLength(4);
+        expect(rows[0].querySelector('span').textContent).toBe('Item String 102');
+
+        // 3. Numeric 102 ile string '102' elemanını sil (loose match)
+        engine.mutateState('items', 'REMOVE', { where: { field: 'id', equals: 102 } });
+        rows = container.querySelectorAll('.item-row');
+        expect(rows).toHaveLength(3);
+
+        // 4. Null ID olan elemanı güncelle (null safety)
+        engine.mutateState('items', 'UPDATE', { where: { field: 'id', equals: 0 }, value: { title: 'Updated Zero' } });
+        rows = container.querySelectorAll('.item-row');
+        expect(rows[0].querySelector('span').textContent).toBe('Updated Zero');
+    });
 });

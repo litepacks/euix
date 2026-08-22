@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createLocation, parseSearchParams } from '../src/plugins/router/core/location.js';
+import { fastDecode, matchPath, generatePath } from '../src/plugins/router/core/utils.js';
 import { NavigationBlockerManager } from '../src/plugins/router/navigation/blocker.js';
 
 describe('Router Location & Navigation Blocker Prompts', () => {
@@ -67,5 +68,31 @@ describe('Router Location & Navigation Blocker Prompts', () => {
 
         removeBlocker();
         blockerManager.destroy();
+    });
+
+    it('should safely decode URI components and handle malformed percent-encoded sequences without throwing URIError', () => {
+        // 1. Normal decoding
+        expect(fastDecode('hello%20world')).toBe('hello world');
+        expect(fastDecode('normal_string')).toBe('normal_string');
+        expect(fastDecode('')).toBe('');
+
+        // 2. Malformed URI component (e.g. invalid % sequences)
+        const malformed1 = '%E0%A4%A';
+        const malformed2 = '%';
+        const malformed3 = 'invalid%2';
+
+        expect(() => fastDecode(malformed1)).not.toThrow();
+        expect(fastDecode(malformed1)).toBe(malformed1);
+        expect(fastDecode(malformed2)).toBe(malformed2);
+        expect(fastDecode(malformed3)).toBe(malformed3);
+
+        // 3. matchPath with malformed URL parameter
+        const matched = matchPath('/user/:id', '/user/%E0%A4%A');
+        expect(matched).not.toBeNull();
+        expect(matched.params.id).toBe('%E0%A4%A');
+
+        // 4. generatePath with wildcard splat containing special characters
+        const path = generatePath('/files/*', { '*': 'docs/my report #1?.pdf' });
+        expect(path).toBe('/files/docs/my%20report%20#1?.pdf');
     });
 });

@@ -33,11 +33,12 @@ export class EUIXHookEmitter {
 
     emit(event, data) {
         const handlers = this._listeners.get(event);
-        if (!handlers) return;
-        const len = handlers.length;
+        if (!handlers || handlers.length === 0) return;
+        const snapshot = handlers.length === 1 ? handlers : handlers.slice();
+        const len = snapshot.length;
         for (let i = 0; i < len; i++) {
             try {
-                handlers[i](data);
+                snapshot[i](data);
             } catch (err) {
                 if (typeof console !== "undefined" && console.error) {
                     console.error(`[EUIXEngine Hook Error] Error in '${event}' hook handler:`, err);

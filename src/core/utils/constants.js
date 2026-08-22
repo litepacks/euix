@@ -14,6 +14,34 @@ export const isStr = (v) => typeof v === "string";
 export const isBool = (v) => typeof v === "boolean";
 export const isElem = (n) => n && n.nodeType === 1;
 export const isTxtNode = (n) => n && (n.nodeType === 3 || n.nodeType === 4);
+
+export function safeStringify(val, space) {
+    if (val === undefined) return "";
+    if (val === null) return "null";
+    if (typeof val === "string") return val;
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    try {
+        return JSON.stringify(val, null, space);
+    } catch (_) {
+        try {
+            const seen = new WeakSet();
+            return JSON.stringify(
+                val,
+                (key, value) => {
+                    if (typeof value === "object" && value !== null) {
+                        if (value.nodeType !== undefined) return "[DOM Node]";
+                        if (seen.has(value)) return "[Circular]";
+                        seen.add(value);
+                    }
+                    return value;
+                },
+                space,
+            );
+        } catch (__) {
+            return String(val);
+        }
+    }
+}
 export const trimStr = (s) => (typeof s === "string" ? s.trim() : s?.textContent ? s.textContent.trim() : "");
 export const splitPath = (p) =>
     p

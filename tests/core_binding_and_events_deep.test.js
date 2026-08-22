@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { getJsonPath, mapResponseItems, getKeyMask } from '../src/core/binding/BindingResolver.js';
 import { EUIXHookEmitter } from '../src/core/events/HookEmitter.js';
+import { EUIXEngineCore } from '../src/core/EUIXEngineCore.js';
 
 describe('BindingResolver Deep Coverage Suite', () => {
     it('should resolve getJsonPath with nullish paths and deeply nested values', () => {
@@ -152,5 +153,106 @@ describe('HookEmitter Deep Coverage Suite', () => {
         expect(emitter._listeners.size).toBe(2);
         emitter.clear();
         expect(emitter._listeners.size).toBe(0);
+    });
+
+    it('should safely execute all handlers when a listener unsubscribes itself or another listener during emit', () => {
+        const emitter = new EUIXHookEmitter();
+        const executionOrder = [];
+
+        let unsub1;
+        unsub1 = emitter.on('tick', () => {
+            executionOrder.push('handler1');
+            unsub1(); // Handler 1 kendi kendini emit sırasında siliyor
+        });
+
+        emitter.on('tick', () => {
+            executionOrder.push('handler2');
+        });
+
+        emitter.on('tick', () => {
+            executionOrder.push('handler3');
+        });
+
+        // 1. Emit: Tüm 3 handler da çalışmalı (handler2 atlanmamalı!)
+        emitter.emit('tick', 1);
+        expect(executionOrder).toEqual(['handler1', 'handler2', 'handler3']);
+
+        // 2. Emit: handler1 silinmiş olduğu için sadece 2 ve 3 çalışmalı
+        emitter.emit('tick', 2);
+        expect(executionOrder).toEqual(['handler1', 'handler2', 'handler3', 'handler2', 'handler3']);
+    });
+
+    it('should safely interpolate objects with circular references and DOM nodes without crashing', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="circ_data" type="object">{}</state>
+            </data_model>
+            <div id="circ-box">{data.circ_data}</div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+
+        // Circular structure
+        const circularObj = { name: 'Circular Test' };
+        circularObj.self = circularObj;
+        circularObj.domEl = document.createElement('span');
+
+        expect(() => {
+            engine.setState('circ_data', circularObj);
+        }).not.toThrow();
+
+        const box = container.querySelector('#circ-box');
+        expect(box.textContent).toContain('Circular Test');
+        expect(box.textContent).toContain('[Circular]');
+    });
+
+    it('should safely dispatch delegated events when clicking nested SVG paths or Text nodes inside list items', () => {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="clicked_id">none</state>
+                <state id="items" type="array"></state>
+            </data_model>
+            <div id="list-container">
+                <for_each items="{data.items}" var="item" key="id">
+                    <button class="svg-btn">
+                        <on_click action="SET_STATE">
+                            <path>data.clicked_id</path>
+                            <value>{item.id}</value>
+                        </on_click>
+                        <svg class="icon" width="24" height="24">
+                            <path class="icon-path" d="M10 10" />
+                        </svg>
+                        <span>{item.title}</span>
+                    </button>
+                </for_each>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        engine.setState('items', [{ id: 'task_100', title: 'Task 100' }]);
+
+        // 1. SVG path'e tıklanması durumu (Event target = <path>)
+        const pathEl = container.querySelector('.icon-path');
+        expect(pathEl).toBeTruthy();
+        pathEl.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        expect(engine.getState('clicked_id')).toBe('task_100');
+
+        // 2. Text node'a tıklanması durumu (Event target = TextNode)
+        const spanEl = container.querySelector('span');
+        const textNode = spanEl.firstChild;
+        expect(textNode).toBeTruthy();
+        textNode.parentElement.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        expect(engine.getState('clicked_id')).toBe('task_100');
     });
 });
