@@ -85,15 +85,16 @@ export class EUIXDependencyGraph {
 
     removeComponentDeps(componentName) {
         if (!componentName) return;
+        const prefix = `${componentName}:`;
         for (const set of this.pathToComputed.values()) {
-            Array.from(set).forEach((id) => {
-                if (id.startsWith(`${componentName}:`)) set.delete(id);
-            });
+            for (const id of set) {
+                if (id.startsWith(prefix)) set.delete(id);
+            }
         }
         for (const set of this.pathToWatchers.values()) {
-            Array.from(set).forEach((id) => {
-                if (id.startsWith(`${componentName}:`)) set.delete(id);
-            });
+            for (const id of set) {
+                if (id.startsWith(prefix)) set.delete(id);
+            }
         }
     }
 }

@@ -240,9 +240,14 @@ export const EUIXAnimationPlugin = {
                                 if (propName) kfObj[propName] = propVal;
                             });
                         } else {
-                            Array.from(kf.attributes || []).forEach((attr) => {
-                                if (attr.name !== "offset") kfObj[attr.name] = attr.value;
-                            });
+                            const kAttrs = kf.attributes;
+                            if (kAttrs) {
+                                const kaLen = kAttrs.length;
+                                for (let ka = 0; ka < kaLen; ka++) {
+                                    const attr = kAttrs[ka];
+                                    if (attr.name !== "offset") kfObj[attr.name] = attr.value;
+                                }
+                            }
                         }
                         return kfObj;
                     });
@@ -556,9 +561,14 @@ export const EUIXAnimationPlugin = {
                             if (propName) kfObj[propName] = this.interpolate(propVal, context);
                         });
                     } else {
-                        Array.from(kf.attributes || []).forEach((attr) => {
-                            if (attr.name !== "offset") kfObj[attr.name] = this.interpolate(attr.value, context);
-                        });
+                        const kAttrs = kf.attributes;
+                        if (kAttrs) {
+                            const kaLen = kAttrs.length;
+                            for (let ka = 0; ka < kaLen; ka++) {
+                                const attr = kAttrs[ka];
+                                if (attr.name !== "offset") kfObj[attr.name] = this.interpolate(attr.value, context);
+                            }
+                        }
                     }
                     return kfObj;
                 });

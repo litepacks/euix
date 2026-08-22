@@ -473,7 +473,10 @@ export const EUIXLeafletPlugin = {
                 }
 
                 // Render child declarative markers & polygons
-                Array.from(xmlNode.children || []).forEach((child) => {
+                const lChildren = xmlNode.children;
+                const lcLen = lChildren ? lChildren.length : 0;
+                for (let i = 0; i < lcLen; i++) {
+                    const child = lChildren[i];
                     const tag = child.tagName ? child.tagName.toLowerCase() : "";
                     if (tag === "marker") {
                         const mLat = Number(this.interpolate(child.getAttribute("lat"), context));
@@ -506,7 +509,7 @@ export const EUIXLeafletPlugin = {
                             if (pText) poly.bindPopup(pText);
                         }
                     }
-                });
+                }
 
                 // 4. Map Event Listeners
                 map.on("moveend", () => {

@@ -98,16 +98,19 @@ export const EUIXDialogPlugin = {
 
             const body = document.createElement("div");
             body.className = xmlNode.getAttribute("body_class") || "dialog-body p-5";
-            Array.from(xmlNode.childNodes).forEach((child) => {
-                if (
-                    child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
-                    ["summary", "actions"].includes(child.tagName.toLowerCase())
-                ) {
-                    return;
+            const bNodes = xmlNode.childNodes;
+            const bLen = bNodes ? bNodes.length : 0;
+            for (let i = 0; i < bLen; i++) {
+                const child = bNodes[i];
+                if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1)) {
+                    const tag = child.tagName.toLowerCase();
+                    if (tag === "summary" || tag === "actions") {
+                        continue;
+                    }
                 }
                 const el = this.createHTMLElement(child, context);
                 if (el) body.appendChild(el);
-            });
+            }
 
             panel.appendChild(header);
             panel.appendChild(body);
@@ -117,10 +120,12 @@ export const EUIXDialogPlugin = {
                 footer.className =
                     xmlNode.getAttribute("footer_class") ||
                     "dialog-actions p-4 border-t border-slate-800 flex items-center justify-end gap-2";
-                Array.from(actionsNode.childNodes).forEach((child) => {
-                    const el = this.createHTMLElement(child, context);
+                const aNodes = actionsNode.childNodes;
+                const aLen = aNodes ? aNodes.length : 0;
+                for (let i = 0; i < aLen; i++) {
+                    const el = this.createHTMLElement(aNodes[i], context);
                     if (el) footer.appendChild(el);
-                });
+                }
                 panel.appendChild(footer);
             }
 

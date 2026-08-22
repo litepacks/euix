@@ -269,12 +269,22 @@ export function initDataModel(engine) {
                 if (engine._pendingAsyncLoads) engine._pendingAsyncLoads.push(p);
             } else if (type === "array") {
                 const childItems = engine.getChildren(node, "item");
-                if (childItems && childItems.length > 0) {
-                    const items = childItems.map((item) => {
+                const ciLen = childItems ? childItems.length : 0;
+                if (ciLen > 0) {
+                    const items = new Array(ciLen);
+                    for (let ci = 0; ci < ciLen; ci++) {
+                        const item = childItems[ci];
                         const obj = {};
-                        Array.from(item.attributes).forEach((attr) => (obj[attr.name] = attr.value));
-                        return obj;
-                    });
+                        const iAttrs = item.attributes;
+                        if (iAttrs) {
+                            const iaLen = iAttrs.length;
+                            for (let ia = 0; ia < iaLen; ia++) {
+                                const attr = iAttrs[ia];
+                                obj[attr.name] = attr.value;
+                            }
+                        }
+                        items[ci] = obj;
+                    }
                     rawState[id] = items;
                 } else {
                     const txt = node.textContent.trim();

@@ -433,9 +433,14 @@ export function parseXmlRoutes(xmlNode) {
                 } else if (subTag === "pending") {
                     routeDef.pendingNode = sub;
                 } else if (subTag === "route-meta" || subTag === "meta") {
-                    Array.from(sub.attributes || []).forEach((attr) => {
-                        routeDef.meta[attr.name] = attr.value;
-                    });
+                    const sAttrs = sub.attributes;
+                    if (sAttrs) {
+                        const saLen = sAttrs.length;
+                        for (let saIdx = 0; saIdx < saLen; saIdx++) {
+                            const attr = sAttrs[saIdx];
+                            routeDef.meta[attr.name] = attr.value;
+                        }
+                    }
                 } else if (subTag === "route" || subTag === "index" || subTag === "route-group") {
                     routeDef.children.push(...parseXmlRoutes(child));
                     break;
@@ -572,10 +577,14 @@ export const EUIXRouterPlugin = {
             formEl.action = actionAttr || "#";
 
             // Render form children
-            Array.from(xmlNode.childNodes).forEach((child) => {
-                const childEl = this.createHTMLElement(child, context);
-                if (childEl) formEl.appendChild(childEl);
-            });
+            const fNodes = xmlNode.childNodes;
+            if (fNodes) {
+                const fLen = fNodes.length;
+                for (let i = 0; i < fLen; i++) {
+                    const childEl = this.createHTMLElement(fNodes[i], context);
+                    if (childEl) formEl.appendChild(childEl);
+                }
+            }
 
             formEl.onsubmit = async (e) => {
                 e.preventDefault();
@@ -603,10 +612,14 @@ export const EUIXRouterPlugin = {
             container.style.display = "contents";
 
             // Render children
-            Array.from(xmlNode.childNodes).forEach((child) => {
-                const childEl = this.createHTMLElement(child, context);
-                if (childEl) container.appendChild(childEl);
-            });
+            const cNodes = xmlNode.childNodes;
+            if (cNodes) {
+                const cLen = cNodes.length;
+                for (let i = 0; i < cLen; i++) {
+                    const childEl = this.createHTMLElement(cNodes[i], context);
+                    if (childEl) container.appendChild(childEl);
+                }
+            }
 
             return container;
         };

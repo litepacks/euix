@@ -13,11 +13,7 @@ export function getChild(node, tagName) {
     const len = children.length;
     for (let i = 0; i < len; i++) {
         const c = children[i];
-        if (
-            c &&
-            (c.nodeType === 1 || c.nodeType === undefined) &&
-            (c.tagName ? c.tagName.toLowerCase() : "") === tag
-        ) {
+        if (c && (c.nodeType === 1 || c.nodeType === undefined) && (c.tagName ? c.tagName.toLowerCase() : "") === tag) {
             return c;
         }
     }
