@@ -27,7 +27,7 @@ export class RouteRevalidationManager {
                 nextUrl,
                 actionResult,
                 params: match.params,
-                defaultShouldRevalidate: true
+                defaultShouldRevalidate: true,
             });
         }
 
@@ -38,7 +38,7 @@ export class RouteRevalidationManager {
                 nextUrl,
                 actionResult,
                 params: match.params,
-                defaultShouldRevalidate: true
+                defaultShouldRevalidate: true,
             });
         }
 
@@ -58,7 +58,7 @@ export class RouteRevalidationManager {
                 match,
                 currentUrl: location.pathname,
                 nextUrl: location.pathname,
-                actionResult
+                actionResult,
             });
 
             if (shouldRun) {
@@ -70,7 +70,7 @@ export class RouteRevalidationManager {
                         match,
                         location,
                         signal,
-                        context
+                        context,
                     });
                     match.data = data;
                 }

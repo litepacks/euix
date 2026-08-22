@@ -15,7 +15,7 @@ export class RoutePrefetchManager {
 
     /**
      * Prefetches route assets (XML components, modules, loader data).
-     * @param {string} targetPath 
+     * @param {string} targetPath
      */
     async prefetch(targetPath) {
         if (!targetPath || this._inFlightPrefetches.has(targetPath)) return;
@@ -30,7 +30,10 @@ export class RoutePrefetchManager {
             for (const match of matches) {
                 // 1. Prefetch XML component file if specified
                 const targetSpec = match.layout || match.component;
-                if (typeof targetSpec === "string" && (targetSpec.endsWith(".xml") || targetSpec.startsWith("./") || targetSpec.startsWith("/"))) {
+                if (
+                    typeof targetSpec === "string" &&
+                    (targetSpec.endsWith(".xml") || targetSpec.startsWith("./") || targetSpec.startsWith("/"))
+                ) {
                     if (this.engine?.constructor?.loadComponent) {
                         this.engine.constructor.loadComponent(match.id || targetSpec, targetSpec).catch(() => {});
                     }
@@ -39,7 +42,7 @@ export class RoutePrefetchManager {
                 // 2. Prefetch Lazy JS Module
                 if (match.route.module) {
                     try {
-                        const dynamicImport = new Function('url', 'return import(url)');
+                        const dynamicImport = new Function("url", "return import(url)");
                         dynamicImport(match.route.module).catch(() => {});
                     } catch (_) {}
                 }
@@ -47,12 +50,14 @@ export class RoutePrefetchManager {
                 // 3. Prefetch loader data if dataEngine is active
                 if (this.router.dataEngine && (match.loader || match.route.loader || match.route.loaderNode)) {
                     if (!this.cache || !this.cache.has(match.id, loc.pathname, loc.search)) {
-                        this.router.dataEngine.loaderManager.executeLoader({
-                            match,
-                            location: loc,
-                            signal: new AbortController().signal,
-                            context: this.router.context || {}
-                        }).catch(() => {});
+                        this.router.dataEngine.loaderManager
+                            .executeLoader({
+                                match,
+                                location: loc,
+                                signal: new AbortController().signal,
+                                context: this.router.context || {},
+                            })
+                            .catch(() => {});
                     }
                 }
             }

@@ -36,7 +36,7 @@ export class ScrollRestorationManager {
         if (!this.enabled || typeof window === "undefined" || !locationKey) return;
         const pos = {
             x: window.scrollX || window.pageXOffset || 0,
-            y: window.scrollY || window.pageYOffset || 0
+            y: window.scrollY || window.pageYOffset || 0,
         };
         this._positions.set(locationKey, pos);
         this._saveToStorage();

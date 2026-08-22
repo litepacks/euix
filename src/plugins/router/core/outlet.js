@@ -5,7 +5,7 @@
 
 /**
  * Renders an <outlet> at a specific hierarchy depth level.
- * 
+ *
  * @param {object} engine - EUIXEngine instance
  * @param {Element} xmlNode - XML node for <outlet> or <router-outlet>
  * @param {object} context - Component execution context
@@ -69,7 +69,7 @@ export function createOutletRenderer(engine, routerInstance) {
                     ...context,
                     _routeDepth: currentLevel + 1,
                     $route: createRouteContext(match, routerInstance),
-                    $router: routerInstance.getPublicContext()
+                    $router: routerInstance.getPublicContext(),
                 };
 
                 let errorEl;
@@ -93,25 +93,31 @@ export function createOutletRenderer(engine, routerInstance) {
                 ...context,
                 _routeDepth: currentLevel + 1,
                 $route: createRouteContext(match, routerInstance),
-                $router: routerInstance.getPublicContext()
+                $router: routerInstance.getPublicContext(),
             };
 
             // Render Layout or Component
-            let targetSpec = match.layout || match.component || match.route.componentNode;
+            const targetSpec = match.layout || match.component || match.route.componentNode;
             let el = null;
 
             if (targetSpec) {
                 if (typeof targetSpec === "string") {
                     const lowerSpec = targetSpec.toLowerCase();
-                    const specNode = engine._componentSpecs?.get(targetSpec) || 
-                                     engine._componentSpecs?.get(lowerSpec) || 
-                                     engine.constructor._globalComponentSpecs?.get(targetSpec) || 
-                                     engine.constructor._globalComponentSpecs?.get(lowerSpec);
+                    const specNode =
+                        engine._componentSpecs?.get(targetSpec) ||
+                        engine._componentSpecs?.get(lowerSpec) ||
+                        engine.constructor._globalComponentSpecs?.get(targetSpec) ||
+                        engine.constructor._globalComponentSpecs?.get(lowerSpec);
 
                     if (specNode) {
                         el = engine.renderComponentSpec(specNode, xmlNode, childContext);
-                    } else if (engine._customComponents?.has(lowerSpec) || engine.constructor._globalCustomComponents?.has(lowerSpec)) {
-                        const handler = engine._customComponents?.get(lowerSpec) || engine.constructor._globalCustomComponents?.get(lowerSpec);
+                    } else if (
+                        engine._customComponents?.has(lowerSpec) ||
+                        engine.constructor._globalCustomComponents?.has(lowerSpec)
+                    ) {
+                        const handler =
+                            engine._customComponents?.get(lowerSpec) ||
+                            engine.constructor._globalCustomComponents?.get(lowerSpec);
                         el = handler.call(engine, xmlNode, childContext, engine);
                     } else if (engine.constructor._lazyRegistry && engine.constructor._lazyRegistry.has(lowerSpec)) {
                         const placeholder = document.createElement("div");
@@ -125,24 +131,33 @@ export function createOutletRenderer(engine, routerInstance) {
 
                         el = placeholder;
 
-                        engine.constructor.loadLazyComponent(lowerSpec).then(loaded => {
-                            let specNode = engine._componentSpecs?.get(lowerSpec) || 
-                                           engine.constructor._globalComponentSpecs?.get(lowerSpec) || loaded;
-                            if (specNode && specNode.documentElement) specNode = specNode.documentElement;
-                            if (specNode && placeholder.parentNode === container) {
-                                const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
-                                if (rendered) {
-                                    container.replaceChild(rendered, placeholder);
-                                    currentChildEl = rendered;
-                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
-                                        window.lucide.createIcons();
+                        engine.constructor
+                            .loadLazyComponent(lowerSpec)
+                            .then((loaded) => {
+                                let specNode =
+                                    engine._componentSpecs?.get(lowerSpec) ||
+                                    engine.constructor._globalComponentSpecs?.get(lowerSpec) ||
+                                    loaded;
+                                if (specNode && specNode.documentElement) specNode = specNode.documentElement;
+                                if (specNode && placeholder.parentNode === container) {
+                                    const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
+                                    if (rendered) {
+                                        container.replaceChild(rendered, placeholder);
+                                        currentChildEl = rendered;
+                                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                            window.lucide.createIcons();
+                                        }
                                     }
                                 }
-                            }
-                        }).catch(err => {
-                            console.error(`[EUIXRouter] Failed to load lazy route component (${lowerSpec}):`, err);
-                        });
-                    } else if (targetSpec.endsWith(".xml") || targetSpec.startsWith("./") || targetSpec.startsWith("/")) {
+                            })
+                            .catch((err) => {
+                                console.error(`[EUIXRouter] Failed to load lazy route component (${lowerSpec}):`, err);
+                            });
+                    } else if (
+                        targetSpec.endsWith(".xml") ||
+                        targetSpec.startsWith("./") ||
+                        targetSpec.startsWith("/")
+                    ) {
                         // Async / Lazy XML component loading
                         const placeholder = document.createElement("div");
                         placeholder.className = "euix-outlet-loading";
@@ -155,7 +170,10 @@ export function createOutletRenderer(engine, routerInstance) {
                                 pendingTimer = setTimeout(() => {
                                     if (placeholder.parentNode === container) {
                                         placeholder.innerHTML = "";
-                                        const pendingEl = engine.createHTMLElement(match.route.pendingNode, childContext);
+                                        const pendingEl = engine.createHTMLElement(
+                                            match.route.pendingNode,
+                                            childContext,
+                                        );
                                         if (pendingEl) placeholder.appendChild(pendingEl);
                                     }
                                 }, delay);
@@ -168,25 +186,30 @@ export function createOutletRenderer(engine, routerInstance) {
                         el = placeholder;
 
                         const compKey = (match.id || targetSpec).toLowerCase();
-                        engine.constructor.loadComponent(compKey, targetSpec).then(specDoc => {
-                            if (pendingTimer) clearTimeout(pendingTimer);
-                            let specNode = engine._componentSpecs?.get(compKey) || 
-                                           engine.constructor._globalComponentSpecs?.get(compKey) || specDoc;
-                            if (specNode && specNode.documentElement) specNode = specNode.documentElement;
-                            if (specNode && placeholder.parentNode === container) {
-                                const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
-                                if (rendered) {
-                                    container.replaceChild(rendered, placeholder);
-                                    currentChildEl = rendered;
-                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
-                                        window.lucide.createIcons();
+                        engine.constructor
+                            .loadComponent(compKey, targetSpec)
+                            .then((specDoc) => {
+                                if (pendingTimer) clearTimeout(pendingTimer);
+                                let specNode =
+                                    engine._componentSpecs?.get(compKey) ||
+                                    engine.constructor._globalComponentSpecs?.get(compKey) ||
+                                    specDoc;
+                                if (specNode && specNode.documentElement) specNode = specNode.documentElement;
+                                if (specNode && placeholder.parentNode === container) {
+                                    const rendered = engine.renderComponentSpec(specNode, xmlNode, childContext);
+                                    if (rendered) {
+                                        container.replaceChild(rendered, placeholder);
+                                        currentChildEl = rendered;
+                                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                            window.lucide.createIcons();
+                                        }
                                     }
                                 }
-                            }
-                        }).catch(err => {
-                            if (pendingTimer) clearTimeout(pendingTimer);
-                            console.error(`[EUIXRouter] Failed to load lazy route component (${targetSpec}):`, err);
-                        });
+                            })
+                            .catch((err) => {
+                                if (pendingTimer) clearTimeout(pendingTimer);
+                                console.error(`[EUIXRouter] Failed to load lazy route component (${targetSpec}):`, err);
+                            });
                     }
                 } else if (targetSpec.nodeType === 1) {
                     // Inline XML node template
@@ -244,9 +267,14 @@ export function createRouteContext(match, routerInstance) {
         hash: loc.hash || "",
         location: loc,
         data: routeData,
-        actionData: match.actionData !== undefined ? match.actionData : (typeof routerInstance.getRouteActionData === "function" ? routerInstance.getRouteActionData(match.id) : undefined),
+        actionData:
+            match.actionData !== undefined
+                ? match.actionData
+                : typeof routerInstance.getRouteActionData === "function"
+                  ? routerInstance.getRouteActionData(match.id)
+                  : undefined,
         error: match.error,
         matches: routerInstance.matches,
-        navigation: routerInstance.navigation
+        navigation: routerInstance.navigation,
     };
 }

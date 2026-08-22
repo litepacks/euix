@@ -42,7 +42,7 @@ export class ViewTransitionManager {
             } catch (_) {
                 // AbortError: Transition was skipped
             }
-        } catch (err) {
+        } catch (_err) {
             updateDOMCallback();
             this._manageFocus();
         }

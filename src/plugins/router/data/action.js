@@ -3,7 +3,7 @@
  * Route action manager for handling data mutations and form submissions.
  */
 
-import { RouterRedirect, RouterError } from "../core/navigation.js";
+import { RouterRedirect } from "../core/navigation.js";
 
 export class RouteActionManager {
     constructor() {
@@ -16,27 +16,32 @@ export class RouteActionManager {
 
     /**
      * Executes an action for a matched route.
-     * 
-     * @param {object} param0 
+     *
+     * @param {object} param0
      * @returns {Promise<any>}
      */
     async executeAction({ match, location, formData, signal, context = {} }) {
         const route = match.route || {};
         const pathname = location.pathname || "/";
-        const hasValidOrigin = typeof window !== "undefined" && window.location && typeof window.location.origin === "string" && window.location.origin.startsWith("http");
+        const hasValidOrigin =
+            typeof window !== "undefined" &&
+            window.location &&
+            typeof window.location.origin === "string" &&
+            window.location.origin.startsWith("http");
         const originUrl = hasValidOrigin ? window.location.origin : "http://localhost";
-        const normalizedPath = pathname.startsWith("/") ? pathname : "/" + pathname;
+        const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
         const fullUrl = `${originUrl}${normalizedPath}${location.search || ""}`;
 
         let request;
         try {
-            request = typeof Request !== "undefined"
-                ? new Request(fullUrl, {
-                    method: "POST",
-                    body: formData,
-                    signal
-                })
-                : { url: fullUrl, method: "POST", body: formData, signal };
+            request =
+                typeof Request !== "undefined"
+                    ? new Request(fullUrl, {
+                          method: "POST",
+                          body: formData,
+                          signal,
+                      })
+                    : { url: fullUrl, method: "POST", body: formData, signal };
         } catch (_) {
             request = { url: fullUrl, method: "POST", body: formData, signal };
         }
@@ -48,10 +53,10 @@ export class RouteActionManager {
             signal,
             route,
             location,
-            context
+            context,
         };
 
-        let result = undefined;
+        let result;
 
         if (typeof route.action === "function") {
             result = await route.action(actionContext);
@@ -64,7 +69,7 @@ export class RouteActionManager {
         if (result instanceof RouterRedirect) {
             throw result;
         }
-        if (result instanceof Response && (result.status >= 300 && result.status < 400)) {
+        if (result instanceof Response && result.status >= 300 && result.status < 400) {
             const redirectUrl = result.headers.get("Location") || "/";
             throw new RouterRedirect(redirectUrl);
         }

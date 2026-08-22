@@ -3,7 +3,6 @@
  * Independent non-navigating route fetchers with optimistic UI support.
  */
 
-import { parsePath } from "../core/utils.js";
 import { createLocation } from "../core/location.js";
 
 export class FetcherInstance extends EventTarget {
@@ -21,28 +20,30 @@ export class FetcherInstance extends EventTarget {
     }
 
     _notifyChange() {
-        this.dispatchEvent(new CustomEvent("change", {
-            detail: {
-                id: this.id,
-                state: this.state,
-                data: this.data,
-                error: this.error,
-                formData: this.formData
-            }
-        }));
+        this.dispatchEvent(
+            new CustomEvent("change", {
+                detail: {
+                    id: this.id,
+                    state: this.state,
+                    data: this.data,
+                    error: this.error,
+                    formData: this.formData,
+                },
+            }),
+        );
         if (this.router) {
             this.router._notifyFetcherUpdate(this.id, {
                 state: this.state,
                 data: this.data,
                 error: this.error,
-                formData: this.formData
+                formData: this.formData,
             });
         }
     }
 
     /**
      * Loads data from a route URL without navigation.
-     * @param {string} href 
+     * @param {string} href
      */
     async load(href) {
         if (this._abortController) {
@@ -69,7 +70,7 @@ export class FetcherInstance extends EventTarget {
                 match: leaf,
                 location: loc,
                 signal,
-                context: this.router.context || {}
+                context: this.router.context || {},
             });
 
             if (!signal.aborted) {
@@ -90,8 +91,8 @@ export class FetcherInstance extends EventTarget {
 
     /**
      * Submits form data to a route action without navigation.
-     * @param {FormData|object} data 
-     * @param {{ method?: string, action?: string }} options 
+     * @param {FormData|object} data
+     * @param {{ method?: string, action?: string }} options
      */
     async submit(data, { method = "POST", action = "/" } = {}) {
         if (this._abortController) {
@@ -106,7 +107,7 @@ export class FetcherInstance extends EventTarget {
         } else {
             formData = new FormData();
             if (data && typeof data === "object") {
-                Object.keys(data).forEach(k => {
+                Object.keys(data).forEach((k) => {
                     formData.append(k, data[k]);
                 });
             }
@@ -143,7 +144,7 @@ export class FetcherInstance extends EventTarget {
                 location: loc,
                 formData,
                 signal,
-                context: this.router.context || {}
+                context: this.router.context || {},
             });
 
             if (!signal.aborted) {
@@ -179,7 +180,7 @@ export class RouteFetcherManager {
         if (!this._fetchers.has(id)) {
             const fetcher = new FetcherInstance(id, {
                 router: this.router,
-                dataEngine: this.dataEngine
+                dataEngine: this.dataEngine,
             });
             this._fetchers.set(id, fetcher);
         }

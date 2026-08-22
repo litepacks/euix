@@ -1,12 +1,12 @@
 /**
  * src/plugins/EUIXDatePlugin.js
  * Comprehensive Declarative Date, Time & Intl Formatting Plugin for EUIX Engine.
- * 
+ *
  * Built strictly on native Web Platform primitives:
  * - Intl.DateTimeFormat (Locale-aware date/time formatting, parts & range)
  * - Intl.RelativeTimeFormat (Locale-aware relative time like "3 gün önce", "in 2 hours")
  * - Native Date manipulation and calculation helpers
- * 
+ *
  * Features:
  * - XML-first declarative tags: <date>, <time>, <date_range>, <relative_time>, <date_config>
  * - Reactive state interpolation and automatic fine-grained in-place updates
@@ -27,26 +27,26 @@ export const DATE_PRESETS = {
     long: { dateStyle: "long" },
     date_full: { dateStyle: "full" },
     full: { dateStyle: "full" },
-    
+
     time: { timeStyle: "short" },
     time_short: { timeStyle: "short" },
     time_medium: { timeStyle: "medium" },
     time_seconds: { timeStyle: "medium" },
     time_long: { timeStyle: "long" },
-    
+
     datetime: { dateStyle: "medium", timeStyle: "short" },
     datetime_short: { dateStyle: "short", timeStyle: "short" },
     datetime_medium: { dateStyle: "medium", timeStyle: "short" },
     datetime_long: { dateStyle: "long", timeStyle: "short" },
     datetime_full: { dateStyle: "full", timeStyle: "medium" },
-    
+
     year: { year: "numeric" },
     year_month: { year: "numeric", month: "long" },
     month: { month: "long" },
     month_short: { month: "short" },
     weekday: { weekday: "long" },
     weekday_short: { weekday: "short" },
-    weekday_date: { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+    weekday_date: { weekday: "long", year: "numeric", month: "long", day: "numeric" },
 };
 
 /**
@@ -98,13 +98,13 @@ export class EUIXDateFormatter {
 
     /**
      * Parses diverse date inputs safely into a native Date object.
-     * @param {Date|string|number|null|undefined} value 
+     * @param {Date|string|number|null|undefined} value
      * @returns {Date|null}
      */
     parseDate(value) {
         if (!value && value !== 0) return null;
         if (value instanceof Date) {
-            return isNaN(value.getTime()) ? null : value;
+            return Number.isNaN(value.getTime()) ? null : value;
         }
         if (typeof value === "string") {
             const str = value.trim();
@@ -113,24 +113,24 @@ export class EUIXDateFormatter {
             if (/^\d{10,13}$/.test(str)) {
                 const num = parseInt(str, 10);
                 const d = new Date(num < 1e11 ? num * 1000 : num);
-                return isNaN(d.getTime()) ? null : d;
+                return Number.isNaN(d.getTime()) ? null : d;
             }
             const d = new Date(str);
-            return isNaN(d.getTime()) ? null : d;
+            return Number.isNaN(d.getTime()) ? null : d;
         }
         if (typeof value === "number") {
             const d = new Date(value < 1e11 ? value * 1000 : value);
-            return isNaN(d.getTime()) ? null : d;
+            return Number.isNaN(d.getTime()) ? null : d;
         }
         return null;
     }
 
     /**
      * Formats a date using Intl.DateTimeFormat or presets.
-     * @param {Date|string|number} value 
-     * @param {string|object} optionsOrPreset 
-     * @param {string} [locale] 
-     * @param {string} [timeZone] 
+     * @param {Date|string|number} value
+     * @param {string|object} optionsOrPreset
+     * @param {string} [locale]
+     * @param {string} [timeZone]
      * @returns {string}
      */
     format(value, optionsOrPreset = "medium", locale, timeZone) {
@@ -165,10 +165,10 @@ export class EUIXDateFormatter {
 
     /**
      * Formats a date relatively (e.g. "3 minutes ago", "dün", "next week").
-     * @param {Date|string|number} value 
-     * @param {Date|string|number} [baseDate=new Date()] 
-     * @param {object} [options={}] 
-     * @param {string} [locale] 
+     * @param {Date|string|number} value
+     * @param {Date|string|number} [baseDate=new Date()]
+     * @param {object} [options={}]
+     * @param {string} [locale]
      * @returns {string}
      */
     formatRelative(value, baseDate = new Date(), options = {}, locale) {
@@ -185,16 +185,20 @@ export class EUIXDateFormatter {
         if (absSeconds < 45) {
             unit = "second";
             amount = diffSeconds;
-        } else if (absSeconds < 2700) { // < 45 min
+        } else if (absSeconds < 2700) {
+            // < 45 min
             unit = "minute";
             amount = Math.round(diffSeconds / 60);
-        } else if (absSeconds < 79200) { // < 22 hours
+        } else if (absSeconds < 79200) {
+            // < 22 hours
             unit = "hour";
             amount = Math.round(diffSeconds / 3600);
-        } else if (absSeconds < 2160000) { // < 25 days
+        } else if (absSeconds < 2160000) {
+            // < 25 days
             unit = "day";
             amount = Math.round(diffSeconds / 86400);
-        } else if (absSeconds < 27648000) { // < 320 days
+        } else if (absSeconds < 27648000) {
+            // < 320 days
             unit = "month";
             amount = Math.round(diffSeconds / 2592000);
         } else {
@@ -204,7 +208,7 @@ export class EUIXDateFormatter {
 
         const relOpts = {
             numeric: options.numeric || "auto",
-            style: options.style || "long"
+            style: options.style || "long",
         };
 
         try {
@@ -217,11 +221,11 @@ export class EUIXDateFormatter {
 
     /**
      * Formats a date range using Intl.DateTimeFormat.prototype.formatRange.
-     * @param {Date|string|number} start 
-     * @param {Date|string|number} end 
-     * @param {string|object} optionsOrPreset 
-     * @param {string} [locale] 
-     * @param {string} [timeZone] 
+     * @param {Date|string|number} start
+     * @param {Date|string|number} end
+     * @param {string|object} optionsOrPreset
+     * @param {string} [locale]
+     * @param {string} [timeZone]
      * @returns {string}
      */
     formatRange(start, end, optionsOrPreset = "medium", locale, timeZone) {
@@ -255,9 +259,9 @@ export class EUIXDateFormatter {
 
     /**
      * Shifts a date by a given amount of units.
-     * @param {Date|string|number} value 
-     * @param {number} amount 
-     * @param {"seconds"|"minutes"|"hours"|"days"|"weeks"|"months"|"years"} unit 
+     * @param {Date|string|number} value
+     * @param {number} amount
+     * @param {"seconds"|"minutes"|"hours"|"days"|"weeks"|"months"|"years"} unit
      * @returns {Date|null}
      */
     add(value, amount = 0, unit = "days") {
@@ -267,13 +271,27 @@ export class EUIXDateFormatter {
         const u = String(unit).toLowerCase().replace(/s$/, "");
 
         switch (u) {
-            case "second": res.setSeconds(res.getSeconds() + amount); break;
-            case "minute": res.setMinutes(res.getMinutes() + amount); break;
-            case "hour": res.setHours(res.getHours() + amount); break;
-            case "day": res.setDate(res.getDate() + amount); break;
-            case "week": res.setDate(res.getDate() + (amount * 7)); break;
-            case "month": res.setMonth(res.getMonth() + amount); break;
-            case "year": res.setFullYear(res.getFullYear() + amount); break;
+            case "second":
+                res.setSeconds(res.getSeconds() + amount);
+                break;
+            case "minute":
+                res.setMinutes(res.getMinutes() + amount);
+                break;
+            case "hour":
+                res.setHours(res.getHours() + amount);
+                break;
+            case "day":
+                res.setDate(res.getDate() + amount);
+                break;
+            case "week":
+                res.setDate(res.getDate() + amount * 7);
+                break;
+            case "month":
+                res.setMonth(res.getMonth() + amount);
+                break;
+            case "year":
+                res.setFullYear(res.getFullYear() + amount);
+                break;
         }
         return res;
     }
@@ -295,9 +313,9 @@ export class EUIXDateFormatter {
 
     /**
      * Calculates difference between two dates in requested units.
-     * @param {Date|string|number} start 
-     * @param {Date|string|number} end 
-     * @param {"seconds"|"minutes"|"hours"|"days"|"weeks"|"months"|"years"} unit 
+     * @param {Date|string|number} start
+     * @param {Date|string|number} end
+     * @param {"seconds"|"minutes"|"hours"|"days"|"weeks"|"months"|"years"} unit
      * @returns {number}
      */
     diff(start, end, unit = "days") {
@@ -309,14 +327,22 @@ export class EUIXDateFormatter {
         const u = String(unit).toLowerCase().replace(/s$/, "");
 
         switch (u) {
-            case "second": return Math.round(msDiff / 1000);
-            case "minute": return Math.round(msDiff / 60000);
-            case "hour": return Math.round(msDiff / 3600000);
-            case "day": return Math.round(msDiff / 86400000);
-            case "week": return Math.round(msDiff / 604800000);
-            case "month": return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-            case "year": return d2.getFullYear() - d1.getFullYear();
-            default: return msDiff;
+            case "second":
+                return Math.round(msDiff / 1000);
+            case "minute":
+                return Math.round(msDiff / 60000);
+            case "hour":
+                return Math.round(msDiff / 3600000);
+            case "day":
+                return Math.round(msDiff / 86400000);
+            case "week":
+                return Math.round(msDiff / 604800000);
+            case "month":
+                return (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+            case "year":
+                return d2.getFullYear() - d1.getFullYear();
+            default:
+                return msDiff;
         }
     }
 
@@ -419,12 +445,12 @@ export class EUIXDateFormatter {
      */
     isLeapYear(value) {
         if (typeof value === "number" && value >= 1000 && value <= 9999) {
-            return (value % 4 === 0 && value % 100 !== 0) || (value % 400 === 0);
+            return (value % 4 === 0 && value % 100 !== 0) || value % 400 === 0;
         }
         const d = this.parseDate(value);
         if (!d) return false;
         const year = d.getFullYear();
-        return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+        return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
     }
 
     /**
@@ -544,7 +570,7 @@ export class EUIXDateFormatter {
         const firstThursday = target.valueOf();
         target.setMonth(0, 1);
         if (target.getDay() !== 4) {
-            target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+            target.setMonth(0, 1 + ((4 - target.getDay() + 7) % 7));
         }
         return 1 + Math.ceil((firstThursday - target) / 604800000);
     }
@@ -563,9 +589,10 @@ export class EUIXDateFormatter {
 
         const loc = locale || (typeof navigator !== "undefined" ? navigator.language : "en-US");
         const tz = timeZone || (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC");
-        const options = typeof optionsOrPreset === "string" 
-            ? (DATE_PRESETS[optionsOrPreset] || { dateStyle: "medium" })
-            : (optionsOrPreset || {});
+        const options =
+            typeof optionsOrPreset === "string"
+                ? DATE_PRESETS[optionsOrPreset] || { dateStyle: "medium" }
+                : optionsOrPreset || {};
 
         const mergedOptions = { ...options };
         if (tz && !mergedOptions.timeZone) mergedOptions.timeZone = tz;
@@ -595,7 +622,7 @@ export const EUIXDatePlugin = {
         const proto = engineClass.prototype;
 
         // Global default config
-        proto._defaultDateLocale = typeof navigator !== "undefined" ? (navigator.language || "en-US") : "en-US";
+        proto._defaultDateLocale = typeof navigator !== "undefined" ? navigator.language || "en-US" : "en-US";
         proto._defaultDateTimeZone = (() => {
             try {
                 return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -609,7 +636,7 @@ export const EUIXDatePlugin = {
         /**
          * 1. Tag Processor for <date_config>
          */
-        proto._processDateConfigTag = function(xmlNode) {
+        proto._processDateConfigTag = function (xmlNode) {
             if (!xmlNode) return;
             const locale = xmlNode.getAttribute("locale") || xmlNode.getAttribute("lang");
             const timezone = xmlNode.getAttribute("timezone") || xmlNode.getAttribute("timeZone");
@@ -625,7 +652,7 @@ export const EUIXDatePlugin = {
         /**
          * 2. Programmatic Date Config API
          */
-        proto.setDateConfig = function({ locale, timeZone, timezone, defaultFormat } = {}) {
+        proto.setDateConfig = function ({ locale, timeZone, timezone, defaultFormat } = {}) {
             if (locale) this._defaultDateLocale = locale;
             if (timezone || timeZone) this._defaultDateTimeZone = timezone || timeZone;
             if (defaultFormat) this._defaultDateFormat = defaultFormat;
@@ -633,53 +660,56 @@ export const EUIXDatePlugin = {
             return this;
         };
 
-        proto.getDateConfig = function() {
+        proto.getDateConfig = function () {
             return {
                 locale: this._defaultDateLocale,
                 timeZone: this._defaultDateTimeZone,
-                defaultFormat: this._defaultDateFormat
+                defaultFormat: this._defaultDateFormat,
             };
         };
 
-        proto._syncDateContext = function() {
+        proto._syncDateContext = function () {
             const config = this.getDateConfig();
-            const self = this;
 
             const helper = {
                 locale: config.locale,
                 timeZone: config.timeZone,
                 defaultFormat: config.defaultFormat,
                 now: () => new Date().toISOString(),
-                parse: (v) => self._dateFormatter.parseDate(v),
-                format: (v, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) => 
-                    self._dateFormatter.format(v, opt, loc, tz),
-                formatToParts: (v, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) => 
-                    self._dateFormatter.formatToParts(v, opt, loc, tz),
-                relative: (v, opt = {}, loc = config.locale) => 
-                    self._dateFormatter.formatRelative(v, new Date(), typeof opt === "string" ? { style: opt } : opt, loc),
-                fromNow: (v, loc = config.locale) => 
-                    self._dateFormatter.formatRelative(v, new Date(), {}, loc),
-                formatRelative: (v, base = new Date(), opt = {}, loc = config.locale) => 
-                    self._dateFormatter.formatRelative(v, base, typeof opt === "string" ? { style: opt } : opt, loc),
-                range: (s, e, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) => 
-                    self._dateFormatter.formatRange(s, e, opt, loc, tz),
-                add: (v, amt, unit) => self._dateFormatter.add(v, amt, unit),
-                subtract: (v, amt, unit) => self._dateFormatter.add(v, -amt, unit),
-                sub: (v, amt, unit) => self._dateFormatter.add(v, -amt, unit),
-                diff: (s, e, unit) => self._dateFormatter.diff(s, e, unit),
-                startOf: (v, unit) => self._dateFormatter.startOf(v, unit),
-                endOf: (v, unit) => self._dateFormatter.endOf(v, unit),
-                daysInMonth: (v) => self._dateFormatter.daysInMonth(v),
-                isLeapYear: (v) => self._dateFormatter.isLeapYear(v),
-                isSame: (s, e, u) => self._dateFormatter.isSame(s, e, u),
-                isBefore: (s, e, u) => self._dateFormatter.isBefore(s, e, u),
-                isAfter: (s, e, u) => self._dateFormatter.isAfter(s, e, u),
-                isBetween: (t, s, e, inc) => self._dateFormatter.isBetween(t, s, e, inc),
-                isToday: (v) => self._dateFormatter.isToday(v),
-                isTomorrow: (v) => self._dateFormatter.isTomorrow(v),
-                isYesterday: (v) => self._dateFormatter.isYesterday(v),
-                quarter: (v) => self._dateFormatter.quarter(v),
-                weekOfYear: (v) => self._dateFormatter.weekOfYear(v)
+                parse: (v) => this._dateFormatter.parseDate(v),
+                format: (v, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) =>
+                    this._dateFormatter.format(v, opt, loc, tz),
+                formatToParts: (v, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) =>
+                    this._dateFormatter.formatToParts(v, opt, loc, tz),
+                relative: (v, opt = {}, loc = config.locale) =>
+                    this._dateFormatter.formatRelative(
+                        v,
+                        new Date(),
+                        typeof opt === "string" ? { style: opt } : opt,
+                        loc,
+                    ),
+                fromNow: (v, loc = config.locale) => this._dateFormatter.formatRelative(v, new Date(), {}, loc),
+                formatRelative: (v, base = new Date(), opt = {}, loc = config.locale) =>
+                    this._dateFormatter.formatRelative(v, base, typeof opt === "string" ? { style: opt } : opt, loc),
+                range: (s, e, opt = config.defaultFormat, loc = config.locale, tz = config.timeZone) =>
+                    this._dateFormatter.formatRange(s, e, opt, loc, tz),
+                add: (v, amt, unit) => this._dateFormatter.add(v, amt, unit),
+                subtract: (v, amt, unit) => this._dateFormatter.add(v, -amt, unit),
+                sub: (v, amt, unit) => this._dateFormatter.add(v, -amt, unit),
+                diff: (s, e, unit) => this._dateFormatter.diff(s, e, unit),
+                startOf: (v, unit) => this._dateFormatter.startOf(v, unit),
+                endOf: (v, unit) => this._dateFormatter.endOf(v, unit),
+                daysInMonth: (v) => this._dateFormatter.daysInMonth(v),
+                isLeapYear: (v) => this._dateFormatter.isLeapYear(v),
+                isSame: (s, e, u) => this._dateFormatter.isSame(s, e, u),
+                isBefore: (s, e, u) => this._dateFormatter.isBefore(s, e, u),
+                isAfter: (s, e, u) => this._dateFormatter.isAfter(s, e, u),
+                isBetween: (t, s, e, inc) => this._dateFormatter.isBetween(t, s, e, inc),
+                isToday: (v) => this._dateFormatter.isToday(v),
+                isTomorrow: (v) => this._dateFormatter.isTomorrow(v),
+                isYesterday: (v) => this._dateFormatter.isYesterday(v),
+                quarter: (v) => this._dateFormatter.quarter(v),
+                weekOfYear: (v) => this._dateFormatter.weekOfYear(v),
             };
 
             this.$date = helper;
@@ -691,12 +721,16 @@ export const EUIXDatePlugin = {
         // Hook initDataModel to pre-process <date_config> and initialize $date helper
         const originalInitDataModel = proto.initDataModel;
         if (typeof originalInitDataModel === "function") {
-            proto.initDataModel = function(doc, isMainDoc) {
+            proto.initDataModel = function (doc, isMainDoc) {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
                 if (targetDoc) {
-                    const cfgTag = targetDoc.querySelector ? targetDoc.querySelector("date_config, date-config") : 
-                                   (targetDoc.getElementsByTagName ? (targetDoc.getElementsByTagName("date_config")[0] || targetDoc.getElementsByTagName("date-config")[0]) : null);
+                    const cfgTag = targetDoc.querySelector
+                        ? targetDoc.querySelector("date_config, date-config")
+                        : targetDoc.getElementsByTagName
+                          ? targetDoc.getElementsByTagName("date_config")[0] ||
+                            targetDoc.getElementsByTagName("date-config")[0]
+                          : null;
                     if (cfgTag) {
                         this._processDateConfigTag(cfgTag);
                     }
@@ -709,7 +743,7 @@ export const EUIXDatePlugin = {
         /**
          * 3. XML Custom Component: <date>, <time>, <relative_time>, <date_range>
          */
-        const renderDateElement = function(xmlNode, context, forceRelative = false) {
+        const renderDateElement = function (xmlNode, context, forceRelative = false) {
             if (typeof document === "undefined") return null;
 
             const asTag = xmlNode.getAttribute("as") || (xmlNode.tagName.toLowerCase() === "time" ? "time" : "span");
@@ -723,13 +757,18 @@ export const EUIXDatePlugin = {
             const styleAttr = xmlNode.getAttribute("style");
             if (styleAttr) el.style.cssText = this.interpolate(styleAttr, context);
 
-            Array.from(xmlNode.attributes || []).forEach(attr => {
+            Array.from(xmlNode.attributes || []).forEach((attr) => {
                 if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
                     el.setAttribute(attr.name, this.interpolate(attr.value, context));
                 }
             });
 
-            const rawVal = xmlNode.getAttribute("value") || xmlNode.getAttribute("date") || xmlNode.getAttribute("timestamp") || xmlNode.textContent.trim() || "";
+            const rawVal =
+                xmlNode.getAttribute("value") ||
+                xmlNode.getAttribute("date") ||
+                xmlNode.getAttribute("timestamp") ||
+                xmlNode.textContent.trim() ||
+                "";
             const rawFormat = xmlNode.getAttribute("format") || xmlNode.getAttribute("preset") || "";
             const rawLocale = xmlNode.getAttribute("locale") || xmlNode.getAttribute("lang") || "";
             const rawTimeZone = xmlNode.getAttribute("timezone") || xmlNode.getAttribute("timeZone") || "";
@@ -740,8 +779,19 @@ export const EUIXDatePlugin = {
 
             // Custom Intl options from individual attributes
             const customOptions = {};
-            ["dateStyle", "timeStyle", "year", "month", "day", "weekday", "hour", "minute", "second", "timeZoneName"].forEach(k => {
-                const snake = k.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+            [
+                "dateStyle",
+                "timeStyle",
+                "year",
+                "month",
+                "day",
+                "weekday",
+                "hour",
+                "minute",
+                "second",
+                "timeZoneName",
+            ].forEach((k) => {
+                const snake = k.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
                 const attrVal = xmlNode.getAttribute(k) || xmlNode.getAttribute(snake);
                 if (attrVal) customOptions[k] = attrVal;
             });
@@ -777,11 +827,14 @@ export const EUIXDatePlugin = {
                 if (isRelative) {
                     const relOpts = {
                         numeric: xmlNode.getAttribute("numeric") || "auto",
-                        style: xmlNode.getAttribute("relative_style") || xmlNode.getAttribute("style") || "long"
+                        style: xmlNode.getAttribute("relative_style") || xmlNode.getAttribute("style") || "long",
                     };
                     el.textContent = this._dateFormatter.formatRelative(parsed, new Date(), relOpts, locale);
                 } else {
-                    const opts = Object.keys(customOptions).length > 0 ? { ...customOptions, timeZone } : (DATE_PRESETS[format] || { dateStyle: "medium" });
+                    const opts =
+                        Object.keys(customOptions).length > 0
+                            ? { ...customOptions, timeZone }
+                            : DATE_PRESETS[format] || { dateStyle: "medium" };
                     el.textContent = this._dateFormatter.format(parsed, opts, locale, timeZone);
                 }
             };
@@ -791,9 +844,9 @@ export const EUIXDatePlugin = {
 
             // Reactive dependencies
             const exprs = [rawVal, rawFormat, rawLocale, rawTimeZone].filter(Boolean);
-            exprs.forEach(tpl => {
-                const placeholders = (tpl.match(/\{([^}]+)\}/g) || []).map(m => m.slice(1, -1).trim());
-                placeholders.forEach(expr => {
+            exprs.forEach((tpl) => {
+                const placeholders = (tpl.match(/\{([^}]+)\}/g) || []).map((m) => m.slice(1, -1).trim());
+                placeholders.forEach((expr) => {
                     const cleanKey = expr.replace(/^(?:parent\.)?data\./, "").split(".")[0];
                     if (cleanKey) {
                         this.registerBinding(cleanKey, el, "custom", () => updateContent());
@@ -825,24 +878,24 @@ export const EUIXDatePlugin = {
             return el;
         };
 
-        engineClass.registerComponent("date", function(xmlNode, context) {
+        engineClass.registerComponent("date", function (xmlNode, context) {
             return renderDateElement.call(this, xmlNode, context, false);
         });
 
-        engineClass.registerComponent("time", function(xmlNode, context) {
+        engineClass.registerComponent("time", function (xmlNode, context) {
             return renderDateElement.call(this, xmlNode, context, false);
         });
 
-        engineClass.registerComponent("relative_time", function(xmlNode, context) {
+        engineClass.registerComponent("relative_time", function (xmlNode, context) {
             return renderDateElement.call(this, xmlNode, context, true);
         });
 
-        engineClass.registerComponent("relative-time", function(xmlNode, context) {
+        engineClass.registerComponent("relative-time", function (xmlNode, context) {
             return renderDateElement.call(this, xmlNode, context, true);
         });
 
         // <date_range> / <date-range>
-        const renderDateRangeElement = function(xmlNode, context) {
+        const renderDateRangeElement = function (xmlNode, context) {
             if (typeof document === "undefined") return null;
 
             const asTag = xmlNode.getAttribute("as") || "span";
@@ -856,7 +909,7 @@ export const EUIXDatePlugin = {
             const styleAttr = xmlNode.getAttribute("style");
             if (styleAttr) el.style.cssText = this.interpolate(styleAttr, context);
 
-            Array.from(xmlNode.attributes || []).forEach(attr => {
+            Array.from(xmlNode.attributes || []).forEach((attr) => {
                 if (attr.name.startsWith("data-") || attr.name.startsWith("aria-")) {
                     el.setAttribute(attr.name, this.interpolate(attr.value, context));
                 }
@@ -881,15 +934,16 @@ export const EUIXDatePlugin = {
                     return;
                 }
 
-                el.textContent = this._dateFormatter.formatRange(startVal, endVal, format, locale, timeZone) || fallback;
+                el.textContent =
+                    this._dateFormatter.formatRange(startVal, endVal, format, locale, timeZone) || fallback;
             };
 
             updateRange();
 
             const exprs = [rawStart, rawEnd, rawFormat, rawLocale, rawTimeZone].filter(Boolean);
-            exprs.forEach(tpl => {
-                const placeholders = (tpl.match(/\{([^}]+)\}/g) || []).map(m => m.slice(1, -1).trim());
-                placeholders.forEach(expr => {
+            exprs.forEach((tpl) => {
+                const placeholders = (tpl.match(/\{([^}]+)\}/g) || []).map((m) => m.slice(1, -1).trim());
+                placeholders.forEach((expr) => {
                     const cleanKey = expr.replace(/^(?:parent\.)?data\./, "").split(".")[0];
                     if (cleanKey) {
                         this.registerBinding(cleanKey, el, "custom", () => updateRange());
@@ -907,7 +961,7 @@ export const EUIXDatePlugin = {
          * 4. Declarative Event Actions
          */
         // Action: SET_DATE_LOCALE
-        engineClass.registerAction("SET_DATE_LOCALE", function(actionNode, context) {
+        engineClass.registerAction("SET_DATE_LOCALE", function (actionNode, context) {
             const locRaw = actionNode.getAttribute("locale") || actionNode.getAttribute("value") || "";
             const locNode = this.getChild(actionNode, "locale") || this.getChild(actionNode, "value");
             const locale = locNode ? this.interpolate(locNode.textContent, context) : this.interpolate(locRaw, context);
@@ -920,9 +974,16 @@ export const EUIXDatePlugin = {
         });
 
         // Action: SET_DATE_TIMEZONE
-        engineClass.registerAction("SET_DATE_TIMEZONE", function(actionNode, context) {
-            const tzRaw = actionNode.getAttribute("timezone") || actionNode.getAttribute("timeZone") || actionNode.getAttribute("value") || "";
-            const tzNode = this.getChild(actionNode, "timezone") || this.getChild(actionNode, "timeZone") || this.getChild(actionNode, "value");
+        engineClass.registerAction("SET_DATE_TIMEZONE", function (actionNode, context) {
+            const tzRaw =
+                actionNode.getAttribute("timezone") ||
+                actionNode.getAttribute("timeZone") ||
+                actionNode.getAttribute("value") ||
+                "";
+            const tzNode =
+                this.getChild(actionNode, "timezone") ||
+                this.getChild(actionNode, "timeZone") ||
+                this.getChild(actionNode, "value");
             const timezone = tzNode ? this.interpolate(tzNode.textContent, context) : this.interpolate(tzRaw, context);
 
             if (timezone) {
@@ -933,7 +994,7 @@ export const EUIXDatePlugin = {
         });
 
         // Action: FORMAT_DATE
-        engineClass.registerAction("FORMAT_DATE", function(actionNode, context) {
+        engineClass.registerAction("FORMAT_DATE", function (actionNode, context) {
             const targetPath = actionNode.getAttribute("target") || actionNode.getAttribute("path") || "";
             const valRaw = actionNode.getAttribute("value") || "";
             const formatRaw = actionNode.getAttribute("format") || "medium";
@@ -953,7 +1014,7 @@ export const EUIXDatePlugin = {
         });
 
         // Action: CALCULATE_DATE_DIFF
-        engineClass.registerAction("CALCULATE_DATE_DIFF", function(actionNode, context) {
+        engineClass.registerAction("CALCULATE_DATE_DIFF", function (actionNode, context) {
             const targetPath = actionNode.getAttribute("target") || actionNode.getAttribute("path") || "";
             const startRaw = actionNode.getAttribute("start") || "";
             const endRaw = actionNode.getAttribute("end") || "";
@@ -968,7 +1029,7 @@ export const EUIXDatePlugin = {
             }
             return diff;
         });
-    }
+    },
 };
 
 export default EUIXDatePlugin;

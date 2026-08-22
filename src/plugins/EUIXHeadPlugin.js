@@ -12,9 +12,9 @@ export const EUIXHeadPlugin = {
         proto._headManagedElements = proto._headManagedElements || new Set();
 
         const originalUnmount = proto.unmount;
-        proto.unmount = function() {
+        proto.unmount = function () {
             if (this._headManagedElements) {
-                this._headManagedElements.forEach(el => {
+                this._headManagedElements.forEach((el) => {
                     if (el && el.parentNode) {
                         el.parentNode.removeChild(el);
                     }
@@ -29,11 +29,11 @@ export const EUIXHeadPlugin = {
         /**
          * Render <head> or <helmet> XML specifications
          */
-        engineClass.prototype.renderHead = function(xmlNode, context = {}) {
+        engineClass.prototype.renderHead = function (xmlNode, context = {}) {
             if (typeof document === "undefined") return null;
 
             const children = Array.from(xmlNode.children || []);
-            children.forEach(child => {
+            children.forEach((child) => {
                 const tag = (child.tagName || "").toLowerCase();
                 if (tag === "title") {
                     this.renderHeadTitle(child, context);
@@ -51,7 +51,7 @@ export const EUIXHeadPlugin = {
         /**
          * Render & bind <title> tags reactively
          */
-        engineClass.prototype.renderHeadTitle = function(titleNode, context = {}) {
+        engineClass.prototype.renderHeadTitle = function (titleNode, context = {}) {
             if (typeof document === "undefined") return null;
 
             const rawText = titleNode.getAttribute("title") || titleNode.textContent.trim() || "";
@@ -69,10 +69,12 @@ export const EUIXHeadPlugin = {
             // Track dynamic reactive placeholders
             const matches = Array.from(rawText.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g));
             if (matches.length > 0) {
-                const uniqueKeys = new Set(matches.map(m => m[1].split('.')[0]));
-                uniqueKeys.forEach(key => {
-                    const isLocal = context._localState && (context._localState[key] !== undefined || rawText.includes(`local.${key}`));
-                    const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
+                uniqueKeys.forEach((key) => {
+                    const isLocal =
+                        context._localState &&
+                        (context._localState[key] !== undefined || rawText.includes(`local.${key}`));
+                    const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
                     this.registerBinding(bindKey, document, "head_title", updateTitle);
                 });
             }
@@ -83,7 +85,7 @@ export const EUIXHeadPlugin = {
         /**
          * Render & bind <meta> tags reactively
          */
-        engineClass.prototype.renderHeadMeta = function(metaNode, context = {}) {
+        engineClass.prototype.renderHeadMeta = function (metaNode, context = {}) {
             if (typeof document === "undefined") return null;
 
             const name = metaNode.getAttribute("name");
@@ -129,12 +131,16 @@ export const EUIXHeadPlugin = {
 
             // Track dynamic placeholders
             if (rawContent && rawContent.includes("{")) {
-                const matches = Array.from(rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g));
+                const matches = Array.from(
+                    rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g),
+                );
                 if (matches.length > 0) {
-                    const uniqueKeys = new Set(matches.map(m => m[1].split('.')[0]));
-                    uniqueKeys.forEach(key => {
-                        const isLocal = context._localState && (context._localState[key] !== undefined || rawContent.includes(`local.${key}`));
-                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                    const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
+                    uniqueKeys.forEach((key) => {
+                        const isLocal =
+                            context._localState &&
+                            (context._localState[key] !== undefined || rawContent.includes(`local.${key}`));
+                        const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
                         this.registerBinding(bindKey, metaEl, "head_meta", updateMeta);
                     });
                 }
@@ -146,7 +152,7 @@ export const EUIXHeadPlugin = {
         /**
          * Render & bind <link> tags reactively
          */
-        engineClass.prototype.renderHeadLink = function(linkNode, context = {}) {
+        engineClass.prototype.renderHeadLink = function (linkNode, context = {}) {
             if (typeof document === "undefined") return null;
 
             const rel = linkNode.getAttribute("rel") || "canonical";
@@ -171,12 +177,16 @@ export const EUIXHeadPlugin = {
             updateLink();
 
             if (rawHref.includes("{")) {
-                const matches = Array.from(rawHref.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g));
+                const matches = Array.from(
+                    rawHref.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g),
+                );
                 if (matches.length > 0) {
-                    const uniqueKeys = new Set(matches.map(m => m[1].split('.')[0]));
-                    uniqueKeys.forEach(key => {
-                        const isLocal = context._localState && (context._localState[key] !== undefined || rawHref.includes(`local.${key}`));
-                        const bindKey = (context._instanceId && isLocal) ? (context._instanceId + ":" + key) : key;
+                    const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
+                    uniqueKeys.forEach((key) => {
+                        const isLocal =
+                            context._localState &&
+                            (context._localState[key] !== undefined || rawHref.includes(`local.${key}`));
+                        const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
                         this.registerBinding(bindKey, linkEl, "head_link", updateLink);
                     });
                 }
@@ -188,7 +198,7 @@ export const EUIXHeadPlugin = {
         /**
          * Programmatic helper to set document title
          */
-        engineClass.prototype.setTitle = function(title) {
+        engineClass.prototype.setTitle = (title) => {
             if (typeof document !== "undefined") {
                 document.title = title;
             }
@@ -197,9 +207,9 @@ export const EUIXHeadPlugin = {
         /**
          * Parse top-level <head>, <helmet>, or <title> in root spec if present
          */
-        engineClass.prototype.parseHeadMetadata = function(rootSpecNode) {
+        engineClass.prototype.parseHeadMetadata = function (rootSpecNode) {
             if (!rootSpecNode || !rootSpecNode.children) return;
-            Array.from(rootSpecNode.children).forEach(child => {
+            Array.from(rootSpecNode.children).forEach((child) => {
                 const tag = (child.tagName || "").toLowerCase();
                 if (tag === "head" || tag === "helmet") {
                     this.renderHead(child);
@@ -208,7 +218,7 @@ export const EUIXHeadPlugin = {
                 }
             });
         };
-    }
+    },
 };
 
 export const EUIXHelmetPlugin = EUIXHeadPlugin;

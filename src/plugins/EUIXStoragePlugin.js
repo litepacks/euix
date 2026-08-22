@@ -16,7 +16,7 @@ export const EUIXStoragePlugin = {
     install(engineClass) {
         const proto = engineClass.prototype;
 
-        proto._setupStorageListener = function() {
+        proto._setupStorageListener = function () {
             if (typeof window === "undefined" || !window.addEventListener || this._storageListenerBound) return;
             this._storageListenerBound = true;
 
@@ -46,7 +46,7 @@ export const EUIXStoragePlugin = {
             }
         };
 
-        proto.persist = function(key, { storage = "local", key: customKey = null } = {}) {
+        proto.persist = function (key, { storage = "local", key: customKey = null } = {}) {
             if (!key) return this;
             const parsedKey = this.parseBindPath(key);
             const storageKey = customKey || `euix_state_${parsedKey}`;
@@ -70,7 +70,7 @@ export const EUIXStoragePlugin = {
             return this;
         };
 
-        proto.clearPersistedState = function(key) {
+        proto.clearPersistedState = function (key) {
             if (!key) return this;
             const parsedKey = this.parseBindPath(key);
             const config = this._persistenceConfig.get(parsedKey);
@@ -81,7 +81,7 @@ export const EUIXStoragePlugin = {
             return this;
         };
 
-        proto._savePersistedState = function(key, value) {
+        proto._savePersistedState = function (key, value) {
             const config = this._persistenceConfig.get(key);
             if (!config) return;
             try {
@@ -93,7 +93,7 @@ export const EUIXStoragePlugin = {
                 this.reportError(err, `Error persisting state key "${key}"`);
             }
         };
-    }
+    },
 };
 
 export default EUIXStoragePlugin;

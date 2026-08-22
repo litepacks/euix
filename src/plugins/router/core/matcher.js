@@ -3,15 +3,15 @@
  * High-performance route compiler, ranking engine, and matcher for EUIX Web Router.
  */
 
-import { compilePath, normalizePath, generatePath, fastDecode } from "./utils.js";
+import { compilePath, fastDecode, generatePath, normalizePath } from "./utils.js";
 
 /**
  * Normalizes and flattens a nested route tree into a list of ranked route branches.
  * Each branch represents the full hierarchy path from root to leaf.
- * 
- * @param {Array<object>} routes 
- * @param {Array<object>} parentBranch 
- * @param {string} parentPath 
+ *
+ * @param {Array<object>} routes
+ * @param {Array<object>} parentBranch
+ * @param {string} parentPath
  * @returns {Array<RouteBranch>}
  */
 export function compileRouteBranches(routes, parentBranch = [], parentPath = "") {
@@ -41,8 +41,8 @@ export function compileRouteBranches(routes, parentBranch = [], parentPath = "")
                 fullPath,
                 isIndex,
                 isPathless,
-                isGroup
-            }
+                isGroup,
+            },
         ];
 
         if (route.children && route.children.length > 0) {
@@ -51,7 +51,15 @@ export function compileRouteBranches(routes, parentBranch = [], parentPath = "")
         }
 
         // If it's a leaf route or can match on its own (has component/layout/index)
-        if (!isGroup && (route.component || route.layout || isIndex || route.redirect || !route.children || route.children.length === 0)) {
+        if (
+            !isGroup &&
+            (route.component ||
+                route.layout ||
+                isIndex ||
+                route.redirect ||
+                !route.children ||
+                route.children.length === 0)
+        ) {
             const compiled = compileBranch(currentBranch, fullPath, isIndex);
             branches.push(compiled);
         }
@@ -115,7 +123,7 @@ function compileBranch(branchHierarchy, fullPath, isIndex) {
             middleware: route.middleware,
             redirect: route.redirect,
             meta: route.meta,
-            key: route.key
+            key: route.key,
         });
     }
 
@@ -128,7 +136,7 @@ function compileBranch(branchHierarchy, fullPath, isIndex) {
         isIndex,
         isStatic,
         templateHierarchy,
-        hierarchy: branchHierarchy
+        hierarchy: branchHierarchy,
     };
 }
 
@@ -167,13 +175,15 @@ export class RouteMatcher {
             const route = routes[i];
             let fullPath = parentPath;
             if (route.path) {
-                fullPath = route.path.startsWith("/") ? normalizePath(route.path) : normalizePath(`${parentPath}/${route.path}`);
+                fullPath = route.path.startsWith("/")
+                    ? normalizePath(route.path)
+                    : normalizePath(`${parentPath}/${route.path}`);
             }
             if (route.id) {
                 this._namedRoutes.set(route.id, {
                     id: route.id,
                     path: fullPath || "/",
-                    route
+                    route,
                 });
             }
             if (route.children) {
@@ -184,7 +194,7 @@ export class RouteMatcher {
 
     /**
      * Finds a named route pattern.
-     * @param {string} name 
+     * @param {string} name
      * @returns {string|null}
      */
     getNamedPath(name) {
@@ -194,7 +204,7 @@ export class RouteMatcher {
 
     /**
      * Matches a given pathname against compiled route branches.
-     * @param {string} pathname 
+     * @param {string} pathname
      * @returns {Array<RouteMatch>|null}
      */
     match(pathname = "/") {
@@ -265,7 +275,7 @@ export class RouteMatcher {
                 middleware: tm.middleware,
                 redirect: tm.redirect,
                 meta: tm.meta,
-                key: tm.key
+                key: tm.key,
             };
         }
 
@@ -275,8 +285,8 @@ export class RouteMatcher {
 
 /**
  * Standalone matchRoutes function.
- * @param {Array<object>} routes 
- * @param {string} pathname 
+ * @param {Array<object>} routes
+ * @param {string} pathname
  * @returns {Array<RouteMatch>|null}
  */
 export function matchRoutes(routes, pathname = "/") {

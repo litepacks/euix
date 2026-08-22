@@ -3,27 +3,25 @@
  * Main EUIX Web Router Plugin and high-level router runtime.
  */
 
-import { parsePath, createPath, normalizePath, resolvePath, generatePath, matchPath } from "./core/utils.js";
-import { RouteMatcher, compileRouteBranches, matchRoutes } from "./core/matcher.js";
-import { createHistory, BrowserHistory, HashHistory, MemoryHistory } from "./core/history.js";
-import { createLocation, parseSearchParams } from "./core/location.js";
-import { NavigationController, RouterRedirect, RouterError } from "./core/navigation.js";
-import { createOutletRenderer, createRouteContext } from "./core/outlet.js";
+import { BrowserHistory, createHistory, HashHistory, MemoryHistory } from "./core/history.js";
 import { createLinkRenderer } from "./core/links.js";
-
-import { RouteDataCache } from "./data/cache.js";
-import { RouteLoaderManager } from "./data/loader.js";
+import { createLocation, parseSearchParams } from "./core/location.js";
+import { compileRouteBranches, matchRoutes, RouteMatcher } from "./core/matcher.js";
+import { NavigationController, RouterError, RouterRedirect } from "./core/navigation.js";
+import { createOutletRenderer, createRouteContext } from "./core/outlet.js";
+import { createPath, generatePath, matchPath, normalizePath, parsePath, resolvePath } from "./core/utils.js";
 import { RouteActionManager } from "./data/action.js";
-import { RouteRevalidationManager } from "./data/revalidation.js";
+import { RouteDataCache } from "./data/cache.js";
 import { RouteFetcherManager } from "./data/fetcher.js";
+import { RouteLoaderManager } from "./data/loader.js";
+import { RouteRevalidationManager } from "./data/revalidation.js";
 
 import { NavigationBlockerManager } from "./navigation/blocker.js";
-import { ScrollRestorationManager } from "./navigation/scroll.js";
 import { RoutePrefetchManager } from "./navigation/prefetch.js";
+import { ScrollRestorationManager } from "./navigation/scroll.js";
 import { ViewTransitionManager } from "./navigation/transitions.js";
-
+import { getHydrationData, serializeHydrationState } from "./server/hydration.js";
 import { createStaticRouter } from "./server/static-router.js";
-import { serializeHydrationState, getHydrationData } from "./server/hydration.js";
 
 /**
  * EUIX Router Runtime Instance
@@ -39,7 +37,7 @@ export class EUIXRouter {
         engine = null,
         history = null,
         initialEntries = ["/"],
-        initialIndex = 0
+        initialIndex = 0,
     } = {}) {
         this.engine = engine;
         this.routes = routes;
@@ -54,7 +52,10 @@ export class EUIXRouter {
         // Data subsystems
         this.loaderManager = new RouteLoaderManager({ cache: this.cache, engine: this.engine });
         this.actionManager = new RouteActionManager();
-        this.revalidationManager = new RouteRevalidationManager({ loaderManager: this.loaderManager, cache: this.cache });
+        this.revalidationManager = new RouteRevalidationManager({
+            loaderManager: this.loaderManager,
+            cache: this.cache,
+        });
         this.fetcherManager = new RouteFetcherManager({ router: this, dataEngine: this._getDataEngine() });
 
         // Navigation subsystems
@@ -70,14 +71,19 @@ export class EUIXRouter {
             dataEngine: this._getDataEngine(),
             blockerManager: this.blockerManager,
             scrollManager: this.scrollManager,
-            transitionManager: this.transitionManager
+            transitionManager: this.transitionManager,
         });
 
         // Hydration data seeding
         const initialHydration = hydrationData || getHydrationData();
         if (initialHydration && initialHydration.loaderData) {
             Object.entries(initialHydration.loaderData).forEach(([routeId, data]) => {
-                this.cache.set(routeId, initialHydration.location?.pathname || "/", initialHydration.location?.search || "", data);
+                this.cache.set(
+                    routeId,
+                    initialHydration.location?.pathname || "/",
+                    initialHydration.location?.search || "",
+                    data,
+                );
             });
         }
 
@@ -110,7 +116,7 @@ export class EUIXRouter {
                             location,
                             formData,
                             signal,
-                            context: this.engine ? this.engine.getState("data") : {}
+                            context: this.engine ? this.engine.getState("data") : {},
                         });
                         match.actionData = actionRes;
 
@@ -120,19 +126,19 @@ export class EUIXRouter {
                             location,
                             signal,
                             actionResult: actionRes,
-                            context: this.engine ? this.engine.getState("data") : {}
+                            context: this.engine ? this.engine.getState("data") : {},
                         });
                     } else if (match.loader || match.route.loader || match.route.loaderNode) {
                         const data = await this.loaderManager.executeLoader({
                             match,
                             location,
                             signal,
-                            context: this.engine ? this.engine.getState("data") : {}
+                            context: this.engine ? this.engine.getState("data") : {},
                         });
                         match.data = data;
                     }
                 }
-            }
+            },
         };
     }
 
@@ -153,7 +159,7 @@ export class EUIXRouter {
     get matches() {
         const rawMatches = this.navigationController.matches;
         if (!rawMatches) return [];
-        return rawMatches.map(m => {
+        return rawMatches.map((m) => {
             const routeId = m.id || (m.route && m.route.id);
             if (m.data === undefined && routeId) {
                 const cachedData = this.cache.get(routeId, this.location.pathname, this.location.search);
@@ -174,13 +180,13 @@ export class EUIXRouter {
     }
 
     getRouteData(routeId) {
-        const match = this.matches.find(m => m.id === routeId || (m.route && m.route.id === routeId));
+        const match = this.matches.find((m) => m.id === routeId || (m.route && m.route.id === routeId));
         if (match && match.data !== undefined) return match.data;
         return this.cache.get(routeId, this.location.pathname, this.location.search);
     }
 
     getRouteActionData(routeId) {
-        const match = this.matches.find(m => m.id === routeId);
+        const match = this.matches.find((m) => m.id === routeId);
         return match ? match.actionData : undefined;
     }
 
@@ -196,7 +202,7 @@ export class EUIXRouter {
             back: this.back.bind(this),
             forward: this.forward.bind(this),
             revalidate: this.revalidate.bind(this),
-            setSearch: this.setSearch.bind(this)
+            setSearch: this.setSearch.bind(this),
         };
     }
 
@@ -221,7 +227,7 @@ export class EUIXRouter {
         const currentFetchers = this.engine.getState("$fetcher") || {};
         this.engine.setState("$fetcher", {
             ...currentFetchers,
-            [fetcherId]: data
+            [fetcherId]: data,
         });
     }
 
@@ -262,11 +268,14 @@ export class EUIXRouter {
             }
         });
         const nextSearch = current.toString();
-        return this.navigate({
-            pathname: this.location.pathname,
-            search: nextSearch ? `?${nextSearch}` : "",
-            hash: this.location.hash
-        }, { replace });
+        return this.navigate(
+            {
+                pathname: this.location.pathname,
+                search: nextSearch ? `?${nextSearch}` : "",
+                hash: this.location.hash,
+            },
+            { replace },
+        );
     }
 
     prefetch(targetPath) {
@@ -279,7 +288,10 @@ export class EUIXRouter {
 
     loader(name, fn) {
         this.loaderManager.registerLoader(name, fn);
-        if (this.matches && this.matches.some(m => (m.route?.loader === name || m.loader === name) && m.data === undefined)) {
+        if (
+            this.matches &&
+            this.matches.some((m) => (m.route?.loader === name || m.loader === name) && m.data === undefined)
+        ) {
             this.revalidate();
         }
         return this;
@@ -311,7 +323,7 @@ export class EUIXRouter {
             location: this.location,
             signal,
             routeId,
-            context: this.engine ? this.engine.getState("data") : {}
+            context: this.engine ? this.engine.getState("data") : {},
         });
         this._syncToEngineState(this.location, this.matches);
         this.navigationController.emit("route:match", { location: this.location, matches: this.matches });
@@ -349,7 +361,7 @@ export class EUIXRouter {
             navigation: this.navigation,
             state: this.state,
             history: this.history,
-            routes: this.routes
+            routes: this.routes,
         };
     }
 
@@ -371,7 +383,7 @@ export function createMemoryRouter({ initialEntries = ["/"], initialIndex = 0, r
     return new EUIXRouter({
         routes,
         mode: "memory",
-        history: new MemoryHistory({ initialEntries, initialIndex })
+        history: new MemoryHistory({ initialEntries, initialIndex }),
     });
 }
 
@@ -382,7 +394,7 @@ export function parseXmlRoutes(xmlNode) {
     const routes = [];
     if (!xmlNode) return routes;
 
-    const children = Array.from(xmlNode.children || xmlNode.childNodes || []).filter(c => c.nodeType === 1);
+    const children = Array.from(xmlNode.children || xmlNode.childNodes || []).filter((c) => c.nodeType === 1);
 
     for (const child of children) {
         const tag = (child.tagName || "").toLowerCase();
@@ -393,7 +405,7 @@ export function parseXmlRoutes(xmlNode) {
 
             const routeDef = {
                 id: child.getAttribute("id") || null,
-                path: isIndex ? "" : (child.getAttribute("path") || ""),
+                path: isIndex ? "" : child.getAttribute("path") || "",
                 index: isIndex,
                 isGroup,
                 layout: child.getAttribute("layout") || null,
@@ -404,13 +416,14 @@ export function parseXmlRoutes(xmlNode) {
                 middleware: child.getAttribute("middleware") || null,
                 redirect: child.getAttribute("redirect") || null,
                 key: child.getAttribute("key") || null,
-                shouldRevalidate: child.getAttribute("should-revalidate") || child.getAttribute("should_revalidate") || null,
+                shouldRevalidate:
+                    child.getAttribute("should-revalidate") || child.getAttribute("should_revalidate") || null,
                 meta: {},
-                children: []
+                children: [],
             };
 
             // Inspect nested children (declarative <loader>, <error>, <pending>, <route-meta>, or nested <route>)
-            const subChildren = Array.from(child.children || child.childNodes || []).filter(c => c.nodeType === 1);
+            const subChildren = Array.from(child.children || child.childNodes || []).filter((c) => c.nodeType === 1);
             for (const sub of subChildren) {
                 const subTag = (sub.tagName || "").toLowerCase();
                 if (subTag === "loader") {
@@ -420,7 +433,7 @@ export function parseXmlRoutes(xmlNode) {
                 } else if (subTag === "pending") {
                     routeDef.pendingNode = sub;
                 } else if (subTag === "route-meta" || subTag === "meta") {
-                    Array.from(sub.attributes || []).forEach(attr => {
+                    Array.from(sub.attributes || []).forEach((attr) => {
                         routeDef.meta[attr.name] = attr.value;
                     });
                 } else if (subTag === "route" || subTag === "index" || subTag === "route-group") {
@@ -462,13 +475,17 @@ export const EUIXRouterPlugin = {
 
     install(engineClass) {
         // 1. Tag Processor for <router>
-        engineClass.prototype._processRouterTag = function(xmlNode) {
+        engineClass.prototype._processRouterTag = function (xmlNode) {
             if (!xmlNode) return;
 
             const mode = xmlNode.getAttribute("mode") || "history";
             const base = xmlNode.getAttribute("base") || "/";
-            const scrollRestoration = xmlNode.getAttribute("scroll-restoration") !== "false" && xmlNode.getAttribute("scroll_restoration") !== "false";
-            const viewTransitions = xmlNode.getAttribute("view-transitions") !== "false" && xmlNode.getAttribute("view_transitions") !== "false";
+            const scrollRestoration =
+                xmlNode.getAttribute("scroll-restoration") !== "false" &&
+                xmlNode.getAttribute("scroll_restoration") !== "false";
+            const viewTransitions =
+                xmlNode.getAttribute("view-transitions") !== "false" &&
+                xmlNode.getAttribute("view_transitions") !== "false";
 
             const routes = parseXmlRoutes(xmlNode);
 
@@ -477,19 +494,19 @@ export const EUIXRouterPlugin = {
                 mode,
                 base,
                 scrollRestoration,
-                viewTransitions
+                viewTransitions,
             });
         };
 
         // 2. Programmatic Router Initializer
-        engineClass.prototype.initRouter = function(options = {}) {
+        engineClass.prototype.initRouter = function (options = {}) {
             if (this.router) {
                 this.router.destroy();
             }
 
             this.router = new EUIXRouter({
                 ...options,
-                engine: this
+                engine: this,
             });
 
             // Seed pre-registered static loaders/actions/guards/middleware
@@ -518,7 +535,7 @@ export const EUIXRouterPlugin = {
 
         // 3. Register Custom XML Layout Components
         // <router>
-        const routerComponentHandler = function(xmlNode, context) {
+        const routerComponentHandler = function (xmlNode, context) {
             if (!this.router) {
                 this._processRouterTag(xmlNode);
             }
@@ -527,7 +544,7 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("router", routerComponentHandler);
 
         // <outlet> and <router-outlet>
-        const outletHandler = function(xmlNode, context) {
+        const outletHandler = function (xmlNode, context) {
             if (!this.router) return null;
             return this.router.renderOutlet(xmlNode, context);
         };
@@ -535,14 +552,14 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("router-outlet", outletHandler);
 
         // <route-link>
-        const linkHandler = function(xmlNode, context) {
+        const linkHandler = function (xmlNode, context) {
             if (!this.router) return null;
             return this.router.renderLink(xmlNode, context);
         };
         engineClass.registerComponent("route-link", linkHandler);
 
         // <route-form> and <form route-action>
-        const formHandler = function(xmlNode, context) {
+        const formHandler = function (xmlNode, context) {
             if (typeof document === "undefined") return null;
 
             const formEl = document.createElement("form");
@@ -555,7 +572,7 @@ export const EUIXRouterPlugin = {
             formEl.action = actionAttr || "#";
 
             // Render form children
-            Array.from(xmlNode.childNodes).forEach(child => {
+            Array.from(xmlNode.childNodes).forEach((child) => {
                 const childEl = this.createHTMLElement(child, context);
                 if (childEl) formEl.appendChild(childEl);
             });
@@ -569,7 +586,7 @@ export const EUIXRouterPlugin = {
 
                 await this.router.navigate(targetAction, {
                     formData,
-                    replace: xmlNode.hasAttribute("replace")
+                    replace: xmlNode.hasAttribute("replace"),
                 });
             };
 
@@ -578,7 +595,7 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("route-form", formHandler);
 
         // <route-fetcher>
-        const fetcherComponentHandler = function(xmlNode, context) {
+        const fetcherComponentHandler = function (xmlNode, context) {
             if (typeof document === "undefined") return null;
 
             const container = document.createElement("div");
@@ -586,7 +603,7 @@ export const EUIXRouterPlugin = {
             container.style.display = "contents";
 
             // Render children
-            Array.from(xmlNode.childNodes).forEach(child => {
+            Array.from(xmlNode.childNodes).forEach((child) => {
                 const childEl = this.createHTMLElement(child, context);
                 if (childEl) container.appendChild(childEl);
             });
@@ -596,7 +613,7 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("route-fetcher", fetcherComponentHandler);
 
         // <route-block>
-        const blockComponentHandler = function(xmlNode, context) {
+        const blockComponentHandler = function (xmlNode, context) {
             if (!this.router) return null;
             const whenExpr = xmlNode.getAttribute("when") || xmlNode.getAttribute("if");
             const message = xmlNode.getAttribute("message") || "Discard unsaved changes?";
@@ -613,9 +630,13 @@ export const EUIXRouterPlugin = {
         engineClass.registerComponent("route-block", blockComponentHandler);
 
         // 4. Register Declarative Event Actions
-        const handleNavigate = async function(actionNode, context) {
+        const handleNavigate = async function (actionNode, context) {
             if (!this.router) return false;
-            const toRaw = actionNode.getAttribute("to") || actionNode.getAttribute("path") || actionNode.getAttribute("href") || "";
+            const toRaw =
+                actionNode.getAttribute("to") ||
+                actionNode.getAttribute("path") ||
+                actionNode.getAttribute("href") ||
+                "";
             const toNode = this.getChild(actionNode, "to") || this.getChild(actionNode, "path");
             const to = toNode ? this.interpolate(toNode.textContent, context) : this.interpolate(toRaw, context);
             const replace = actionNode.getAttribute("replace") === "true";
@@ -625,7 +646,7 @@ export const EUIXRouterPlugin = {
         engineClass.registerAction("NAVIGATE", handleNavigate);
         engineClass.registerAction("ROUTER_NAVIGATE", handleNavigate);
 
-        const handleRevalidate = async function(actionNode, context) {
+        const handleRevalidate = async function (actionNode, context) {
             if (!this.router) return false;
             const routeId = actionNode.getAttribute("route") || actionNode.getAttribute("id");
             await this.router.revalidate(routeId);
@@ -634,12 +655,12 @@ export const EUIXRouterPlugin = {
         engineClass.registerAction("REVALIDATE", handleRevalidate);
         engineClass.registerAction("ROUTER_REVALIDATE", handleRevalidate);
 
-        engineClass.registerAction("ROUTER_BACK", function() {
+        engineClass.registerAction("ROUTER_BACK", function () {
             if (this.router) this.router.back();
             return true;
         });
 
-        engineClass.registerAction("ROUTER_FORWARD", function() {
+        engineClass.registerAction("ROUTER_FORWARD", function () {
             if (this.router) this.router.forward();
             return true;
         });
@@ -647,11 +668,15 @@ export const EUIXRouterPlugin = {
         // 5. Hook into XML Parsing Lifecycle to parse <router>
         const originalInitDataModel = engineClass.prototype.initDataModel;
         if (typeof originalInitDataModel === "function") {
-            engineClass.prototype.initDataModel = function(doc, isMainDoc) {
+            engineClass.prototype.initDataModel = function (doc, isMainDoc) {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
                 if (targetDoc) {
-                    const routerTag = targetDoc.querySelector ? targetDoc.querySelector("router") : (targetDoc.getElementsByTagName ? targetDoc.getElementsByTagName("router")[0] : null);
+                    const routerTag = targetDoc.querySelector
+                        ? targetDoc.querySelector("router")
+                        : targetDoc.getElementsByTagName
+                          ? targetDoc.getElementsByTagName("router")[0]
+                          : null;
                     if (routerTag && typeof this._processRouterTag === "function") {
                         this._processRouterTag(routerTag);
                     }
@@ -659,30 +684,30 @@ export const EUIXRouterPlugin = {
                 return res;
             };
         }
-    }
+    },
 };
 
 export {
-    RouteMatcher,
-    compileRouteBranches,
-    parsePath,
-    createPath,
-    normalizePath,
-    resolvePath,
-    generatePath,
-    matchPath,
-    matchRoutes,
-    createHistory,
     BrowserHistory,
+    compileRouteBranches,
+    createHistory,
+    createLocation,
+    createPath,
+    createStaticRouter,
+    generatePath,
+    getHydrationData,
     HashHistory,
     MemoryHistory,
-    createLocation,
+    matchPath,
+    matchRoutes,
+    normalizePath,
+    parsePath,
     parseSearchParams,
-    createStaticRouter,
-    serializeHydrationState,
-    getHydrationData,
+    RouteMatcher,
+    RouterError,
     RouterRedirect,
-    RouterError
+    resolvePath,
+    serializeHydrationState,
 };
 
 export default EUIXRouterPlugin;

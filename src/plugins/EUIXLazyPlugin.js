@@ -1,7 +1,7 @@
 /**
  * src/plugins/EUIXLazyPlugin.js
  * EUIX XML Component & Route Lazy Loading Plugin.
- * 
+ *
  * Provides declarative on-demand asynchronous loading for modular XML components
  * (<import lazy="true" />) and Web Router routes (<route lazy_src="..." />).
  */
@@ -15,18 +15,18 @@ export function EUIXLazyPlugin(EngineClass) {
     }
 
     // Static registration API
-    EngineClass.registerLazyComponent = function (name, src, fallback) {
+    EngineClass.registerLazyComponent = (name, src, fallback) => {
         const key = (name || "").toLowerCase();
         EngineClass._lazyRegistry.set(key, {
             name: key,
             src,
             fallback: fallback || null,
-            loaded: false
+            loaded: false,
         });
     };
 
     // Static load API with caching & deduplication
-    EngineClass.loadLazyComponent = async function (name, options = {}) {
+    EngineClass.loadLazyComponent = async (name, options = {}) => {
         const key = (name || "").toLowerCase();
         const entry = EngineClass._lazyRegistry.get(key);
         if (!entry) return null;
@@ -57,13 +57,11 @@ export function EUIXLazyPlugin(EngineClass) {
     };
 
     // Instance methods
-    EngineClass.prototype.registerLazyComponent = function (name, src, fallback) {
+    EngineClass.prototype.registerLazyComponent = (name, src, fallback) => {
         EngineClass.registerLazyComponent(name, src, fallback);
     };
 
-    EngineClass.prototype.loadLazyComponent = async function (name) {
-        return EngineClass.loadLazyComponent(name);
-    };
+    EngineClass.prototype.loadLazyComponent = async (name) => EngineClass.loadLazyComponent(name);
 
     // Intercept createHTMLElement to handle lazy component placeholders & hydration
     const originalCreateHTMLElement = EngineClass.prototype.createHTMLElement;
@@ -74,12 +72,17 @@ export function EUIXLazyPlugin(EngineClass) {
 
         const tagName = (xmlNode.tagName || "").toLowerCase();
         const nameAttr = (xmlNode.getAttribute("name") || "").toLowerCase();
-        const targetKey = EngineClass._lazyRegistry.has(tagName) ? tagName : (EngineClass._lazyRegistry.has(nameAttr) ? nameAttr : null);
+        const targetKey = EngineClass._lazyRegistry.has(tagName)
+            ? tagName
+            : EngineClass._lazyRegistry.has(nameAttr)
+              ? nameAttr
+              : null;
 
         // Check if this tag is a registered lazy component and NOT yet loaded
         if (targetKey && EngineClass._lazyRegistry.has(targetKey)) {
-            const isLoaded = (this._componentSpecs && this._componentSpecs.has(targetKey)) ||
-                             (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.has(targetKey));
+            const isLoaded =
+                (this._componentSpecs && this._componentSpecs.has(targetKey)) ||
+                (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.has(targetKey));
 
             if (!isLoaded) {
                 const entry = EngineClass._lazyRegistry.get(targetKey);
@@ -90,8 +93,9 @@ export function EUIXLazyPlugin(EngineClass) {
                 // If a fallback component is specified, render it
                 if (entry.fallback) {
                     const fallbackKey = entry.fallback.toLowerCase();
-                    const fallbackSpec = (this._componentSpecs && this._componentSpecs.get(fallbackKey)) ||
-                                         (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(fallbackKey));
+                    const fallbackSpec =
+                        (this._componentSpecs && this._componentSpecs.get(fallbackKey)) ||
+                        (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(fallbackKey));
                     if (fallbackSpec) {
                         const fallbackDom = this.renderComponentSpec(fallbackSpec, xmlNode, context);
                         if (fallbackDom) placeholder.appendChild(fallbackDom);
@@ -103,25 +107,28 @@ export function EUIXLazyPlugin(EngineClass) {
                 }
 
                 // Trigger on-demand asynchronous fetch and replace placeholder
-                EngineClass.loadLazyComponent(targetKey).then(() => {
-                    const specNode = (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
-                                     (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
-                    if (specNode && placeholder.parentNode) {
-                        const realDom = this.renderComponentSpec(specNode, xmlNode, context);
-                        if (realDom) {
-                            this.applyRef(realDom, xmlNode, context);
-                            placeholder.replaceWith(realDom);
-                            if (typeof this.syncAllBindings === "function") {
-                                this.syncAllBindings();
-                            }
-                            if (window.lucide && typeof window.lucide.createIcons === "function") {
-                                window.lucide.createIcons();
+                EngineClass.loadLazyComponent(targetKey)
+                    .then(() => {
+                        const specNode =
+                            (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
+                            (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
+                        if (specNode && placeholder.parentNode) {
+                            const realDom = this.renderComponentSpec(specNode, xmlNode, context);
+                            if (realDom) {
+                                this.applyRef(realDom, xmlNode, context);
+                                placeholder.replaceWith(realDom);
+                                if (typeof this.syncAllBindings === "function") {
+                                    this.syncAllBindings();
+                                }
+                                if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                    window.lucide.createIcons();
+                                }
                             }
                         }
-                    }
-                }).catch(err => {
-                    placeholder.innerHTML = `<div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-mono">Failed to load ${targetKey}: ${err.message}</div>`;
-                });
+                    })
+                    .catch((err) => {
+                        placeholder.innerHTML = `<div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-mono">Failed to load ${targetKey}: ${err.message}</div>`;
+                    });
 
                 return placeholder;
             }
@@ -134,4 +141,3 @@ export function EUIXLazyPlugin(EngineClass) {
 EUIXLazyPlugin.install = EUIXLazyPlugin;
 
 export default EUIXLazyPlugin;
-

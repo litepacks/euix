@@ -3,7 +3,7 @@
  * Declarative Computed State (derived state) and Reactive Watchers for EUIX Engine.
  */
 
-import { EUIXStructuredError, EUIXExpressionParser } from "../core/EUIXEngineCore.js";
+import { EUIXExpressionParser, EUIXStructuredError } from "../core/EUIXEngineCore.js";
 
 const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
 
@@ -18,7 +18,9 @@ export class EUIXDependencyGraph {
     }
 
     addComputedDep(path, computedId) {
-        const clean = String(path || "").replace(/^(data|state|computed)\./, "").trim();
+        const clean = String(path || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
         if (!clean) return;
         if (!this.pathToComputed.has(clean)) {
             this.pathToComputed.set(clean, new Set());
@@ -27,7 +29,9 @@ export class EUIXDependencyGraph {
     }
 
     addWatcherDep(path, watcherId) {
-        const clean = String(path || "").replace(/^(data|state|computed)\./, "").trim();
+        const clean = String(path || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
         if (!clean) return;
         if (!this.pathToWatchers.has(clean)) {
             this.pathToWatchers.set(clean, new Set());
@@ -37,15 +41,17 @@ export class EUIXDependencyGraph {
 
     getAffectedComputed(changedPath) {
         const affected = new Set();
-        const cleanChanged = String(changedPath || "").replace(/^(data|state|computed)\./, "").trim();
+        const cleanChanged = String(changedPath || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
 
         for (const [depPath, compSet] of this.pathToComputed.entries()) {
             if (
                 depPath === cleanChanged ||
-                cleanChanged.startsWith(depPath + ".") ||
-                depPath.startsWith(cleanChanged + ".")
+                cleanChanged.startsWith(`${depPath}.`) ||
+                depPath.startsWith(`${cleanChanged}.`)
             ) {
-                compSet.forEach(id => affected.add(id));
+                compSet.forEach((id) => affected.add(id));
             }
         }
         return affected;
@@ -53,22 +59,24 @@ export class EUIXDependencyGraph {
 
     getAffectedWatchers(changedPath) {
         const affected = new Set();
-        const cleanChanged = String(changedPath || "").replace(/^(data|state|computed)\./, "").trim();
+        const cleanChanged = String(changedPath || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
 
         for (const [depPath, watchSet] of this.pathToWatchers.entries()) {
             if (
                 depPath === cleanChanged ||
-                cleanChanged.startsWith(depPath + ".") ||
-                depPath.startsWith(cleanChanged + ".")
+                cleanChanged.startsWith(`${depPath}.`) ||
+                depPath.startsWith(`${cleanChanged}.`)
             ) {
-                watchSet.forEach(id => affected.add(id));
+                watchSet.forEach((id) => affected.add(id));
             }
         }
 
         const affectedComputed = this.getAffectedComputed(cleanChanged);
-        affectedComputed.forEach(compKey => {
+        affectedComputed.forEach((compKey) => {
             if (this.pathToWatchers.has(compKey)) {
-                this.pathToWatchers.get(compKey).forEach(id => affected.add(id));
+                this.pathToWatchers.get(compKey).forEach((id) => affected.add(id));
             }
         });
 
@@ -78,13 +86,13 @@ export class EUIXDependencyGraph {
     removeComponentDeps(componentName) {
         if (!componentName) return;
         for (const set of this.pathToComputed.values()) {
-            Array.from(set).forEach(id => {
-                if (id.startsWith(componentName + ":")) set.delete(id);
+            Array.from(set).forEach((id) => {
+                if (id.startsWith(`${componentName}:`)) set.delete(id);
             });
         }
         for (const set of this.pathToWatchers.values()) {
-            Array.from(set).forEach(id => {
-                if (id.startsWith(componentName + ":")) set.delete(id);
+            Array.from(set).forEach((id) => {
+                if (id.startsWith(`${componentName}:`)) set.delete(id);
             });
         }
     }
@@ -98,7 +106,14 @@ export class EUIXComputedNode {
     constructor({ id, getter, deps = [], engine = null, component = null }) {
         this.id = id;
         this.getter = getter;
-        this.deps = Array.isArray(deps) ? [...deps] : (typeof deps === "string" ? deps.split(",").map(s => s.trim()).filter(Boolean) : []);
+        this.deps = Array.isArray(deps)
+            ? [...deps]
+            : typeof deps === "string"
+              ? deps
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+              : [];
         this.engine = engine;
         this.component = component;
 
@@ -108,13 +123,13 @@ export class EUIXComputedNode {
 
         // Auto-extract dependencies if deps array is empty and getter is a string expression
         if (this.deps.length === 0 && typeof getter === "string") {
-            const matches = getter.match(/\{(?:data|state|computed)\.([a-zA-Z0-9_\.]+)\}/g) || [];
-            matches.forEach(m => {
+            const matches = getter.match(/\{(?:data|state|computed)\.([a-zA-Z0-9_.]+)\}/g) || [];
+            matches.forEach((m) => {
                 const p = m.slice(1, -1).replace(/^(data|state|computed)\./, "");
                 if (p && !this.deps.includes(p)) this.deps.push(p);
             });
-            const scriptMatches = getter.match(/\$data\.([a-zA-Z0-9_\.]+)/g) || [];
-            scriptMatches.forEach(sm => {
+            const scriptMatches = getter.match(/\$data\.([a-zA-Z0-9_.]+)/g) || [];
+            scriptMatches.forEach((sm) => {
                 const p = sm.replace(/^\$data\./, "");
                 if (p && !this.deps.includes(p)) this.deps.push(p);
             });
@@ -130,7 +145,7 @@ export class EUIXComputedNode {
                     message: `Circular computed dependency detected: ${chain}`,
                     code: "COMPUTED_CYCLE_ERROR",
                     originatingAction: "COMPUTED",
-                    component: this.component
+                    component: this.component,
                 });
                 this.engine.reportError(err, "Computed Cycle Guard");
                 throw err;
@@ -156,8 +171,11 @@ export class EUIXComputedNode {
                 if (getterStr.startsWith("return ") || getterStr.includes(";")) {
                     const fn = new Function("$data", "$engine", getterStr);
                     val = fn.call(this.engine, this.engine.state || this.engine._proxyState, this.engine);
-                } else if (/[\+\-\*\/]/.test(getterStr) || getterStr.includes("?") || getterStr.includes("{")) {
-                    const cleanExpr = getterStr.replace(/\{\s*(data\.\w+|state\.\w+|computed\.\w+|\w+)\s*\}/g, "$1").replace(/^\{\s*|\s*\}$/g, "").trim();
+                } else if (/[+\-*/]/.test(getterStr) || getterStr.includes("?") || getterStr.includes("{")) {
+                    const cleanExpr = getterStr
+                        .replace(/\{\s*(data\.\w+|state\.\w+|computed\.\w+|\w+)\s*\}/g, "$1")
+                        .replace(/^\{\s*|\s*\}$/g, "")
+                        .trim();
                     val = EUIXExpressionParser.eval(cleanExpr, (key) => this.engine.getState(key));
                     if (val === undefined) {
                         val = this.engine.interpolate(getterStr, {});
@@ -173,7 +191,7 @@ export class EUIXComputedNode {
         } catch (err) {
             const structured = EUIXStructuredError.from(err, {
                 originatingAction: "COMPUTED",
-                component: this.component
+                component: this.component,
             });
             if (this.engine) this.engine.reportError(structured, `Computed Property Evaluation (${this.id})`);
             throw structured;
@@ -202,8 +220,12 @@ export class EUIXWatchNode {
     run(rawNewValue, rawOldValue, triggerPath, context = {}) {
         if (!this.engine) return;
 
-        const cleanPath = String(this.path || "").replace(/^(data|state|computed)\./, "").trim();
-        const cleanTrigger = String(triggerPath || "").replace(/^(data|state|computed)\./, "").trim();
+        const cleanPath = String(this.path || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
+        const cleanTrigger = String(triggerPath || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
 
         let val = rawNewValue;
         let prevVal = rawOldValue;
@@ -227,9 +249,9 @@ export class EUIXWatchNode {
             $oldValue: prevVal,
             path: this.path,
             $path: this.path,
-            $timestamp: (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now(),
+            $timestamp: typeof performance !== "undefined" && performance.now ? performance.now() : Date.now(),
             $source: "WATCHER",
-            _componentName: this.component || (context ? context._componentName : null)
+            _componentName: this.component || (context ? context._componentName : null),
         };
 
         if (typeof this.handler === "function") {
@@ -255,12 +277,12 @@ export const EUIXReactivePlugin = {
 
         const proto = engineClass.prototype;
 
-        proto.computed = function(id, getter, deps = [], component = null) {
+        proto.computed = function (id, getter, deps = [], component = null) {
             if (!id || typeof id !== "string") {
                 const err = new EUIXStructuredError({
                     message: "Computed definition must specify a non-empty string 'id'",
                     code: "VALIDATION_ERROR",
-                    originatingAction: "COMPUTED"
+                    originatingAction: "COMPUTED",
                 });
                 this.reportError(err, "Computed Registration");
                 throw err;
@@ -277,7 +299,7 @@ export const EUIXReactivePlugin = {
                     const err = new EUIXStructuredError({
                         message: `Duplicate computed property declaration '${cleanId}'`,
                         code: "VALIDATION_ERROR",
-                        originatingAction: "COMPUTED"
+                        originatingAction: "COMPUTED",
                     });
                     this.reportError(err, "Computed Registration");
                     throw err;
@@ -287,7 +309,7 @@ export const EUIXReactivePlugin = {
             const node = new EUIXComputedNode({ id: cleanId, getter, deps, engine: this, component });
             this._computedRegistry.set(cleanId, node);
 
-            node.deps.forEach(dep => {
+            node.deps.forEach((dep) => {
                 const cleanDep = dep.replace(/^(data|state|computed)\./, "");
                 this._depGraph.addComputedDep(cleanDep, cleanId);
             });
@@ -297,35 +319,50 @@ export const EUIXReactivePlugin = {
             };
         };
 
-        proto.getComputed = function(id) {
+        proto.getComputed = function (id) {
             if (!id) return undefined;
-            const cleanId = String(id).replace(/^computed\./, "").trim();
+            const cleanId = String(id)
+                .replace(/^computed\./, "")
+                .trim();
             const node = this._computedRegistry ? this._computedRegistry.get(cleanId) : null;
             if (!node) return undefined;
             return node.evaluate();
         };
 
-const noop = () => {};
+        const noop = () => {};
 
-        proto.watch = function(path, handlerOrFn, component = null, options = {}) {
+        proto.watch = function (path, handlerOrFn, component = null, options = {}) {
             if (!path) return noop;
 
             if (typeof handlerOrFn === "function") {
-                const parsedKey = this.parseBindPath ? this.parseBindPath(typeof path === "string" ? path : (path[0] || "")) : path;
+                const parsedKey = this.parseBindPath
+                    ? this.parseBindPath(typeof path === "string" ? path : path[0] || "")
+                    : path;
                 if (!this._stateWatchers) this._stateWatchers = new Map();
                 if (!this._stateWatchers.has(parsedKey)) this._stateWatchers.set(parsedKey, []);
                 this._stateWatchers.get(parsedKey).push(handlerOrFn);
                 return () => {
-                    const list = this._stateWatchers ? (this._stateWatchers.get(parsedKey) || []) : [];
-                    if (this._stateWatchers) this._stateWatchers.set(parsedKey, list.filter(cb => cb !== handlerOrFn));
+                    const list = this._stateWatchers ? this._stateWatchers.get(parsedKey) || [] : [];
+                    if (this._stateWatchers)
+                        this._stateWatchers.set(
+                            parsedKey,
+                            list.filter((cb) => cb !== handlerOrFn),
+                        );
                 };
             }
 
             if (!this._depGraph) this._depGraph = new EUIXDependencyGraph();
             if (!this._watchRegistry) this._watchRegistry = new Map();
 
-            const watchId = (component ? component + ":" : "") + genId("watch_");
-            const paths = Array.isArray(path) ? path : (typeof path === "string" ? path.split(",").map(s => s.trim()).filter(Boolean) : []);
+            const watchId = (component ? `${component}:` : "") + genId("watch_");
+            const paths = Array.isArray(path)
+                ? path
+                : typeof path === "string"
+                  ? path
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean)
+                  : [];
 
             const node = new EUIXWatchNode({
                 id: watchId,
@@ -333,12 +370,12 @@ const noop = () => {};
                 handler: handlerOrFn,
                 engine: this,
                 component,
-                options
+                options,
             });
 
             this._watchRegistry.set(watchId, node);
 
-            paths.forEach(p => {
+            paths.forEach((p) => {
                 const cleanP = p.replace(/^(data|state|computed)\./, "");
                 this._depGraph.addWatcherDep(cleanP, watchId);
             });
@@ -348,7 +385,7 @@ const noop = () => {};
             };
         };
 
-        proto._triggerReactiveWatchers = function(changedPath, newValue, oldValue, context = {}) {
+        proto._triggerReactiveWatchers = function (changedPath, newValue, oldValue, context = {}) {
             if (!this._reactiveDepth) this._reactiveDepth = 0;
             this._reactiveDepth++;
 
@@ -356,7 +393,7 @@ const noop = () => {};
                 this._reactiveDepth = 0;
                 const err = new EUIXStructuredError({
                     message: `Maximum watcher reaction depth (25) exceeded for path "${changedPath}". Possible circular watcher cascade loop.`,
-                    code: "WATCHER_CYCLE_ERROR"
+                    code: "WATCHER_CYCLE_ERROR",
                 });
                 this.reportError(err, "Watcher Cycle Guard");
                 throw err;
@@ -364,7 +401,7 @@ const noop = () => {};
 
             try {
                 const affectedWatchers = this._depGraph ? this._depGraph.getAffectedWatchers(changedPath) : new Set();
-                affectedWatchers.forEach(wId => {
+                affectedWatchers.forEach((wId) => {
                     const wNode = this._watchRegistry ? this._watchRegistry.get(wId) : null;
                     if (wNode) {
                         if (this._devtools && this._devtools.enabled) {
@@ -378,13 +415,13 @@ const noop = () => {};
             }
         };
 
-        proto.disposeComponentReactive = function(componentName) {
+        proto.disposeComponentReactive = function (componentName) {
             if (!componentName) return;
             if (this._depGraph) this._depGraph.removeComponentDeps(componentName);
 
             if (this._computedRegistry) {
                 for (const [id, node] of this._computedRegistry.entries()) {
-                    if (node.component === componentName || id.startsWith(componentName + ":")) {
+                    if (node.component === componentName || id.startsWith(`${componentName}:`)) {
                         this._computedRegistry.delete(id);
                     }
                 }
@@ -392,13 +429,13 @@ const noop = () => {};
 
             if (this._watchRegistry) {
                 for (const [id, node] of this._watchRegistry.entries()) {
-                    if (node.component === componentName || id.startsWith(componentName + ":")) {
+                    if (node.component === componentName || id.startsWith(`${componentName}:`)) {
                         this._watchRegistry.delete(id);
                     }
                 }
             }
         };
-    }
+    },
 };
 
 export default EUIXReactivePlugin;

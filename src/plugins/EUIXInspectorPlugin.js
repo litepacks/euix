@@ -4,9 +4,14 @@
  * High-performance runtime introspection, element debugging, and stable E2E selector generator.
  */
 
+import {
+    buildComponentTree,
+    createDebugSnapshot,
+    getElementMetadata,
+    registerElementMetadata,
+} from "./inspector/metadata.js";
 import { OverlayManager } from "./inspector/overlay.js";
 import { InspectorPanel } from "./inspector/panel.js";
-import { registerElementMetadata, getElementMetadata, createDebugSnapshot, buildComponentTree } from "./inspector/metadata.js";
 import { generateSelectors } from "./inspector/selectors.js";
 
 export class EUIXInspector {
@@ -17,7 +22,7 @@ export class EUIXInspector {
             shortcut: options.shortcut || "Alt+Shift+X",
             maxEvents: options.maxEvents || 100,
             testAttributes: options.testAttributes !== false,
-            ...options
+            ...options,
         };
 
         this.enabled = false;
@@ -63,7 +68,7 @@ export class EUIXInspector {
                     component: payload.component,
                     instanceId: payload.instanceId,
                     props: payload.props,
-                    localState: payload.localState
+                    localState: payload.localState,
                 });
             }
         });
@@ -77,7 +82,7 @@ export class EUIXInspector {
                 duration: payload.duration || 0,
                 status: payload.status,
                 error: payload.error,
-                info: payload.action
+                info: payload.action,
             };
             this.actionLogs.push(entry);
             if (this.actionLogs.length > this.options.maxEvents) {
@@ -96,15 +101,15 @@ export class EUIXInspector {
             if (!target || target === document.body || target === document.documentElement) return true;
             return Boolean(
                 target.closest("#euix-inspector-hud") ||
-                target.closest("#euix-devtools-hud") ||
-                target.closest("#euix-inspector-panel") ||
-                target.closest("#euix-devtools-panel") ||
-                target.closest("#euix-inspector-tooltip") ||
-                target.closest("#euix-devtools-tooltip") ||
-                target.closest("#euix-inspector-boundaries") ||
-                target.closest("#euix-devtools-highlight") ||
-                target.id === "euix-inspector-highlight" ||
-                target.id === "euix-devtools-highlight"
+                    target.closest("#euix-devtools-hud") ||
+                    target.closest("#euix-inspector-panel") ||
+                    target.closest("#euix-devtools-panel") ||
+                    target.closest("#euix-inspector-tooltip") ||
+                    target.closest("#euix-devtools-tooltip") ||
+                    target.closest("#euix-inspector-boundaries") ||
+                    target.closest("#euix-devtools-highlight") ||
+                    target.id === "euix-inspector-highlight" ||
+                    target.id === "euix-devtools-highlight",
             );
         };
 
@@ -157,7 +162,7 @@ export class EUIXInspector {
         this._listeners.push(
             () => document.removeEventListener("mousemove", onMouseMove),
             () => document.removeEventListener("click", onClick, true),
-            () => document.removeEventListener("keydown", onKeyDown)
+            () => document.removeEventListener("keydown", onKeyDown),
         );
     }
 
@@ -179,7 +184,7 @@ export class EUIXInspector {
                     element: el,
                     ...meta,
                     selectors,
-                    snapshot
+                    snapshot,
                 };
             },
             componentOf: (elOrSelector) => {
@@ -188,22 +193,27 @@ export class EUIXInspector {
                 return getElementMetadata(el, this.engine)?.component || null;
             },
             snapshot: (elOrSelector) => {
-                const el = typeof elOrSelector === "string" ? document.querySelector(elOrSelector) : (elOrSelector || document.body);
+                const el =
+                    typeof elOrSelector === "string"
+                        ? document.querySelector(elOrSelector)
+                        : elOrSelector || document.body;
                 return createDebugSnapshot(el, this.engine);
             },
             components: () => buildComponentTree(document.body),
             component: (name) => {
-                const elements = Array.from(document.querySelectorAll(`[data-euix-component="${name}"], [data-xui-component="${name}"]`));
-                return elements.map(el => getElementMetadata(el, this.engine));
+                const elements = Array.from(
+                    document.querySelectorAll(`[data-euix-component="${name}"], [data-xui-component="${name}"]`),
+                );
+                return elements.map((el) => getElementMetadata(el, this.engine));
             },
             actions: () => [...this.actionLogs],
-            routes: () => this.engine?._router ? this.engine._router.inspect() : null,
+            routes: () => (this.engine?._router ? this.engine._router.inspect() : null),
             tree: () => buildComponentTree(document.body),
             enable: () => this.enable(),
             disable: () => this.disable(),
             toggle: () => this.toggle(),
             showBoundaries: () => this.showBoundaries(),
-            hideBoundaries: () => this.hideBoundaries()
+            hideBoundaries: () => this.hideBoundaries(),
         };
 
         window.$euix = api;
@@ -252,7 +262,7 @@ export class EUIXInspector {
         this.boundariesVisible = true;
         const components = [];
         const elements = Array.from(document.querySelectorAll("[data-euix-component], [data-xui-component]"));
-        elements.forEach(el => {
+        elements.forEach((el) => {
             const name = el.dataset.euixComponent || el.dataset.xuiComponent;
             components.push({ name, element: el });
         });
@@ -296,13 +306,22 @@ export class EUIXInspector {
         const time = new Date().toLocaleTimeString();
         let info = "";
         if (eventType === "TRY_ENTER") info = `Try scope entered [${details.scopeId}]`;
-        else if (eventType === "TRY_SUCCESS") info = `Try scope completed (${details.duration ? details.duration.toFixed(1) : 0}ms)`;
-        else if (eventType === "ACTION_ERROR") info = `Action error: [${details.error?.code}] ${details.error?.message}`;
+        else if (eventType === "TRY_SUCCESS")
+            info = `Try scope completed (${details.duration ? details.duration.toFixed(1) : 0}ms)`;
+        else if (eventType === "ACTION_ERROR")
+            info = `Action error: [${details.error?.code}] ${details.error?.message}`;
         else if (eventType === "CATCH_ENTER") info = `Catch block entered (var: ${details.varName})`;
-        else if (eventType === "ERROR_PROPAGATED") info = `Error propagated: [${details.error?.code}] ${details.error?.message}`;
+        else if (eventType === "ERROR_PROPAGATED")
+            info = `Error propagated: [${details.error?.code}] ${details.error?.message}`;
         else info = `${eventType}`;
 
-        const entry = { time, action: `TRY_CATCH:${eventType}`, info, duration: details.duration || 0, status: "error" };
+        const entry = {
+            time,
+            action: `TRY_CATCH:${eventType}`,
+            info,
+            duration: details.duration || 0,
+            status: "error",
+        };
         this.actionLogs.push(entry);
         if (this.actionLogs.length > this.options.maxEvents) this.actionLogs.shift();
         if (this.panel && this.panel.isOpen && this.panel.activeTab === "actions") {
@@ -316,7 +335,7 @@ export class EUIXInspector {
 
     destroy() {
         this.disable();
-        this._listeners.forEach(fn => fn());
+        this._listeners.forEach((fn) => fn());
         this._listeners = [];
         if (this.overlay) this.overlay.destroy();
         if (this.panel) this.panel.destroy();
@@ -346,19 +365,19 @@ export function inspector(options = {}) {
                 },
                 hideBoundaries: () => {
                     if (engineClass.instance?._devtools) engineClass.instance._devtools.hideBoundaries();
-                }
+                },
             };
 
             // Hook on instance mount
             const origMount = engineClass.mount;
-            engineClass.mount = function(xml, container, mountOptions = {}) {
+            engineClass.mount = function (xml, container, mountOptions = {}) {
                 const engine = origMount.call(this, xml, container, mountOptions);
                 if (options.enabled !== false) {
                     engine._devtools = new EUIXInspector(engine, options);
                 }
                 return engine;
             };
-        }
+        },
     };
 }
 

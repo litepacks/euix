@@ -14,7 +14,7 @@ export function checkUniqueness(selector, doc = document) {
         const matches = doc.querySelectorAll(selector);
         return {
             isUnique: matches.length === 1,
-            count: matches.length
+            count: matches.length,
         };
     } catch (_) {
         return { isUnique: false, count: 0 };
@@ -39,7 +39,15 @@ export function getAccessibleInfo(el) {
             else role = "textbox";
         } else if (tagName === "select") role = "combobox";
         else if (tagName === "textarea") role = "textbox";
-        else if (tagName === "h1" || tagName === "h2" || tagName === "h3" || tagName === "h4" || tagName === "h5" || tagName === "h6") role = "heading";
+        else if (
+            tagName === "h1" ||
+            tagName === "h2" ||
+            tagName === "h3" ||
+            tagName === "h4" ||
+            tagName === "h5" ||
+            tagName === "h6"
+        )
+            role = "heading";
         else if (tagName === "img") role = "img";
         else if (tagName === "dialog") role = "dialog";
     }
@@ -55,7 +63,7 @@ export function getAccessibleInfo(el) {
         name = el.getAttribute("placeholder");
     }
 
-    return (role && name) ? { role, name } : (role ? { role, name: "" } : null);
+    return role && name ? { role, name } : role ? { role, name: "" } : null;
 }
 
 function safeEscape(str) {
@@ -84,9 +92,16 @@ export function getCssPath(el) {
             break;
         } else {
             const className = typeof curr.className === "string" ? curr.className.trim() : "";
-            const validClasses = className.split(/\s+/).filter(c => c && !c.startsWith("euix-") && !c.startsWith("is-") && !c.includes(":") && !c.includes("["));
+            const validClasses = className
+                .split(/\s+/)
+                .filter(
+                    (c) => c && !c.startsWith("euix-") && !c.startsWith("is-") && !c.includes(":") && !c.includes("["),
+                );
             if (validClasses.length > 0) {
-                selector += `.${validClasses.slice(0, 2).map(c => safeEscape(c)).join(".")}`;
+                selector += `.${validClasses
+                    .slice(0, 2)
+                    .map((c) => safeEscape(c))
+                    .join(".")}`;
             }
         }
         path.unshift(selector);
@@ -128,7 +143,10 @@ export function generateSelectors(element, doc = document) {
     const tagName = element.tagName.toLowerCase();
 
     // 1. Explicit Test ID (Score: 100)
-    const testId = element.getAttribute("data-euix-test") || element.getAttribute("test-id") || element.getAttribute("data-testid");
+    const testId =
+        element.getAttribute("data-euix-test") ||
+        element.getAttribute("test-id") ||
+        element.getAttribute("data-testid");
     if (testId) {
         const sel = `[data-euix-test="${testId}"]`;
         const uniq = checkUniqueness(sel, doc);
@@ -142,7 +160,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.getByTestId('${testId}')`,
             cypress: `cy.get('[data-euix-test="${testId}"]')`,
-            vanilla: `document.querySelector('[data-euix-test="${testId}"]')`
+            vanilla: `document.querySelector('[data-euix-test="${testId}"]')`,
         });
     }
 
@@ -162,7 +180,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.getByRole('${accessInfo.role}', { name: '${accessInfo.name.replace(/'/g, "\\'")}' })`,
             cypress: `cy.get('${ariaSel}')`,
-            vanilla: `document.querySelector('${ariaSel}')`
+            vanilla: `document.querySelector('${ariaSel}')`,
         });
     }
 
@@ -180,7 +198,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${sel}')`,
             cypress: `cy.get('${sel}')`,
-            vanilla: `document.querySelector('${sel}')`
+            vanilla: `document.querySelector('${sel}')`,
         });
     }
 
@@ -197,12 +215,12 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${sel}')`,
             cypress: `cy.get('${sel}')`,
-            vanilla: `document.querySelector('${sel}')`
+            vanilla: `document.querySelector('${sel}')`,
         });
     }
 
     // 4. Component Scoped Selector (Score: 75)
-    let compEl = element.closest("[data-euix-component], [data-xui-component]");
+    const compEl = element.closest("[data-euix-component], [data-xui-component]");
     if (compEl) {
         const compName = compEl.dataset.euixComponent || compEl.dataset.xuiComponent;
         let scopedSel = `[data-euix-component="${compName}"] ${tagName}`;
@@ -222,7 +240,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${scopedSel}')`,
             cypress: `cy.get('${scopedSel}')`,
-            vanilla: `document.querySelector('${scopedSel}')`
+            vanilla: `document.querySelector('${scopedSel}')`,
         });
     }
 
@@ -239,7 +257,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${idSel}')`,
             cypress: `cy.get('${idSel}')`,
-            vanilla: `document.querySelector('${idSel}')`
+            vanilla: `document.querySelector('${idSel}')`,
         });
     }
 
@@ -255,7 +273,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${nameSel}')`,
             cypress: `cy.get('${nameSel}')`,
-            vanilla: `document.querySelector('${nameSel}')`
+            vanilla: `document.querySelector('${nameSel}')`,
         });
     }
 
@@ -272,7 +290,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${cssPath}')`,
             cypress: `cy.get('${cssPath}')`,
-            vanilla: `document.querySelector('${cssPath}')`
+            vanilla: `document.querySelector('${cssPath}')`,
         });
     }
 
@@ -289,7 +307,7 @@ export function generateSelectors(element, doc = document) {
             matchCount: uniq.count,
             playwright: `page.locator('${nthPath}')`,
             cypress: `cy.get('${nthPath}')`,
-            vanilla: `document.querySelector('${nthPath}')`
+            vanilla: `document.querySelector('${nthPath}')`,
         });
     }
 

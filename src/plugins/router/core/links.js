@@ -3,11 +3,11 @@
  * Declarative <route-link> and <a route="..."> link interception and active/pending states.
  */
 
-import { generatePath, resolvePath, createPath, normalizePath } from "./utils.js";
+import { generatePath, normalizePath, resolvePath } from "./utils.js";
 
 /**
  * Creates the RouteLink renderer function.
- * 
+ *
  * @param {object} engine - EUIXEngine instance
  * @param {object} routerInstance - EUIXRouter instance
  * @returns {Function}
@@ -26,7 +26,8 @@ export function createLinkRenderer(engine, routerInstance) {
         if (downloadAttr !== null) linkEl.setAttribute("download", downloadAttr);
 
         const activeClass = xmlNode.getAttribute("active-class") || xmlNode.getAttribute("active_class") || "active";
-        const pendingClass = xmlNode.getAttribute("pending-class") || xmlNode.getAttribute("pending_class") || "pending";
+        const pendingClass =
+            xmlNode.getAttribute("pending-class") || xmlNode.getAttribute("pending_class") || "pending";
         const isExact = xmlNode.hasAttribute("exact") && xmlNode.getAttribute("exact") !== "false";
         const isReplace = xmlNode.hasAttribute("replace") && xmlNode.getAttribute("replace") !== "false";
         const isPreserveScroll = xmlNode.hasAttribute("preserve-scroll") || xmlNode.hasAttribute("preserve_scroll");
@@ -36,9 +37,10 @@ export function createLinkRenderer(engine, routerInstance) {
         const namedRoute = xmlNode.getAttribute("route") || xmlNode.getAttribute("name");
         const paramsAttr = xmlNode.getAttribute("params");
 
-        const isDynamic = (rawTo && rawTo.indexOf("{") !== -1) || 
-                          (namedRoute && namedRoute.indexOf("{") !== -1) || 
-                          (paramsAttr && (paramsAttr.includes("{data.") || paramsAttr.includes("{$")));
+        const isDynamic =
+            (rawTo && rawTo.indexOf("{") !== -1) ||
+            (namedRoute && namedRoute.indexOf("{") !== -1) ||
+            (paramsAttr && (paramsAttr.includes("{data.") || paramsAttr.includes("{$")));
 
         // Determine target path
         const getTargetPath = () => {
@@ -52,7 +54,8 @@ export function createLinkRenderer(engine, routerInstance) {
                         } catch (_) {
                             try {
                                 const interpolated = engine.interpolate(paramsAttr, context);
-                                parsedParams = typeof interpolated === "object" ? interpolated : JSON.parse(interpolated);
+                                parsedParams =
+                                    typeof interpolated === "object" ? interpolated : JSON.parse(interpolated);
                             } catch (_) {}
                         }
                     }
@@ -70,7 +73,9 @@ export function createLinkRenderer(engine, routerInstance) {
 
         let targetPath = getTargetPath();
         let targetNorm = normalizePath(targetPath.split("?")[0].split("#")[0]);
-        linkEl.href = routerInstance.history?.createHref ? routerInstance.history.createHref(targetPath) : (routerInstance.history?.prependBase(targetPath) || targetPath);
+        linkEl.href = routerInstance.history?.createHref
+            ? routerInstance.history.createHref(targetPath)
+            : routerInstance.history?.prependBase(targetPath) || targetPath;
 
         // Render children inside the link
         const childNodes = xmlNode.childNodes;
@@ -85,7 +90,9 @@ export function createLinkRenderer(engine, routerInstance) {
             if (isDynamic) {
                 targetPath = getTargetPath();
                 targetNorm = normalizePath(targetPath.split("?")[0].split("#")[0]);
-                linkEl.href = routerInstance.history?.createHref ? routerInstance.history.createHref(targetPath) : (routerInstance.history?.prependBase(targetPath) || targetPath);
+                linkEl.href = routerInstance.history?.createHref
+                    ? routerInstance.history.createHref(targetPath)
+                    : routerInstance.history?.prependBase(targetPath) || targetPath;
             }
 
             const currentPath = normalizePath(routerInstance.location.pathname);
@@ -94,13 +101,15 @@ export function createLinkRenderer(engine, routerInstance) {
             if (isExact || targetNorm === "/") {
                 isActive = currentPath === targetNorm;
             } else {
-                isActive = currentPath === targetNorm || currentPath.startsWith(targetNorm + "/");
+                isActive = currentPath === targetNorm || currentPath.startsWith(`${targetNorm}/`);
             }
 
             let isPending = false;
             if (routerInstance.navigation && routerInstance.navigation.location) {
                 const pendingPath = normalizePath(routerInstance.navigation.location.pathname);
-                isPending = isExact ? pendingPath === targetNorm : (pendingPath === targetNorm || pendingPath.startsWith(targetNorm + "/"));
+                isPending = isExact
+                    ? pendingPath === targetNorm
+                    : pendingPath === targetNorm || pendingPath.startsWith(`${targetNorm}/`);
             }
 
             if (activeClass) {
@@ -126,7 +135,7 @@ export function createLinkRenderer(engine, routerInstance) {
                 linkEl.addEventListener("focus", () => routerInstance.prefetch(targetPath), { once: true });
             } else if (prefetchMode === "viewport" && typeof IntersectionObserver !== "undefined") {
                 const observer = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
+                    entries.forEach((entry) => {
                         if (entry.isIntersecting) {
                             routerInstance.prefetch(targetPath);
                             observer.disconnect();
@@ -156,7 +165,7 @@ export function createLinkRenderer(engine, routerInstance) {
             e.preventDefault();
             routerInstance.navigate(targetPath, {
                 replace: isReplace,
-                preserveScroll: isPreserveScroll
+                preserveScroll: isPreserveScroll,
             });
         };
 

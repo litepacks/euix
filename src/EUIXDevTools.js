@@ -3,12 +3,18 @@
  * Comprehensive DevTools & Runtime Inspector Suite for EUIX Engine.
  */
 
-import { EUIXInspector, inspector, EUIXInspectorPlugin } from "./plugins/EUIXInspectorPlugin.js";
+import { EUIXInspector, EUIXInspectorPlugin, inspector } from "./plugins/EUIXInspectorPlugin.js";
+import {
+    buildComponentTree,
+    createDebugSnapshot,
+    getElementMetadata,
+    maskSensitive,
+    registerElementMetadata,
+} from "./plugins/inspector/metadata.js";
 import { OverlayManager } from "./plugins/inspector/overlay.js";
 import { InspectorPanel } from "./plugins/inspector/panel.js";
-import { registerElementMetadata, getElementMetadata, createDebugSnapshot, buildComponentTree, maskSensitive } from "./plugins/inspector/metadata.js";
-import { generateSelectors, checkUniqueness } from "./plugins/inspector/selectors.js";
-import { euix, getByComponent, getByAction, getByTestId } from "./plugins/inspector/playwright.js";
+import { euix, getByAction, getByComponent, getByTestId } from "./plugins/inspector/playwright.js";
+import { checkUniqueness, generateSelectors } from "./plugins/inspector/selectors.js";
 
 export class EUIXDevTools extends EUIXInspector {
     constructor(engine, options = {}) {
@@ -83,20 +89,20 @@ export class EUIXDevTools extends EUIXInspector {
     }
 
     get logs() {
-        return this.actionLogs.map(l => ({
+        return this.actionLogs.map((l) => ({
             time: l.time,
             type: l.action,
-            info: l.info || l.action
+            info: l.info || l.action,
         }));
     }
 
     set logs(val) {
-        this.actionLogs = val.map(l => ({
+        this.actionLogs = val.map((l) => ({
             time: l.time,
             action: l.type || l.action,
             type: l.type || l.action,
             info: l.info || "",
-            status: "success"
+            status: "success",
         }));
     }
 
@@ -123,10 +129,7 @@ export class EUIXDevTools extends EUIXInspector {
     }
 
     escapeHtml(str) {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     logAction(type, details = {}) {
@@ -155,16 +158,26 @@ export class EUIXDevTools extends EUIXInspector {
         const time = new Date().toLocaleTimeString();
         let info = "";
         if (eventType === "TRY_ENTER") info = `Try scope entered [${details.scopeId}]`;
-        else if (eventType === "TRY_SUCCESS") info = `Try scope completed (${details.duration ? details.duration.toFixed(1) : 0}ms)`;
-        else if (eventType === "ACTION_ERROR") info = `Action error in try scope: [${details.error?.code}] ${details.error?.message}`;
+        else if (eventType === "TRY_SUCCESS")
+            info = `Try scope completed (${details.duration ? details.duration.toFixed(1) : 0}ms)`;
+        else if (eventType === "ACTION_ERROR")
+            info = `Action error in try scope: [${details.error?.code}] ${details.error?.message}`;
         else if (eventType === "CATCH_ENTER") info = `Entering catch block (var: ${details.varName})`;
         else if (eventType === "CATCH_SUCCESS") info = `Error caught and handled successfully`;
         else if (eventType === "FINALLY_ENTER") info = `Entering finally block`;
         else if (eventType === "FINALLY_COMPLETE") info = `Finally block completed`;
-        else if (eventType === "ERROR_PROPAGATED") info = `Error propagated: [${details.error?.code}] ${details.error?.message}`;
+        else if (eventType === "ERROR_PROPAGATED")
+            info = `Error propagated: [${details.error?.code}] ${details.error?.message}`;
         else info = `${eventType}`;
 
-        const entry = { time, action: `TRY_CATCH:${eventType}`, type: `TRY_CATCH:${eventType}`, info, duration: details.duration || 0, status: "error" };
+        const entry = {
+            time,
+            action: `TRY_CATCH:${eventType}`,
+            type: `TRY_CATCH:${eventType}`,
+            info,
+            duration: details.duration || 0,
+            status: "error",
+        };
         this.actionLogs.push(entry);
         if (this.actionLogs.length > (this.options.maxEvents || 30)) {
             this.actionLogs.shift();
@@ -196,22 +209,22 @@ if (typeof document !== "undefined") {
 }
 
 export {
-    EUIXInspector,
-    inspector,
-    EUIXInspectorPlugin,
-    OverlayManager,
-    InspectorPanel,
-    registerElementMetadata,
-    getElementMetadata,
-    createDebugSnapshot,
     buildComponentTree,
-    maskSensitive,
-    generateSelectors,
     checkUniqueness,
+    createDebugSnapshot,
+    EUIXInspector,
+    EUIXInspectorPlugin,
     euix,
-    getByComponent,
+    generateSelectors,
     getByAction,
-    getByTestId
+    getByComponent,
+    getByTestId,
+    getElementMetadata,
+    InspectorPanel,
+    inspector,
+    maskSensitive,
+    OverlayManager,
+    registerElementMetadata,
 };
 
 export default EUIXDevTools;

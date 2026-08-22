@@ -5,7 +5,7 @@
 
 /**
  * Safely serializes hydration state into an inline <script> tag with XSS mitigation.
- * @param {object} hydrationData 
+ * @param {object} hydrationData
  * @returns {string}
  */
 export function serializeHydrationState(hydrationData = {}) {

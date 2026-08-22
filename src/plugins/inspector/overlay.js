@@ -73,9 +73,10 @@ export class OverlayManager {
     highlight(element, meta = {}) {
         if (!element || !this.highlightEl || !this.tooltipEl) return;
 
-        const rect = (typeof element.getBoundingClientRect === "function") 
-            ? element.getBoundingClientRect() 
-            : { top: 0, left: 0, width: 100, height: 30, bottom: 30, right: 100 };
+        const rect =
+            typeof element.getBoundingClientRect === "function"
+                ? element.getBoundingClientRect()
+                : { top: 0, left: 0, width: 100, height: 30, bottom: 30, right: 100 };
 
         this.highlightEl.style.width = `${rect.width}px`;
         this.highlightEl.style.height = `${rect.height}px`;
@@ -86,13 +87,13 @@ export class OverlayManager {
         const compName = meta.component || "";
         const tagName = meta.tagName || (element.tagName ? element.tagName.toLowerCase() : "element");
         const testId = meta.testId || "";
-        const action = (meta.actions && meta.actions.length > 0) ? meta.actions.join(", ") : "";
+        const action = meta.actions && meta.actions.length > 0 ? meta.actions.join(", ") : "";
         const route = meta.route || "";
-        const binding = (meta.bindings && meta.bindings.length > 0) ? meta.bindings.join(", ") : "";
+        const binding = meta.bindings && meta.bindings.length > 0 ? meta.bindings.join(", ") : "";
 
         let html = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
             <span style="font-weight:700;color:#c084fc;">🧩 &lt;${this.escape(compName)}&gt;</span>
-            <span style="color:#64748b;font-size:10px;">${this.escape(meta.instanceId || '')}</span>
+            <span style="color:#64748b;font-size:10px;">${this.escape(meta.instanceId || "")}</span>
         </div>`;
 
         html += `<div style="color:#38bdf8;font-weight:600;">&lt;${this.escape(tagName)}&gt;${meta.ref ? ` ref="${this.escape(meta.ref)}"` : ""}</div>`;
@@ -198,10 +199,6 @@ export class OverlayManager {
     }
 
     escape(str) {
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
+        return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
 }

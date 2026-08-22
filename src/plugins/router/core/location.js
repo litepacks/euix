@@ -3,7 +3,7 @@
  * Location representation and URLSearchParams utilities for EUIX Web Router.
  */
 
-import { parsePath, createPath, normalizePath, resolvePath } from "./utils.js";
+import { normalizePath, parsePath, resolvePath } from "./utils.js";
 
 const _emptyParams = typeof URLSearchParams !== "undefined" ? new URLSearchParams() : null;
 
@@ -17,26 +17,26 @@ export function createKey() {
 
 /**
  * Creates a normalized location object.
- * 
- * @param {string|object} currentOrTo 
- * @param {string|object} [to] 
- * @param {any} [state=null] 
- * @param {string} [key] 
+ *
+ * @param {string|object} currentOrTo
+ * @param {string|object} [to]
+ * @param {any} [state=null]
+ * @param {string} [key]
  * @returns {{ pathname: string, search: string, hash: string, state: any, key: string }}
  */
 export function createLocation(currentOrTo, to, state = null, key) {
     let location;
 
     if (to !== undefined) {
-        const fromPath = typeof currentOrTo === "string" ? currentOrTo : (currentOrTo?.pathname || "/");
+        const fromPath = typeof currentOrTo === "string" ? currentOrTo : currentOrTo?.pathname || "/";
         const resolved = resolvePath(to, fromPath);
         const parsed = parsePath(resolved);
         location = {
             pathname: normalizePath(parsed.pathname),
             search: parsed.search,
             hash: parsed.hash,
-            state: state !== undefined ? state : (typeof to === "object" ? to.state : null),
-            key: key || createKey()
+            state: state !== undefined ? state : typeof to === "object" ? to.state : null,
+            key: key || createKey(),
         };
     } else {
         const parsed = typeof currentOrTo === "string" ? parsePath(currentOrTo) : currentOrTo;
@@ -44,8 +44,8 @@ export function createLocation(currentOrTo, to, state = null, key) {
             pathname: normalizePath(parsed.pathname || "/"),
             search: parsed.search || "",
             hash: parsed.hash || "",
-            state: parsed.state !== undefined ? parsed.state : (state || null),
-            key: parsed.key || key || createKey()
+            state: parsed.state !== undefined ? parsed.state : state || null,
+            key: parsed.key || key || createKey(),
         };
     }
 
@@ -54,7 +54,7 @@ export function createLocation(currentOrTo, to, state = null, key) {
 
 /**
  * Parses search string into a structured reactive-friendly object and URLSearchParams instance.
- * @param {string} searchStr 
+ * @param {string} searchStr
  * @returns {Record<string, string> & { _params: URLSearchParams }}
  */
 export function parseSearchParams(searchStr = "") {
@@ -64,7 +64,7 @@ export function parseSearchParams(searchStr = "") {
             Object.defineProperty(obj, "_params", {
                 value: _emptyParams,
                 enumerable: false,
-                writable: true
+                writable: true,
             });
         }
         return obj;
@@ -87,7 +87,7 @@ export function parseSearchParams(searchStr = "") {
     Object.defineProperty(obj, "_params", {
         value: params,
         enumerable: false,
-        writable: true
+        writable: true,
     });
 
     return obj;

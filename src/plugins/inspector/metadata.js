@@ -17,7 +17,7 @@ const SENSITIVE_KEY_PATTERNS = [
     /credential/i,
     /jwt/i,
     /bearer/i,
-    /private/i
+    /private/i,
 ];
 
 /**
@@ -25,7 +25,7 @@ const SENSITIVE_KEY_PATTERNS = [
  */
 export function isSensitiveKey(key) {
     if (typeof key !== "string") return false;
-    return SENSITIVE_KEY_PATTERNS.some(re => re.test(key));
+    return SENSITIVE_KEY_PATTERNS.some((re) => re.test(key));
 }
 
 /**
@@ -37,7 +37,7 @@ export function maskSensitive(obj, visited = new WeakSet()) {
     visited.add(obj);
 
     if (Array.isArray(obj)) {
-        return obj.map(item => maskSensitive(item, visited));
+        return obj.map((item) => maskSensitive(item, visited));
     }
 
     const masked = {};
@@ -64,7 +64,7 @@ export function registerElementMetadata(element, meta = {}) {
         ...meta,
         props: { ...(existing.props || {}), ...(meta.props || {}) },
         bindings: Array.from(new Set([...(existing.bindings || []), ...(meta.bindings || [])])),
-        actions: Array.from(new Set([...(existing.actions || []), ...(meta.actions || [])]))
+        actions: Array.from(new Set([...(existing.actions || []), ...(meta.actions || [])])),
     };
     elementMetadata.set(element, merged);
 }
@@ -76,28 +76,39 @@ export function registerElementMetadata(element, meta = {}) {
 export function getElementMetadata(element, engine = null) {
     if (!element || element.nodeType !== 1) return null;
 
-    let directMeta = elementMetadata.get(element) || null;
+    const directMeta = elementMetadata.get(element) || null;
 
     // Extract attributes directly from element
     let compName = element.dataset?.euixComponent || element.dataset?.xuiComponent || directMeta?.component || "";
     let instanceId = element.dataset?.euixInstance || directMeta?.instanceId || "";
-    let testId = element.getAttribute("data-euix-test") || element.getAttribute("test-id") || element.getAttribute("data-testid") || directMeta?.testId || "";
-    let refName = element.dataset?.xuiRef || directMeta?.ref || "";
-    let bindPath = element.dataset?.xuiBind || element.dataset?.xuiKey || element.getAttribute("bind") || "";
+    const testId =
+        element.getAttribute("data-euix-test") ||
+        element.getAttribute("test-id") ||
+        element.getAttribute("data-testid") ||
+        directMeta?.testId ||
+        "";
+    const refName = element.dataset?.xuiRef || directMeta?.ref || "";
+    const bindPath = element.dataset?.xuiBind || element.dataset?.xuiKey || element.getAttribute("bind") || "";
     let actions = [];
 
     if (element.getAttribute("data-euix-action")) {
-        actions.push(...element.getAttribute("data-euix-action").split(",").map(s => s.trim()).filter(Boolean));
+        actions.push(
+            ...element
+                .getAttribute("data-euix-action")
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+        );
     }
     if (element.getAttribute("action")) {
         const act = element.getAttribute("action");
         if (!actions.includes(act)) actions.push(act);
     }
     if (element.__euixEvents) {
-        Object.keys(element.__euixEvents).forEach(evt => {
+        Object.keys(element.__euixEvents).forEach((evt) => {
             const handlers = element.__euixEvents[evt];
             if (Array.isArray(handlers)) {
-                handlers.forEach(h => {
+                handlers.forEach((h) => {
                     const act = h.getAttribute && (h.getAttribute("action") || h.getAttribute("name"));
                     if (act && !actions.includes(act)) actions.push(act);
                 });
@@ -139,10 +150,10 @@ export function getElementMetadata(element, engine = null) {
     }
 
     // Local / Global state
-    let localState = directMeta?.localState || null;
-    let props = directMeta?.props || {};
+    const localState = directMeta?.localState || null;
+    const props = directMeta?.props || {};
 
-    const bindings = bindPath ? [bindPath] : (directMeta?.bindings || []);
+    const bindings = bindPath ? [bindPath] : directMeta?.bindings || [];
 
     return {
         element,
@@ -160,7 +171,7 @@ export function getElementMetadata(element, engine = null) {
         props: maskSensitive(props),
         localState: localState ? maskSensitive(localState) : null,
         source: directMeta?.source || null,
-        isBoundary: Boolean(element.dataset?.euixComponent || element.dataset?.xuiComponent)
+        isBoundary: Boolean(element.dataset?.euixComponent || element.dataset?.xuiComponent),
     };
 }
 
@@ -189,7 +200,7 @@ export function createDebugSnapshot(element, engine = null) {
         globalState: Object.keys(globalState).length > 0 ? globalState : undefined,
         bindings: meta.bindings,
         actions: meta.actions,
-        source: meta.source || undefined
+        source: meta.source || undefined,
     };
 }
 
@@ -200,16 +211,18 @@ export function buildComponentTree(root = document.body) {
     if (!root) return [];
 
     const nodes = [];
-    const elements = root.querySelectorAll ? Array.from(root.querySelectorAll("[data-euix-component], [data-xui-component]")) : [];
+    const elements = root.querySelectorAll
+        ? Array.from(root.querySelectorAll("[data-euix-component], [data-xui-component]"))
+        : [];
 
     // Include root if it is a component
     if (root.dataset?.euixComponent || root.dataset?.xuiComponent) {
         elements.unshift(root);
     }
 
-    elements.forEach(el => {
+    elements.forEach((el) => {
         const comp = el.dataset.euixComponent || el.dataset.xuiComponent;
-        const inst = el.dataset.euixInstance || "inst_" + Math.random().toString(36).slice(2, 7);
+        const inst = el.dataset.euixInstance || `inst_${Math.random().toString(36).slice(2, 7)}`;
 
         // Find parent component element
         let parentEl = el.parentElement;
@@ -227,7 +240,7 @@ export function buildComponentTree(root = document.body) {
             instanceId: inst,
             element: el,
             parent: parentComp,
-            parentElement: parentEl || null
+            parentElement: parentEl || null,
         });
     });
 
@@ -235,12 +248,12 @@ export function buildComponentTree(root = document.body) {
     const rootNodes = [];
     const nodeMap = new Map();
 
-    nodes.forEach(n => {
+    nodes.forEach((n) => {
         n.children = [];
         nodeMap.set(n.element, n);
     });
 
-    nodes.forEach(n => {
+    nodes.forEach((n) => {
         if (n.parentElement && nodeMap.has(n.parentElement)) {
             nodeMap.get(n.parentElement).children.push(n);
         } else {
