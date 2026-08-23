@@ -65,26 +65,27 @@
     </data_model>
 
     <imports>
-        <import name="app-header" src="components/AppHeader.xml" />
-        <import name="reactive-section" src="components/ReactiveSection.xml" />
-        <import name="animation-section" src="components/AnimationSection.xml" />
-        <import name="action-composer-section" src="components/ActionComposerSection.xml" />
-        <import name="ecommerce-section" src="components/EcommerceSection.xml" />
-        <import name="virtual-list-section" src="components/VirtualListSection.xml" />
-        <import name="kanban-section" src="components/KanbanSection.xml" />
-        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
-        <import name="table-section" src="components/TableSection.xml" />
-        <import name="counter-section" src="components/CounterSection.xml" />
-        <import name="countdown-section" src="components/CountdownSection.xml" />
-        <import name="persistence-section" src="components/PersistenceSection.xml" />
-        <import name="api-client-section" src="components/ApiClientSection.xml" />
-        <import name="todo-section" src="components/TodoSection.xml" />
-        <import name="posts-crud-section" src="components/PostsCrudSection.xml" />
-        <import name="pokemon-section" src="components/PokemonSection.xml" />
-        <import name="form-section" src="components/FormSection.xml" />
-        <import name="events-section" src="components/EventsSection.xml" />
-        <import name="confirm-modal" src="components/ConfirmModal.xml" />
-        <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
+        <import name="app-header" src="components/AppHeader.xml" lazy="true" />
+        <import name="webmcp-section" src="components/WebMCPSection.xml" lazy="true" />
+        <import name="reactive-section" src="components/ReactiveSection.xml" lazy="true" />
+        <import name="animation-section" src="components/AnimationSection.xml" lazy="true" />
+        <import name="action-composer-section" src="components/ActionComposerSection.xml" lazy="true" />
+        <import name="ecommerce-section" src="components/EcommerceSection.xml" lazy="true" />
+        <import name="virtual-list-section" src="components/VirtualListSection.xml" lazy="true" />
+        <import name="kanban-section" src="components/KanbanSection.xml" lazy="true" />
+        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" lazy="true" />
+        <import name="table-section" src="components/TableSection.xml" lazy="true" />
+        <import name="counter-section" src="components/CounterSection.xml" lazy="true" />
+        <import name="countdown-section" src="components/CountdownSection.xml" lazy="true" />
+        <import name="persistence-section" src="components/PersistenceSection.xml" lazy="true" />
+        <import name="api-client-section" src="components/ApiClientSection.xml" lazy="true" />
+        <import name="todo-section" src="components/TodoSection.xml" lazy="true" />
+        <import name="posts-crud-section" src="components/PostsCrudSection.xml" lazy="true" />
+        <import name="pokemon-section" src="components/PokemonSection.xml" lazy="true" />
+        <import name="form-section" src="components/FormSection.xml" lazy="true" />
+        <import name="events-section" src="components/EventsSection.xml" lazy="true" />
+        <import name="confirm-modal" src="components/ConfirmModal.xml" lazy="true" />
+        <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" lazy="true" />
     </imports>
 
     <flex direction="column" gap="20" class="w-full">
@@ -108,6 +109,7 @@
             </span>
         </flex>
 
+        <webmcp-section />
         <reactive-section />
         <animation-section />
         <action-composer-section />

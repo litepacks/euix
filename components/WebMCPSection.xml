@@ -1,0 +1,317 @@
+<component_def name="webmcp-section">
+    <data_model>
+        <state id="webmcp_open">true</state>
+        <state id="task_title_input"></state>
+        <state id="task_priority_input">Normal</state>
+        <state id="task_category_input">Development</state>
+        <state id="filter_query"></state>
+        <state id="simulated_agent_active" type="boolean">false</state>
+        <state id="simulated_tool_selected">create_ticket</state>
+        <state id="simulated_tool_payload">{"title": "Implement WebMCP Agent Integration", "priority": "High", "category": "Development"}</state>
+        <state id="simulation_log">Agent simulation ready. Run a simulated browser AI tool call below.</state>
+        <state id="tickets" type="array">
+            <item id="ticket_101" title="Audit REST API Endpoints" priority="High" category="Security" completed="true" />
+            <item id="ticket_102" title="Verify zero-dependency WebMCP plugin" priority="High" category="Development" completed="true" />
+            <item id="ticket_103" title="Test browser agent tool execution via document.modelContext" priority="Urgent" category="AI / ML" completed="false" />
+            <item id="ticket_104" title="Review AST cache memory benchmarks" priority="Normal" category="Performance" completed="false" />
+        </state>
+    </data_model>
+
+    <!-- Composed Actions used symmetrically by both Human UI and WebMCP AI Tools -->
+    <actions>
+        <!-- 1. Create Ticket Action -->
+        <action_def name="ticket.create">
+            <param name="title" required="true" />
+            <param name="priority" default="Normal" />
+            <param name="category" default="General" />
+
+            <step action="MUTATE_STATE">
+                <path>data.tickets</path>
+                <operation>UNSHIFT</operation>
+                <value>{"id": "ticket_" + Date.now(), "title": "{args.title}", "priority": "{args.priority}", "category": "{args.category}", "completed": false}</value>
+            </step>
+
+            <step action="SET_STATE">
+                <path>data.task_title_input</path>
+                <value></value>
+            </step>
+
+            <step action="SET_STATE">
+                <path>data.simulation_log</path>
+                <value>Created ticket '{args.title}' with priority '{args.priority}'</value>
+            </step>
+
+            <return>{"success": true, "ticket": {"title": "{args.title}", "priority": "{args.priority}", "category": "{args.category}"}}</return>
+        </action_def>
+
+        <!-- 2. Toggle Ticket Complete Action -->
+        <action_def name="ticket.toggle">
+            <param name="id" required="true" />
+
+            <step action="RUN_SCRIPT">
+                const tickets = $data.tickets || [];
+                const target = tickets.find(t => String(t.id) === String('{args.id}'));
+                if (target) {
+                    target.completed = !target.completed;
+                    $engine.setState('tickets', [...tickets]);
+                    $data.simulation_log = `Toggled ticket '${target.title}' -> ${target.completed ? 'Completed' : 'Pending'}`;
+                }
+            </step>
+
+            <return>{"success": true, "ticketId": "{args.id}"}</return>
+        </action_def>
+
+        <!-- 3. List All Tickets Action -->
+        <action_def name="ticket.list">
+            <return>{data.tickets}</return>
+        </action_def>
+
+        <!-- 4. Query Tickets Action -->
+        <action_def name="ticket.query">
+            <param name="query" required="true" />
+
+            <step action="SET_STATE">
+                <path>data.filter_query</path>
+                <value>{args.query}</value>
+            </step>
+
+            <return>{data.tickets.filter(t => t.title.toLowerCase().includes('{args.query}'.toLowerCase()) || t.category.toLowerCase().includes('{args.query}'.toLowerCase()))}</return>
+        </action_def>
+    </actions>
+
+    <!-- Declarative WebMCP Exposure for Browser AI Agents -->
+    <webmcp>
+        <tool
+            name="create_ticket"
+            title="Create Ticket"
+            description="Creates a new engineering ticket in the project issue tracker"
+            action="ticket.create">
+            <param name="title" type="string" description="Title of the ticket" required="true" minlength="2" />
+            <param name="priority" type="string" description="Priority level" default="Normal" enum="Low,Normal,High,Urgent" />
+            <param name="category" type="string" description="Domain category" default="General" enum="Development,Security,Performance,AI / ML,General" />
+        </tool>
+
+        <tool
+            name="toggle_ticket"
+            title="Toggle Ticket Completion"
+            description="Toggles the completion status of an existing ticket by its unique ID"
+            action="ticket.toggle">
+            <param name="id" type="string" description="Unique ticket ID" required="true" />
+        </tool>
+
+        <tool
+            name="list_tickets"
+            title="List All Tickets"
+            description="Retrieves the full list of active and completed tickets"
+            action="ticket.list"
+            readonly="true"
+        />
+
+        <tool
+            name="search_tickets"
+            title="Search Tickets"
+            description="Filters and queries tickets by keyword or category"
+            action="ticket.query"
+            readonly="true">
+            <param name="query" type="string" description="Keyword or category query" required="true" />
+        </tool>
+    </webmcp>
+
+    <flex direction="column" gap="20" class="w-full">
+        <!-- Hero Card -->
+        <flex class="p-6 sm:p-8 bg-slate-900/90 border border-slate-800 rounded-3xl shadow-xl flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+            <flex direction="column" gap="4">
+                <flex direction="row" align="center" gap="8" class="flex-wrap">
+                    <span class="px-3 py-1 bg-indigo-500/15 text-indigo-400 font-extrabold text-xs rounded-full border border-indigo-500/20 uppercase tracking-wider">
+                        🤖 WebMCP Browser AI Bridge
+                    </span>
+                    <span class="text-xs text-slate-400 font-medium">Standard document.modelContext</span>
+                </flex>
+                <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight">AI Agent Tools &amp; WebMCP Integration</h1>
+                <p class="text-xs sm:text-sm text-slate-400 max-w-2xl">
+                    Expose application workflows and state directly to browser AI agents as structured tools. Progressive enhancement with zero dependencies.
+                </p>
+            </flex>
+
+            <!-- Live Status Badge -->
+            <div class="p-4 bg-slate-950/80 rounded-2xl border border-slate-800 shrink-0 min-w-[200px]">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Agent Status</span>
+                    <span class="w-2 h-2 rounded-full {data.$webmcp.executing ? 'bg-amber-400 animate-ping' : 'bg-emerald-400'}"></span>
+                </div>
+                <p class="text-xs font-bold {data.$webmcp.executing ? 'text-amber-400' : 'text-emerald-400'} mt-1">
+                    {data.$webmcp.executing ? 'Executing: ' + data.$webmcp.currentTool : 'Ready &amp; Listening'}
+                </p>
+            </div>
+        </flex>
+
+        <!-- Main Grid: UI & Simulated Agent Split View -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left 7 Cols: Human UI Interactive Ticket Board -->
+            <flex direction="column" gap="16" class="lg:col-span-7 p-6 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-xl">
+                <flex direction="row" justify="between" align="center">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">👤 Human UI (Direct Actions)</span>
+                        <span class="px-2 py-0.5 text-[10px] bg-slate-800 text-slate-300 rounded font-mono">{data.tickets.length} Tickets</span>
+                    </div>
+                </flex>
+
+                <!-- Create Ticket Form -->
+                <flex direction="column" gap="10" class="p-4 bg-slate-950/60 rounded-2xl border border-slate-800/80">
+                    <flex direction="row" gap="8" class="flex-wrap sm:flex-nowrap">
+                        <input
+                            bind="task_title_input"
+                            placeholder="Enter ticket title..."
+                            class="flex-1 px-3.5 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                        />
+                        <select bind="task_priority_input" class="px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200">
+                            <option value="Low">Low</option>
+                            <option value="Normal">Normal</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                        <select bind="task_category_input" class="px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200">
+                            <option value="Development">Development</option>
+                            <option value="Security">Security</option>
+                            <option value="Performance">Performance</option>
+                            <option value="AI / ML">AI / ML</option>
+                            <option value="General">General</option>
+                        </select>
+                    </flex>
+
+                    <flex direction="row" justify="end">
+                        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-lg shadow-indigo-600/20 flex items-center gap-1.5">
+                            <span>➕ Add Ticket</span>
+                            <on_click action="ticket.create">
+                                <arg name="title">{data.task_title_input}</arg>
+                                <arg name="priority">{data.task_priority_input}</arg>
+                                <arg name="category">{data.task_category_input}</arg>
+                            </on_click>
+                        </button>
+                    </flex>
+                </flex>
+
+                <!-- Search Input -->
+                <input
+                    bind="filter_query"
+                    placeholder="🔍 Filter tickets by title or category..."
+                    class="w-full px-3.5 py-2 bg-slate-950/40 border border-slate-800 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+
+                <!-- Ticket Items List -->
+                <flex direction="column" gap="8">
+                    <for_each items="{data.tickets}" var="ticket" key="id">
+                        <flex
+                            direction="row"
+                            align="center"
+                            justify="between"
+                            class="p-3 bg-slate-950/40 hover:bg-slate-950/80 rounded-xl border border-slate-800/80 transition-all">
+                            <flex direction="row" align="center" gap="10">
+                                <input type="checkbox" bind="ticket.completed" class="w-4 h-4 rounded text-indigo-600 bg-slate-900 border-slate-700 cursor-pointer" />
+                                <flex direction="column">
+                                    <span class="text-xs font-semibold {ticket.completed ? 'line-through text-slate-500' : 'text-slate-200'}">
+                                        {ticket.title}
+                                    </span>
+                                    <flex direction="row" gap="6" class="mt-0.5">
+                                        <span class="text-[9px] px-1.5 py-0.2 rounded font-mono font-bold {ticket.priority === 'Urgent' ? 'bg-rose-500/20 text-rose-300' : ticket.priority === 'High' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}">{ticket.priority}</span>
+                                        <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-400 font-mono">{ticket.category}</span>
+                                        <span class="text-[9px] text-slate-500 font-mono">ID: {ticket.id}</span>
+                                    </flex>
+                                </flex>
+                            </flex>
+
+                            <button class="px-2 py-1 text-[10px] text-rose-400 hover:bg-rose-500/10 rounded border border-rose-500/20 transition">
+                                <on_click action="MUTATE_STATE">
+                                    <path>tickets</path>
+                                    <operation>REMOVE</operation>
+                                    <where field="id" equals="{ticket.id}" />
+                                </on_click>
+                                ✕ Delete
+                            </button>
+                        </flex>
+                    </for_each>
+                </flex>
+            </flex>
+
+            <!-- Right 5 Cols: AI Agent Simulated WebMCP Invocation Terminal -->
+            <flex direction="column" gap="16" class="lg:col-span-5 p-6 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-xl">
+                <flex direction="row" justify="between" align="center">
+                    <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">🤖 AI Agent Simulator</span>
+                    <span class="text-[10px] px-2 py-0.5 bg-indigo-500/15 text-indigo-300 rounded font-mono font-bold">document.modelContext</span>
+                </flex>
+
+                <p class="text-xs text-slate-400 leading-relaxed">
+                    Test invoking the WebMCP tools exactly as a browser AI agent (like Claude / ChatGPT in browser or Chrome extensions) would execute them.
+                </p>
+
+                <!-- Tool Selector & Payload Form -->
+                <flex direction="column" gap="8" class="p-4 bg-slate-950/90 rounded-2xl border border-slate-800">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase">Select WebMCP Tool:</label>
+                    <select bind="simulated_tool_selected" class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-indigo-300 font-mono font-bold">
+                        <option value="create_ticket">create_ticket (Add New Issue)</option>
+                        <option value="toggle_ticket">toggle_ticket (Toggle by ID)</option>
+                        <option value="list_tickets">list_tickets (Read-only list)</option>
+                        <option value="search_tickets">search_tickets (Query filter)</option>
+                    </select>
+
+                    <label class="text-[10px] font-bold text-slate-400 uppercase mt-2">Simulated JSON Input Arguments:</label>
+                    <textarea
+                        bind="simulated_tool_payload"
+                        rows="3"
+                        class="w-full p-2.5 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-emerald-300 resize-none focus:outline-none focus:border-indigo-500"
+                    ></textarea>
+
+                    <button class="mt-2 w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+                        <on_click action="RUN_SCRIPT">
+                            try {
+                                const toolName = $data.simulated_tool_selected;
+                                const rawPayload = $data.simulated_tool_payload;
+                                const parsedArgs = rawPayload &amp;&amp; rawPayload.trim() ? JSON.parse(rawPayload) : {};
+                                
+                                $data.simulation_log = `AI Agent executing '${toolName}'...`;
+                                
+                                if ($engine.webmcp) {
+                                    const nativeCtx = $engine.webmcp.getNativeContext() || window._mockWebMCP;
+                                    if (nativeCtx &amp;&amp; typeof nativeCtx.executeTool === 'function') {
+                                        nativeCtx.executeTool(toolName, parsedArgs)
+                                            .then(res => {
+                                                $engine.setState('simulation_log', `✓ Success: ${JSON.stringify(res)}`);
+                                            })
+                                            .catch(err => {
+                                                $engine.setState('simulation_log', `⚠ Error: ${err.message}`);
+                                            });
+                                    } else {
+                                        // Direct execution via Action Composer fallback
+                                        if (toolName === 'create_ticket') {
+                                            $engine.executeAction('ticket.create', parsedArgs);
+                                        } else if (toolName === 'toggle_ticket') {
+                                            $engine.executeAction('ticket.toggle', parsedArgs);
+                                        } else if (toolName === 'list_tickets') {
+                                            $engine.executeAction('ticket.list', parsedArgs);
+                                        } else if (toolName === 'search_tickets') {
+                                            $engine.executeAction('ticket.query', parsedArgs);
+                                        }
+                                        $data.simulation_log = `✓ Invoked '${toolName}' with payload: ${JSON.stringify(parsedArgs)}`;
+                                    }
+                                }
+                            } catch (e) {
+                                $data.simulation_log = `Error parsing JSON args: ${e.message}`;
+                            }
+                        </on_click>
+                        <span>⚡ Dispatch Agent Tool Call</span>
+                    </button>
+                </flex>
+
+                <!-- Console Output Terminal -->
+                <flex direction="column" gap="4">
+                    <span class="text-[10px] font-bold text-slate-400 uppercase">Agent Execution Terminal</span>
+                    <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 min-h-[60px] overflow-x-auto">
+                        <span class="text-indigo-400">$ [webmcp-agent] &gt; </span>
+                        <span class="text-slate-200">{data.simulation_log}</span>
+                    </div>
+                </flex>
+            </flex>
+        </div>
+    </flex>
+</component_def>
