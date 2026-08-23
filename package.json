@@ -1,6 +1,6 @@
 {
   "name": "euixjs",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "EUIX Engine - Ultra-lightweight declarative HTML & XML framework",
   "type": "module",
   "main": "dist/EUIXEngine.umd.js",

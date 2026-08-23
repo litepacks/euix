@@ -46,6 +46,9 @@ export function EUIXLazyPlugin(EngineClass) {
         }
 
         const fetchPromise = (async () => {
+            if (typeof window !== "undefined" && window.__EUIX_DEVTOOLS__) {
+                window.__EUIX_DEVTOOLS__.pendingLoaders = (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) + 1;
+            }
             try {
                 const loadedSpec = await EngineClass.loadComponent(key, entry.src, options);
                 entry.loaded = true;
@@ -54,6 +57,12 @@ export function EUIXLazyPlugin(EngineClass) {
                 console.error(`[EUIXLazyPlugin] Error loading lazy component '${key}' from '${entry.src}':`, err);
                 throw err;
             } finally {
+                if (typeof window !== "undefined" && window.__EUIX_DEVTOOLS__) {
+                    window.__EUIX_DEVTOOLS__.pendingLoaders = Math.max(
+                        0,
+                        (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) - 1,
+                    );
+                }
                 EngineClass._lazyPromises.delete(key);
             }
         })();
@@ -139,21 +148,27 @@ export function EUIXLazyPlugin(EngineClass) {
                 };
 
                 // Use IntersectionObserver if requested or viewport lazy loading is supported
-                const useObserver = (entry.observer || entry.viewport) && typeof window !== "undefined" && typeof window.IntersectionObserver === "function";
+                const useObserver =
+                    (entry.observer || entry.viewport) &&
+                    typeof window !== "undefined" &&
+                    typeof window.IntersectionObserver === "function";
 
                 if (useObserver) {
                     let hasTriggered = false;
-                    const io = new window.IntersectionObserver((entries) => {
-                        for (const ioEntry of entries) {
-                            if (ioEntry.isIntersecting && !hasTriggered) {
-                                hasTriggered = true;
-                                io.unobserve(placeholder);
-                                io.disconnect();
-                                triggerLoadAndHydrate();
-                                break;
+                    const io = new window.IntersectionObserver(
+                        (entries) => {
+                            for (const ioEntry of entries) {
+                                if (ioEntry.isIntersecting && !hasTriggered) {
+                                    hasTriggered = true;
+                                    io.unobserve(placeholder);
+                                    io.disconnect();
+                                    triggerLoadAndHydrate();
+                                    break;
+                                }
                             }
-                        }
-                    }, { rootMargin: entry.rootMargin || "200px" });
+                        },
+                        { rootMargin: entry.rootMargin || "200px" },
+                    );
 
                     queueMicrotask(() => {
                         if (placeholder.isConnected || placeholder.parentNode) {

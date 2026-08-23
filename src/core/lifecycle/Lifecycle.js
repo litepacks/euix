@@ -49,8 +49,15 @@ export function mount(engine, appXmlString, options = {}) {
             const src = imp.getAttribute("src");
             const name = imp.getAttribute("name") || imp.getAttribute("as");
             const lazyAttr = imp.getAttribute("lazy");
-            const isLazy = lazyAttr === "true" || imp.getAttribute("mode") === "lazy" || lazyAttr === "viewport" || imp.getAttribute("viewport") === "true";
-            const isViewport = imp.getAttribute("viewport") === "true" || imp.getAttribute("observer") === "true" || lazyAttr === "viewport";
+            const isLazy =
+                lazyAttr === "true" ||
+                imp.getAttribute("mode") === "lazy" ||
+                lazyAttr === "viewport" ||
+                imp.getAttribute("viewport") === "true";
+            const isViewport =
+                imp.getAttribute("viewport") === "true" ||
+                imp.getAttribute("observer") === "true" ||
+                lazyAttr === "viewport";
             const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
             if (src && name) {
                 if (isLazy) {

@@ -49,7 +49,9 @@ export function sanitizeResult(value, seen = new WeakSet()) {
         (typeof Document !== "undefined" && (value instanceof Document || value === document || value?.defaultView)) ||
         (typeof Event !== "undefined" && value instanceof Event) ||
         (typeof globalThis !== "undefined" && value === globalThis) ||
-        (value && typeof value === "object" && (value.nodeType !== undefined || typeof value.preventDefault === "function"))
+        (value &&
+            typeof value === "object" &&
+            (value.nodeType !== undefined || typeof value.preventDefault === "function"))
     ) {
         return undefined;
     }
@@ -127,7 +129,10 @@ export function compileJsonSchema(params = [], rawSchema = null) {
             if (Array.isArray(param.enum)) {
                 propSchema.enum = param.enum;
             } else if (typeof param.enum === "string") {
-                propSchema.enum = param.enum.split(",").map((s) => s.trim()).filter(Boolean);
+                propSchema.enum = param.enum
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean);
             }
         }
 
@@ -176,11 +181,9 @@ export function validateInput(input = {}, schema = {}) {
         const reqKey = required[i];
         const val = sanitizedInput[reqKey];
         if (val === undefined || val === null || val === "") {
-            throw new EUIXWebMCPError(
-                "VALIDATION_ERROR",
-                `Missing required parameter '${reqKey}' for WebMCP tool.`,
-                { parameter: reqKey },
-            );
+            throw new EUIXWebMCPError("VALIDATION_ERROR", `Missing required parameter '${reqKey}' for WebMCP tool.`, {
+                parameter: reqKey,
+            });
         }
     }
 
@@ -205,18 +208,16 @@ export function validateInput(input = {}, schema = {}) {
         } else if (spec.type === "number" || spec.type === "integer") {
             const num = Number(val);
             if (Number.isNaN(num)) {
-                throw new EUIXWebMCPError(
-                    "VALIDATION_ERROR",
-                    `Parameter '${key}' must be a valid number.`,
-                    { parameter: key, value: val },
-                );
+                throw new EUIXWebMCPError("VALIDATION_ERROR", `Parameter '${key}' must be a valid number.`, {
+                    parameter: key,
+                    value: val,
+                });
             }
             if (spec.type === "integer" && !Number.isInteger(num)) {
-                throw new EUIXWebMCPError(
-                    "VALIDATION_ERROR",
-                    `Parameter '${key}' must be an integer.`,
-                    { parameter: key, value: val },
-                );
+                throw new EUIXWebMCPError("VALIDATION_ERROR", `Parameter '${key}' must be an integer.`, {
+                    parameter: key,
+                    value: val,
+                });
             }
             sanitizedInput[key] = num;
             if (spec.minimum !== undefined && num < spec.minimum) {
@@ -236,17 +237,15 @@ export function validateInput(input = {}, schema = {}) {
         } else if (spec.type === "boolean") {
             sanitizedInput[key] = val === true || String(val).toLowerCase() === "true";
         } else if (spec.type === "array" && !Array.isArray(val)) {
-            throw new EUIXWebMCPError(
-                "VALIDATION_ERROR",
-                `Parameter '${key}' must be an array.`,
-                { parameter: key, value: val },
-            );
+            throw new EUIXWebMCPError("VALIDATION_ERROR", `Parameter '${key}' must be an array.`, {
+                parameter: key,
+                value: val,
+            });
         } else if (spec.type === "object" && (typeof val !== "object" || Array.isArray(val))) {
-            throw new EUIXWebMCPError(
-                "VALIDATION_ERROR",
-                `Parameter '${key}' must be a plain object.`,
-                { parameter: key, value: val },
-            );
+            throw new EUIXWebMCPError("VALIDATION_ERROR", `Parameter '${key}' must be a plain object.`, {
+                parameter: key,
+                value: val,
+            });
         }
 
         // Enum validation
@@ -411,9 +410,7 @@ export class EUIXWebMCPManager {
         }
 
         // Compile input schema
-        const inputSchema =
-            toolDef.inputSchema ||
-            compileJsonSchema(toolDef.params || [], toolDef.rawSchema || null);
+        const inputSchema = toolDef.inputSchema || compileJsonSchema(toolDef.params || [], toolDef.rawSchema || null);
 
         // Annotations
         const readOnly =
@@ -431,7 +428,10 @@ export class EUIXWebMCPManager {
         // Origin exposure
         let exposedTo = toolDef.exposedTo || toolDef.exposeTo || toolDef.expose_to || this.options.defaults?.exposedTo;
         if (typeof exposedTo === "string") {
-            exposedTo = exposedTo.split(",").map((s) => s.trim()).filter(Boolean);
+            exposedTo = exposedTo
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
         }
 
         const controller = new AbortController();
@@ -464,7 +464,10 @@ export class EUIXWebMCPManager {
                 console.error(`[EUIX WebMCP] Failed to register tool "${name}" with document.modelContext:`, err);
             }
             if (this.options.strict) {
-                throw new EUIXWebMCPError("REGISTRATION_FAILED", `Failed to register WebMCP tool '${name}': ${err.message}`);
+                throw new EUIXWebMCPError(
+                    "REGISTRATION_FAILED",
+                    `Failed to register WebMCP tool '${name}': ${err.message}`,
+                );
             }
         }
 
@@ -898,9 +901,9 @@ export const EUIXWebMCPPlugin = {
     name: "webmcp",
     install(engineClass, pluginOptions = {}) {
         const proto = engineClass.prototype;
-        
+
         // Define getter/setter for engine.webmcp
-        if (!Object.prototype.hasOwnProperty.call(proto, "webmcp")) {
+        if (!Object.hasOwn(proto, "webmcp")) {
             Object.defineProperty(proto, "webmcp", {
                 get() {
                     if (!this._webmcpManager) {
@@ -946,7 +949,8 @@ export const EUIXWebMCPPlugin = {
 
             webmcpNodes.forEach((node) => {
                 const toolNodes = Array.from(node.children || []).filter(
-                    (c) => c.tagName && (c.tagName.toLowerCase() === "tool" || c.tagName.toLowerCase() === "webmcp_tool"),
+                    (c) =>
+                        c.tagName && (c.tagName.toLowerCase() === "tool" || c.tagName.toLowerCase() === "webmcp_tool"),
                 );
 
                 const isSingleTool =

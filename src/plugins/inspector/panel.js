@@ -526,13 +526,18 @@ export class InspectorPanel {
                     <div style="color:#818cf8;font-weight:bold;margin-bottom:6px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
                         <span>🛠️ Active Tools (${tools.length})</span>
                     </div>
-                    ${tools.length === 0 ? `
+                    ${
+                        tools.length === 0
+                            ? `
                         <div style="color:#64748b;font-style:italic;padding:12px;text-align:center;background:#1e293b;border-radius:8px;">
                             No WebMCP tools registered. Declare tools with &lt;webmcp&gt;&lt;tool .../&gt;&lt;/webmcp&gt; or engine.webmcp.register()
                         </div>
-                    ` : `
+                    `
+                            : `
                         <div style="display:flex;flex-direction:column;gap:8px;">
-                            ${tools.map((t) => `
+                            ${tools
+                                .map(
+                                    (t) => `
                                 <div style="background:#1e293b;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;">
                                     <div style="display:flex;justify-content:space-between;align-items:center;">
                                         <span style="color:#38bdf8;font-weight:bold;font-size:11px;">
@@ -552,24 +557,35 @@ export class InspectorPanel {
                                         </details>
                                     </div>
                                 </div>
-                            `).join("")}
+                            `,
+                                )
+                                .join("")}
                         </div>
-                    `}
+                    `
+                    }
                 </div>
 
                 <!-- Last Result / Execution Live Feed -->
-                ${state.lastResult !== null && state.lastResult !== undefined || state.lastError ? `
+                ${
+                    (state.lastResult !== null && state.lastResult !== undefined) || state.lastError
+                        ? `
                     <div style="background:#1e293b;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
                         <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;font-size:10px;">⚡ Last Execution Result</div>
-                        ${state.lastError ? `
+                        ${
+                            state.lastError
+                                ? `
                             <div style="color:#f87171;font-size:10px;background:#450a0a;padding:6px;border-radius:4px;border:1px solid #7f1d1d;">
-                                <strong>[${this.escape(state.lastError.code || 'ERROR')}]:</strong> ${this.escape(state.lastError.message || String(state.lastError))}
+                                <strong>[${this.escape(state.lastError.code || "ERROR")}]:</strong> ${this.escape(state.lastError.message || String(state.lastError))}
                             </div>
-                        ` : `
+                        `
+                                : `
                             <pre style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#34d399;font-size:9px;overflow-x:auto;">${this.escape(JSON.stringify(state.lastResult, null, 2))}</pre>
-                        `}
+                        `
+                        }
                     </div>
-                ` : ""}
+                `
+                        : ""
+                }
             </div>
         `;
     }
