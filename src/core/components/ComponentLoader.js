@@ -41,8 +41,31 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
         for (const imp of nestedImports) {
             const impSrc = imp.getAttribute("src");
             const impName = imp.getAttribute("name") || imp.getAttribute("as");
+            const lazyAttr = imp.getAttribute("lazy");
+            const isLazy =
+                lazyAttr === "true" ||
+                imp.getAttribute("mode") === "lazy" ||
+                lazyAttr === "viewport" ||
+                imp.getAttribute("viewport") === "true";
+            const isViewport =
+                imp.getAttribute("viewport") === "true" ||
+                imp.getAttribute("observer") === "true" ||
+                lazyAttr === "viewport";
+            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
+
             if (impSrc && impName) {
-                await EngineClass.loadComponent(impName, impSrc, options);
+                if (isLazy) {
+                    if (typeof EngineClass.registerLazyComponent === "function") {
+                        EngineClass.registerLazyComponent(impName, impSrc, {
+                            fallback: imp.getAttribute("fallback"),
+                            viewport: isViewport,
+                            observer: isViewport,
+                            rootMargin: rootMargin,
+                        });
+                    }
+                } else {
+                    await EngineClass.loadComponent(impName, impSrc, options);
+                }
             }
         }
 

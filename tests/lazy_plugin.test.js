@@ -304,5 +304,50 @@ describe("EUIXLazyPlugin Unit Tests", () => {
         fetchSpy.mockRestore();
         globalThis.IntersectionObserver = originalIO;
     });
+
+    it("should respect lazy='true' on nested imports inside loaded parent components without eager fetching", async () => {
+        const fetchedUrls = [];
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+            fetchedUrls.push(url);
+            if (url.includes("ParentSection.xml")) {
+                return Promise.resolve({
+                    text: () => Promise.resolve(`
+                        <component_def name="parent-section">
+                            <imports>
+                                <import name="child-one" src="components/ChildOne.xml" lazy="true" viewport="true" />
+                                <import name="child-two" src="components/ChildTwo.xml" lazy="true" viewport="true" />
+                            </imports>
+                            <div>
+                                <child-one />
+                                <child-two />
+                            </div>
+                        </component_def>
+                    `)
+                });
+            }
+            if (url.includes("ChildOne.xml")) {
+                return Promise.resolve({
+                    text: () => Promise.resolve('<component_def name="child-one"><div>Child 1</div></component_def>')
+                });
+            }
+            if (url.includes("ChildTwo.xml")) {
+                return Promise.resolve({
+                    text: () => Promise.resolve('<component_def name="child-two"><div>Child 2</div></component_def>')
+                });
+            }
+            return Promise.reject(new Error(`Unknown URL: ${url}`));
+        });
+
+        // Load the parent component asynchronously
+        await EUIXEngineCore.loadComponent("parent-section", "components/ParentSection.xml");
+
+        // Only ParentSection.xml should have been fetched
+        expect(fetchedUrls).toEqual(["components/ParentSection.xml"]);
+        expect(EUIXEngineCore._lazyRegistry.has("child-one")).toBe(true);
+        expect(EUIXEngineCore._lazyRegistry.has("child-two")).toBe(true);
+
+        fetchSpy.mockRestore();
+    });
 });
+
 
