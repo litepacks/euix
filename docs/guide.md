@@ -724,3 +724,47 @@ test('interactive todo flow', async ({ page }) => {
 });
 ```
 
+---
+
+## XII. WebMCP Browser AI Agent Protocol (`euixjs/webmcp`)
+
+EUIX Engine provides first-class support for **WebMCP (`document.modelContext`)**, allowing browser AI agents to discover, inspect, and execute application actions as structured tools.
+
+### 1. Declarative XML Tools (`<webmcp>`)
+```xml
+<uid_spec>
+  <actions>
+    <action_def name="ticket.create">
+      <param name="title" required="true" />
+      <param name="priority" default="Normal" />
+      <step action="MUTATE_STATE">
+        <path>data.tickets</path>
+        <operation>PUSH</operation>
+        <value>{"id": "t_" + Date.now(), "title": "{args.title}", "priority": "{args.priority}"}</value>
+      </step>
+      <return>{"success": true, "title": "{args.title}"}</return>
+    </action_def>
+  </actions>
+
+  <webmcp>
+    <tool
+      name="create_ticket"
+      title="Create Ticket"
+      description="Creates a new support or development ticket"
+      action="ticket.create">
+      <param name="title" type="string" description="Ticket summary title" required="true" />
+      <param name="priority" type="string" default="Normal" enum="Low,Normal,High,Urgent" />
+    </tool>
+  </webmcp>
+</uid_spec>
+```
+
+### 2. Viewport Lazy Loading with IntersectionObserver (`<import lazy="true" viewport="true" />`)
+```xml
+<imports>
+  <!-- Defer loading until user scrolls near the component (200px prefetch margin) -->
+  <import name="analytics-dashboard" src="components/AnalyticsDashboard.xml" lazy="true" viewport="true" root_margin="200px" />
+</imports>
+```
+
+

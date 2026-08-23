@@ -15,12 +15,18 @@ export function EUIXLazyPlugin(EngineClass) {
     }
 
     // Static registration API
-    EngineClass.registerLazyComponent = (name, src, fallback) => {
+    EngineClass.registerLazyComponent = (name, src, options) => {
         const key = (name || "").toLowerCase();
+        const fallback = typeof options === "string" ? options : options?.fallback || null;
+        const observer = typeof options === "object" ? Boolean(options?.observer || options?.viewport) : false;
+        const rootMargin = typeof options === "object" ? options?.rootMargin || "200px" : "200px";
+
         EngineClass._lazyRegistry.set(key, {
             name: key,
             src,
-            fallback: fallback || null,
+            fallback,
+            observer,
+            rootMargin,
             loaded: false,
         });
     };
@@ -57,8 +63,8 @@ export function EUIXLazyPlugin(EngineClass) {
     };
 
     // Instance methods
-    EngineClass.prototype.registerLazyComponent = (name, src, fallback) => {
-        EngineClass.registerLazyComponent(name, src, fallback);
+    EngineClass.prototype.registerLazyComponent = (name, src, options) => {
+        EngineClass.registerLazyComponent(name, src, options);
     };
 
     EngineClass.prototype.loadLazyComponent = async (name) => EngineClass.loadLazyComponent(name);
@@ -106,29 +112,59 @@ export function EUIXLazyPlugin(EngineClass) {
                     placeholder.innerHTML = `<div class="p-6 text-center text-xs text-slate-500 font-mono">Loading ${targetKey}...</div>`;
                 }
 
-                // Trigger on-demand asynchronous fetch and replace placeholder
-                EngineClass.loadLazyComponent(targetKey)
-                    .then(() => {
-                        const specNode =
-                            (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
-                            (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
-                        if (specNode && placeholder.parentNode) {
-                            const realDom = this.renderComponentSpec(specNode, xmlNode, context);
-                            if (realDom) {
-                                this.applyRef(realDom, xmlNode, context);
-                                placeholder.replaceWith(realDom);
-                                if (typeof this.syncAllBindings === "function") {
-                                    this.syncAllBindings();
-                                }
-                                if (window.lucide && typeof window.lucide.createIcons === "function") {
-                                    window.lucide.createIcons();
+                // Trigger load and hydration function
+                const triggerLoadAndHydrate = () => {
+                    EngineClass.loadLazyComponent(targetKey)
+                        .then(() => {
+                            const specNode =
+                                (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
+                                (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
+                            if (specNode && placeholder.parentNode) {
+                                const realDom = this.renderComponentSpec(specNode, xmlNode, context);
+                                if (realDom) {
+                                    this.applyRef(realDom, xmlNode, context);
+                                    placeholder.replaceWith(realDom);
+                                    if (typeof this.syncAllBindings === "function") {
+                                        this.syncAllBindings();
+                                    }
+                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                        window.lucide.createIcons();
+                                    }
                                 }
                             }
+                        })
+                        .catch((err) => {
+                            placeholder.innerHTML = `<div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-mono">Failed to load ${targetKey}: ${err.message}</div>`;
+                        });
+                };
+
+                // Use IntersectionObserver if requested or viewport lazy loading is supported
+                const useObserver = (entry.observer || entry.viewport) && typeof window !== "undefined" && typeof window.IntersectionObserver === "function";
+
+                if (useObserver) {
+                    let hasTriggered = false;
+                    const io = new window.IntersectionObserver((entries) => {
+                        for (const ioEntry of entries) {
+                            if (ioEntry.isIntersecting && !hasTriggered) {
+                                hasTriggered = true;
+                                io.unobserve(placeholder);
+                                io.disconnect();
+                                triggerLoadAndHydrate();
+                                break;
+                            }
                         }
-                    })
-                    .catch((err) => {
-                        placeholder.innerHTML = `<div class="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs rounded-xl font-mono">Failed to load ${targetKey}: ${err.message}</div>`;
+                    }, { rootMargin: entry.rootMargin || "200px" });
+
+                    queueMicrotask(() => {
+                        if (placeholder.isConnected || placeholder.parentNode) {
+                            io.observe(placeholder);
+                        } else {
+                            triggerLoadAndHydrate();
+                        }
                     });
+                } else {
+                    triggerLoadAndHydrate();
+                }
 
                 return placeholder;
             }

@@ -240,4 +240,69 @@ describe("EUIXLazyPlugin Unit Tests", () => {
 
         fetchSpy.mockRestore();
     });
+
+    it("should defer loading until placeholder intersects viewport when IntersectionObserver is available", async () => {
+        let observeCallback = null;
+        let observedTarget = null;
+        let unobservedTarget = null;
+
+        class MockIntersectionObserver {
+            constructor(callback, options) {
+                observeCallback = callback;
+                this.options = options;
+            }
+            observe(el) {
+                observedTarget = el;
+            }
+            unobserve(el) {
+                unobservedTarget = el;
+            }
+            disconnect() {}
+        }
+
+        const originalIO = globalThis.IntersectionObserver;
+        globalThis.IntersectionObserver = MockIntersectionObserver;
+
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+            Promise.resolve({
+                text: () => Promise.resolve('<component_def name="viewport-comp"><div class="viewport-loaded">Viewport Content</div></component_def>')
+            })
+        );
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="viewport-comp" src="components/ViewportComp.xml" lazy="true" viewport="true" root_margin="300px" />
+            </imports>
+            <div>
+                <viewport-comp />
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        expect(engine).toBeDefined();
+
+        await new Promise(r => setTimeout(r, 20));
+
+        // Observed target should be the placeholder, and fetch should NOT yet be called
+        expect(observedTarget).not.toBeNull();
+        expect(observedTarget.getAttribute("data-euix-lazy-component")).toBe("viewport-comp");
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        // Simulate intersection event (scrolling into view)
+        observeCallback([{ isIntersecting: true, target: observedTarget }]);
+
+        await new Promise(r => setTimeout(r, 60));
+
+        // Now component should be loaded and hydrated
+        expect(fetchSpy).toHaveBeenCalled();
+        const loadedEl = container.querySelector(".viewport-loaded");
+        expect(loadedEl).not.toBeNull();
+        expect(loadedEl.textContent).toBe("Viewport Content");
+
+        fetchSpy.mockRestore();
+        globalThis.IntersectionObserver = originalIO;
+    });
 });
+

@@ -74,7 +74,7 @@
   <!-- Top Studio Header Toolbar -->
   <header class="glass-header px-4 sm:px-6 py-3 w-full flex items-center justify-between flex-wrap gap-3 z-20">
     <div class="flex items-center gap-3">
-      <a href="./index.html" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+      <a href="./index.html#/" class="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
         <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-400 flex items-center justify-center font-black text-white text-sm shadow-md shadow-blue-500/25">
           <i data-lucide="code-2" class="w-4 h-4 text-white"></i>
         </div>
@@ -89,21 +89,33 @@
     </div>
 
     <!-- Navigation Hub Links -->
-    <nav class="hidden md:flex items-center gap-1 text-xs font-semibold">
-        <a href="./index.html" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
-            <i data-lucide="book-open" class="w-3 h-3 text-indigo-400"></i> Docs
+    <nav class="hidden lg:flex items-center gap-1 text-xs font-semibold">
+        <a href="./index.html#/" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+            <i data-lucide="home" class="w-3 h-3 text-indigo-400"></i> Home
         </a>
-        <a href="./playground.html" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+        <a href="./index.html#/docs" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+            <i data-lucide="book-open" class="w-3 h-3 text-emerald-400"></i> Docs
+        </a>
+        <a href="./index.html#/playground" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
             <i data-lucide="play" class="w-3 h-3 text-amber-400"></i> Playground
         </a>
-        <a href="./router_demo.html" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
-            <i data-lucide="git-branch" class="w-3 h-3 text-purple-400"></i> Router
-        </a>
-        <a href="./chart_demo.html" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+        <a href="./index.html#/charts" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
             <i data-lucide="bar-chart-3" class="w-3 h-3 text-indigo-400"></i> Charts
         </a>
-        <a href="./map_demo.html" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+        <a href="./index.html#/maps" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
             <i data-lucide="map" class="w-3 h-3 text-emerald-400"></i> Maps
+        </a>
+        <a href="./index.html#/date" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+            <i data-lucide="calendar" class="w-3 h-3 text-teal-400"></i> Date
+        </a>
+        <a href="./index.html#/actions" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+            <i data-lucide="workflow" class="w-3 h-3 text-rose-400"></i> Actions
+        </a>
+        <a href="./index.html#/router-showcase" class="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white flex items-center gap-1 transition-all">
+            <i data-lucide="git-branch" class="w-3 h-3 text-purple-400"></i> Router
+        </a>
+        <a href="https://github.com/litepacks/euix" target="_blank" rel="noreferrer" class="p-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white transition-all ml-0.5 flex items-center justify-center" title="GitHub">
+            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
     </nav>
 

@@ -1084,4 +1084,86 @@ $euix.tree();            // View mounted component hierarchy tree
 $euix.actions();         // View recent action execution logs
 ```
 
+---
+
+## 🤖 16. WebMCP Browser AI Agent Tools (`<webmcp>`, `document.modelContext`)
+
+EUIX Engine provides first-class support for the **Model Context Protocol (WebMCP)** in the browser via `document.modelContext`.
+
+### 1. Declarative WebMCP Tool Definition
+Expose application actions directly to AI agents using structured `<webmcp>` blocks:
+
+```xml
+<uid_spec>
+  <!-- Reusable Action Workflow -->
+  <actions>
+    <action_def name="task.create">
+      <param name="title" required="true" />
+      <param name="priority" default="Normal" />
+
+      <step action="MUTATE_STATE">
+        <path>data.tasks</path>
+        <operation>PUSH</operation>
+        <value>{"id": "t_" + Date.now(), "title": "{args.title}", "priority": "{args.priority}", "done": false}</value>
+      </step>
+
+      <return>{"success": true, "title": "{args.title}"}</return>
+    </action_def>
+  </actions>
+
+  <!-- WebMCP Exposure -->
+  <webmcp>
+    <tool
+      name="create_task"
+      title="Create Task"
+      description="Creates a new task in the project tracker"
+      action="task.create">
+      <param name="title" type="string" description="Task title" required="true" minlength="1" />
+      <param name="priority" type="string" description="Priority level" default="Normal" enum="Low,Normal,High,Urgent" />
+    </tool>
+
+    <tool
+      name="list_tasks"
+      title="List Tasks"
+      description="Returns all active and completed tasks"
+      action="task.list"
+      readonly="true"
+    />
+  </webmcp>
+</uid_spec>
+```
+
+### 2. Imperative WebMCP API (`engine.webmcp`)
+```js
+// Register tool programmatically
+engine.webmcp.register({
+  name: 'search_items',
+  title: 'Search Items',
+  description: 'Searches catalog items',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      query: { type: 'string' }
+    },
+    required: ['query']
+  },
+  execute: async (args, context) => {
+    return context.actions.run('items.search', args);
+  }
+});
+
+// Check support & list tools
+const isSupported = engine.webmcp.isSupported(); // document.modelContext present
+const tools = engine.webmcp.list();
+```
+
+### 3. Viewport Lazy Loading with IntersectionObserver (`<import lazy="true" viewport="true" />`)
+```xml
+<imports>
+  <!-- Only fetches and mounts component when scrolled into view (200px margin) -->
+  <import name="heavy-chart" src="components/HeavyChart.xml" lazy="true" viewport="true" root_margin="200px" />
+</imports>
+```
+
+
 

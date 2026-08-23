@@ -469,4 +469,41 @@ Parent components can project nested child content directly into a child compone
 </modal-card>
 ```
 
+---
+
+## 7. 🤖 WebMCP Tools & Viewport Lazy Loading
+
+### `<webmcp>` & `<tool>`
+Exposes application actions directly to browser AI agents via standard `document.modelContext`.
+
+```xml
+<webmcp>
+    <tool
+        name="create_task"
+        title="Create Task"
+        description="Creates a new task in the task list"
+        action="task.create">
+        <param name="title" type="string" description="Task title" required="true" minlength="1" />
+        <param name="priority" type="string" default="normal" enum="low,normal,high,urgent" />
+    </tool>
+
+    <tool
+        name="list_tasks"
+        title="List Tasks"
+        description="Returns all tasks"
+        action="task.list"
+        readonly="true"
+    />
+</webmcp>
+```
+
+### `<import lazy="true" viewport="true" />` (IntersectionObserver Lazy Loading)
+```xml
+<imports>
+    <!-- Asynchronously loads and renders only when scrolled near the viewport -->
+    <import name="complex-widget" src="components/ComplexWidget.xml" lazy="true" viewport="true" root_margin="200px" />
+</imports>
+```
+
+
 

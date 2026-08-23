@@ -48,11 +48,19 @@ export function mount(engine, appXmlString, options = {}) {
         importNodes.forEach((imp) => {
             const src = imp.getAttribute("src");
             const name = imp.getAttribute("name") || imp.getAttribute("as");
-            const isLazy = imp.getAttribute("lazy") === "true" || imp.getAttribute("mode") === "lazy";
+            const lazyAttr = imp.getAttribute("lazy");
+            const isLazy = lazyAttr === "true" || imp.getAttribute("mode") === "lazy" || lazyAttr === "viewport" || imp.getAttribute("viewport") === "true";
+            const isViewport = imp.getAttribute("viewport") === "true" || imp.getAttribute("observer") === "true" || lazyAttr === "viewport";
+            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
             if (src && name) {
                 if (isLazy) {
                     if (typeof engine.constructor.registerLazyComponent === "function") {
-                        engine.constructor.registerLazyComponent(name, src, imp.getAttribute("fallback"));
+                        engine.constructor.registerLazyComponent(name, src, {
+                            fallback: imp.getAttribute("fallback"),
+                            viewport: isViewport,
+                            observer: isViewport,
+                            rootMargin: rootMargin,
+                        });
                     }
                 } else {
                     engine._pendingAsyncLoads.push(engine.loadComponentFile(name, src));

@@ -65,25 +65,25 @@
     </data_model>
 
     <imports>
-        <import name="app-header" src="components/AppHeader.xml" lazy="true" />
-        <import name="webmcp-section" src="components/WebMCPSection.xml" lazy="true" />
-        <import name="reactive-section" src="components/ReactiveSection.xml" lazy="true" />
-        <import name="animation-section" src="components/AnimationSection.xml" lazy="true" />
-        <import name="action-composer-section" src="components/ActionComposerSection.xml" lazy="true" />
-        <import name="ecommerce-section" src="components/EcommerceSection.xml" lazy="true" />
-        <import name="virtual-list-section" src="components/VirtualListSection.xml" lazy="true" />
-        <import name="kanban-section" src="components/KanbanSection.xml" lazy="true" />
-        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" lazy="true" />
-        <import name="table-section" src="components/TableSection.xml" lazy="true" />
-        <import name="counter-section" src="components/CounterSection.xml" lazy="true" />
-        <import name="countdown-section" src="components/CountdownSection.xml" lazy="true" />
-        <import name="persistence-section" src="components/PersistenceSection.xml" lazy="true" />
-        <import name="api-client-section" src="components/ApiClientSection.xml" lazy="true" />
-        <import name="todo-section" src="components/TodoSection.xml" lazy="true" />
-        <import name="posts-crud-section" src="components/PostsCrudSection.xml" lazy="true" />
-        <import name="pokemon-section" src="components/PokemonSection.xml" lazy="true" />
-        <import name="form-section" src="components/FormSection.xml" lazy="true" />
-        <import name="events-section" src="components/EventsSection.xml" lazy="true" />
+        <import name="app-header" src="components/AppHeader.xml" lazy="true" viewport="true" />
+        <import name="webmcp-section" src="components/WebMCPSection.xml" lazy="true" viewport="true" />
+        <import name="reactive-section" src="components/ReactiveSection.xml" lazy="true" viewport="true" />
+        <import name="animation-section" src="components/AnimationSection.xml" lazy="true" viewport="true" />
+        <import name="action-composer-section" src="components/ActionComposerSection.xml" lazy="true" viewport="true" />
+        <import name="ecommerce-section" src="components/EcommerceSection.xml" lazy="true" viewport="true" />
+        <import name="virtual-list-section" src="components/VirtualListSection.xml" lazy="true" viewport="true" />
+        <import name="kanban-section" src="components/KanbanSection.xml" lazy="true" viewport="true" />
+        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" lazy="true" viewport="true" />
+        <import name="table-section" src="components/TableSection.xml" lazy="true" viewport="true" />
+        <import name="counter-section" src="components/CounterSection.xml" lazy="true" viewport="true" />
+        <import name="countdown-section" src="components/CountdownSection.xml" lazy="true" viewport="true" />
+        <import name="persistence-section" src="components/PersistenceSection.xml" lazy="true" viewport="true" />
+        <import name="api-client-section" src="components/ApiClientSection.xml" lazy="true" viewport="true" />
+        <import name="todo-section" src="components/TodoSection.xml" lazy="true" viewport="true" />
+        <import name="posts-crud-section" src="components/PostsCrudSection.xml" lazy="true" viewport="true" />
+        <import name="pokemon-section" src="components/PokemonSection.xml" lazy="true" viewport="true" />
+        <import name="form-section" src="components/FormSection.xml" lazy="true" viewport="true" />
+        <import name="events-section" src="components/EventsSection.xml" lazy="true" viewport="true" />
         <import name="confirm-modal" src="components/ConfirmModal.xml" lazy="true" />
         <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" lazy="true" />
     </imports>

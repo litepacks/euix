@@ -164,13 +164,16 @@ const engine = EUIXEngine.mount(xmlString, '#app');
 | **`euixjs/dnd`** | **HTML5 & Pointer Drag and Drop** | **5.0 kB (ESM)** | **1.4 kB / 1.2 kB** |
 | **`euixjs/storage`** | **State Storage & Persistence** | **3.3 kB (ESM)** | **1.0 kB / 0.9 kB** |
 | **`euixjs/collapse`** | **Accordion / Collapse Component** | **3.3 kB (ESM)** | **1.1 kB / 0.9 kB** |
-| **`euixjs/devtools`** | **DevTools Inspector Panel** | **17.2 kB / 22.0 kB** | **4.8 kB / 4.1 kB** |
+| **`euixjs/webmcp`** | **WebMCP Browser AI Agent Plugin (`document.modelContext`)** | **28.6 kB (ESM)** | **6.7 kB / 5.8 kB** |
+| **`euixjs/devtools`** | **DevTools Inspector & WebMCP Panel** | **62.1 kB / 85.5 kB** | **14.2 kB / 17.4 kB** |
 
 ---
 
 ## ✨ Features & Capabilities
 
+- **🤖 WebMCP Browser AI Agent Plugin (`<webmcp>`, `<tool>`, `document.modelContext`):** Expose application state and Action Composer workflows directly to browser AI agents without external dependencies. Features progressive enhancement, automatic JSON Schema parameter compilation, sandboxed context (`state`, `actions`, `router`), error sanitization, and DevTools inspection panel.
 - **⚡ Action Composer System (`<action_def>`, `<param>`, `<return>`):** Define reusable named action workflows with parameters (`required="true"`, `default="..."`), sequential step execution, nested action calls, `{result}` data flow propagation, circular loop guards, and programmatic execution (`engine.executeAction()`).
+- **👁️ Viewport Lazy Loading (`<import lazy="true" viewport="true" />`):** On-demand asynchronous component loading triggered via `IntersectionObserver` with configurable `root_margin` (e.g. `200px`) as the user scrolls into view.
 - **🗂️ Native & Pointer Drag & Drop (`draggable="true"`, `<on_dragstart>`, `<on_drop>`):** Fine-grained HTML5 & Pointer Drag & Drop support with zero-lag custom floating drag preview (`#euix-drag-ghost`) and automatic `dragover` preventDefault handling.
 - **🔀 Reactive List Mutations (`MUTATE_STATE` `PUSH`, `REMOVE`, `UPDATE`, `SWAP`, `MOVE_UP`, `MOVE_DOWN`):** High-performance array list mutations including item insertion, property updates, index deletion, item swapping (`SWAP`), and quick index reordering (`MOVE_UP`, `MOVE_DOWN`).
 - **🔄 SWR API Revalidation (`REVALIDATE_API`, `<revalidate>`):** Stale-While-Revalidate API data refetching triggered declaratively or programmatically (`revalidateApi()`).
