@@ -47,6 +47,7 @@ import {
     resolvePath,
 } from "./plugins/EUIXRouterPlugin.js";
 import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
+import { EUIXWebMCPError, EUIXWebMCPPlugin, WebMCPPlugin } from "./plugins/EUIXWebMCPPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXApiPlugin);
@@ -65,6 +66,7 @@ EUIXEngineCore.use(EUIXChartPlugin);
 EUIXEngineCore.use(EUIXRouterPlugin);
 EUIXEngineCore.use(EUIXDatePlugin);
 EUIXEngineCore.use(EUIXLazyPlugin);
+EUIXEngineCore.use(EUIXWebMCPPlugin);
 
 const EUIXEngine = EUIXEngineCore;
 
@@ -99,6 +101,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXDateFormatter = EUIXDateFormatter;
     window.DATE_PRESETS = DATE_PRESETS;
     window.EUIXLazyPlugin = EUIXLazyPlugin;
+    window.EUIXWebMCPPlugin = EUIXWebMCPPlugin;
+    window.WebMCPPlugin = WebMCPPlugin;
+    window.EUIXWebMCPError = EUIXWebMCPError;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -143,6 +148,8 @@ export {
     EUIXStoragePlugin,
     EUIXStructuredError,
     EUIXWatchNode,
+    EUIXWebMCPError,
+    EUIXWebMCPPlugin,
     EUIXXMLParseError,
     generatePath,
     matchPath,
@@ -151,6 +158,7 @@ export {
     RouterError,
     RouterRedirect,
     resolvePath,
+    WebMCPPlugin,
 };
 
 export default EUIXEngine;

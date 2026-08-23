@@ -1,0 +1,184 @@
+<uid_spec>
+  <!-- Reusable Action Composer Workflows shared by both human UI and AI WebMCP agent -->
+  <actions>
+    <!-- 1. Create Task Workflow -->
+    <action_def name="task.create">
+      <param name="title" required="true" />
+      <param name="category" default="General" />
+
+      <step action="MUTATE_STATE">
+        <path>data.tasks</path>
+        <operation>PUSH</operation>
+        <value>{"id": "task_" + Date.now(), "title": "{args.title}", "category": "{args.category}", "completed": false}</value>
+      </step>
+
+      <step action="SET_STATE">
+        <path>data.newTaskInput</path>
+        <value></value>
+      </step>
+
+      <return>{"success": true, "message": "Task created successfully"}</return>
+    </action_def>
+
+    <!-- 2. Complete Task Workflow -->
+    <action_def name="task.complete">
+      <param name="id" required="true" />
+
+      <step action="RUN_SCRIPT">
+        const tasks = $data.tasks || [];
+        const task = tasks.find(t => String(t.id) === String($evt.id || $data._tempId || '{args.id}'));
+        if (task) {
+          task.completed = !task.completed;
+          $engine.setState('tasks', [...tasks]);
+        }
+      </step>
+
+      <return>{"success": true, "taskId": "{args.id}"}</return>
+    </action_def>
+
+    <!-- 3. List Tasks Workflow -->
+    <action_def name="task.list">
+      <return>{data.tasks}</return>
+    </action_def>
+
+    <!-- 4. Search Tasks Workflow -->
+    <action_def name="task.search">
+      <param name="query" required="true" />
+
+      <step action="SET_STATE">
+        <path>data.searchFilter</path>
+        <value>{args.query}</value>
+      </step>
+
+      <return>{data.tasks.filter(t => t.title.toLowerCase().includes('{args.query}'.toLowerCase()))}</return>
+    </action_def>
+  </actions>
+
+  <!-- WebMCP Tool Declarations for Browser AI Agents -->
+  <webmcp>
+    <tool
+      name="create_task"
+      title="Create Task"
+      description="Creates a new task in the task management application"
+      action="task.create">
+      <param name="title" type="string" description="Task title / description" required="true" minlength="1" />
+      <param name="category" type="string" description="Task category" default="General" enum="General,Work,Personal,Dev" />
+    </tool>
+
+    <tool
+      name="complete_task"
+      title="Complete Task"
+      description="Toggles the completion status of a task by ID"
+      action="task.complete">
+      <param name="id" type="string" description="Unique ID of the task" required="true" />
+    </tool>
+
+    <tool
+      name="list_tasks"
+      title="List Tasks"
+      description="Returns the full list of all active and completed tasks"
+      action="task.list"
+      readonly="true"
+    />
+
+    <tool
+      name="search_tasks"
+      title="Search Tasks"
+      description="Searches and filters tasks matching the search query"
+      action="task.search"
+      readonly="true">
+      <param name="query" type="string" description="Search query string" required="true" />
+    </tool>
+  </webmcp>
+
+  <!-- Reactive Data Model -->
+  <data_model>
+    <state id="newTaskInput"></state>
+    <state id="searchFilter"></state>
+    <state id="selectedCategory">General</state>
+    <state id="tasks" type="array">
+      <item id="task_1" title="Implement WebMCP plugin for EUIX" category="Dev" completed="true" />
+      <item id="task_2" title="Verify zero-dependency progressive enhancement" category="Dev" completed="true" />
+      <item id="task_3" title="Test browser agent tool invocation" category="Work" completed="false" />
+    </state>
+  </data_model>
+
+  <!-- Modern Responsive UI Layout -->
+  <flex direction="column" gap="24" class="max-w-2xl mx-auto p-6 bg-slate-900 text-slate-100 rounded-2xl shadow-2xl border border-slate-800 font-sans">
+    <!-- Header -->
+    <flex direction="row" align="center" justify="between" class="border-b border-slate-800 pb-4">
+      <flex direction="column" gap="4">
+        <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+          <span>⚡ EUIX Task Engine</span>
+        </h1>
+        <p class="text-xs text-slate-400">Human UI &amp; Browser AI Agent (WebMCP) converging on identical actions</p>
+      </flex>
+      <div class="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-mono font-medium">
+        WebMCP Active
+      </div>
+    </flex>
+
+    <!-- Add Task Form -->
+    <flex direction="column" gap="12" class="p-4 bg-slate-800/60 rounded-xl border border-slate-700/60">
+      <h2 class="text-sm font-semibold text-slate-300">Add New Task</h2>
+      <flex direction="row" gap="8" class="w-full">
+        <input
+          bind="newTaskInput"
+          placeholder="Enter a new task title..."
+          class="flex-1 px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+        />
+        <select bind="selectedCategory" class="px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-slate-300">
+          <option value="General">General</option>
+          <option value="Dev">Dev</option>
+          <option value="Work">Work</option>
+          <option value="Personal">Personal</option>
+        </select>
+        <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <on_click action="task.create">
+            <arg name="title">{data.newTaskInput}</arg>
+            <arg name="category">{data.selectedCategory}</arg>
+          </on_click>
+          Add Task
+        </button>
+      </flex>
+    </flex>
+
+    <!-- Search / Filter Bar -->
+    <flex direction="row" gap="12" align="center" justify="between">
+      <input
+        bind="searchFilter"
+        placeholder="Filter tasks..."
+        class="w-full px-3 py-2 bg-slate-800/40 border border-slate-700/60 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+      />
+    </flex>
+
+    <!-- Task List -->
+    <flex direction="column" gap="8" class="mt-2">
+      <for_each items="{data.tasks}" var="item" key="id">
+        <flex
+          direction="row"
+          align="center"
+          justify="between"
+          class="p-3 bg-slate-800/40 hover:bg-slate-800/80 rounded-xl border border-slate-700/50 transition-colors">
+          <flex direction="row" align="center" gap="12">
+            <input type="checkbox" bind="item.completed" class="w-4 h-4 rounded border-slate-600 text-indigo-600 cursor-pointer" />
+            <flex direction="column">
+              <span class="text-sm font-medium {item.completed ? 'line-through text-slate-500' : 'text-slate-200'}">
+                {item.title}
+              </span>
+              <span class="text-[10px] text-slate-400 font-mono uppercase tracking-wider">{item.category}</span>
+            </flex>
+          </flex>
+          <button class="px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded border border-rose-500/20 transition-colors">
+            <on_click action="MUTATE_STATE">
+              <path>tasks</path>
+              <operation>REMOVE</operation>
+              <where field="id" equals="{item.id}" />
+            </on_click>
+            Delete
+          </button>
+        </flex>
+      </for_each>
+    </flex>
+  </flex>
+</uid_spec>

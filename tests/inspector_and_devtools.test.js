@@ -331,4 +331,30 @@ describe("EUIX Inspector & DevTools Plugin Suite", () => {
         getByTestId(mockLocator, "save-user-btn");
         expect(mockLocator.locator).toHaveBeenCalled();
     });
+
+    it("should render WebMCP tab with registered tools and schema details in DevTools panel", () => {
+        engine.webmcp.register({
+            name: "create_user_task",
+            title: "Create User Task",
+            description: "Creates a task for current user",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    title: { type: "string" }
+                },
+                required: ["title"]
+            },
+            execute: () => ({ success: true })
+        });
+
+        devtools.panel.activeTab = "webmcp";
+        devtools.panel.render();
+
+        const contentEl = document.getElementById("euix-panel-content");
+        expect(contentEl.textContent).toContain("WebMCP Browser AI Agent Bridge");
+        expect(contentEl.textContent).toContain("create_user_task");
+        expect(contentEl.textContent).toContain("Create User Task");
+        expect(contentEl.textContent).toContain("1 Registered Tools");
+    });
 });
+

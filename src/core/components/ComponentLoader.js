@@ -345,6 +345,9 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         "head",
         "helmet",
         "title",
+        "webmcp",
+        "webmcp_tool",
+        "webmcp-tool",
     ];
 
     // Trigger external script / style loaders declared inside component

@@ -154,6 +154,7 @@ export class InspectorPanel {
             { id: "tree", label: "🌳 Tree" },
             { id: "logs", label: `⚡ Actions (${this.inspector.actionLogs.length})` },
             { id: "state", label: "📊 State" },
+            { id: "webmcp", label: "🤖 WebMCP" },
             { id: "search", label: "🔎 Search" },
             { id: "perf", label: "⚡ Perf" },
         ];
@@ -201,6 +202,7 @@ export class InspectorPanel {
         if (this.activeTab === "tree") return this.renderTreeTab();
         if (this.activeTab === "actions" || this.activeTab === "logs") return this.renderActionsTab();
         if (this.activeTab === "state") return this.renderStateTab();
+        if (this.activeTab === "webmcp") return this.renderWebMCPTab();
         if (this.activeTab === "search") return this.renderSearchTab();
         if (this.activeTab === "perf") return this.renderPerfTab();
         return "";
@@ -488,6 +490,86 @@ export class InspectorPanel {
                     <div style="color:#94a3b8;font-size:10px;">💾 JS Heap Memory</div>
                     <div style="color:#fbbf24;font-size:16px;font-weight:bold;">${memory}</div>
                 </div>
+            </div>
+        `;
+    }
+
+    renderWebMCPTab() {
+        const webmcp = this.engine?.webmcp;
+        const isSupported = webmcp ? webmcp.isSupported() : false;
+        const tools = webmcp ? webmcp.list() : [];
+        const state = this.engine?.getState("$webmcp") || {};
+
+        return `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- Header Summary Card -->
+                <div style="background:#1e293b;padding:10px 12px;border-radius:10px;border-left:3px solid #6366f1;display:flex;flex-direction:column;gap:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <span style="color:#818cf8;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:6px;">
+                            🤖 WebMCP Browser AI Agent Bridge
+                        </span>
+                        <span style="background:${isSupported ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)"};color:${isSupported ? "#4ade80" : "#f87171"};border:1px solid ${isSupported ? "rgba(34,197,94,0.3)" : "rgba(239,68,68,0.3)"};padding:2px 6px;border-radius:4px;font-size:9px;font-weight:bold;">
+                            ${isSupported ? "✓ document.modelContext Supported" : "⚠ Fallback Mode"}
+                        </span>
+                    </div>
+                    <div style="color:#94a3b8;font-size:10px;line-height:1.4;">
+                        Exposes application actions and workflows as structured tools to browser AI agents without external dependencies.
+                    </div>
+                    <div style="display:flex;gap:12px;margin-top:4px;font-size:10px;color:#cbd5e1;">
+                        <span>📦 <strong>${tools.length}</strong> Registered Tools</span>
+                        <span>⚡ Status: <strong>${state.executing ? `<span style="color:#f59e0b;">Executing (${this.escape(state.currentTool || "")})</span>` : '<span style="color:#34d399;">Idle</span>'}</strong></span>
+                    </div>
+                </div>
+
+                <!-- Tool List -->
+                <div>
+                    <div style="color:#818cf8;font-weight:bold;margin-bottom:6px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+                        <span>🛠️ Active Tools (${tools.length})</span>
+                    </div>
+                    ${tools.length === 0 ? `
+                        <div style="color:#64748b;font-style:italic;padding:12px;text-align:center;background:#1e293b;border-radius:8px;">
+                            No WebMCP tools registered. Declare tools with &lt;webmcp&gt;&lt;tool .../&gt;&lt;/webmcp&gt; or engine.webmcp.register()
+                        </div>
+                    ` : `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${tools.map((t) => `
+                                <div style="background:#1e293b;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;">
+                                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                                        <span style="color:#38bdf8;font-weight:bold;font-size:11px;">
+                                            ⚡ ${this.escape(t.name)}${t.title && t.title !== t.name ? ` &bull; <span style="color:#e2e8f0;font-weight:normal;">${this.escape(t.title)}</span>` : ""}
+                                        </span>
+                                        <div style="display:flex;gap:4px;align-items:center;">
+                                            ${t.annotations?.readOnlyHint ? `<span style="background:#0284c7;color:#fff;padding:1px 4px;border-radius:3px;font-size:9px;">readOnly</span>` : ""}
+                                            ${t.exposedTo ? `<span style="background:#059669;color:#fff;padding:1px 4px;border-radius:3px;font-size:9px;">exposedTo</span>` : ""}
+                                            <button class="euix-copy-btn" data-copy="${this.escape(JSON.stringify(t.inputSchema || {}, null, 2))}" style="background:#334155;border:none;color:#94a3b8;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Schema</button>
+                                        </div>
+                                    </div>
+                                    ${t.description ? `<div style="color:#94a3b8;font-size:10px;">${this.escape(t.description)}</div>` : ""}
+                                    <div style="margin-top:2px;">
+                                        <details style="font-size:10px;color:#cbd5e1;">
+                                            <summary style="cursor:pointer;color:#a5b4fc;font-weight:600;">View Schema</summary>
+                                            <pre style="margin:4px 0 0 0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:9px;overflow-x:auto;">${this.escape(JSON.stringify(t.inputSchema || {}, null, 2))}</pre>
+                                        </details>
+                                    </div>
+                                </div>
+                            `).join("")}
+                        </div>
+                    `}
+                </div>
+
+                <!-- Last Result / Execution Live Feed -->
+                ${state.lastResult !== null && state.lastResult !== undefined || state.lastError ? `
+                    <div style="background:#1e293b;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                        <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;font-size:10px;">⚡ Last Execution Result</div>
+                        ${state.lastError ? `
+                            <div style="color:#f87171;font-size:10px;background:#450a0a;padding:6px;border-radius:4px;border:1px solid #7f1d1d;">
+                                <strong>[${this.escape(state.lastError.code || 'ERROR')}]:</strong> ${this.escape(state.lastError.message || String(state.lastError))}
+                            </div>
+                        ` : `
+                            <pre style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#34d399;font-size:9px;overflow-x:auto;">${this.escape(JSON.stringify(state.lastResult, null, 2))}</pre>
+                        `}
+                    </div>
+                ` : ""}
             </div>
         `;
     }

@@ -101,6 +101,10 @@
     "./playwright": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./webmcp": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXWebMCPPlugin.es.js"
     }
   },
   "files": [

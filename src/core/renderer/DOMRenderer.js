@@ -2086,10 +2086,16 @@ export function render(engine) {
         "head",
         "helmet",
         "title",
+        "webmcp",
+        "webmcp_tool",
+        "webmcp-tool",
     ];
 
     if (isFn(engine.parseHeadMetadata)) {
         engine.parseHeadMetadata(root);
+    }
+    if (isFn(engine.parseWebMCPMetadata)) {
+        engine.parseWebMCPMetadata(root);
     }
 
     let layout = Array.from(root.children || []).find(

@@ -160,3 +160,72 @@ export class EUIXAnimationRegistry {}
 // Leaflet Spatial Types
 export function calculatePolygonArea(latlngs: Array<[number, number]>): number;
 export function formatMetricArea(areaSqMeters: number): string;
+
+// WebMCP Types
+export interface WebMCPToolDefinition {
+    name: string;
+    title?: string;
+    description?: string;
+    action?: string;
+    handler?: string | ((input: any, context: any) => any);
+    inputSchema?: Record<string, any>;
+    params?: Array<{
+        name: string;
+        type?: string;
+        description?: string;
+        required?: boolean;
+        default?: any;
+        enum?: string[] | string;
+        format?: string;
+        minimum?: number;
+        maximum?: number;
+        minLength?: number;
+        maxLength?: number;
+    }>;
+    annotations?: Record<string, any>;
+    readonly?: boolean;
+    readOnly?: boolean;
+    exposedTo?: string[] | string;
+    execute?: (input: any, context: any) => Promise<any> | any;
+}
+
+export interface WebMCPOptions {
+    enabled?: boolean | ((ctx: { state: any; engine: any }) => boolean);
+    debug?: boolean;
+    strict?: boolean;
+    defaults?: {
+        annotations?: Record<string, any>;
+        exposedTo?: string[] | string;
+    };
+}
+
+export class EUIXWebMCPError extends Error {
+    code: string;
+    details?: any;
+    timestamp: number;
+    constructor(code: string, message: string, details?: any);
+}
+
+export class EUIXWebMCPManager {
+    constructor(engine: EUIXEngineCore, options?: WebMCPOptions);
+    isSupported(): boolean;
+    isEnabled(): boolean;
+    getNativeContext(): any;
+    register(tool: WebMCPToolDefinition, options?: { context?: any; strict?: boolean }): this;
+    unregister(name: string): boolean;
+    has(name: string): boolean;
+    get(name: string): WebMCPToolDefinition | undefined;
+    list(): Array<{
+        name: string;
+        title: string;
+        description: string;
+        inputSchema: Record<string, any>;
+        annotations: Record<string, any>;
+        exposedTo?: string[] | string;
+    }>;
+    clear(): void;
+    dispose(): void;
+}
+
+export const EUIXWebMCPPlugin: EUIXPlugin;
+export function WebMCPPlugin(options?: WebMCPOptions): EUIXPlugin;
