@@ -1157,12 +1157,43 @@ const isSupported = engine.webmcp.isSupported(); // document.modelContext presen
 const tools = engine.webmcp.list();
 ```
 
-### 3. Viewport Lazy Loading with IntersectionObserver (`<import lazy="true" viewport="true" />`)
+### 3. Advanced Lazy Loading & Predictive Preloading (`<import lazy="..." />`)
+EUIX Engine provides comprehensive lazy loading and speculative preloading strategies via `EUIXLazyPlugin`:
+
 ```xml
 <imports>
-  <!-- Only fetches and mounts component when scrolled into view (200px margin) -->
+  <!-- 1. Viewport Lazy Loading (IntersectionObserver with 200px root margin) -->
   <import name="heavy-chart" src="components/HeavyChart.xml" lazy="true" viewport="true" root_margin="200px" />
+
+  <!-- 2. Zero-CLS Layout Reservation & Custom Placeholder Skeleton -->
+  <import 
+    name="analytics-table" 
+    src="components/AnalyticsTable.xml" 
+    lazy="true" 
+    viewport="true" 
+    min_height="360px" 
+    aspect_ratio="16/9" 
+    placeholder_class="custom-skeleton" 
+  />
+
+  <!-- 3. Hover & Pointer Focus Preloading (fetches on mouseenter/focusin) -->
+  <import name="checkout-modal" src="components/CheckoutModal.xml" lazy="true" preload="hover" />
+
+  <!-- 4. Background Idle Preloading (requestIdleCallback with network awareness) -->
+  <import name="help-center" src="components/HelpCenter.xml" lazy="true" preload="idle" />
+
+  <!-- 5. Automatic Exponential Backoff Retries on Transient Failures -->
+  <import name="weather-widget" src="components/WeatherWidget.xml" lazy="true" retries="3" retry_delay="500" />
 </imports>
+```
+
+#### Programmatic Preload & Playwright E2E Helper:
+```js
+// Programmatic speculative preloading
+await engine.preloadLazyComponent('checkout-modal');
+
+// Playwright test assertion waiting for lazy component hydration
+await euix(page).waitForLazy('heavy-chart');
 ```
 
 

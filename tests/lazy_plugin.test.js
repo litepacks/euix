@@ -348,6 +348,168 @@ describe("EUIXLazyPlugin Unit Tests", () => {
 
         fetchSpy.mockRestore();
     });
+
+    it("should apply CLS layout reservation styles (min-height, aspect-ratio) to placeholder", () => {
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="cls-card" src="components/ClsCard.xml" lazy="true" min_height="320px" aspect_ratio="16/9" placeholder_class="custom-skeleton" />
+            </imports>
+            <div>
+                <cls-card />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        const placeholder = container.querySelector(".euix-lazy-placeholder");
+        expect(placeholder).not.toBeNull();
+        expect(placeholder.style.minHeight).toBe("320px");
+        expect(placeholder.style.aspectRatio).toMatch(/16\s*\/?\s*9/);
+        expect(placeholder.classList.contains("custom-skeleton")).toBe(true);
+    });
+
+    it("should trigger prefetch on hover/focus when preload='hover'", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+            Promise.resolve({
+                text: () => Promise.resolve('<component_def name="hover-comp"><div class="hover-loaded">Hover Content</div></component_def>')
+            })
+        );
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="hover-comp" src="components/HoverComp.xml" lazy="true" preload="hover" />
+            </imports>
+            <div>
+                <hover-comp />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        const placeholder = container.querySelector(".euix-lazy-placeholder");
+        expect(placeholder).not.toBeNull();
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        // Simulate mouse enter
+        placeholder.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
+
+        await new Promise((r) => setTimeout(r, 60));
+        expect(fetchSpy).toHaveBeenCalled();
+
+        fetchSpy.mockRestore();
+    });
+
+    it("should display interactive retry button on failure and recover when clicked", async () => {
+        let shouldFail = true;
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+            if (shouldFail) {
+                return Promise.reject(new Error("Network connection dropped"));
+            }
+            return Promise.resolve({
+                text: () => Promise.resolve('<component_def name="retry-card"><div class="retry-success">Card Recovered!</div></component_def>')
+            });
+        });
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="retry-card" src="components/RetryCard.xml" lazy="true" />
+            </imports>
+            <div>
+                <retry-card />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        await new Promise((r) => setTimeout(r, 60));
+
+        // Placeholder should show error UI with Retry button
+        const retryBtn = container.querySelector(".euix-lazy-retry-btn");
+        expect(retryBtn).not.toBeNull();
+        expect(container.textContent).toContain("Failed to load retry-card");
+
+        // Allow subsequent fetch to succeed and click retry button
+        shouldFail = false;
+        retryBtn.click();
+
+        await new Promise((r) => setTimeout(r, 80));
+        const recoveredEl = container.querySelector(".retry-success");
+        expect(recoveredEl).not.toBeNull();
+        expect(recoveredEl.textContent).toBe("Card Recovered!");
+
+        fetchSpy.mockRestore();
+    });
+
+    it("should track metrics in window.__EUIX_DEVTOOLS__.metrics.lazyLoads", async () => {
+        window.__EUIX_DEVTOOLS__ = { pendingLoaders: 0, metrics: { lazyLoads: [] } };
+
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+            Promise.resolve({
+                text: () => Promise.resolve('<component_def name="telemetry-comp"><div class="telemetry-box">Box</div></component_def>')
+            })
+        );
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="telemetry-comp" src="components/TelemetryComp.xml" lazy="true" />
+            </imports>
+            <div>
+                <telemetry-comp />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        await new Promise((r) => setTimeout(r, 60));
+
+        const metrics = window.__EUIX_DEVTOOLS__.metrics.lazyLoads;
+        expect(metrics.length).toBeGreaterThan(0);
+        const record = metrics.find((m) => m.name === "telemetry-comp");
+        expect(record).toBeDefined();
+        expect(record.success).toBe(true);
+        expect(record.duration).toBeGreaterThanOrEqual(0);
+
+        fetchSpy.mockRestore();
+    });
+
+    it("should automatically retry on transient failure when retries is configured", async () => {
+        let attempts = 0;
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+            attempts++;
+            if (attempts < 3) {
+                return Promise.reject(new Error("Transient network glitch"));
+            }
+            return Promise.resolve({
+                text: () => Promise.resolve('<component_def name="auto-retry-comp"><div class="auto-retry-box">Recovered Automatically!</div></component_def>')
+            });
+        });
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="auto-retry-comp" src="components/AutoRetryComp.xml" lazy="true" retries="3" retry_delay="50" />
+            </imports>
+            <div>
+                <auto-retry-comp />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        await new Promise((r) => setTimeout(r, 350));
+
+        expect(attempts).toBe(3);
+        const box = container.querySelector(".auto-retry-box");
+        expect(box).not.toBeNull();
+        expect(box.textContent).toBe("Recovered Automatically!");
+
+        fetchSpy.mockRestore();
+    });
 });
+
 
 

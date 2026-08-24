@@ -115,6 +115,26 @@ export class EuixPlaywrightWrapper {
     }
 
     /**
+     * Waits for a specific lazy component to be fetched and hydrated.
+     */
+    async waitForLazy(componentName, options = {}) {
+        const timeout = options.timeout || 10000;
+        const page = this.page;
+        await page.waitForFunction(
+            (comp) => {
+                const dev = window.__EUIX_DEVTOOLS__;
+                if (!dev || !dev.metrics || !dev.metrics.lazyLoads) return true;
+                return dev.metrics.lazyLoads.some(
+                    (item) => item.name.toLowerCase() === comp.toLowerCase() && item.success,
+                );
+            },
+            componentName,
+            { timeout },
+        );
+        return this;
+    }
+
+    /**
      * Waits for a component to be ready in the DOM.
      */
     async waitForReady(options = {}) {

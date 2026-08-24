@@ -42,10 +42,14 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
             const impSrc = imp.getAttribute("src");
             const impName = imp.getAttribute("name") || imp.getAttribute("as");
             const lazyAttr = imp.getAttribute("lazy");
+            const preloadAttr = imp.getAttribute("preload");
             const isLazy =
                 lazyAttr === "true" ||
                 imp.getAttribute("mode") === "lazy" ||
                 lazyAttr === "viewport" ||
+                lazyAttr === "hover" ||
+                lazyAttr === "idle" ||
+                Boolean(preloadAttr) ||
                 imp.getAttribute("viewport") === "true";
             const isViewport =
                 imp.getAttribute("viewport") === "true" ||
@@ -58,9 +62,17 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
                     if (typeof EngineClass.registerLazyComponent === "function") {
                         EngineClass.registerLazyComponent(impName, impSrc, {
                             fallback: imp.getAttribute("fallback"),
+                            preload:
+                                preloadAttr || (lazyAttr === "hover" ? "hover" : lazyAttr === "idle" ? "idle" : null),
                             viewport: isViewport,
                             observer: isViewport,
                             rootMargin: rootMargin,
+                            minHeight: imp.getAttribute("min_height") || imp.getAttribute("minHeight"),
+                            aspectRatio: imp.getAttribute("aspect_ratio") || imp.getAttribute("aspectRatio"),
+                            placeholderClass:
+                                imp.getAttribute("placeholder_class") || imp.getAttribute("placeholderClass"),
+                            retries: imp.getAttribute("retries"),
+                            retryDelay: imp.getAttribute("retry_delay") || imp.getAttribute("retryDelay"),
                         });
                     }
                 } else {
