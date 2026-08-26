@@ -43,11 +43,16 @@ export function _handleSetStateAction(actionNode, context = {}) {
         .trim();
     const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
 
+    const targetIsNumber =
+        typeof this._rawState?.[path] === "number" ||
+        typeof context._localState?.[path] === "number" ||
+        (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "number");
+
     if (hasBraces && (rawValue.includes("?") || /[+\-*/]/.test(cleanExpr))) {
         try {
             const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
             if (evaluated !== undefined && typeof evaluated === "number" && !Number.isNaN(evaluated)) {
-                nextValue = String(evaluated);
+                nextValue = targetIsNumber ? evaluated : String(evaluated);
             }
         } catch (_) {}
     }
@@ -66,6 +71,15 @@ export function _handleSetStateAction(actionNode, context = {}) {
         } else {
             nextValue = this.interpolate(rawValue, context);
         }
+    }
+
+    if (
+        targetIsNumber &&
+        typeof nextValue === "string" &&
+        nextValue.trim() !== "" &&
+        !Number.isNaN(Number(nextValue))
+    ) {
+        nextValue = Number(nextValue);
     }
 
     this._setScopedState(rawPath, path, nextValue, context);

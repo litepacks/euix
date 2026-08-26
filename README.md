@@ -68,7 +68,7 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
   <script type="application/euix" target="#app">
   <uid_spec>
       <data_model>
-          <state id="counter">0</state>
+          <state id="counter" type="number">0</state>
           <state id="tasks" type="array">[{"id": 1, "title": "Learn EUIX Engine", "status": "done"}, {"id": 2, "title": "Build Drag & Drop App", "status": "todo"}]</state>
       </data_model>
 
@@ -82,7 +82,7 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
               <button class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md shadow-blue-500/20">
                   <on_click action="SET_STATE">
                       <path>data.counter</path>
-                      <value>{data.counter} + 1</value>
+                      <value>{data.counter + 1}</value>
                   </on_click>
                   ➕ Increment
               </button>

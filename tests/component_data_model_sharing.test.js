@@ -106,7 +106,7 @@ describe('Cross-Component data_model State Sharing Test Suite', () => {
         const incBtn = document.querySelector('.inc-btn');
         incBtn.dispatchEvent(new window.MouseEvent('click'));
 
-        expect(engine.getState('counter')).toBe('11');
+        expect(engine.getState('counter')).toBe(11);
         expect(document.querySelector('.counter-text').textContent).toBe('Count: 11');
         expect(document.querySelector('.root-counter-mirror').textContent).toBe('Root sees count as: 11');
     });

@@ -107,10 +107,11 @@ Every UI is defined using a declarative `<uid_spec>` XML template:
 
 ```xml
 <uid_spec>
-  <!-- 1. State Data Model (Always use id="..." for state declarations) -->
+  <!-- 1. State Data Model (Always use id="..." and specify type="..." for numbers/arrays/objects) -->
   <data_model>
-    <state id="counter">0</state>
-    <state id="user_name">Guest</state>
+    <state id="counter" type="number">0</state>
+    <state id="user_name" type="string">Guest</state>
+    <state id="is_active" type="boolean">true</state>
     <state id="items" type="array"></state>
   </data_model>
 
@@ -119,19 +120,19 @@ Every UI is defined using a declarative `<uid_spec>` XML template:
     <h1>Hello, {data.user_name}!</h1>
     <p>Counter value: <strong>{data.counter}</strong></p>
 
-    <!-- State Mutation Actions -->
+    <!-- State Mutation Actions (Math expressions evaluate numerically for type="number") -->
     <flex direction="row" gap="8">
       <button class="btn">
         <on_click action="SET_STATE">
           <path>data.counter</path>
-          <value>{data.counter} + 1</value>
+          <value>{data.counter + 1}</value>
         </on_click>
         +1
       </button>
       <button class="btn">
         <on_click action="SET_STATE">
           <path>data.counter</path>
-          <value>{data.counter} - 1</value>
+          <value>{data.counter - 1}</value>
         </on_click>
         -1
       </button>
@@ -161,15 +162,21 @@ Every UI is defined using a declarative `<uid_spec>` XML template:
 ```
 
 ### Supported State Data Types (`type="..."`)
-EUIX Engine supports core state data types inside `<data_model>` using `id="..."`:
+EUIX Engine supports core state data types inside `<data_model>` using `id="..."` and `type="..."`:
 
-| Data Type (`type`) | Example Specification | Parsing Behavior & Supported Actions |
+| Data Type (`type`) | Example Specification | Parsing Behavior & Arithmetic Rules |
 | :--- | :--- | :--- |
-| **`string`** | `<state id="user_name">Guest</state>` | Default type. String interpolation `{data.user_name}`, text bindings `<input bind="user_name">`. |
-| **`number`** | `<state id="counter">0</state>` | Parsed into JS numeric value. Evaluates math expressions (`{data.counter + 1}`). |
-| **`boolean`** | `<state id="is_active">true</state>` | Parsed into JS boolean (`true`/`false`). Toggleable via `<on_click action="TOGGLE_STATE">`. |
-| **`array`** | `<state id="items" type="array"></state>` | Parsed into JS Array. Loopable via `<for_each items="{data.items}">`, supports `MUTATE_STATE` (`PUSH`, `REMOVE`, `SWAP`, `CLEAR`). |
+| **`number`** *(Recommended for Math & Counters)* | `<state id="counter" type="number">0</state>` | Stored as a native JS `number` (`0, 1, 2...`). Evaluates math expressions (`{data.counter + 1}`) without string concatenation. `SET_STATE` preserves numeric type. |
+| **`string`** | `<state id="user_name" type="string">Guest</state>` | Default type if `type` attribute is omitted. Supports string interpolation (`{data.user_name}`) and text bindings (`<input bind="user_name">`). |
+| **`boolean`** | `<state id="is_active" type="boolean">true</state>` | Parsed into JS boolean (`true`/`false`). Toggleable via `<on_click action="TOGGLE_STATE">` or boolean expressions. |
+| **`array`** | `<state id="items" type="array">[]</state>` | Parsed into JS Array. Loopable via `<for_each items="{data.items}">`, supports `MUTATE_STATE` (`PUSH`, `REMOVE`, `SWAP`, `CLEAR`, `REVERSE`). |
 | **`object`** | `<state id="user" type="object">{"name": "Ahmet"}</state>` | Parsed into JS Object. Property access via dot notation (`{data.user.name}`). |
+
+> [!IMPORTANT]
+> **Numeric State Best Practice (`type="number"` vs Default `string`)**:
+> Always specify `type="number"` for numeric variables (e.g. `<state id="count" type="number">0</state>`). When `type="number"` is set:
+> 1. The initial state is parsed into a real JavaScript `number`.
+> 2. `SET_STATE` and `<on_interval>` actions evaluate mathematical expressions (`{data.count + 1}` or `{data.count} + 1`) and automatically maintain numeric typing rather than coercing into string concatenations (`"01"`).
 
 ---
 

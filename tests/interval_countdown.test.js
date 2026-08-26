@@ -199,22 +199,22 @@ describe('EUIXEngine Interval, Timer & Expression Evaluation Suite', () => {
 
         // Tick 1
         vi.advanceTimersByTime(1000);
-        expect(engine.getState('seconds')).toBe('1');
+        expect(engine.getState('seconds')).toBe(1);
         expect(label.textContent).toBe('Sayaç: 1 sn');
 
         // Tick 2
         vi.advanceTimersByTime(1000);
-        expect(engine.getState('seconds')).toBe('2');
+        expect(engine.getState('seconds')).toBe(2);
         expect(label.textContent).toBe('Sayaç: 2 sn');
 
         // Tick 3
         vi.advanceTimersByTime(1000);
-        expect(engine.getState('seconds')).toBe('3');
+        expect(engine.getState('seconds')).toBe(3);
         expect(label.textContent).toBe('Sayaç: 3 sn');
 
         // Tick 4
         vi.advanceTimersByTime(1000);
-        expect(engine.getState('seconds')).toBe('4');
+        expect(engine.getState('seconds')).toBe(4);
         expect(label.textContent).toBe('Sayaç: 4 sn');
     });
 });

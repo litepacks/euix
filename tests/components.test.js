@@ -80,28 +80,28 @@ describe('EUIXEngine Components Integration Test Suite', () => {
 
         // Click +1
         plusBtn.dispatchEvent(new window.MouseEvent('click'));
-        expect(engine.getState('counter_value')).toBe('1');
+        expect(engine.getState('counter_value')).toBe(1);
         expect(counterSpan.textContent).toBe('1');
 
         // Click +5
         plus5Btn.dispatchEvent(new window.MouseEvent('click'));
-        expect(engine.getState('counter_value')).toBe('6');
+        expect(engine.getState('counter_value')).toBe(6);
         expect(counterSpan.textContent).toBe('6');
 
         // Click -1
         minusBtn.dispatchEvent(new window.MouseEvent('click'));
-        expect(engine.getState('counter_value')).toBe('5');
+        expect(engine.getState('counter_value')).toBe(5);
         expect(counterSpan.textContent).toBe('5');
 
         // Click -5
         minus5Btn.dispatchEvent(new window.MouseEvent('click'));
-        expect(engine.getState('counter_value')).toBe('0');
+        expect(engine.getState('counter_value')).toBe(0);
         expect(counterSpan.textContent).toBe('0');
 
         // Click Reset
         plusBtn.dispatchEvent(new window.MouseEvent('click'));
         resetBtn.dispatchEvent(new window.MouseEvent('click'));
-        expect(engine.getState('counter_value')).toBe('0');
+        expect(engine.getState('counter_value')).toBe(0);
         expect(counterSpan.textContent).toBe('0');
     });
 
