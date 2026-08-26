@@ -164,7 +164,6 @@ describe('EUIXEngine Interval, Timer & Expression Evaluation Suite', () => {
 
         const engine = new EUIXEngine(container);
         engine.mount(xml);
-
         vi.advanceTimersByTime(1000);
         expect(engine.getState('ticks')).toBe('1');
 
@@ -174,5 +173,48 @@ describe('EUIXEngine Interval, Timer & Expression Evaluation Suite', () => {
         // Advance timer after unmount - should not update or throw error
         vi.advanceTimersByTime(3000);
         expect(engine.getState('ticks')).toBe('1');
+    });
+
+    it('should increment state correctly across multiple consecutive interval ticks without string concatenation', () => {
+        const xml = `
+            <uid_spec>
+                <data_model>
+                    <state id="seconds" type="number">0</state>
+                </data_model>
+                <flex direction="column">
+                    <on_interval ms="1000" action="SET_STATE">
+                        <path>data.seconds</path>
+                        <value>{data.seconds} + 1</value>
+                    </on_interval>
+                    <p id="label">Sayaç: {data.seconds} sn</p>
+                </flex>
+            </uid_spec>
+        `;
+
+        const engine = new EUIXEngine(container);
+        engine.mount(xml);
+
+        const label = container.querySelector('#label');
+        expect(label.textContent).toBe('Sayaç: 0 sn');
+
+        // Tick 1
+        vi.advanceTimersByTime(1000);
+        expect(engine.getState('seconds')).toBe('1');
+        expect(label.textContent).toBe('Sayaç: 1 sn');
+
+        // Tick 2
+        vi.advanceTimersByTime(1000);
+        expect(engine.getState('seconds')).toBe('2');
+        expect(label.textContent).toBe('Sayaç: 2 sn');
+
+        // Tick 3
+        vi.advanceTimersByTime(1000);
+        expect(engine.getState('seconds')).toBe('3');
+        expect(label.textContent).toBe('Sayaç: 3 sn');
+
+        // Tick 4
+        vi.advanceTimersByTime(1000);
+        expect(engine.getState('seconds')).toBe('4');
+        expect(label.textContent).toBe('Sayaç: 4 sn');
     });
 });
