@@ -2098,24 +2098,30 @@ export function render(engine) {
         engine.parseWebMCPMetadata(root);
     }
 
-    let layout = Array.from(root.children || []).find(
+    let uiChildren = Array.from(root.children || []).filter(
         (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()),
     );
-    if (!layout) {
-        layout = Array.from(root.querySelectorAll("*")).find(
+    if (uiChildren.length === 0) {
+        const fallback = Array.from(root.querySelectorAll("*")).find(
             (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()) && !c.closest("component_def"),
         );
-    }
-    if (!layout) {
-        layout = root;
+        if (fallback) {
+            uiChildren = [fallback];
+        } else if (root.tagName && !metadataTags.includes(root.tagName.toLowerCase())) {
+            uiChildren = [root];
+        }
     }
 
-    if (layout) {
-        const dom = engine.createHTMLElement(layout);
-        if (dom && engine.container) {
-            engine.container.innerHTML = "";
-            engine.container.appendChild(dom);
+    if (uiChildren.length > 0 && engine.container) {
+        engine.container.innerHTML = "";
+        const fragment = document.createDocumentFragment();
+        for (const childNode of uiChildren) {
+            const dom = engine.createHTMLElement(childNode);
+            if (dom) {
+                fragment.appendChild(dom);
+            }
         }
+        engine.container.appendChild(fragment);
     }
 
     const autofocusEl = engine.container.querySelector("[data-euix-autofocus='true']");

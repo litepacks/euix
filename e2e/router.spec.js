@@ -4,6 +4,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 test.describe('EUIX Web Router E2E Browser Test Suite', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/#/router-showcase', { waitUntil: 'domcontentloaded' });
+        await page.locator('h1').first().waitFor({ timeout: 15000 });
         await euix(page).waitForIdle();
     });
 

@@ -39,6 +39,9 @@ export function EUIXLazyPlugin(EngineClass) {
     if (!EngineClass._lazyActivePlaceholders) {
         EngineClass._lazyActivePlaceholders = new Map(); // componentName -> Set<PlaceholderHydrateFn>
     }
+    if (!EngineClass._loadingChain) {
+        EngineClass._loadingChain = [];
+    }
 
     // Static registration API
     EngineClass.registerLazyComponent = (name, src, options = {}) => {
@@ -70,6 +73,7 @@ export function EUIXLazyPlugin(EngineClass) {
             placeholderClass,
             retries,
             retryDelay,
+            parentStack: options.parentStack || null,
             loaded: false,
         });
 
@@ -99,9 +103,20 @@ export function EUIXLazyPlugin(EngineClass) {
 
         const parentStack = options.parentStack || entry.parentStack || [];
 
-        // Circular lazy import deadlock detection in ancestor parent stack
-        if (parentStack.includes(key)) {
-            const cyclePath = [...parentStack, key].join(" -> ");
+        // Circular lazy import deadlock detection in ancestor parent stack or active loading chain
+        const inParentStack = parentStack.includes(key);
+        const inLoadingChain =
+            EngineClass._loadingChain &&
+            EngineClass._loadingChain.includes(key) &&
+            EngineClass._loadingChain.length > 0 &&
+            EngineClass._loadingChain[EngineClass._loadingChain.length - 1] !== key;
+
+        if (inParentStack || inLoadingChain) {
+            const stack =
+                EngineClass._loadingChain && EngineClass._loadingChain.length > 0
+                    ? EngineClass._loadingChain
+                    : parentStack;
+            const cyclePath = [...stack, key].join(" -> ");
             const cycleErr = new Error(
                 `[EUIXLazyPlugin] CIRCULAR_LAZY_DEPENDENCY: Circular lazy component import cycle detected: ${cyclePath}`,
             );
@@ -123,6 +138,10 @@ export function EUIXLazyPlugin(EngineClass) {
         const startTime = Date.now();
         const currentStack = [...parentStack, key];
 
+        if (!EngineClass._loadingChain) {
+            EngineClass._loadingChain = [];
+        }
+        EngineClass._loadingChain.push(key);
         EngineClass._loadingStack.add(key);
 
         const isForeground = triggerType !== "idle";
@@ -194,7 +213,9 @@ export function EUIXLazyPlugin(EngineClass) {
             }
 
             if (lastError) {
-                console.error(`[EUIXLazyPlugin] Error loading lazy component '${key}' from '${entry.src}':`, lastError);
+                if (lastError.code !== "CIRCULAR_LAZY_DEPENDENCY") {
+                    console.error(`[EUIXLazyPlugin] Error loading lazy component '${key}' from '${entry.src}':`, lastError);
+                }
                 throw lastError;
             }
 
@@ -212,6 +233,10 @@ export function EUIXLazyPlugin(EngineClass) {
 
             return loadedSpec;
         })().finally(() => {
+            const chainIdx = EngineClass._loadingChain.lastIndexOf(key);
+            if (chainIdx !== -1) {
+                EngineClass._loadingChain.splice(chainIdx, 1);
+            }
             EngineClass._loadingStack.delete(key);
             if (typeof window !== "undefined" && isForeground) {
                 if (typeof EngineClass.updateDevToolsStatus === "function") {

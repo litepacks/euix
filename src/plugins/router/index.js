@@ -544,6 +544,15 @@ export const EUIXRouterPlugin = {
             if (!this.router) {
                 this._processRouterTag(xmlNode);
             }
+            const root = this.xmlDoc?.querySelector?.("uid_spec") || this.xmlDoc;
+            const topLevelOutlet =
+                root &&
+                Array.from(root.children || []).some(
+                    (c) => c.tagName && (c.tagName.toLowerCase() === "outlet" || c.tagName.toLowerCase() === "router-outlet"),
+                );
+            if (topLevelOutlet) {
+                return null;
+            }
             return this.router ? this.router.renderOutlet(xmlNode, context) : null;
         };
         engineClass.registerComponent("router", routerComponentHandler);
