@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Web Router E2E Browser Test Suite', () => {
     test.beforeEach(async ({ page }) => {
-        await page.goto('/#/router-showcase');
+        await page.goto('/#/router-showcase', { waitUntil: 'domcontentloaded' });
         await euix(page).waitForIdle();
     });
 

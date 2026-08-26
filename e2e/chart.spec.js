@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine - Chart.js Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/#/charts');
+    await page.goto('/#/charts', { waitUntil: 'domcontentloaded' });
     await euix(page).waitForIdle();
   });
 

@@ -2,7 +2,8 @@ import { test, expect } from '@playwright/test';
 import { euix } from '../src/plugins/inspector/playwright.js';
 
 test('Kanban Drag & Drop task card transfer between columns', async ({ page }) => {
-    await page.goto('/#/playground');
+    await page.goto('/#/playground', { waitUntil: 'domcontentloaded' });
+    await page.locator('h1').first().waitFor();
     await euix(page).waitForIdle();
 
     // Wait for Kanban component to render

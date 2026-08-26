@@ -58,6 +58,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
             const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
 
             if (impSrc && impName) {
+                const currentStack = options.parentStack || [(name || "").toLowerCase()];
                 if (isLazy) {
                     if (typeof EngineClass.registerLazyComponent === "function") {
                         EngineClass.registerLazyComponent(impName, impSrc, {
@@ -73,16 +74,23 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
                                 imp.getAttribute("placeholder_class") || imp.getAttribute("placeholderClass"),
                             retries: imp.getAttribute("retries"),
                             retryDelay: imp.getAttribute("retry_delay") || imp.getAttribute("retryDelay"),
+                            parentStack: currentStack,
                         });
                     }
                 } else {
-                    await EngineClass.loadComponent(impName, impSrc, options);
+                    await EngineClass.loadComponent(impName, impSrc, {
+                        ...options,
+                        parentStack: currentStack,
+                    });
                 }
             }
         }
 
         return EngineClass.registerComponentSpec(name, doc, options);
     } catch (err) {
+        if (err.code === "CIRCULAR_LAZY_DEPENDENCY" || err.message?.includes("CIRCULAR_LAZY_DEPENDENCY")) {
+            throw err;
+        }
         console.error(`[EUIXEngine] Failed to load component from file ('${name}' -> '${url}'):`, err);
         return null;
     }

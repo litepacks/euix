@@ -3,7 +3,7 @@ import { euix } from '../src/plugins/inspector/playwright.js';
 
 test.describe('EUIX Engine - Navigator & Device Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/#/navigator');
+    await page.goto('/#/navigator', { waitUntil: 'domcontentloaded' });
     await euix(page).waitForIdle();
   });
 

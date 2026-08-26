@@ -5,10 +5,13 @@
  * Provides declarative on-demand asynchronous loading for modular XML components
  * (<import lazy="true" />) and Web Router routes (<route lazy_src="..." />).
  *
- * Features:
+ * Comprehensive Edge-Case Protection:
+ * - Circular Import Cycle Detection (CIRCULAR_LAZY_DEPENDENCY)
+ * - Multi-Instance Concurrent Hydration on Same Page
+ * - Slot / Projected Children & Attribute Preservation
+ * - Hidden Container Visibility Re-check (Tab/Accordion/Intersection Mutation)
  * - Predictive Preloading (Hover, Focus, requestIdleCallback, Network Awareness)
  * - Zero CLS Layout Reservation (min_height, aspect_ratio, placeholder styling)
- * - Smooth Enter Transitions
  * - AbortController & Detached DOM Lifecycle Cleanup
  * - Interactive Error Fallback with Retry Button & Auto-Retry with Exponential Backoff
  * - DevTools Telemetry Metrics Tracking
@@ -29,6 +32,12 @@ export function EUIXLazyPlugin(EngineClass) {
     }
     if (!EngineClass._lazyPromises) {
         EngineClass._lazyPromises = new Map();
+    }
+    if (!EngineClass._loadingStack) {
+        EngineClass._loadingStack = new Set();
+    }
+    if (!EngineClass._lazyActivePlaceholders) {
+        EngineClass._lazyActivePlaceholders = new Map(); // componentName -> Set<PlaceholderHydrateFn>
     }
 
     // Static registration API
@@ -54,7 +63,7 @@ export function EUIXLazyPlugin(EngineClass) {
             src,
             fallback,
             preload,
-            observer: preload === "hover" || preload === "idle" ? false : observer || !preload,
+            observer: preload === "hover" || preload === "idle" ? false : observer,
             rootMargin,
             minHeight,
             aspectRatio,
@@ -82,11 +91,23 @@ export function EUIXLazyPlugin(EngineClass) {
         return EngineClass.loadLazyComponent(key, { ...options, trigger: options.trigger || "preload" });
     };
 
-    // Static load API with caching, retries, deduplication & DevTools metrics
+    // Static load API with circular check, caching, retries, deduplication & DevTools metrics
     EngineClass.loadLazyComponent = async (name, options = {}) => {
         const key = (name || "").toLowerCase();
         const entry = EngineClass._lazyRegistry.get(key);
         if (!entry) return null;
+
+        const parentStack = options.parentStack || entry.parentStack || [];
+
+        // Circular lazy import deadlock detection in ancestor parent stack
+        if (parentStack.includes(key)) {
+            const cyclePath = [...parentStack, key].join(" -> ");
+            const cycleErr = new Error(
+                `[EUIXLazyPlugin] CIRCULAR_LAZY_DEPENDENCY: Circular lazy component import cycle detected: ${cyclePath}`,
+            );
+            cycleErr.code = "CIRCULAR_LAZY_DEPENDENCY";
+            throw cycleErr;
+        }
 
         if (entry.loaded && EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.has(key)) {
             return EngineClass._globalComponentSpecs.get(key);
@@ -100,15 +121,26 @@ export function EUIXLazyPlugin(EngineClass) {
         const retryDelay = typeof options.retryDelay === "number" ? options.retryDelay : entry.retryDelay || 500;
         const triggerType = options.trigger || (entry.preload ? entry.preload : entry.observer ? "viewport" : "eager");
         const startTime = Date.now();
+        const currentStack = [...parentStack, key];
+
+        EngineClass._loadingStack.add(key);
+
+        const isForeground = triggerType !== "idle";
 
         const fetchPromise = (async () => {
-            if (typeof window !== "undefined" && window.__EUIX_DEVTOOLS__) {
-                window.__EUIX_DEVTOOLS__.pendingLoaders = (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) + 1;
-                if (!window.__EUIX_DEVTOOLS__.metrics) {
-                    window.__EUIX_DEVTOOLS__.metrics = {};
+            if (typeof window !== "undefined" && isForeground) {
+                if (typeof EngineClass.updateDevToolsStatus === "function") {
+                    EngineClass.updateDevToolsStatus(EngineClass, "pendingLoaders", 1);
+                } else if (window.__EUIX_DEVTOOLS__) {
+                    window.__EUIX_DEVTOOLS__.pendingLoaders = (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) + 1;
                 }
-                if (!window.__EUIX_DEVTOOLS__.metrics.lazyLoads) {
-                    window.__EUIX_DEVTOOLS__.metrics.lazyLoads = [];
+                if (window.__EUIX_DEVTOOLS__) {
+                    if (!window.__EUIX_DEVTOOLS__.metrics) {
+                        window.__EUIX_DEVTOOLS__.metrics = {};
+                    }
+                    if (!window.__EUIX_DEVTOOLS__.metrics.lazyLoads) {
+                        window.__EUIX_DEVTOOLS__.metrics.lazyLoads = [];
+                    }
                 }
             }
 
@@ -121,7 +153,10 @@ export function EUIXLazyPlugin(EngineClass) {
                         const backoff = retryDelay * 1.5 ** (attempt - 1);
                         await new Promise((r) => setTimeout(r, backoff));
                     }
-                    loadedSpec = await EngineClass.loadComponent(key, entry.src, options);
+                    loadedSpec = await EngineClass.loadComponent(key, entry.src, {
+                        ...options,
+                        parentStack: currentStack,
+                    });
                     if (!loadedSpec) {
                         throw new Error(`Failed to load component '${key}' from '${entry.src}'`);
                     }
@@ -130,6 +165,9 @@ export function EUIXLazyPlugin(EngineClass) {
                     break;
                 } catch (err) {
                     lastError = err;
+                    if (err.code === "CIRCULAR_LAZY_DEPENDENCY" || err.message?.includes("CIRCULAR_LAZY_DEPENDENCY")) {
+                        break;
+                    }
                     if (attempt < maxRetries) {
                         console.warn(`[EUIXLazyPlugin] Retry ${attempt + 1}/${maxRetries} for '${key}'...`);
                     }
@@ -160,13 +198,35 @@ export function EUIXLazyPlugin(EngineClass) {
                 throw lastError;
             }
 
+            // Broadcast to all active waiting placeholders of this component
+            const subscribers = EngineClass._lazyActivePlaceholders.get(key);
+            if (subscribers && subscribers.size > 0) {
+                for (const hydrateFn of subscribers) {
+                    try {
+                        hydrateFn();
+                    } catch (e) {
+                        console.error(`[EUIXLazyPlugin] Hydration error for '${key}':`, e);
+                    }
+                }
+            }
+
             return loadedSpec;
         })().finally(() => {
-            if (typeof window !== "undefined" && window.__EUIX_DEVTOOLS__) {
-                window.__EUIX_DEVTOOLS__.pendingLoaders = Math.max(
-                    0,
-                    (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) - 1,
-                );
+            EngineClass._loadingStack.delete(key);
+            if (typeof window !== "undefined" && isForeground) {
+                if (typeof EngineClass.updateDevToolsStatus === "function") {
+                    EngineClass.updateDevToolsStatus(EngineClass, "pendingLoaders", -1);
+                } else if (window.__EUIX_DEVTOOLS__) {
+                    window.__EUIX_DEVTOOLS__.pendingLoaders = Math.max(
+                        0,
+                        (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) - 1,
+                    );
+                    window.__EUIX_DEVTOOLS__.ready =
+                        (window.__EUIX_DEVTOOLS__.pendingActions || 0) === 0 &&
+                        window.__EUIX_DEVTOOLS__.pendingLoaders === 0 &&
+                        (window.__EUIX_DEVTOOLS__.pendingRevalidations || 0) === 0 &&
+                        !window.__EUIX_DEVTOOLS__.routeTransition;
+                }
             }
             EngineClass._lazyPromises.delete(key);
         });
@@ -245,6 +305,70 @@ export function EUIXLazyPlugin(EngineClass) {
 
                 // AbortController for detached unmount cleanup
                 const abortController = new AbortController();
+                let ioRef = null;
+
+                // Cleanup subscriber & observer helper
+                const cleanup = () => {
+                    const subs = EngineClass._lazyActivePlaceholders.get(targetKey);
+                    if (subs) {
+                        subs.delete(performHydration);
+                        if (subs.size === 0) EngineClass._lazyActivePlaceholders.delete(targetKey);
+                    }
+                    if (ioRef) {
+                        try {
+                            ioRef.unobserve(placeholder);
+                            ioRef.disconnect();
+                        } catch (_) {}
+                        ioRef = null;
+                    }
+                };
+
+                // Actual DOM replacement / hydration routine
+                const performHydration = () => {
+                    if (abortController.signal.aborted) return;
+
+                    const specNode =
+                        (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
+                        (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
+
+                    if (!specNode) return;
+
+                    if (!placeholder.parentNode && !placeholder.isConnected) {
+                        // Placeholder is not yet attached to DOM parent; defer hydration to microtask
+                        queueMicrotask(() => {
+                            if (
+                                !abortController.signal.aborted &&
+                                (placeholder.parentNode || placeholder.isConnected)
+                            ) {
+                                performHydration();
+                            }
+                        });
+                        return;
+                    }
+
+                    cleanup();
+                    const realDom = this.renderComponentSpec(specNode, xmlNode, context);
+                    if (realDom && placeholder.parentNode) {
+                        this.applyRef(realDom, xmlNode, context);
+
+                        // Smooth enter transition
+                        realDom.classList.add("euix-lazy-enter");
+                        placeholder.replaceWith(realDom);
+
+                        if (typeof this.syncAllBindings === "function") {
+                            this.syncAllBindings();
+                        }
+                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                            window.lucide.createIcons();
+                        }
+                    }
+                };
+
+                // Register placeholder hydration subscriber for multi-instance sync
+                if (!EngineClass._lazyActivePlaceholders.has(targetKey)) {
+                    EngineClass._lazyActivePlaceholders.set(targetKey, new Set());
+                }
+                EngineClass._lazyActivePlaceholders.get(targetKey).add(performHydration);
 
                 // Trigger load and hydration function with interactive retry support
                 const triggerLoadAndHydrate = (trigger = "viewport") => {
@@ -252,29 +376,7 @@ export function EUIXLazyPlugin(EngineClass) {
 
                     EngineClass.loadLazyComponent(targetKey, { trigger })
                         .then(() => {
-                            if (abortController.signal.aborted) return;
-                            if (!placeholder.isConnected && !placeholder.parentNode) return;
-
-                            const specNode =
-                                (this._componentSpecs && this._componentSpecs.get(targetKey)) ||
-                                (EngineClass._globalComponentSpecs && EngineClass._globalComponentSpecs.get(targetKey));
-                            if (specNode && placeholder.parentNode) {
-                                const realDom = this.renderComponentSpec(specNode, xmlNode, context);
-                                if (realDom) {
-                                    this.applyRef(realDom, xmlNode, context);
-
-                                    // Smooth enter transition
-                                    realDom.classList.add("euix-lazy-enter");
-                                    placeholder.replaceWith(realDom);
-
-                                    if (typeof this.syncAllBindings === "function") {
-                                        this.syncAllBindings();
-                                    }
-                                    if (window.lucide && typeof window.lucide.createIcons === "function") {
-                                        window.lucide.createIcons();
-                                    }
-                                }
-                            }
+                            performHydration();
                         })
                         .catch((err) => {
                             if (abortController.signal.aborted) return;
@@ -326,8 +428,7 @@ export function EUIXLazyPlugin(EngineClass) {
                             for (const ioEntry of entries) {
                                 if (ioEntry.isIntersecting && !hasTriggered) {
                                     hasTriggered = true;
-                                    io.unobserve(placeholder);
-                                    io.disconnect();
+                                    cleanup();
                                     triggerLoadAndHydrate("viewport");
                                     break;
                                 }
@@ -335,6 +436,7 @@ export function EUIXLazyPlugin(EngineClass) {
                         },
                         { rootMargin: entry.rootMargin || "200px" },
                     );
+                    ioRef = io;
 
                     queueMicrotask(() => {
                         if (placeholder.isConnected || placeholder.parentNode) {
@@ -344,7 +446,9 @@ export function EUIXLazyPlugin(EngineClass) {
                         }
                     });
                 } else if (entry.preload !== "hover") {
-                    triggerLoadAndHydrate("immediate");
+                    queueMicrotask(() => {
+                        triggerLoadAndHydrate("immediate");
+                    });
                 }
 
                 return placeholder;

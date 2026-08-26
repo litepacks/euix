@@ -509,6 +509,97 @@ describe("EUIXLazyPlugin Unit Tests", () => {
 
         fetchSpy.mockRestore();
     });
+
+    it("should detect circular lazy component dependencies and throw CIRCULAR_LAZY_DEPENDENCY", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+            if (url.includes("CompA.xml")) {
+                await EUIXEngineCore.loadLazyComponent("comp-b");
+                return {
+                    text: () => Promise.resolve('<component_def name="comp-a"><div>A</div></component_def>')
+                };
+            }
+            if (url.includes("CompB.xml")) {
+                await EUIXEngineCore.loadLazyComponent("comp-a");
+                return {
+                    text: () => Promise.resolve('<component_def name="comp-b"><div>B</div></component_def>')
+                };
+            }
+            return Promise.reject(new Error("Unknown"));
+        });
+
+        EUIXEngineCore.registerLazyComponent("comp-a", "components/CompA.xml");
+        EUIXEngineCore.registerLazyComponent("comp-b", "components/CompB.xml");
+
+        await expect(EUIXEngineCore.loadLazyComponent("comp-a")).rejects.toThrow(/CIRCULAR_LAZY_DEPENDENCY/);
+
+        fetchSpy.mockRestore();
+    });
+
+    it("should hydrate multiple instances of the same lazy component on the same page synchronously", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+            Promise.resolve({
+                text: () => Promise.resolve('<component_def name="multi-card"><div class="multi-card-item">Card Item</div></component_def>')
+            })
+        );
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="multi-card" src="components/MultiCard.xml" lazy="true" />
+            </imports>
+            <div id="grid">
+                <multi-card />
+                <multi-card />
+                <multi-card />
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        await new Promise((r) => setTimeout(r, 80));
+
+        const cards = container.querySelectorAll(".multi-card-item");
+        expect(cards.length).toBe(3);
+
+        fetchSpy.mockRestore();
+    });
+
+    it("should preserve slot / children projection when lazy component hydrates", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() =>
+            Promise.resolve({
+                text: () => Promise.resolve(`
+                    <component_def name="slot-modal">
+                        <div class="modal-box">
+                            <h2>Modal Header</h2>
+                            <div class="modal-body"><children /></div>
+                        </div>
+                    </component_def>
+                `)
+            })
+        );
+
+        const xml = `
+        <uid_spec>
+            <imports>
+                <import name="slot-modal" src="components/SlotModal.xml" lazy="true" />
+            </imports>
+            <div>
+                <slot-modal>
+                    <span class="custom-slotted-content">Dynamic Custom Slot Content</span>
+                </slot-modal>
+            </div>
+        </uid_spec>
+        `;
+
+        EUIXEngineCore.mount(xml, container);
+        await new Promise((r) => setTimeout(r, 80));
+
+        const slottedEl = container.querySelector(".custom-slotted-content");
+        expect(slottedEl).not.toBeNull();
+        expect(slottedEl.textContent).toBe("Dynamic Custom Slot Content");
+
+        fetchSpy.mockRestore();
+    });
 });
 
 
