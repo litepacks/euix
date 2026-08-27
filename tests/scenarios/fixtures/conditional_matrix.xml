@@ -1,0 +1,54 @@
+<uid_spec>
+  <data_model>
+    <state id="userRole" type="string">guest</state>
+    <state id="accountBalance" type="number">0</state>
+    <state id="notifications" type="array">[]</state>
+    <state id="isPremium" type="boolean">false</state>
+  </data_model>
+
+  <flex direction="column" gap="12" class="conditional-matrix-panel">
+    <!-- Role Switch -->
+    <div id="role-badge" class="{data.userRole === 'admin' ? 'badge-admin' : data.userRole === 'member' ? 'badge-member' : 'badge-guest'}">
+      Role: {data.userRole}
+    </div>
+
+    <!-- Balance Status -->
+    <div id="balance-status">
+      Status: {data.accountBalance > 1000 ? 'WEALTHY' : data.accountBalance > 0 ? 'POSITIVE' : 'ZERO_OR_NEGATIVE'}
+    </div>
+
+    <!-- Complex nested condition with boolean & array length -->
+    <div id="premium-inbox" style="display: {data.isPremium && data.notifications.length > 0 ? 'block' : 'none'};">
+      VIP Inbox ({data.notifications.length} unread)
+    </div>
+
+    <div id="empty-state" style="display: {!data.isPremium || data.notifications.length === 0 ? 'block' : 'none'};">
+      No VIP messages.
+    </div>
+
+    <!-- Actions to mutate states -->
+    <flex direction="row" gap="8">
+      <button id="btn-make-admin">
+        <on_click action="SET_STATE">
+          <path>data.userRole</path>
+          <value>admin</value>
+        </on_click>
+        Promote Admin
+      </button>
+      <button id="btn-add-balance">
+        <on_click action="SET_STATE">
+          <path>data.accountBalance</path>
+          <value>1500</value>
+        </on_click>
+        Deposit $1500
+      </button>
+      <button id="btn-upgrade-vip">
+        <on_click action="RUN_SCRIPT">
+          $data.isPremium = true;
+          $data.notifications = ["Welcome VIP", "Your 20% discount is ready"];
+        </on_click>
+        Upgrade VIP
+      </button>
+    </flex>
+  </flex>
+</uid_spec>

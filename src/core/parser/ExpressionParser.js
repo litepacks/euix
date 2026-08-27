@@ -195,7 +195,10 @@ export class EUIXExpressionParser {
         function parseUnary() {
             if (peek() && peek().type === "OPERATOR" && (peek().value === "!" || peek().value === "-")) {
                 const op = consume().value;
-                if (op === "!") return `(!(${parseUnary()}) || (${parseUnary()}) === "false")`;
+                if (op === "!") {
+                    const operand = parseUnary();
+                    return `(!(${operand}) || (${operand}) === "false")`;
+                }
                 if (op === "-") return `(-Number(${parseUnary()}))`;
             }
             return parsePrimary();

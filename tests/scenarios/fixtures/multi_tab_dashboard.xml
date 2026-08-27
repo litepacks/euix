@@ -1,0 +1,80 @@
+<uid_spec>
+  <data_model>
+    <state id="activeTab" type="string">analytics</state>
+    <state id="themeColor" type="string">#3b82f6</state>
+    <state id="kpis" type="object">{
+      "visitors": 12450,
+      "sales": 8420,
+      "conversionRate": 3.4
+    }</state>
+    <state id="chartData" type="array">[
+      { "label": "Mon", "value": 45 },
+      { "label": "Tue", "value": 52 },
+      { "label": "Wed", "value": 38 },
+      { "label": "Thu", "value": 65 },
+      { "label": "Fri", "value": 80 }
+    ]</state>
+  </data_model>
+
+  <style scoped="true">
+    :host {
+      --accent: {data.themeColor};
+    }
+    .nav-tab.active {
+      color: var(--accent);
+      font-weight: bold;
+      border-bottom: 2px solid var(--accent);
+    }
+    .kpi-card {
+      padding: 16px;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+  </style>
+
+  <flex direction="column" gap="16" class="dashboard-wrapper">
+    <!-- Tab Navigation -->
+    <flex direction="row" gap="12" class="tab-nav">
+      <button id="tab-analytics" class="nav-tab {data.activeTab === 'analytics' ? 'active' : ''}">
+        <on_click action="SET_STATE">
+          <path>data.activeTab</path>
+          <value>analytics</value>
+        </on_click>
+        Analytics
+      </button>
+      <button id="tab-settings" class="nav-tab {data.activeTab === 'settings' ? 'active' : ''}">
+        <on_click action="SET_STATE">
+          <path>data.activeTab</path>
+          <value>settings</value>
+        </on_click>
+        Settings
+      </button>
+    </flex>
+
+    <!-- Analytics View -->
+    <div id="analytics-panel" style="display: {data.activeTab === 'analytics' ? 'block' : 'none'};">
+      <flex direction="row" gap="16">
+        <div class="kpi-card" id="kpi-visitors">
+          <h4>Visitors</h4>
+          <span>{data.kpis.visitors}</span>
+        </div>
+        <div class="kpi-card" id="kpi-sales">
+          <h4>Sales</h4>
+          <span>${data.kpis.sales}</span>
+        </div>
+        <div class="kpi-card" id="kpi-conversion">
+          <h4>Conversion</h4>
+          <span>{data.kpis.conversionRate}%</span>
+        </div>
+      </flex>
+    </div>
+
+    <!-- Settings View -->
+    <div id="settings-panel" style="display: {data.activeTab === 'settings' ? 'block' : 'none'};">
+      <flex direction="column" gap="8">
+        <label>Theme Accent Color</label>
+        <input id="theme-input" bind="themeColor" />
+      </flex>
+    </div>
+  </flex>
+</uid_spec>

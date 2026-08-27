@@ -1,0 +1,47 @@
+<uid_spec>
+  <data_model>
+    <state id="selectedNode" type="string">None</state>
+  </data_model>
+
+  <component_def name="tree-branch" isolated="true">
+    <data_model>
+      <state id="isExpanded" type="boolean">false</state>
+    </data_model>
+
+    <div class="tree-node" id="node-{props.nodeId}">
+      <flex direction="row" gap="8" align="center">
+        <button class="btn-toggle">
+          <on_click action="TOGGLE_STATE">
+            <path>local.isExpanded</path>
+          </on_click>
+          {local.isExpanded ? '[-]' : '[+]'}
+        </button>
+        <span class="node-title">{props.title}</span>
+        <button class="btn-select">
+          <on_click action="SET_STATE">
+            <path>data.selectedNode</path>
+            <value>{props.title}</value>
+          </on_click>
+          Select
+        </button>
+      </flex>
+
+      <div class="branch-content" style="display: {local.isExpanded ? 'block' : 'none'}; padding-left: 16px;">
+        <children />
+      </div>
+    </div>
+  </component_def>
+
+  <flex direction="column" gap="12" class="tree-wrapper">
+    <div id="active-selection">Selected: {data.selectedNode}</div>
+
+    <!-- Tree Root -->
+    <component name="tree-branch" nodeId="root" title="Root Folder">
+      <component name="tree-branch" nodeId="src" title="src">
+        <component name="tree-branch" nodeId="core" title="core" />
+        <component name="tree-branch" nodeId="plugins" title="plugins" />
+      </component>
+      <component name="tree-branch" nodeId="tests" title="tests" />
+    </component>
+  </flex>
+</uid_spec>

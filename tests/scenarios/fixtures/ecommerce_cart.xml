@@ -1,0 +1,89 @@
+<uid_spec>
+  <data_model>
+    <state id="cart" type="object">{
+      "items": [
+        { "id": "p1", "title": "Wireless Headphones", "price": 100, "qty": 2, "inStock": true },
+        { "id": "p2", "title": "Mechanical Keyboard", "price": 150, "qty": 1, "inStock": true }
+      ],
+      "coupon": { "code": "SUMMER20", "discountPercent": 20, "applied": false },
+      "shippingCost": 15,
+      "taxRate": 0.08
+    }</state>
+    <state id="couponInput" type="string"></state>
+    <state id="orderStatus" type="string">draft</state>
+    <state id="shippingMethod" type="string">standard</state>
+  </data_model>
+
+  <actions>
+    <action_def name="UpdateQuantity">
+      <param name="itemId" required="true" />
+      <param name="delta" type="number" required="true" />
+      <step action="RUN_SCRIPT">
+        const item = $data.cart.items.find(i => i.id === $args.itemId);
+        if (item) {
+          item.qty = Math.max(1, item.qty + Number($args.delta));
+          $data.cart = { ...$data.cart, items: [...$data.cart.items] };
+        }
+      </step>
+    </action_def>
+    <action_def name="ApplyCoupon">
+      <param name="code" required="true" />
+      <step action="RUN_SCRIPT">
+        if ($args.code.toUpperCase() === "SAVE20" || $args.code.toUpperCase() === "SUMMER20") {
+          $data.cart = {
+            ...$data.cart,
+            coupon: { ...$data.cart.coupon, applied: true, discountPercent: 20 }
+          };
+          $data.couponInput = "";
+        }
+      </step>
+    </action_def>
+  </actions>
+
+  <flex direction="column" gap="16" class="cart-container">
+    <h2 id="cart-title">Shopping Cart ({data.cart.items.length} items)</h2>
+
+    <div class="cart-items">
+      <for_each items="{data.cart.items}" var="item" key="id">
+        <div class="cart-item-row" id="item-{item.id}">
+          <span class="item-title">{item.title}</span>
+          <span class="item-price">${item.price}</span>
+          <span class="item-qty">Qty: {item.qty}</span>
+          <span class="item-subtotal">Subtotal: ${item.price * item.qty}</span>
+
+          <button class="btn-qty-plus">
+            <on_click action="UpdateQuantity">
+              <arg name="itemId">{item.id}</arg>
+              <arg name="delta">1</arg>
+            </on_click>
+            +
+          </button>
+          <button class="btn-qty-minus">
+            <on_click action="UpdateQuantity">
+              <arg name="itemId">{item.id}</arg>
+              <arg name="delta">-1</arg>
+            </on_click>
+            -
+          </button>
+        </div>
+      </for_each>
+    </div>
+
+    <!-- Coupon Input -->
+    <flex direction="row" gap="8">
+      <input id="coupon-input" bind="couponInput" placeholder="Enter coupon" />
+      <button id="btn-apply-coupon">
+        <on_click action="ApplyCoupon">
+          <arg name="code">{data.couponInput}</arg>
+        </on_click>
+        Apply Coupon
+      </button>
+    </flex>
+
+    <!-- Summary Box -->
+    <div class="summary-box">
+      <span id="coupon-status">{data.cart.coupon.applied ? 'Coupon Applied (20% OFF)' : 'No Coupon'}</span>
+      <span id="shipping-method-badge">{data.shippingMethod}</span>
+    </div>
+  </flex>
+</uid_spec>

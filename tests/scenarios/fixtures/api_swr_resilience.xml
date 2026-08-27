@@ -1,0 +1,46 @@
+<uid_spec>
+  <data_model>
+    <state id="searchQuery" type="string">javascript</state>
+    <state id="repositories" type="array">[]</state>
+    <state id="isLoading" type="boolean">false</state>
+    <state id="errorMessage" type="string"></state>
+  </data_model>
+
+  <api_config base_url="https://api.github.com">
+    <api_endpoint
+      id="search_repos"
+      tag="search_repos"
+      url="/search/repositories?q={data.searchQuery}"
+      method="GET"
+      bind_target="repositories"
+      select="items"
+      loading="isLoading"
+      error="errorMessage"
+      auto_fetch="false"
+    />
+  </api_config>
+
+  <flex direction="column" gap="12" class="api-panel">
+    <flex direction="row" gap="8">
+      <input id="input-search" bind="searchQuery" />
+      <button id="btn-fetch-repos">
+        <on_click action="REVALIDATE_API" tag="search_repos" />
+        Search Repos
+      </button>
+    </flex>
+
+    <!-- Status Indicators -->
+    <div id="status-loading" style="display: {data.isLoading ? 'block' : 'none'};">Loading...</div>
+    <div id="status-error" style="display: {data.errorMessage ? 'block' : 'none'};">{data.errorMessage}</div>
+
+    <!-- Repository List -->
+    <div id="repos-container">
+      <for_each items="{data.repositories}" var="repo" key="id">
+        <div class="repo-card" id="repo-{repo.id}">
+          <span class="repo-name">{repo.name}</span>
+          <span class="repo-stars">Stars: {repo.stargazers_count}</span>
+        </div>
+      </for_each>
+    </div>
+  </flex>
+</uid_spec>

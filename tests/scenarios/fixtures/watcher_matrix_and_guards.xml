@@ -1,0 +1,48 @@
+<uid_spec>
+  <data_model>
+    <state id="baseCount" type="number">5</state>
+    <state id="doubleCount" type="number">10</state>
+    <state id="quadCount" type="number">20</state>
+    <state id="isHigh" type="boolean">false</state>
+    <state id="watcherRuns" type="number">0</state>
+    <state id="thresholdTriggered" type="boolean">false</state>
+  </data_model>
+
+  <!-- Chained Computed Watchers -->
+  <watch key="baseCount" action="SET_STATE">
+    <path>data.doubleCount</path>
+    <value>{data.baseCount * 2}</value>
+  </watch>
+
+  <watch key="doubleCount" action="SET_STATE">
+    <path>data.quadCount</path>
+    <value>{data.doubleCount * 2}</value>
+  </watch>
+
+  <watch key="quadCount" action="RUN_SCRIPT">
+    $data.isHigh = $data.quadCount >= 40;
+    $data.watcherRuns = ($data.watcherRuns || 0) + 1;
+  </watch>
+
+  <watch key="baseCount" when="{data.baseCount >= 10}" action="SET_STATE">
+    <path>data.thresholdTriggered</path>
+    <value>true</value>
+  </watch>
+
+  <flex direction="column" gap="8" class="watcher-panel">
+    <span id="txt-base">Base: {data.baseCount}</span>
+    <span id="txt-double">Double: {data.doubleCount}</span>
+    <span id="txt-quad">Quad: {data.quadCount}</span>
+    <span id="txt-high">High: {data.isHigh ? 'YES' : 'NO'}</span>
+    <span id="txt-runs">Runs: {data.watcherRuns}</span>
+    <span id="txt-threshold">Threshold: {data.thresholdTriggered ? 'TRIGGERED' : 'NORMAL'}</span>
+
+    <button id="btn-increment">
+      <on_click action="SET_STATE">
+        <path>data.baseCount</path>
+        <value>{data.baseCount + 5}</value>
+      </on_click>
+      +5 Base
+    </button>
+  </flex>
+</uid_spec>

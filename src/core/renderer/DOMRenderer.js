@@ -239,7 +239,12 @@ export function extractStateKeys(expr) {
     const matches = expr.match(/(?:data|local|\$local)\.([a-zA-Z0-9_.]+)/g);
     if (matches) {
         for (let i = 0; i < matches.length; i++) {
-            keys.add(matches[i].replace(/^(?:data|local|\$local)\./, ""));
+            const clean = matches[i].replace(/^(?:data|local|\$local)\./, "");
+            keys.add(clean);
+            const dot = clean.indexOf(".");
+            if (dot !== -1) {
+                keys.add(clean.slice(0, dot));
+            }
         }
     }
     const plainMatches = expr.match(/\{([a-zA-Z0-9_]+)\}/g);

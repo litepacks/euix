@@ -39,20 +39,20 @@ describe('BigInt Dynamic Bitmask Tracking (>32 State Variables)', () => {
         const mask32 = engine.getKeyMask('var_32');
         const mask64 = engine.getKeyMask('var_64');
 
-        expect(typeof mask0).toBe('bigint');
+        expect(typeof mask0).toBe('number');
         expect(typeof mask32).toBe('bigint');
         expect(typeof mask64).toBe('bigint');
 
-        expect(mask0 > 0n).toBe(true);
+        expect(mask0 > 0).toBe(true);
         expect(mask32 > 0n).toBe(true);
         expect(mask64 > 0n).toBe(true);
 
         // In 32-bit integer, mask32 & mask0 would collide after 32 keys. With BigInt, they must NOT collide!
-        expect(mask32 !== mask0).toBe(true);
+        expect(BigInt(mask32) !== BigInt(mask0)).toBe(true);
         expect(mask64 !== mask32).toBe(true);
-        expect((mask32 & mask0)).toBe(0n);
+        expect((BigInt(mask32) & BigInt(mask0))).toBe(0n);
         expect((mask64 & mask32)).toBe(0n);
-        expect((mask64 & mask0)).toBe(0n);
+        expect((mask64 & BigInt(mask0))).toBe(0n);
 
         // Verify all 100 keys have unique non-colliding bitmasks
         const allMasks = new Set();

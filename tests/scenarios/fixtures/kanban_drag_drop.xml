@@ -1,0 +1,57 @@
+<uid_spec>
+  <data_model>
+    <state id="todoTasks" type="array">[
+      { "id": "t1", "title": "Design Specs" },
+      { "id": "t2", "title": "Write Unit Tests" }
+    ]</state>
+    <state id="doneTasks" type="array">[
+      { "id": "t3", "title": "Setup Repository" }
+    ]</state>
+    <state id="lastMovedTaskId" type="string">None</state>
+  </data_model>
+
+  <actions>
+    <action_def name="CompleteTask">
+      <param name="taskId" required="true" />
+      <step action="RUN_SCRIPT">
+        const taskIdx = $data.todoTasks.findIndex(t => t.id === $args.taskId);
+        if (taskIdx !== -1) {
+          const task = $data.todoTasks[taskIdx];
+          $data.todoTasks = $data.todoTasks.filter(t => t.id !== $args.taskId);
+          $data.doneTasks = [...$data.doneTasks, task];
+          $data.lastMovedTaskId = task.id;
+        }
+      </step>
+    </action_def>
+  </actions>
+
+  <flex direction="row" gap="16" class="kanban-board">
+    <!-- TODO Column -->
+    <div class="kanban-col" id="col-todo">
+      <h3>Todo ({data.todoTasks.length})</h3>
+      <for_each items="{data.todoTasks}" var="t" key="id">
+        <div class="task-card" id="task-{t.id}">
+          <span>{t.title}</span>
+          <button class="btn-complete">
+            <on_click action="CompleteTask">
+              <arg name="taskId">{t.id}</arg>
+            </on_click>
+            Done
+          </button>
+        </div>
+      </for_each>
+    </div>
+
+    <!-- DONE Column -->
+    <div class="kanban-col" id="col-done">
+      <h3>Completed ({data.doneTasks.length})</h3>
+      <for_each items="{data.doneTasks}" var="t" key="id">
+        <div class="task-card completed" id="task-done-{t.id}">
+          <span>{t.title}</span>
+        </div>
+      </for_each>
+    </div>
+
+    <div id="last-moved">Last Completed: {data.lastMovedTaskId}</div>
+  </flex>
+</uid_spec>

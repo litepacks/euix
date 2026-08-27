@@ -983,6 +983,13 @@ export function renderForEach(engine, xmlNode, context = {}) {
         engine.registerBinding(itemsKey, listContainer, "for_each", () => {
             renderItems();
         });
+        const dotIdx = itemsKey.indexOf(".");
+        if (dotIdx !== -1) {
+            const rootKey = itemsKey.slice(0, dotIdx);
+            engine.registerBinding(rootKey, listContainer, "for_each", () => {
+                renderItems();
+            });
+        }
         if (itemsKey.startsWith("$route") || itemsKey.startsWith("$router") || itemsKey.startsWith("$fetcher")) {
             const scope = itemsKey.startsWith("$route")
                 ? "$route"

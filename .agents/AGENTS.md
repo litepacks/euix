@@ -1239,5 +1239,146 @@ await engine.preloadLazyComponent('checkout-modal');
 await euix(page).waitForLazy('heavy-chart');
 ```
 
+---
+
+## ⚡ 22. High-Performance Architecture & Rendering Pipeline
+
+EUIX Engine is engineered with zero Virtual DOM overhead, achieving raw native performance through 6 core execution optimizations:
+
+```
+                  +-------------------------------------------------------------+
+                  |               EUIX High-Performance Pipeline                |
+                  +-------------------------------------------------------------+
+                                                 |
+         +--------------------+------------------+------------------+--------------------+
+         |                    |                  |                  |                    |
+         v                    v                  v                  v                    v
+  +--------------+    +---------------+  +---------------+  +---------------+    +---------------+
+  |  cloneNode   |    | JIT Direct    |  | Pre-Scoped    |  | Hybrid BigInt |    | LIS Keyed     |
+  |  Fast-Path   |    | Property Reads|  | CSS Templates |  | Dynamic Mask  |    | List Diffing  |
+  +--------------+    +---------------+  +---------------+  +---------------+    +---------------+
+```
+
+1. **Static Subtree Pre-Compilation & Native `cloneNode(true)` Fast-Path**:
+   - Subtrees devoid of reactive bindings (`{data...}`) or dynamic event hooks are compiled once into a DOM prototype (`xmlNode._staticPrototype`).
+   - Subsequent mounts, loops, and component instances instantiate subtrees in a single native C++ DOM clone operation.
+2. **JIT Single-Pass Expression Inlining (`EUIXExpressionParser`)**:
+   - Expressions like `{data.count + 1}` or `{item.price * item.qty}` are compiled directly into native JavaScript property accesses (`$data?.count`, `$ctx?.item?.price`) bypassing string-based variable resolution maps.
+3. **Pre-Scoped CSS Templates & CSSOM Dirty-Checking (`processStyleTag`)**:
+   - `<style scoped="true">` selector scoping (`scopeCSS`) runs once during template mounting.
+   - Style updates evaluate reactive variables directly against the pre-scoped template and only write to `styleEl.textContent` when content genuinely changes (`styleEl.textContent !== newCss`).
+4. **`<for_each>` JIT Loop Getters & LIS Algorithm (`ForEachRenderer`)**:
+   - Loop row expressions (`{p.price * p.qty}`) compile into lightweight row getters.
+   - Reordering and sorting uses the **Longest Increasing Subsequence (LIS)** algorithm to minimize DOM `insertBefore` calls.
+5. **Hybrid 32-bit / BigInt Dynamic Bitmask Tracking (`BindingResolver`)**:
+   - Standard apps (<32 variables) run on 32-bit integer bitmasks.
+   - Large applications with 100+ variables automatically promote to `BigInt` bitmasks (`1n << BigInt(index)`) ensuring zero bitmask overflow collisions and zero redundant re-renders.
+6. **LRU-Cached Dependency Key Analysis (`extractStateKeys`)**:
+   - Key extraction parses template expressions once and caches dependencies in an LRU map (`EXTRACT_KEYS_CACHE`), eliminating RegExp compilation overhead on every reactive tick.
+
+---
+
+## 🛡️ 23. Real-World Patterns, Fixtures & Pitfalls Reference
+
+Learned from real-world end-to-end fixture suites (`tests/scenarios/`):
+
+### 1. Nested State Arrays & Object Assignment
+When mutating items inside nested arrays (e.g. `data.cart.items[i].qty`):
+```js
+// ✅ CORRECT: Reassign the parent state object to trigger both root and nested bindings
+$data.cart = {
+  ...$data.cart,
+  items: [...$data.cart.items]
+};
+
+// Or programmatically:
+engine.setState("cart", { ...engine.getState("cart") });
+```
+> [!NOTE]
+> EUIX Engine automatically binds `<for_each items="{data.cart.items}">` to both `"cart.items"` and `"cart"`. Reassigning the parent object immediately flushes updates to all nested list rows.
+
+### 2. Complex Boolean Logic & Unary Operators
+In templates, write natural JavaScript logical expressions:
+```xml
+<!-- ✅ CORRECT: Evaluates cleanly in JIT compiled expressions -->
+<div class="card" style="display: {!data.isPremium || data.notifications.length === 0 ? 'block' : 'none'};">
+  <span>No unread notifications</span>
+</div>
+```
+
+### 3. SWR API Endpoints & On-Demand Revalidation (`REVALIDATE_API`)
+```xml
+<api_config base_url="https://api.example.com">
+  <api_endpoint
+    id="search_repos"
+    tag="search_repos"
+    url="/search?q={data.searchQuery}"
+    method="GET"
+    bind_target="repositories"
+    select="items"
+    loading="isLoading"
+    error="errorMessage"
+    auto_fetch="false"
+  />
+</api_config>
+
+<!-- Declarative Trigger Button -->
+<button id="btn-search">
+  <on_click action="REVALIDATE_API" tag="search_repos" />
+  Search
+</button>
+```
+
+### 4. Component Local State Isolation (`isolated="true"`)
+For multi-instance UI widgets (accordions, tree nodes, tabs, dropdowns), always mark the definition as `isolated="true"`:
+```xml
+<component_def name="tree-branch" isolated="true">
+  <data_model>
+    <!-- Private to this branch instance -->
+    <state id="isExpanded" type="boolean">false</state>
+  </data_model>
+
+  <div class="branch">
+    <button>
+      <on_click action="TOGGLE_STATE">
+        <path>local.isExpanded</path>
+      </on_click>
+      {local.isExpanded ? '[-]' : '[+]'}
+    </button>
+    <div style="display: {local.isExpanded ? 'block' : 'none'};">
+      <children />
+    </div>
+  </div>
+</component_def>
+```
+
+### 5. Action Workflows with Typed Arguments (`<action_def>`)
+```xml
+<actions>
+  <action_def name="UpdateItemQuantity">
+    <param name="itemId" required="true" />
+    <param name="delta" type="number" required="true" />
+
+    <step action="RUN_SCRIPT">
+      const item = $data.cart.items.find(i => i.id === $args.itemId);
+      if (item) {
+        item.qty = Math.max(1, item.qty + Number($args.delta));
+        $data.cart = { ...$data.cart, items: [...$data.cart.items] };
+      }
+    </step>
+  </action_def>
+</actions>
+
+<!-- Calling from a list row -->
+<button>
+  <on_click action="UpdateItemQuantity">
+    <arg name="itemId">{item.id}</arg>
+    <arg name="delta">1</arg>
+  </on_click>
+  +1
+</button>
+```
+
+
 
 

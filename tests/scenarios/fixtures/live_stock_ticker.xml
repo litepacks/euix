@@ -1,0 +1,38 @@
+<uid_spec>
+  <data_model>
+    <state id="tickerTitle" type="string">Global Equities Feed</state>
+    <state id="stocks" type="array">[
+      { "symbol": "AAPL", "price": 182.50, "change": 1.25 },
+      { "symbol": "GOOGL", "price": 140.20, "change": -0.80 },
+      { "symbol": "MSFT", "price": 405.00, "change": 3.10 }
+    ]</state>
+    <state id="selectedStock" type="string"></state>
+  </data_model>
+
+  <flex direction="column" gap="12" class="ticker-box">
+    <h3 id="ticker-heading">{data.tickerTitle}</h3>
+
+    <div class="stocks-table">
+      <for_each items="{data.stocks}" var="s" key="symbol">
+        <div class="stock-row" id="stock-{s.symbol}">
+          <span class="stock-symbol">{s.symbol}</span>
+          <span class="stock-price">${s.price}</span>
+          <span class="stock-change {s.change >= 0 ? 'badge-green' : 'badge-red'}">
+            {s.change >= 0 ? '+' : ''}{s.change}
+          </span>
+          <button class="btn-select">
+            <on_click action="SET_STATE">
+              <path>data.selectedStock</path>
+              <value>{s.symbol}</value>
+            </on_click>
+            Select
+          </button>
+        </div>
+      </for_each>
+    </div>
+
+    <div id="selected-info">
+      Active: {data.selectedStock ? data.selectedStock : 'None'}
+    </div>
+  </flex>
+</uid_spec>

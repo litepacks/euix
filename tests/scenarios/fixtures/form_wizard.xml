@@ -1,0 +1,84 @@
+<uid_spec>
+  <data_model>
+    <state id="currentStep" type="number">1</state>
+    <state id="form" type="object">{
+      "fullName": "",
+      "email": "",
+      "age": 25,
+      "plan": "pro",
+      "agreeTerms": false
+    }</state>
+    <state id="isSubmitted" type="boolean">false</state>
+  </data_model>
+
+  <actions>
+    <action_def name="NextStep">
+      <step action="SET_STATE">
+        <path>data.currentStep</path>
+        <value>{data.currentStep + 1}</value>
+      </step>
+    </action_def>
+    <action_def name="PrevStep">
+      <step action="SET_STATE">
+        <path>data.currentStep</path>
+        <value>{data.currentStep - 1}</value>
+      </step>
+    </action_def>
+    <action_def name="SubmitWizard">
+      <step action="SET_STATE">
+        <path>data.isSubmitted</path>
+        <value>true</value>
+      </step>
+    </action_def>
+  </actions>
+
+  <flex direction="column" gap="16" class="wizard-box">
+    <div id="step-indicator">Step {data.currentStep} of 3</div>
+
+    <!-- Step 1: Personal Info -->
+    <div id="step-1" style="display: {data.currentStep === 1 ? 'block' : 'none'};">
+      <input id="input-fullname" bind="form.fullName" placeholder="Full Name" />
+      <input id="input-email" bind="form.email" placeholder="Email Address" />
+      <button id="btn-step1-next">
+        <on_click action="NextStep" />
+        Next
+      </button>
+    </div>
+
+    <!-- Step 2: Preferences -->
+    <div id="step-2" style="display: {data.currentStep === 2 ? 'block' : 'none'};">
+      <input id="input-age" type="number" bind="form.age" />
+      <select id="select-plan" bind="form.plan">
+        <option value="basic">Basic</option>
+        <option value="pro">Pro</option>
+        <option value="enterprise">Enterprise</option>
+      </select>
+      <button id="btn-step2-prev">
+        <on_click action="PrevStep" />
+        Back
+      </button>
+      <button id="btn-step2-next">
+        <on_click action="NextStep" />
+        Next
+      </button>
+    </div>
+
+    <!-- Step 3: Confirmation -->
+    <div id="step-3" style="display: {data.currentStep === 3 ? 'block' : 'none'};">
+      <div id="review-summary">
+        <p>Name: {data.form.fullName}</p>
+        <p>Email: {data.form.email}</p>
+        <p>Plan: {data.form.plan}</p>
+      </div>
+      <input id="chk-terms" type="checkbox" bind="form.agreeTerms" />
+      <button id="btn-submit">
+        <on_click action="SubmitWizard" />
+        Submit Form
+      </button>
+    </div>
+
+    <div id="success-banner" style="display: {data.isSubmitted ? 'block' : 'none'};">
+      Registration Complete!
+    </div>
+  </flex>
+</uid_spec>
