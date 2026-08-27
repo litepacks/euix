@@ -4,7 +4,14 @@
  * Automatically bundles EUIXEngineCore with built-in API, Action Composer, and Drag-and-Drop plugins.
  */
 
-import { EUIXEngineCore, EUIXExpressionParser, EUIXStructuredError, EUIXXMLParseError } from "./core/EUIXEngineCore.js";
+import {
+    EUIXEngineCore,
+    EUIXExpressionParser,
+    EUIXStructuredError,
+    EUIXXMLParseError,
+    processStyleTag,
+    scopeCSS,
+} from "./core/EUIXEngineCore.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
 import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
 import { EUIXChartError, EUIXChartPlugin } from "./plugins/EUIXChartPlugin.js";
@@ -159,6 +166,8 @@ export {
     RouterRedirect,
     resolvePath,
     WebMCPPlugin,
+    processStyleTag,
+    scopeCSS,
 };
 
 export default EUIXEngine;

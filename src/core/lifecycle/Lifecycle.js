@@ -734,6 +734,14 @@ export function destroy(engine) {
         engine._externalResources.forEach((res) => res.dispose?.());
         engine._externalResources.clear();
     }
+    if (engine._injectedStyles) {
+        engine._injectedStyles.forEach((styleEl) => {
+            if (styleEl && styleEl.parentNode) {
+                styleEl.parentNode.removeChild(styleEl);
+            }
+        });
+        engine._injectedStyles.clear();
+    }
     if (engine.refs) {
         engine.refs = {};
     }

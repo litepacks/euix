@@ -14,6 +14,7 @@ import {
     toNum,
     trimStr,
 } from "../utils/constants.js";
+import { processStyleTag } from "../renderer/DOMRenderer.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
     try {
@@ -377,6 +378,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         "on_state_change",
         "use_script",
         "use_style",
+        "style",
         "script_loader",
         "style_loader",
         "load_script",
@@ -393,20 +395,13 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         "webmcp-tool",
     ];
 
-    // Trigger external script / style loaders declared inside component
+    // Trigger external script loaders declared inside component
     const compScripts = Array.from(
         specNode.querySelectorAll ? specNode.querySelectorAll("use_script, script_loader, load_script") : [],
     );
     compScripts.forEach((node) => {
         const src = node.getAttribute("src") || node.getAttribute("url");
         if (src) engine.loadScript(src, { async: node.getAttribute("async") !== "false" });
-    });
-    const compStyles = Array.from(
-        specNode.querySelectorAll ? specNode.querySelectorAll("use_style, style_loader, load_style") : [],
-    );
-    compStyles.forEach((node) => {
-        const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
-        if (href) engine.loadStyle(href);
     });
 
     const specChildElems =
@@ -425,6 +420,21 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         specNode;
 
     const rendered = engine.createHTMLElement(templateNode, childContext);
+
+    // Process style and use_style loaders declared inside component
+    const compStyles = Array.from(
+        specNode.querySelectorAll ? specNode.querySelectorAll("use_style, style_loader, load_style, style") : [],
+    );
+    compStyles.forEach((node) => {
+        const tag = (node.tagName || "").toLowerCase();
+        if (tag === "style") {
+            processStyleTag(engine, node, childContext, rendered);
+        } else {
+            const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+            if (href) engine.loadStyle(href);
+        }
+    });
+
     if (isElem(rendered)) {
         rendered.dataset.xuiComponent = compName;
         rendered.dataset.euixComponent = compName;

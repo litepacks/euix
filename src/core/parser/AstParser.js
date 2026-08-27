@@ -75,6 +75,15 @@ export function parseXmlToAst(xmlString, options = {}) {
         }
     }
 
+    // 1.5. Protect raw CSS inside <style>...</style> with CDATA if containing special XML characters (<, >, &)
+    processedXml = processedXml.replace(/<style(\s[^>]*?)?>([\s\S]*?)<\/style>/gi, (match, attrs, content) => {
+        if (!content || content.includes("<![CDATA[")) return match;
+        if (/[<>&]/.test(content)) {
+            return `<style${attrs || ""}>/*<![CDATA[*/\n${content}\n/*]]>*/</style>`;
+        }
+        return match;
+    });
+
     // 2. Remove stray closing tags for void elements & ensure self-closing for unclosed void tags
     processedXml = processedXml.replace(
         /<\/(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)>/gi,

@@ -86,10 +86,10 @@ describe('EUIXEngineCore - Advanced Ref Focus, Set Title, and Toggle State', () 
 
         // Toggle from false -> true
         container.querySelector('#toggle_btn').click();
-        expect(engine.getState('isOpen')).toBe('true');
+        expect(engine.getState('isOpen')).toBe(true);
 
         // Toggle from true -> false
         container.querySelector('#toggle_btn').click();
-        expect(engine.getState('isOpen')).toBe('false');
+        expect(engine.getState('isOpen')).toBe(false);
     });
 });

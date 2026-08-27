@@ -417,6 +417,42 @@ EUIX Engine includes built-in reactive layout components:
 </dialog>
 ```
 
+### 4. Declarative Style & Scoped CSS (`<style>`, `<style scoped="true">`)
+EUIX Engine supports native `<style>` tags with scoped CSS isolation, reactive CSS interpolation, and automatic unmount cleanup:
+```xml
+<!-- 1. Global In-Template Styling with Reactive Variables -->
+<style>
+  :root {
+    --accent-color: {data.theme_color};
+  }
+  .app-banner {
+    background: var(--accent-color);
+    padding: {data.padding_size}px;
+  }
+</style>
+
+<!-- 2. Scoped Component Styling (Prefixes selectors with [data-euix-scope="..."]) -->
+<component_def name="user-badge" isolated="true">
+  <style scoped="true">
+    :host {
+      display: inline-flex;
+    }
+    .badge {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 8px;
+    }
+  </style>
+
+  <div class="badge">
+    <span>{data.user_name}</span>
+  </div>
+</component_def>
+
+<!-- 3. External Stylesheet Alias -->
+<style src="https://cdn.jsdelivr.net/npm/animate.css@4/animate.min.css" />
+```
+
 ---
 
 ## 🛡️ 9. Security Best Practices & XSS Guards

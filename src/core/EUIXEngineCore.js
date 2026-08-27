@@ -91,6 +91,8 @@ import {
     renderConditional,
     resolveBindPath,
     updateAttributeBinding,
+    processStyleTag,
+    scopeCSS,
 } from "./renderer/DOMRenderer.js";
 import { getConstant, registerConstant, registerGlobalConstant } from "./state/Constants.js";
 import {
@@ -638,6 +640,10 @@ class EUIXEngineCore {
         return _executeActionInternalBody(this, actionNode, context);
     }
 
+    processStyleTag(xmlNode, context = {}, targetEl = null) {
+        return processStyleTag(this, xmlNode, context, targetEl);
+    }
+
     render() {
         return render(this);
     }
@@ -646,6 +652,8 @@ class EUIXEngineCore {
 EUIXEngineCore.EUIXExpressionParser = EUIXExpressionParser;
 EUIXEngineCore.EUIXStructuredError = EUIXStructuredError;
 EUIXEngineCore.EUIXXMLParseError = EUIXXMLParseError;
+EUIXEngineCore.scopeCSS = scopeCSS;
+EUIXEngineCore.processStyleTag = processStyleTag;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
@@ -675,5 +683,7 @@ export {
     EUIXHookEmitter,
     EUIXStructuredError,
     EUIXXMLParseError,
+    processStyleTag,
+    scopeCSS,
 };
 export default EUIXEngineCore;

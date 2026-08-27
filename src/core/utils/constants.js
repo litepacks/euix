@@ -302,6 +302,7 @@ export const METADATA_AND_EVENT_TAGS = new Set([
     "use_style",
     "style_loader",
     "load_style",
+    "style",
     "actions",
     "action_def",
     "workflow_def",

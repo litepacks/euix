@@ -259,6 +259,39 @@ Custom JavaScript snippets can be executed safely inside lifecycle hooks or even
 </uid_spec>
 ```
 
+### Declarative In-Template & Scoped Styles (`<style>`, `<style scoped="true">`)
+```xml
+<uid_spec>
+    <!-- Dynamic Reactive Styles with State Interpolation -->
+    <style>
+        :root {
+            --brand-color: {data.themeColor};
+        }
+        .header-title {
+            color: var(--brand-color);
+            font-weight: 800;
+        }
+    </style>
+
+    <!-- Scoped Component Styling (Isolated to component via [data-euix-scope]) -->
+    <component_def name="user-badge" isolated="true">
+        <style scoped="true">
+            :host {
+                display: inline-flex;
+            }
+            .badge {
+                background: #0f172a;
+                border-radius: 8px;
+                padding: 6px 12px;
+            }
+        </style>
+        <div class="badge">
+            <span>{data.userName}</span>
+        </div>
+    </component_def>
+</uid_spec>
+```
+
 #### Injected Script Scope Variables:
 - **`$el`**: Target DOM element executing the script.
 - **`$data`**: Fine-grained reactive EUIX state Proxy object.
