@@ -4,6 +4,7 @@
  */
 
 import { _getNodeAtPath, _getStaticNodeResolver, getForEachItemHash } from "../utils/constants.js";
+import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 
@@ -338,9 +339,25 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                         if (scope === varName) {
                             getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                         }
+                    } else if (trimmed.startsWith(`{${varName}.`) && trimmed.endsWith("}")) {
+                        const innerPath = trimmed.slice(varName.length + 2, -1);
+                        const parts = innerPath.split(".");
+                        getter = (item) => {
+                            let curr = item;
+                            for (let p = 0; p < parts.length && curr != null; p++) {
+                                curr = curr[parts[p]];
+                            }
+                            return String(curr ?? "");
+                        };
                     }
                     if (!getter) {
-                        getter = (_item, ctx) => engine.interpolate(txt, ctx);
+                        const jitFn = EUIXExpressionParser.compileTemplateFunction(txt);
+                        if (jitFn) {
+                            getter = (item, ctx) =>
+                                jitFn(engine._state, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                        } else {
+                            getter = (_item, ctx) => engine.interpolate(txt, ctx);
+                        }
                     }
                     dynamicSlots.push({
                         childIndex: cIdx,
@@ -370,9 +387,25 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                                 if (scope === varName) {
                                     getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                                 }
+                            } else if (trimmed.startsWith(`{${varName}.`) && trimmed.endsWith("}")) {
+                                const innerPath = trimmed.slice(varName.length + 2, -1);
+                                const parts = innerPath.split(".");
+                                getter = (item) => {
+                                    let curr = item;
+                                    for (let p = 0; p < parts.length && curr != null; p++) {
+                                        curr = curr[parts[p]];
+                                    }
+                                    return String(curr ?? "");
+                                };
                             }
                             if (!getter) {
-                                getter = (_item, ctx) => engine.interpolate(attrVal, ctx);
+                                const jitFn = EUIXExpressionParser.compileTemplateFunction(attrVal);
+                                if (jitFn) {
+                                    getter = (item, ctx) =>
+                                        jitFn(engine._state, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                } else {
+                                    getter = (_item, ctx) => engine.interpolate(attrVal, ctx);
+                                }
                             }
                             dynamicSlots.push({
                                 childIndex: cIdx,

@@ -227,14 +227,34 @@ export function applyItemChildStyles(engine, childEl, childXmlNode, context) {
     }
 }
 
+const EXTRACT_KEYS_CACHE = new Map();
+const EXTRACT_KEYS_CACHE_MAX = 1000;
+
 export function extractStateKeys(expr) {
-    if (!expr) return [];
+    if (!expr || typeof expr !== "string" || !expr.includes("{")) return [];
+    let cached = EXTRACT_KEYS_CACHE.get(expr);
+    if (cached !== undefined) return cached;
+
     const keys = new Set();
-    const matches = expr.match(/(?:data|local|\$local)\.(\w+)/g) || [];
-    matches.forEach((m) => keys.add(m.replace(/^(?:data|local|\$local)\./, "")));
-    const plainMatches = expr.match(/\{(\w+)\}/g) || [];
-    plainMatches.forEach((m) => keys.add(m.replace(/^\{|\}$/g, "")));
-    return Array.from(keys);
+    const matches = expr.match(/(?:data|local|\$local)\.([a-zA-Z0-9_.]+)/g);
+    if (matches) {
+        for (let i = 0; i < matches.length; i++) {
+            keys.add(matches[i].replace(/^(?:data|local|\$local)\./, ""));
+        }
+    }
+    const plainMatches = expr.match(/\{([a-zA-Z0-9_]+)\}/g);
+    if (plainMatches) {
+        for (let i = 0; i < plainMatches.length; i++) {
+            keys.add(plainMatches[i].slice(1, -1));
+        }
+    }
+    cached = Array.from(keys);
+    if (EXTRACT_KEYS_CACHE.size >= EXTRACT_KEYS_CACHE_MAX) {
+        const first = EXTRACT_KEYS_CACHE.keys().next().value;
+        if (first !== undefined) EXTRACT_KEYS_CACHE.delete(first);
+    }
+    EXTRACT_KEYS_CACHE.set(expr, cached);
+    return cached;
 }
 
 export function interpolate(engine, text, context = {}) {
@@ -2361,20 +2381,23 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
     if (xmlNode.getAttribute("type")) {
         styleEl.type = xmlNode.getAttribute("type");
     }
-    if (isScoped) {
+    if (isScoped && scopeId) {
         styleEl.setAttribute("data-euix-scoped-for", scopeId);
     }
+    let cleanCss = rawCss.replace(/\/\*<!\[CDATA\[\*\//g, "").replace(/\/\*\]\]>\*\//g, "");
+    if (isScoped && scopeId) {
+        cleanCss = scopeCSS(cleanCss, `[data-euix-scope="${scopeId}"]`);
+    }
+    const scopedTemplate = cleanCss;
 
     const renderCss = () => {
-        let css = rawCss;
+        let css = scopedTemplate;
         css = css.replace(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g, (match, expr) => {
             return engine.interpolate(`{${expr}}`, context);
         });
-        css = css.replace(/\/\*<!\[CDATA\[\*\//g, "").replace(/\/\*\]\]>\*\//g, "");
-        if (isScoped && scopeId) {
-            css = scopeCSS(css, `[data-euix-scope="${scopeId}"]`);
+        if (styleEl.textContent !== css) {
+            styleEl.textContent = css;
         }
-        styleEl.textContent = css;
     };
 
     renderCss();

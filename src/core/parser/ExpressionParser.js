@@ -153,49 +153,34 @@ export class EUIXExpressionParser {
                     }
                     return `(($r(${JSON.stringify(id)}) && typeof $r(${JSON.stringify(id)}) === "function") ? $r(${JSON.stringify(id)})(${args.join(", ")}) : undefined)`;
                 }
-                if (
-                    id.includes(".") ||
-                    id.startsWith("data.") ||
-                    id.startsWith("parent.") ||
-                    id.startsWith("local.") ||
-                    id.startsWith("props.") ||
-                    id.startsWith("args.") ||
-                    id.startsWith("params.") ||
-                    id.startsWith("result.")
-                ) {
-                    if (id.startsWith("data.")) {
-                        const propPath = id.slice(5);
-                        const jsProp = propPath
-                            .split(".")
-                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
-                            .join("?.");
+                if (id.includes(".")) {
+                    const firstDot = id.indexOf(".");
+                    const scope = id.slice(0, firstDot);
+                    const propPath = id.slice(firstDot + 1);
+                    const jsProp = propPath
+                        .split(".")
+                        .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
+                        .join("?.");
+
+                    if (scope === "data") {
                         return `(($data?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
-                    if (id.startsWith("local.") || id.startsWith("$local.")) {
-                        const propPath = id.replace(/^(\$local|local)\./, "");
-                        const jsProp = propPath
-                            .split(".")
-                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
-                            .join("?.");
+                    if (scope === "local" || scope === "$local") {
                         return `(($local?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
-                    if (id.startsWith("props.") || id.startsWith("$props.")) {
-                        const propPath = id.replace(/^(\$props|props)\./, "");
-                        const jsProp = propPath
-                            .split(".")
-                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
-                            .join("?.");
+                    if (scope === "props" || scope === "$props") {
                         return `(($ctx?.props?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
-                    if (id.startsWith("args.") || id.startsWith("params.")) {
-                        const propPath = id.replace(/^(args|params)\./, "");
-                        return `(($ctx?.args?.${propPath}) ?? ($ctx?.params?.${propPath}) ?? $r(${JSON.stringify(id)}))`;
+                    if (scope === "args" || scope === "params") {
+                        return `(($ctx?.args?.${jsProp}) ?? ($ctx?.params?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
-                    if (id.startsWith("result.")) {
-                        const propPath = id.slice(7);
-                        return `(($ctx?.result?.${propPath}) ?? $r(${JSON.stringify(id)}))`;
+                    if (scope === "result") {
+                        return `(($ctx?.result?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
-                    return `($r(${JSON.stringify(id)}))`;
+                    if (scope.startsWith("$")) {
+                        return `($r(${JSON.stringify(id)}))`;
+                    }
+                    return `(($ctx?.[${JSON.stringify(scope)}]?.${jsProp}) ?? ($ctx?.item?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                 }
                 return `(($r(${JSON.stringify(id)})) !== undefined ? ($r(${JSON.stringify(id)})) : ${JSON.stringify(id)})`;
             }
