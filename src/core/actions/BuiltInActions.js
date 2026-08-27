@@ -48,11 +48,18 @@ export function _handleSetStateAction(actionNode, context = {}) {
         typeof context._localState?.[path] === "number" ||
         (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "number");
 
+    const targetIsBool =
+        typeof this._rawState?.[path] === "boolean" ||
+        typeof context._localState?.[path] === "boolean" ||
+        (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "boolean");
+
     if (hasBraces && (rawValue.includes("?") || /[+\-*/]/.test(cleanExpr))) {
         try {
             const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
             if (evaluated !== undefined && typeof evaluated === "number" && !Number.isNaN(evaluated)) {
                 nextValue = targetIsNumber ? evaluated : String(evaluated);
+            } else if (typeof evaluated === "boolean") {
+                nextValue = targetIsBool ? evaluated : String(evaluated);
             }
         } catch (_) {}
     }
@@ -80,6 +87,9 @@ export function _handleSetStateAction(actionNode, context = {}) {
         !Number.isNaN(Number(nextValue))
     ) {
         nextValue = Number(nextValue);
+    } else if (targetIsBool && typeof nextValue === "string") {
+        if (nextValue === "true") nextValue = true;
+        else if (nextValue === "false") nextValue = false;
     }
 
     this._setScopedState(rawPath, path, nextValue, context);
@@ -116,7 +126,11 @@ export function _handleToggleStateAction(actionNode, context = {}) {
     }
 
     const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
-    const nextValue = isTruthy ? "false" : "true";
+    const targetIsBool =
+        typeof this._rawState?.[path] === "boolean" ||
+        typeof context._localState?.[path] === "boolean" ||
+        (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "boolean");
+    const nextValue = targetIsBool ? !isTruthy : isTruthy ? "false" : "true";
     this._setScopedState(rawPath, path, nextValue, context);
 }
 
@@ -292,7 +306,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             let num = parseInt(rawVal ?? "0", 10);
             if (Number.isNaN(num)) num = 0;
             num = operation === MUTATION_OPS.INCREMENT ? num + 1 : num - 1;
-            this.setState(path, String(num));
+            const targetIsNumber = typeof this._rawState?.[path] === "number";
+            this.setState(path, targetIsNumber ? num : String(num));
             return;
         }
 
