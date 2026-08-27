@@ -653,6 +653,79 @@ EUIX Engine supports both **Component-Scoped Isolation** (for multi-instance UI 
 </for_each>
 ```
 
+### 5. `<value>` in `MUTATE_STATE` Must Be Strictly Valid JSON (No JS Operators or Expressions)
+❌ **WRONG**: Using JavaScript string concatenation (`+`), `Date.now()`, or unary operators (`!{task.done}`) inside `<value>`.
+```xml
+<!-- INVALID: "id":"t"+Date.now() and !{task.done} are NOT valid JSON and will throw JSON.parse errors -->
+<on_click action="MUTATE_STATE">
+  <path>tasks</path>
+  <operation>PUSH</operation>
+  <value>{"id":"t"+Date.now(),"title":"{data.newTask}","done":false}</value>
+</on_click>
+
+<on_click action="MUTATE_STATE">
+  <path>tasks</path>
+  <operation>UPDATE</operation>
+  <where field="id" equals="{task.id}" />
+  <value>{"done": !{task.done}}</value>
+</on_click>
+```
+
+✅ **RIGHT**: Use `<on_click action="RUN_SCRIPT">` for dynamic IDs, calculations, and mutations; or use strictly valid JSON expressions:
+```xml
+<!-- Option A: RUN_SCRIPT for dynamic IDs and safe mutations (Recommended) -->
+<on_click action="RUN_SCRIPT">
+  if ($data.newTask &amp;&amp; $data.newTask.trim()) {
+    $data.tasks.push({
+      id: "t_" + Date.now(),
+      title: $data.newTask.trim(),
+      done: false
+    });
+    $data.newTask = "";
+  }
+</on_click>
+
+<!-- Option B: Valid JSON boolean expression in MUTATE_STATE -->
+<on_click action="MUTATE_STATE">
+  <path>tasks</path>
+  <operation>UPDATE</operation>
+  <where field="id" equals="{task.id}" />
+  <value>{"done": {task.done ? false : true}}</value>
+</on_click>
+```
+
+### 6. Input Placeholders vs Initial State Value
+❌ **WRONG**: Putting placeholder guide text into `<state>` for a two-way bound input.
+```xml
+<!-- INVALID: Input box will be pre-filled with the text "Enter task..." instead of showing placeholder -->
+<state id="newTask">Enter task...</state>
+<input bind="newTask" placeholder="Enter task..." />
+```
+
+✅ **RIGHT**: Keep input state empty `<state id="newTask"></state>` and declare placeholder in `<input placeholder="...">`:
+```xml
+<state id="newTask"></state>
+<input bind="newTask" placeholder="Enter task..." />
+```
+
+### 7. Declarative List Filtering in `<for_each>` with `<if condition="...">`
+❌ **WRONG**: Declaring a filter state (`<state id="filter">all</state>`) and filter buttons, but forgetting to filter items in `<for_each>`.
+```xml
+<!-- INVALID: Items never change when filter state is updated -->
+<for_each items="{data.tasks}" var="task">
+  <card>{task.title}</card>
+</for_each>
+```
+
+✅ **RIGHT**: Wrap card elements with reactive `<if condition="...">` inside `<for_each>`:
+```xml
+<for_each items="{data.tasks}" var="task" key="id">
+  <if condition="data.filter == 'all' || (data.filter == 'active' &amp;&amp; !task.done) || (data.filter == 'done' &amp;&amp; task.done)">
+    <card>{task.title}</card>
+  </if>
+</for_each>
+```
+
 ---
 
 ## 🛡️ 12. Declarative Try / Catch / Finally Error Handling
@@ -1379,6 +1452,99 @@ For multi-instance UI widgets (accordions, tree nodes, tabs, dropdowns), always 
 </button>
 ```
 
+---
 
+## 📋 24. Crucial XML Template Authoring Rules & Checklist
 
+When building applications or generating `<uid_spec>` XML templates, always verify against this checklist:
 
+| Rule Area | ❌ Anti-Pattern | ✅ Correct Practice |
+| :--- | :--- | :--- |
+| **`MUTATE_STATE` JSON** | `<value>{"id":"t"+Date.now()}</value>`<br>`<value>{"done":!{task.done}}</value>` | Use `action="RUN_SCRIPT"` for JS expressions/timestamps.<br>Or use `<fields done="{!task.done}" />` in `UPDATE`. |
+| **Item Property Updates** | Modifying inner object properties in JS (`item.done = true`) | Use `<on_click action="MUTATE_STATE">` with `<fields done="{!task.done}" />`<br>or reassign array (`$data.tasks = [...$data.tasks]`). |
+| **Input Binding vs Placeholder** | `<state id="task">Type task...</state>` | `<state id="task"></state>`<br>`<input bind="task" placeholder="Type task..." />` |
+| **List Filtering** | Setting `<state id="filter">` without `<if>` in `<for_each>` | Wrap items with `<if condition="data.filter == 'all' || ...">` inside `<for_each>`. |
+| **XML Entities** | Using raw `&&` inside XML attributes | Use `&amp;&amp;` in XML attributes and scripts. |
+| **Numeric Variables** | `<state id="count">0</state>` | `<state id="count" type="number">0</state>` for math operations. |
+| **Keyed Lists** | Omitting `key` attribute on large lists | Use `<for_each items="{data.items}" var="item" key="id">` for zero-allocation reconciliation. |
+
+### Complete Reference Application Example
+```xml
+<uid_spec>
+  <data_model>
+    <state id="newTask"></state>
+    <state id="tasks" type="array">[{"id":"t1","title":"Explore EUIX Engine","done":false}]</state>
+    <state id="filter">all</state>
+  </data_model>
+
+  <flex direction="column" gap="16" class="p-6 max-w-xl mx-auto">
+    <!-- Header -->
+    <flex direction="row" justify="between" align="center">
+      <h1>Task Manager</h1>
+      <time value="now" format="time_medium" live="true" />
+    </flex>
+
+    <!-- Input Form -->
+    <flex direction="row" gap="8">
+      <input bind="newTask" placeholder="Add a new task..." flex="1" class="input" />
+      <button class="btn btn-primary">
+        <on_click action="RUN_SCRIPT">
+          if ($data.newTask &amp;&amp; $data.newTask.trim()) {
+            $data.tasks.push({
+              id: "t_" + Date.now(),
+              title: $data.newTask.trim(),
+              done: false
+            });
+            $data.newTask = "";
+          }
+        </on_click>
+        Add
+      </button>
+    </flex>
+
+    <!-- Filter Buttons -->
+    <flex direction="row" gap="8">
+      <button class="btn btn-sm">
+        <on_click action="SET_STATE"><path>data.filter</path><value>all</value></on_click>
+        All
+      </button>
+      <button class="btn btn-sm">
+        <on_click action="SET_STATE"><path>data.filter</path><value>active</value></on_click>
+        Active
+      </button>
+      <button class="btn btn-sm">
+        <on_click action="SET_STATE"><path>data.filter</path><value>done</value></on_click>
+        Done
+      </button>
+    </flex>
+
+    <!-- Filtered Reactive List -->
+    <for_each items="{data.tasks}" var="task" key="id">
+      <if condition="data.filter == 'all' || (data.filter == 'active' &amp;&amp; !task.done) || (data.filter == 'done' &amp;&amp; task.done)">
+        <flex direction="row" justify="between" align="center" class="item-row">
+          <flex direction="row" gap="8" align="center">
+            <button class="btn btn-icon">
+              <on_click action="MUTATE_STATE">
+                <path>tasks</path>
+                <operation>UPDATE</operation>
+                <where field="id" equals="{task.id}" />
+                <fields done="{!task.done}" />
+              </on_click>
+              {task.done ? "✅" : "⬜"}
+            </button>
+            <span style="text-decoration: {task.done ? 'line-through' : 'none'};">{task.title}</span>
+          </flex>
+          <button class="btn btn-danger">
+            <on_click action="MUTATE_STATE">
+              <path>tasks</path>
+              <operation>REMOVE</operation>
+              <where field="id" equals="{task.id}" />
+            </on_click>
+            🗑
+          </button>
+        </flex>
+      </if>
+    </for_each>
+  </flex>
+</uid_spec>
+```
