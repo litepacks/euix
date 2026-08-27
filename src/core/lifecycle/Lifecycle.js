@@ -500,50 +500,99 @@ export function initDataModel(engine) {
 
     engine._rawState = rawState;
     const self = engine;
-    engine.state = new Proxy(rawState, {
-        get(target, prop, receiver) {
-            if (typeof prop === "string") {
-                if (self._computedRegistry?.has(prop)) {
-                    return self.getComputed(prop);
-                }
-            }
-            const val = Reflect.get(target, prop, receiver);
-            if (Array.isArray(val) && typeof prop === "string") {
-                return new Proxy(val, {
-                    get(arrTarget, arrProp, arrReceiver) {
+    const proxyCache = new WeakMap();
+
+    function createDeepProxy(target, rootKey, currentPath) {
+        if (!target || typeof target !== "object") {
+            return target;
+        }
+        if (proxyCache.has(target)) {
+            return proxyCache.get(target);
+        }
+
+        const isArray = Array.isArray(target);
+        const proxy = new Proxy(target, {
+            get(obj, prop, receiver) {
+                if (typeof prop === "string") {
+                    if (!currentPath && self._computedRegistry?.has(prop)) {
+                        return self.getComputed(prop);
+                    }
+                    if (isArray) {
                         const mutatingMethods = ["push", "pop", "shift", "unshift", "splice", "sort", "reverse"];
-                        if (typeof arrProp === "string" && mutatingMethods.includes(arrProp)) {
+                        if (mutatingMethods.includes(prop)) {
                             return (...args) => {
-                                const res = Array.prototype[arrProp].apply(arrTarget, args);
-                                self.setState(prop, arrTarget);
+                                const res = Array.prototype[prop].apply(obj, args);
+                                if (isFn(self._savePersistedState)) {
+                                    self._savePersistedState(rootKey, rawState[rootKey]);
+                                }
+                                self.setState(rootKey, rawState[rootKey]);
+                                if (currentPath && currentPath !== rootKey) {
+                                    self.syncBindings(currentPath, obj);
+                                }
                                 return res;
                             };
                         }
-                        return Reflect.get(arrTarget, arrProp, arrReceiver);
-                    },
-                    set(arrTarget, arrKey, arrVal) {
-                        const res = Reflect.set(arrTarget, arrKey, arrVal);
-                        if (arrKey !== "length") {
-                            self.setState(prop, arrTarget);
+                    }
+                }
+                const val = Reflect.get(obj, prop, receiver);
+                if (val && typeof val === "object" && typeof prop === "string" && prop !== "__proto__") {
+                    const nextPath = currentPath ? `${currentPath}.${prop}` : prop;
+                    const nextRoot = rootKey || prop;
+                    return createDeepProxy(val, nextRoot, nextPath);
+                }
+                return val;
+            },
+            set(obj, prop, value) {
+                const res = Reflect.set(obj, prop, value);
+                if (typeof prop === "string" && prop !== "length") {
+                    const targetRoot = rootKey || prop;
+                    const subPath = currentPath ? `${currentPath}.${prop}` : prop;
+                    if (isFn(self._savePersistedState)) {
+                        self._savePersistedState(targetRoot, rawState[targetRoot]);
+                    }
+                    if (self._batching) {
+                        self.syncBindings(targetRoot, rawState[targetRoot]);
+                        if (subPath !== targetRoot) {
+                            self.syncBindings(subPath, value);
                         }
                         return res;
-                    },
-                });
-            }
-            return val;
-        },
-        set(target, key, value) {
-            target[key] = value;
-            if (isFn(self._savePersistedState)) self._savePersistedState(key, value);
-            if (self._batching) {
-                self.syncBindings(key, value);
-                return true;
-            }
-            self.syncBindings(key, value);
-            return true;
-        },
-    });
+                    }
+                    self.setState(targetRoot, rawState[targetRoot]);
+                    if (subPath !== targetRoot) {
+                        self.syncBindings(subPath, value);
+                    }
+                }
+                return res;
+            },
+            deleteProperty(obj, prop) {
+                const res = Reflect.deleteProperty(obj, prop);
+                if (typeof prop === "string") {
+                    const targetRoot = rootKey || prop;
+                    const subPath = currentPath ? `${currentPath}.${prop}` : prop;
+                    if (isFn(self._savePersistedState)) {
+                        self._savePersistedState(targetRoot, rawState[targetRoot]);
+                    }
+                    if (self._batching) {
+                        self.syncBindings(targetRoot, rawState[targetRoot]);
+                        if (subPath !== targetRoot) {
+                            self.syncBindings(subPath, undefined);
+                        }
+                        return res;
+                    }
+                    self.setState(targetRoot, rawState[targetRoot]);
+                    if (subPath !== targetRoot) {
+                        self.syncBindings(subPath, undefined);
+                    }
+                }
+                return res;
+            },
+        });
 
+        proxyCache.set(target, proxy);
+        return proxy;
+    }
+
+    engine.state = createDeepProxy(rawState, "", "");
     engine._proxyState = engine.state;
 
     if (isFn(engine.handleXHR) && pendingEndpoints.length > 0) {

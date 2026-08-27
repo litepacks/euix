@@ -1362,20 +1362,20 @@ EUIX Engine is engineered with zero Virtual DOM overhead, achieving raw native p
 
 Learned from real-world end-to-end fixture suites (`tests/scenarios/`):
 
-### 1. Nested State Arrays & Object Assignment
-When mutating items inside nested arrays (e.g. `data.cart.items[i].qty`):
+### 1. Nested State Arrays & Deep Reactive Proxy
+EUIX Engine includes full **Recursive Deep Reactive Proxy** interception. Mutating nested properties directly (in scripts, callbacks, or action steps) automatically updates the underlying store and triggers reactive DOM synchronization:
 ```js
-// ✅ CORRECT: Reassign the parent state object to trigger both root and nested bindings
-$data.cart = {
-  ...$data.cart,
-  items: [...$data.cart.items]
-};
+// ✅ CORRECT: Direct deep property mutations trigger reactive UI updates automatically
+$item.done = !$item.done;
+$data.user.address.city = "Izmir";
+$data.cart.items[0].qty += 1;
+$data.cart.items.push({ id: 2, name: "Orange", qty: 1 });
 
-// Or programmatically:
+// Programmatic state update:
 engine.setState("cart", { ...engine.getState("cart") });
 ```
 > [!NOTE]
-> EUIX Engine automatically binds `<for_each items="{data.cart.items}">` to both `"cart.items"` and `"cart"`. Reassigning the parent object immediately flushes updates to all nested list rows.
+> EUIX Engine's recursive proxy intercepts all sub-property sets and array mutating methods (`push`, `pop`, `splice`, etc.), bubbling the mutation up to the root state key and immediately updating bound template expressions and `<for_each>` lists.
 
 ### 2. Complex Boolean Logic & Unary Operators
 In templates, write natural JavaScript logical expressions:

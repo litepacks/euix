@@ -962,6 +962,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
                     if (existing) {
                         if (existing.hash !== hash || hasExtKeys) {
                             pooledItemContext[varName] = item;
+                            pooledItemContext.item = item;
+                            pooledItemContext._varName = varName;
                             pooledItemContext._index = idx;
                             pooledItemContext.index = idx;
                             _applyForEachSlots(engine, existing.nodes, compiled, item, pooledItemContext, varName);
@@ -974,8 +976,9 @@ export function renderForEach(engine, xmlNode, context = {}) {
             }
         }
 
+        // Fast-Path 4 & Full Diffing
         const seenKeysInPass = new Set();
-        for (let idx = 0; idx < list.length; idx++) {
+        for (let idx = 0; idx < listLen; idx++) {
             const item = list[idx];
             if (item && typeof item === "object" && Object.isExtensible(item)) {
                 item._index = idx;
@@ -1001,6 +1004,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 }
                 if (compiled?.canClone) {
                     pooledItemContext[varName] = item;
+                    pooledItemContext.item = item;
+                    pooledItemContext._varName = varName;
                     pooledItemContext._index = idx;
                     pooledItemContext.index = idx;
                     _applyForEachSlots(engine, existing.nodes, compiled, item, pooledItemContext, varName);
