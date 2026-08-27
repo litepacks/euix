@@ -1319,6 +1319,96 @@ export function applyRef(engine, el, xmlNode, context = {}) {
     return el;
 }
 
+export function isStaticSubtree(xmlNode, engine = null) {
+    if (!xmlNode) return false;
+    if (xmlNode.nodeType === 3) {
+        return !xmlNode.nodeValue || !xmlNode.nodeValue.includes("{");
+    }
+    if (xmlNode.nodeType !== 1) return false;
+
+    if (xmlNode._isStaticSubtree !== undefined) {
+        return xmlNode._isStaticSubtree;
+    }
+
+    const tagName = (xmlNode.tagName || "").toLowerCase();
+
+    if (
+        tagName.startsWith("on_") ||
+        tagName === "for_each" ||
+        tagName === "component" ||
+        tagName === "slot" ||
+        tagName === "children" ||
+        tagName === "outlet" ||
+        tagName === "conditional" ||
+        tagName === "if" ||
+        tagName === "style" ||
+        tagName === "use_style" ||
+        tagName === "use_script" ||
+        tagName === "data_model" ||
+        tagName === "constants" ||
+        tagName === "actions" ||
+        tagName === "action_def" ||
+        tagName === "webmcp" ||
+        tagName === "webmcp_tool" ||
+        tagName === "webmcp-tool" ||
+        METADATA_AND_EVENT_TAGS.has(tagName)
+    ) {
+        xmlNode._isStaticSubtree = false;
+        return false;
+    }
+
+    if (engine) {
+        if (
+            engine._customComponents?.has(tagName) ||
+            engine._componentSpecs?.has(tagName) ||
+            engine.constructor._globalCustomComponents?.has(tagName) ||
+            engine.constructor._globalComponentSpecs?.has(tagName)
+        ) {
+            xmlNode._isStaticSubtree = false;
+            return false;
+        }
+    }
+
+    const attrs = xmlNode.attributes;
+    if (attrs) {
+        for (let i = 0; i < attrs.length; i++) {
+            const attr = attrs[i];
+            const name = attr.name.toLowerCase();
+            const val = attr.value || "";
+            if (
+                name.startsWith("on_") ||
+                name === "bind" ||
+                name === "ref" ||
+                val.includes("{")
+            ) {
+                xmlNode._isStaticSubtree = false;
+                return false;
+            }
+        }
+    }
+
+    const children = xmlNode.childNodes;
+    if (children) {
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            if (child.nodeType === 1) {
+                const childTag = (child.tagName || "").toLowerCase();
+                if (childTag.startsWith("on_") || EVENT_TAGS.has(childTag)) {
+                    xmlNode._isStaticSubtree = false;
+                    return false;
+                }
+            }
+            if (!isStaticSubtree(child, engine)) {
+                xmlNode._isStaticSubtree = false;
+                return false;
+            }
+        }
+    }
+
+    xmlNode._isStaticSubtree = true;
+    return true;
+}
+
 export function createHTMLElement(engine, xmlNode, context = {}) {
     if (!xmlNode) return null;
     try {
@@ -1340,6 +1430,23 @@ export function createHTMLElement(engine, xmlNode, context = {}) {
 }
 
 export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
+    if (!context._skipStaticClone && xmlNode.nodeType === 1) {
+        if (xmlNode._staticPrototype) {
+            return xmlNode._staticPrototype.cloneNode(true);
+        }
+        if (xmlNode._isStaticSubtree === undefined) {
+            if (isStaticSubtree(xmlNode, engine)) {
+                const proto = _createHTMLElementInternal(engine, xmlNode, { ...context, _skipStaticClone: true });
+                if (proto) {
+                    xmlNode._staticPrototype = proto;
+                    return proto.cloneNode(true);
+                }
+            } else {
+                xmlNode._isStaticSubtree = false;
+            }
+        }
+    }
+
     if (isTxtNode(xmlNode)) {
         let parent = xmlNode.parentNode;
         let isCodeBlock = false;
