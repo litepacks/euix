@@ -155,7 +155,7 @@ class EUIXEngineCore {
         this._bindings = new Map();
         this._stateKeyBits = new Map();
         this._nextStateBitIndex = 0;
-        this._dirtyBitmask = 0;
+        this._dirtyBitmask = 0n;
         this._customComponents = new Map();
         this._customActions = new Map();
         this._componentSpecs = new Map();

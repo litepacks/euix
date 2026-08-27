@@ -224,13 +224,13 @@ export function _invalidateComputed(engine, changedKey, allAffected) {
 
 export function flushStateUpdates(engine) {
     if (!engine._pendingBatchChanges || engine._pendingBatchChanges.size === 0) {
-        engine._dirtyBitmask = 0;
+        engine._dirtyBitmask = 0n;
         return;
     }
     const pending = Array.from(engine._pendingBatchChanges.values());
     engine._pendingBatchChanges.clear();
     const _dirtyMask = engine._dirtyBitmask;
-    engine._dirtyBitmask = 0;
+    engine._dirtyBitmask = 0n;
 
     const allAffected = new Set();
     const executedFns = new Set();
@@ -333,7 +333,11 @@ export function setState(engine, key, value, options = {}) {
         engine._rawState[key] = value;
 
         const keyMask = engine.getKeyMask(key);
-        engine._dirtyBitmask |= keyMask;
+        if (typeof keyMask === "bigint" || typeof engine._dirtyBitmask === "bigint") {
+            engine._dirtyBitmask = BigInt(engine._dirtyBitmask || 0) | BigInt(keyMask);
+        } else {
+            engine._dirtyBitmask |= keyMask;
+        }
 
         if (key.includes(".") || key.includes("[")) {
             const parts = splitPath(key);

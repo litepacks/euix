@@ -511,7 +511,9 @@ export function interpolate(engine, text, context = {}) {
     // Fast-path 3: JIT compiled template function for complex expressions/ternaries/math
     const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
     if (jitFn) {
-        const res = jitFn(engine, context, (p) => engine.resolveValueFromPath(p, context));
+        const dataScope = engine._state;
+        const localScope = context._localState || context.local;
+        const res = jitFn(dataScope, localScope, context, engine, (p) => engine.resolveValueFromPath(p, context));
         if (res !== undefined && res !== null && res !== "") return res;
     }
 
@@ -1331,11 +1333,17 @@ export function isStaticSubtree(xmlNode, engine = null) {
     }
 
     const tagName = (xmlNode.tagName || "").toLowerCase();
+    const typeAttr = (xmlNode.getAttribute("type") || "").toLowerCase();
+    const srcAttr = xmlNode.getAttribute("src") || xmlNode.getAttribute("url");
+    const nameAttr = (xmlNode.getAttribute("name") || "").toLowerCase();
 
     if (
+        srcAttr ||
         tagName.startsWith("on_") ||
         tagName === "for_each" ||
         tagName === "component" ||
+        tagName === "import" ||
+        tagName === "lazy" ||
         tagName === "slot" ||
         tagName === "children" ||
         tagName === "outlet" ||
@@ -1351,7 +1359,22 @@ export function isStaticSubtree(xmlNode, engine = null) {
         tagName === "webmcp" ||
         tagName === "webmcp_tool" ||
         tagName === "webmcp-tool" ||
+        typeAttr === "lazy" ||
+        typeAttr === "component" ||
+        typeAttr === "outlet" ||
+        typeAttr === "custom" ||
+        nameAttr === "lazy" ||
         METADATA_AND_EVENT_TAGS.has(tagName)
+    ) {
+        xmlNode._isStaticSubtree = false;
+        return false;
+    }
+
+    const EngineClass = engine ? engine.constructor : null;
+    if (
+        EngineClass?._lazyRegistry?.has(tagName) ||
+        EngineClass?._lazyRegistry?.has(nameAttr) ||
+        EngineClass?._lazyRegistry?.has(typeAttr)
     ) {
         xmlNode._isStaticSubtree = false;
         return false;
@@ -1361,8 +1384,14 @@ export function isStaticSubtree(xmlNode, engine = null) {
         if (
             engine._customComponents?.has(tagName) ||
             engine._componentSpecs?.has(tagName) ||
+            (typeAttr && engine._customComponents?.has(typeAttr)) ||
+            (typeAttr && engine._componentSpecs?.has(typeAttr)) ||
+            (nameAttr && engine._componentSpecs?.has(nameAttr)) ||
             engine.constructor._globalCustomComponents?.has(tagName) ||
-            engine.constructor._globalComponentSpecs?.has(tagName)
+            engine.constructor._globalComponentSpecs?.has(tagName) ||
+            (typeAttr && engine.constructor._globalCustomComponents?.has(typeAttr)) ||
+            (typeAttr && engine.constructor._globalComponentSpecs?.has(typeAttr)) ||
+            (nameAttr && engine.constructor._globalComponentSpecs?.has(nameAttr))
         ) {
             xmlNode._isStaticSubtree = false;
             return false;

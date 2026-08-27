@@ -158,8 +158,43 @@ export class EUIXExpressionParser {
                     id.startsWith("data.") ||
                     id.startsWith("parent.") ||
                     id.startsWith("local.") ||
-                    id.startsWith("props.")
+                    id.startsWith("props.") ||
+                    id.startsWith("args.") ||
+                    id.startsWith("params.") ||
+                    id.startsWith("result.")
                 ) {
+                    if (id.startsWith("data.")) {
+                        const propPath = id.slice(5);
+                        const jsProp = propPath
+                            .split(".")
+                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
+                            .join("?.");
+                        return `(($data?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
+                    }
+                    if (id.startsWith("local.") || id.startsWith("$local.")) {
+                        const propPath = id.replace(/^(\$local|local)\./, "");
+                        const jsProp = propPath
+                            .split(".")
+                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
+                            .join("?.");
+                        return `(($local?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
+                    }
+                    if (id.startsWith("props.") || id.startsWith("$props.")) {
+                        const propPath = id.replace(/^(\$props|props)\./, "");
+                        const jsProp = propPath
+                            .split(".")
+                            .map((p) => (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(p) ? p : `[${JSON.stringify(p)}]`))
+                            .join("?.");
+                        return `(($ctx?.props?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
+                    }
+                    if (id.startsWith("args.") || id.startsWith("params.")) {
+                        const propPath = id.replace(/^(args|params)\./, "");
+                        return `(($ctx?.args?.${propPath}) ?? ($ctx?.params?.${propPath}) ?? $r(${JSON.stringify(id)}))`;
+                    }
+                    if (id.startsWith("result.")) {
+                        const propPath = id.slice(7);
+                        return `(($ctx?.result?.${propPath}) ?? $r(${JSON.stringify(id)}))`;
+                    }
                     return `($r(${JSON.stringify(id)}))`;
                 }
                 return `(($r(${JSON.stringify(id)})) !== undefined ? ($r(${JSON.stringify(id)})) : ${JSON.stringify(id)})`;
@@ -275,7 +310,20 @@ export class EUIXExpressionParser {
         try {
             const tokens = EUIXExpressionParser.tokenize(exprString);
             const jsCode = EUIXExpressionParser.parseToJs(tokens);
-            fn = new Function("$r", `try { return (${jsCode}); } catch (_) { return undefined; }`);
+            fn = new Function(
+                "$data",
+                "$local",
+                "$ctx",
+                "$engine",
+                "$r",
+                `try {
+                    if (typeof $data === "function" && $r === undefined) {
+                        $r = $data;
+                        $data = null;
+                    }
+                    return (${jsCode});
+                } catch (_) { return undefined; }`,
+            );
         } catch (_) {
             fn = null;
         }
@@ -365,8 +413,10 @@ export class EUIXExpressionParser {
                 }
                 const code = parts.length === 1 ? parts[0] : parts.join(" + ");
                 cached = new Function(
-                    "$engine",
+                    "$data",
+                    "$local",
                     "$ctx",
+                    "$engine",
                     "$r",
                     `try { return String(${code}); } catch (_) { return ""; }`,
                 );
@@ -383,12 +433,15 @@ export class EUIXExpressionParser {
         return cached;
     }
 
-    static eval(exprString, resolveValueFn) {
+    static eval(exprString, resolveValueFn, context = {}, engine = null) {
         if (!exprString?.trim()) return undefined;
         try {
             const compiled = EUIXExpressionParser.compileExpression(exprString);
             if (compiled) {
-                return compiled(resolveValueFn);
+                const dataScope = engine ? engine._state : (context && context.$data ? context.$data : (context && context.data ? context.data : null));
+                const localScope = context ? (context._localState || context.local) : null;
+                const resolver = typeof resolveValueFn === "function" ? resolveValueFn : (p) => (engine ? engine.resolveValueFromPath(p, context) : undefined);
+                return compiled(dataScope, localScope, context, engine, resolver);
             }
         } catch (_) {}
         return undefined;

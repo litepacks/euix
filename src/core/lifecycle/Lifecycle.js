@@ -709,7 +709,7 @@ export function destroy(engine) {
         engine._stateKeyBits.clear();
     }
     engine._nextStateBitIndex = 0;
-    engine._dirtyBitmask = 0;
+    engine._dirtyBitmask = 0n;
     if (engine._stateWatchers) {
         engine._stateWatchers.clear();
     }

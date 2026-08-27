@@ -79,10 +79,13 @@ export function getKeyMask(engine, key) {
     }
     let bitIndex = engine._stateKeyBits.get(cleanKey);
     if (bitIndex === undefined) {
-        bitIndex = engine._nextStateBitIndex++ & 31;
+        bitIndex = engine._nextStateBitIndex++;
         engine._stateKeyBits.set(cleanKey, bitIndex);
     }
-    return 1 << bitIndex;
+    if (typeof bitIndex === "number" && bitIndex < 31) {
+        return 1 << bitIndex;
+    }
+    return 1n << BigInt(bitIndex);
 }
 
 export function getJsonPath(obj, path) {
