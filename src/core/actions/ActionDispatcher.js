@@ -559,7 +559,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
         el.addEventListener(eventType, (e) => {
             if (e._euixHandled) return;
             e._euixHandled = true;
-            executeEventHandlers(engine, handlerNodes, eventType, e, el, context);
+            executeEventHandlers(engine, handlerNodes, eventType, e, el, el._euixContext || context);
         });
     });
 

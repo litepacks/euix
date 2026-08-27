@@ -186,7 +186,7 @@ describe("Accessibility (A11y) & Automated Keyboard Focus Traps Suite", () => {
         expect(headers[1].getAttribute("aria-expanded")).toBe("true");
     });
 
-    it("should support screen reader live region announcements via <live_region> and engine.announce()", (done) => {
+    it("should render <live_region> tag and trigger engine.announce() programmatic announcements", async () => {
         const xml = `
         <uid_spec>
           <data_model>
@@ -218,12 +218,11 @@ describe("Accessibility (A11y) & Automated Keyboard Focus Traps Suite", () => {
         // Programmatic Announcement
         engine.announce("Backup created successfully", "polite");
 
-        setTimeout(() => {
-            const announcer = document.getElementById("euix-a11y-announcer-polite");
-            expect(announcer).not.toBeNull();
-            expect(announcer.getAttribute("aria-live")).toBe("polite");
-            expect(announcer.textContent).toBe("Backup created successfully");
-        }, 100);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const announcer = document.getElementById("euix-a11y-announcer-polite");
+        expect(announcer).not.toBeNull();
+        expect(announcer.getAttribute("aria-live")).toBe("polite");
+        expect(announcer.textContent).toBe("Backup created successfully");
     });
 
     it("should support roving tabindex helper across arbitrary item lists", () => {

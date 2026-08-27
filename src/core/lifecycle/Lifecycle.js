@@ -543,21 +543,17 @@ export function initDataModel(engine) {
                 return val;
             },
             set(obj, prop, value) {
+                if (Object.is(obj[prop], value)) {
+                    return true;
+                }
                 const res = Reflect.set(obj, prop, value);
-                if (typeof prop === "string" && prop !== "length") {
+                if (typeof prop === "string" && prop !== "length" && !prop.startsWith("_")) {
                     const targetRoot = rootKey || prop;
                     const subPath = currentPath ? `${currentPath}.${prop}` : prop;
                     if (isFn(self._savePersistedState)) {
                         self._savePersistedState(targetRoot, rawState[targetRoot]);
                     }
-                    if (self._batching) {
-                        self.syncBindings(targetRoot, rawState[targetRoot]);
-                        if (subPath !== targetRoot) {
-                            self.syncBindings(subPath, value);
-                        }
-                        return res;
-                    }
-                    self.setState(targetRoot, rawState[targetRoot]);
+                    self.syncBindings(targetRoot, rawState[targetRoot]);
                     if (subPath !== targetRoot) {
                         self.syncBindings(subPath, value);
                     }
@@ -566,20 +562,13 @@ export function initDataModel(engine) {
             },
             deleteProperty(obj, prop) {
                 const res = Reflect.deleteProperty(obj, prop);
-                if (typeof prop === "string") {
+                if (typeof prop === "string" && !prop.startsWith("_")) {
                     const targetRoot = rootKey || prop;
                     const subPath = currentPath ? `${currentPath}.${prop}` : prop;
                     if (isFn(self._savePersistedState)) {
                         self._savePersistedState(targetRoot, rawState[targetRoot]);
                     }
-                    if (self._batching) {
-                        self.syncBindings(targetRoot, rawState[targetRoot]);
-                        if (subPath !== targetRoot) {
-                            self.syncBindings(subPath, undefined);
-                        }
-                        return res;
-                    }
-                    self.setState(targetRoot, rawState[targetRoot]);
+                    self.syncBindings(targetRoot, rawState[targetRoot]);
                     if (subPath !== targetRoot) {
                         self.syncBindings(subPath, undefined);
                     }

@@ -323,13 +323,28 @@ export function _handleRunScriptAction(actionNode, context = {}) {
     }
 }
 
+function interpolateObjectProperties(engine, obj, context) {
+    if (!obj || typeof obj !== "object" || !engine) return obj;
+    for (const [k, v] of Object.entries(obj)) {
+        if (typeof v === "string" && v.includes("{")) {
+            obj[k] = engine.interpolate(v, context);
+        } else if (v && typeof v === "object") {
+            interpolateObjectProperties(engine, v, context);
+        }
+    }
+    return obj;
+}
+
 function evaluateObjectExpression(engine, expr, context = {}) {
     if (!expr || typeof expr !== "string") return null;
     const trimmed = expr.trim();
     if (!trimmed) return null;
 
     try {
-        return JSON.parse(trimmed);
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object") {
+            return interpolateObjectProperties(engine, parsed, context);
+        }
     } catch (_) {}
 
     const sanitized = trimmed.replace(/\{([a-zA-Z_$][a-zA-Z0-9_.]*)\}/g, (match, p1) => {
@@ -338,7 +353,10 @@ function evaluateObjectExpression(engine, expr, context = {}) {
     });
 
     try {
-        return JSON.parse(sanitized);
+        const parsed = JSON.parse(sanitized);
+        if (parsed && typeof parsed === "object") {
+            return interpolateObjectProperties(engine, parsed, context);
+        }
     } catch (_) {}
 
     try {
@@ -368,7 +386,9 @@ function evaluateObjectExpression(engine, expr, context = {}) {
             itemVal,
             taskVal,
         );
-        if (res && typeof res === "object") return res;
+        if (res && typeof res === "object") {
+            return interpolateObjectProperties(engine, res, context);
+        }
     } catch (_) {
         try {
             const fn2 = new Function(
@@ -390,7 +410,9 @@ function evaluateObjectExpression(engine, expr, context = {}) {
                 context.item,
                 context.task,
             );
-            if (res2 && typeof res2 === "object") return res2;
+            if (res2 && typeof res2 === "object") {
+                return interpolateObjectProperties(engine, res2, context);
+            }
         } catch (_) {}
     }
 
@@ -471,7 +493,18 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
             parsedObj?.id ||
             `task-${Date.now()}`;
-        const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId };
+
+        let newItem;
+        if (parsedObj && typeof parsedObj === "object") {
+            newItem = { id: itemId, ...parsedObj };
+        } else if (parsedObj !== undefined && parsedObj !== null && typeof parsedObj !== "object") {
+            newItem = { id: itemId, text: String(parsedObj), title: String(parsedObj), value: parsedObj };
+        } else if (textValue) {
+            newItem = { id: itemId, text: textValue, title: textValue, value: textValue };
+        } else {
+            newItem = { id: itemId };
+        }
+
         if (valItem?.attributes) {
             const vAttrs = valItem.attributes;
             const vaLen = vAttrs.length;
@@ -493,8 +526,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             const titleAttr = valItem.getAttribute("title");
             if (titleAttr && !newItem.title) newItem.title = this.interpolate(titleAttr, context);
         }
-        if (!parsedObj && !newItem.text && textValue) newItem.text = textValue;
-        if (!parsedObj && !newItem.title && textValue) newItem.title = textValue;
+        if (!newItem.text && textValue) newItem.text = textValue;
+        if (!newItem.title && textValue) newItem.title = textValue;
         if (!newItem.quantity) newItem.quantity = 1;
 
         const hasCustomAttributes = Object.keys(newItem).some(
@@ -518,54 +551,36 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         if (existingIdx >= 0 && targetId) {
             const existing = { ...currentList[existingIdx] };
             const currentQty = parseInt(existing.quantity || 1, 10);
-            existing.quantity = currentQty + 1;
+            const addQty = parseInt(newItem.quantity || 1, 10);
+            existing.quantity = currentQty + addQty;
             currentList[existingIdx] = existing;
-            this.setState(path, currentList);
-            this.applyResets(actionNode);
-            return;
-        }
-
-        if (newItem.status === undefined || newItem.status === null || newItem.status === "") {
-            const selCol = this.getState("new_kanban_col");
-            if (selCol && ["todo", "in_progress", "done"].includes(selCol)) {
-                newItem.status = selCol;
+        } else {
+            if (operation === MUTATION_OPS.UNSHIFT || operation === MUTATION_OPS.PREPEND) {
+                currentList.unshift(newItem);
+            } else {
+                currentList.push(newItem);
             }
         }
-        if (!newItem.category && path === "tasks") newItem.category = "General";
-        if (newItem.completed === undefined && (path === "todos" || path === "tasks")) newItem.completed = "false";
 
         this.batch(() => {
-            const curVal2 = this.getState(path);
-            const currentList2 = Array.isArray(curVal2)
-                ? [...curVal2]
-                : Array.isArray(this._rawState[path])
-                  ? [...this._rawState[path]]
-                  : [];
-            if (operation === MUTATION_OPS.UNSHIFT || operation === MUTATION_OPS.PREPEND) {
-                this.setState(path, [newItem, ...currentList2]);
-            } else {
-                this.setState(path, [...currentList2, newItem]);
-            }
+            this.setState(path, currentList);
             this.applyResets(actionNode);
-            if (!this.getChild(actionNode, "reset") && "new_todo_input" in this._rawState) {
-                this.setState("new_todo_input", "", { silent: true });
-            }
         });
         return;
     }
 
-    if (operation === MUTATION_OPS.REMOVE) {
+    if (operation === MUTATION_OPS.REMOVE || operation === MUTATION_OPS.DELETE) {
         const indexNode = this.getChild(actionNode, "index");
         const whereNode = this.getChild(actionNode, "where");
-        const currentVal = this.getState(path);
-        const list = Array.isArray(currentVal)
-            ? [...currentVal]
+        const curVal = this.getState(path);
+        let list = Array.isArray(curVal)
+            ? [...curVal]
             : Array.isArray(this._rawState[path])
               ? [...this._rawState[path]]
               : [];
 
         if (indexNode) {
-            const rawIdx = indexNode.textContent.trim();
+            const rawIdx = indexNode.textContent.trim() || indexNode.getAttribute("value") || "";
             const interpolatedIdx = this.interpolate(rawIdx, context);
             const idx = parseInt(interpolatedIdx, 10);
             if (!Number.isNaN(idx) && idx >= 0 && idx < list.length) {
@@ -580,25 +595,30 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         if (whereNode) {
             const field = whereNode.getAttribute("field") || "id";
-            const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-            const matchValue = this.interpolate(rawMatch, context);
+            const op = whereNode.getAttribute("op") || whereNode.getAttribute("operator") || "equals";
+            const rawEquals = whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim();
+            const targetVal = rawEquals !== null ? this.interpolate(rawEquals, context) : null;
 
-            const filtered = list.filter((item) => {
-                if (!item) return false;
-                const actual = item[field];
-                return (
-                    actual !== matchValue &&
-                    String(actual) !== String(matchValue) &&
-                    actual !== parseInt(matchValue, 10)
-                );
-            });
-            this.batch(() => {
-                this.setState(path, filtered);
-                this.applyResets(actionNode);
-            });
-            return;
+            if (targetVal !== null) {
+                list = list.filter((item) => {
+                    if (!item) return false;
+                    const itemVal = String(item[field]);
+                    if (op === "equals") return itemVal !== String(targetVal);
+                    if (op === "neq") return itemVal === String(targetVal);
+                    return true;
+                });
+            }
         }
 
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
+        return;
+    }
+
+    if (operation === MUTATION_OPS.POP) {
+        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
         list.pop();
         this.batch(() => {
             this.setState(path, list);
@@ -607,22 +627,100 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         return;
     }
 
-    if (operation === MUTATION_OPS.MOVE_UP || operation === MUTATION_OPS.MOVE_DOWN) {
-        const indexNode = this.getChild(actionNode, "index");
-        const whereNode = this.getChild(actionNode, "where");
+    if (operation === MUTATION_OPS.SHIFT) {
         const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        list.shift();
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
+        return;
+    }
 
-        let targetIdx = -1;
-        if (indexNode) {
-            targetIdx = parseInt(this.interpolate(indexNode.textContent.trim(), context), 10);
-        } else if (whereNode) {
-            const field = whereNode.getAttribute("field") || "id";
-            const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-            const expected = this.interpolate(rawMatch, context);
-            targetIdx = list.findIndex((item) => String(item[field]) === String(expected));
+    if (operation === MUTATION_OPS.UPDATE || operation === MUTATION_OPS.SET) {
+        const whereNode = this.getChild(actionNode, "where");
+        const field = whereNode?.getAttribute("field") || "id";
+        const op = whereNode?.getAttribute("op") || whereNode?.getAttribute("operator") || "equals";
+        const rawEquals = whereNode ? whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim() : null;
+        const targetVal = rawEquals !== null ? this.interpolate(rawEquals, context) : null;
+
+        const valNode = this.getChild(actionNode, "value");
+        const fieldsNode = this.getChild(actionNode, "fields");
+        const itemNode = this.getChild(actionNode, "item");
+        const rawText = valNode ? valNode.textContent?.trim() || "" : "";
+        const parsedObj = evaluateObjectExpression(this, rawText, context);
+
+        const updateValues = parsedObj && typeof parsedObj === "object" ? { ...parsedObj } : {};
+        if (valNode?.attributes) {
+            for (let vaIdx = 0; vaIdx < valNode.attributes.length; vaIdx++) {
+                const attr = valNode.attributes[vaIdx];
+                updateValues[attr.name] = this.interpolate(attr.value, context);
+            }
+        }
+        if (fieldsNode?.attributes) {
+            for (let faIdx = 0; faIdx < fieldsNode.attributes.length; faIdx++) {
+                const attr = fieldsNode.attributes[faIdx];
+                updateValues[attr.name] = this.interpolate(attr.value, context);
+            }
+        }
+        if (itemNode?.attributes) {
+            for (let iaIdx = 0; iaIdx < itemNode.attributes.length; iaIdx++) {
+                const attr = itemNode.attributes[iaIdx];
+                updateValues[attr.name] = this.interpolate(attr.value, context);
+            }
         }
 
-        if (targetIdx !== -1) {
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState[path])
+              ? [...this._rawState[path]]
+              : [];
+
+        for (let i = 0; i < list.length; i++) {
+            const item = list[i];
+            const itemVal = String(item?.[field]);
+            const matches = op === "equals" ? itemVal === String(targetVal) : itemVal !== String(targetVal);
+            if (matches) {
+                if (Object.keys(updateValues).length > 0) {
+                    list[i] = { ...item, ...updateValues };
+                } else if (rawText) {
+                    const updateField = actionNode.getAttribute("field") || "value";
+                    list[i] = { ...item, [updateField]: this.interpolate(rawText, context) };
+                }
+            }
+        }
+
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+            if (!this.getChild(actionNode, "reset")) {
+                if (this._rawState && "editing_id" in this._rawState) {
+                    this.setState("editing_id", "", { silent: true });
+                }
+                if (this._rawState && "edit_todo_input" in this._rawState) {
+                    this.setState("edit_todo_input", "", { silent: true });
+                }
+            }
+        });
+        return;
+    }
+
+    if (operation === MUTATION_OPS.MOVE_UP || operation === MUTATION_OPS.MOVE_DOWN) {
+        const idxNode = this.getChild(actionNode, "index");
+        const whereNode = this.getChild(actionNode, "where");
+        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        let targetIdx = -1;
+
+        if (idxNode) {
+            targetIdx = parseInt(this.interpolate(idxNode.textContent.trim(), context), 10);
+        } else if (whereNode) {
+            const field = whereNode.getAttribute("field") || "id";
+            const eqVal = this.interpolate(whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "", context);
+            targetIdx = list.findIndex((it) => String(it?.[field]) === String(eqVal));
+        }
+
+        if (targetIdx >= 0 && targetIdx < list.length) {
             const swapIdx = operation === MUTATION_OPS.MOVE_UP ? targetIdx - 1 : targetIdx + 1;
             if (swapIdx >= 0 && swapIdx < list.length) {
                 const temp = list[targetIdx];
@@ -643,14 +741,28 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const indexBNode = this.getChild(actionNode, "indexB");
         const fromNode = this.getChild(actionNode, "from");
         const toNode = this.getChild(actionNode, "to");
-        const idxA = parseInt(
+        let idxA = parseInt(
             this.interpolate(indexANode ? indexANode.textContent.trim() : fromNode ? fromNode.textContent.trim() : "-1", context),
             10,
         );
-        const idxB = parseInt(
+        let idxB = parseInt(
             this.interpolate(indexBNode ? indexBNode.textContent.trim() : toNode ? toNode.textContent.trim() : "-1", context),
             10,
         );
+
+        const whereNode = this.getChild(actionNode, "where");
+        const targetWhereNode = this.getChild(actionNode, "target_where") || this.getChild(actionNode, "where_target");
+
+        if (idxA === -1 && whereNode) {
+            const field = whereNode.getAttribute("field") || "id";
+            const eqVal = this.interpolate(whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "", context);
+            idxA = list.findIndex((it) => String(it?.[field]) === String(eqVal));
+        }
+        if (idxB === -1 && targetWhereNode) {
+            const field = targetWhereNode.getAttribute("field") || "id";
+            const eqVal = this.interpolate(targetWhereNode.getAttribute("equals") || targetWhereNode.getAttribute("value") || "", context);
+            idxB = list.findIndex((it) => String(it?.[field]) === String(eqVal));
+        }
 
         if (idxA >= 0 && idxB >= 0 && idxA < list.length && idxB < list.length) {
             const temp = list[idxA];

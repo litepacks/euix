@@ -108,7 +108,7 @@ describe("Declarative WebSocket & SSE Streaming Suite (EUIXStreamPlugin)", () =>
         const engine = EUIXEngineCore.mount(xml, container);
         expect(engine.getStreamStatus("crypto")).toBeDefined();
 
-        await new Promise((resolve) => setTimeout(resolve, 30));
+        await new Promise((resolve) => setTimeout(resolve, 80));
 
         const status = engine.getStreamStatus("crypto");
         expect(status.connected).toBe(true);
