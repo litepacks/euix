@@ -229,6 +229,11 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                   "$path",
                   "$err",
                   "$date",
+                  "$ctx",
+                  "$context",
+                  "$item",
+                  "$index",
+                  "$local",
                   interpolatedCode,
               )
             : new Function(
@@ -246,6 +251,11 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                   "$path",
                   "$err",
                   "$date",
+                  "$ctx",
+                  "$context",
+                  "$item",
+                  "$index",
+                  "$local",
                   interpolatedCode,
               );
         const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
@@ -259,6 +269,32 @@ export function _handleRunScriptAction(actionNode, context = {}) {
         const pPath = context.$path || context.path || "";
         const errVal = context.err || context.error || context._lastError || null;
         const dateHelper = this.$date || this.date || null;
+        const itemVal =
+            context.item !== undefined
+                ? context.item
+                : context._varName && context[context._varName] !== undefined
+                  ? context[context._varName]
+                  : (() => {
+                        const customKey = Object.keys(context).find(
+                            (k) =>
+                                !k.startsWith("_") &&
+                                ![
+                                    "args",
+                                    "result",
+                                    "props",
+                                    "local",
+                                    "err",
+                                    "error",
+                                    "data",
+                                    "$data",
+                                    "state",
+                                    "constants",
+                                ].includes(k),
+                        );
+                        return customKey ? context[customKey] : undefined;
+                    })();
+        const indexVal = context._index !== undefined ? context._index : context.index !== undefined ? context.index : 0;
+        const localVal = context._localState || context.local || null;
         return fn.call(
             targetEl,
             targetEl,
@@ -275,6 +311,11 @@ export function _handleRunScriptAction(actionNode, context = {}) {
             pPath,
             errVal,
             dateHelper,
+            context,
+            context,
+            itemVal,
+            indexVal,
+            localVal,
         );
     } catch (err) {
         this.reportError(err, "Action Execution (RUN_SCRIPT)");

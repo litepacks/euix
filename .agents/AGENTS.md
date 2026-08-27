@@ -360,6 +360,13 @@ Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, t
 - `$data`: Reactive state data object (read/write access)
 - `$engine`: `EUIXEngine` instance
 - `$evt`: Native browser DOM Event object
+- `$ctx` / `$context`: Execution context object containing all loop variables (e.g. `$ctx.task`, `$ctx.todo`)
+- `$item`: Current loop item object in `<for_each>` containers
+- `$index`: Current loop integer index (`0, 1, 2...`)
+- `$local`: Component-scoped isolated state store (for `isolated="true"` components)
+- `$args`: Composed action workflow parameters (`<arg>`)
+- `$result`: Return value of the previous step in action pipelines
+- `$date`: Intl/Date manipulation helper (when `EUIXDatePlugin` is loaded)
 
 ---
 

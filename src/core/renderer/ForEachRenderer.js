@@ -691,6 +691,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
     const createItemNodes = (item, idx) => {
         if (compiled?.canClone) {
             pooledItemContext[varName] = item;
+            pooledItemContext.item = item;
+            pooledItemContext._varName = varName;
             pooledItemContext._index = idx;
             pooledItemContext.index = idx;
             const protos = compiled.prototypes;
@@ -710,6 +712,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
 
         const childContext = Object.create(baseChildContext);
         childContext[varName] = item;
+        childContext.item = item;
+        childContext._varName = varName;
         childContext._index = idx;
         childContext.index = idx;
 
