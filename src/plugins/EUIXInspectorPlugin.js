@@ -13,6 +13,7 @@ import {
 import { OverlayManager } from "./inspector/overlay.js";
 import { InspectorPanel } from "./inspector/panel.js";
 import { generateSelectors } from "./inspector/selectors.js";
+import { EUIXStateHistoryManager, computeStateDiff } from "./inspector/history.js";
 
 export class EUIXInspector {
     constructor(engine, options = {}) {
@@ -28,6 +29,7 @@ export class EUIXInspector {
         this.enabled = false;
         this.overlay = null;
         this.panel = null;
+        this.history = null;
         this.actionLogs = [];
         this.boundariesVisible = false;
         this._listeners = [];
@@ -41,6 +43,7 @@ export class EUIXInspector {
         if (typeof document === "undefined") return;
 
         this.enabled = true;
+        this.history = new EUIXStateHistoryManager(this.engine, this.options);
         this.overlay = new OverlayManager();
         this.panel = new InspectorPanel(this);
 
@@ -51,6 +54,16 @@ export class EUIXInspector {
         if (this.engine) {
             this.engine.inspector = this;
             this.engine._devtools = this;
+            this.engine._historyManager = this.history;
+            this.engine.undo = () => this.history.undo();
+            this.engine.redo = () => this.history.redo();
+            this.engine.canUndo = () => this.history.canUndo();
+            this.engine.canRedo = () => this.history.canRedo();
+            this.engine.takeSnapshot = (label, meta) => this.history.takeSnapshot(label, meta);
+            this.engine.timeTravelTo = (idx) => this.history.timeTravelTo(idx);
+            this.engine.getStateHistory = () => this.history.snapshots;
+            this.engine.exportStateHistory = () => this.history.exportHistory();
+            this.engine.importStateHistory = (json) => this.history.importHistory(json);
         }
 
         if (typeof window !== "undefined") {
@@ -368,6 +381,34 @@ export function inspector(options = {}) {
                 },
             };
 
+            // Register Declarative History Actions
+            engineClass.registerAction("UNDO_STATE", function () {
+                if (this._devtools?.history) return this._devtools.history.undo();
+                if (this._historyManager) return this._historyManager.undo();
+                return false;
+            });
+            engineClass.registerAction("HISTORY_UNDO", function () {
+                if (this._devtools?.history) return this._devtools.history.undo();
+                if (this._historyManager) return this._historyManager.undo();
+                return false;
+            });
+            engineClass.registerAction("REDO_STATE", function () {
+                if (this._devtools?.history) return this._devtools.history.redo();
+                if (this._historyManager) return this._historyManager.redo();
+                return false;
+            });
+            engineClass.registerAction("HISTORY_REDO", function () {
+                if (this._devtools?.history) return this._devtools.history.redo();
+                if (this._historyManager) return this._historyManager.redo();
+                return false;
+            });
+            engineClass.registerAction("TAKE_SNAPSHOT", function (actionNode) {
+                const label = (actionNode?.getAttribute && actionNode.getAttribute("label")) || "Manual Snapshot";
+                if (this._devtools?.history) return this._devtools.history.takeSnapshot(label);
+                if (this._historyManager) return this._historyManager.takeSnapshot(label);
+                return null;
+            });
+
             // Hook on instance mount
             const origMount = engineClass.mount;
             engineClass.mount = function (xml, container, mountOptions = {}) {
@@ -380,6 +421,8 @@ export function inspector(options = {}) {
         },
     };
 }
+
+export { EUIXStateHistoryManager, computeStateDiff };
 
 export const EUIXInspectorPlugin = inspector();
 

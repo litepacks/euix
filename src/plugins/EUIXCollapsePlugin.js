@@ -1,8 +1,10 @@
 /**
  * EUIXCollapsePlugin.js
- * Accordion & Collapsible UI Component Plugin for EUIX Engine.
+ * Accordion & Collapsible UI Component Plugin for EUIX Engine with full WAI-ARIA Accessibility.
  * Renders declarative <collapse bind="..." title="..."> XML layout containers.
  */
+
+let collapseUidCounter = 0;
 
 export const EUIXCollapsePlugin = {
     name: "collapse",
@@ -17,19 +19,29 @@ export const EUIXCollapsePlugin = {
                     : true
                 : true;
 
+            const group = xmlNode.getAttribute("group") || xmlNode.getAttribute("name") || "";
             const summaryNode = this.getChild(xmlNode, "summary");
             const titleAttr = xmlNode.getAttribute("title") || "";
             const titleTemplate = summaryNode ? summaryNode.textContent.trim() : titleAttr;
 
+            const uid = ++collapseUidCounter;
+            const headerId = `euix-collapse-header-${uid}`;
+            const bodyId = `euix-collapse-body-${uid}`;
+
             const root = document.createElement("div");
             const extraClass = xmlNode.getAttribute("class") || "";
+            if (group) root.setAttribute("data-euix-collapse-group", group);
 
             const header = document.createElement("button");
             header.type = "button";
+            header.id = headerId;
             header.className = xmlNode.getAttribute("header_class") || "euix-collapse-header";
+            header.setAttribute("aria-expanded", open ? "true" : "false");
+            header.setAttribute("aria-controls", bodyId);
 
             const chevron = document.createElement("span");
             chevron.className = "euix-collapse-chevron";
+            chevron.setAttribute("aria-hidden", "true");
 
             const label = document.createElement("span");
             label.className = "euix-collapse-title";
@@ -51,7 +63,10 @@ export const EUIXCollapsePlugin = {
             header.appendChild(label);
 
             const body = document.createElement("div");
+            body.id = bodyId;
             body.className = xmlNode.getAttribute("body_class") || "euix-collapse-body";
+            body.setAttribute("role", "region");
+            body.setAttribute("aria-labelledby", headerId);
 
             const renderBodyChildren = () => {
                 body.innerHTML = "";
@@ -88,11 +103,48 @@ export const EUIXCollapsePlugin = {
 
             updateCollapseState(open);
 
-            if (bindPath) {
-                header.onclick = () => {
-                    const next = this.isTruthy(this.getState(bindPath)) ? "false" : "true";
+            const toggle = () => {
+                const next = open ? "false" : "true";
+                if (bindPath) {
                     this.setState(bindPath, next);
-                };
+                } else {
+                    updateCollapseState(!open);
+                }
+            };
+
+            header.onclick = toggle;
+
+            // Keyboard Arrow navigation for accordion headers within same parent / group
+            header.addEventListener("keydown", (e) => {
+                let siblingHeaders = [];
+                if (group) {
+                    const groupItems = document.querySelectorAll(`[data-euix-collapse-group="${group}"] .euix-collapse-header`);
+                    siblingHeaders = Array.from(groupItems);
+                } else if (root.parentElement) {
+                    siblingHeaders = Array.from(root.parentElement.querySelectorAll(".euix-collapse-header"));
+                }
+
+                if (siblingHeaders.length <= 1) return;
+                const currentIndex = siblingHeaders.indexOf(header);
+
+                if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    const next = siblingHeaders[(currentIndex + 1) % siblingHeaders.length];
+                    if (next) next.focus();
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    const prev = siblingHeaders[(currentIndex - 1 + siblingHeaders.length) % siblingHeaders.length];
+                    if (prev) prev.focus();
+                } else if (e.key === "Home") {
+                    e.preventDefault();
+                    if (siblingHeaders[0]) siblingHeaders[0].focus();
+                } else if (e.key === "End") {
+                    e.preventDefault();
+                    if (siblingHeaders[siblingHeaders.length - 1]) siblingHeaders[siblingHeaders.length - 1].focus();
+                }
+            });
+
+            if (bindPath) {
                 this.registerBinding(bindPath, root, "collapse", (val) => {
                     updateCollapseState(this.isTruthy(val));
                 });

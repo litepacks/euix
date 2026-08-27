@@ -54,13 +54,19 @@ import {
     resolvePath,
 } from "./plugins/EUIXRouterPlugin.js";
 import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
+import { EUIXStreamPlugin } from "./plugins/EUIXStreamPlugin.js";
+import { EUIXValidationPlugin } from "./plugins/EUIXValidationPlugin.js";
 import { EUIXWebMCPError, EUIXWebMCPPlugin, WebMCPPlugin } from "./plugins/EUIXWebMCPPlugin.js";
+import { EUIXA11yPlugin, createFocusTrap, announce } from "./plugins/EUIXA11yPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
+EUIXEngineCore.use(EUIXA11yPlugin);
 EUIXEngineCore.use(EUIXApiPlugin);
+EUIXEngineCore.use(EUIXStreamPlugin);
 EUIXEngineCore.use(EUIXComposerPlugin);
 EUIXEngineCore.use(EUIXDragDropPlugin);
 EUIXEngineCore.use(EUIXStoragePlugin);
+EUIXEngineCore.use(EUIXValidationPlugin);
 EUIXEngineCore.use(EUIXCollapsePlugin);
 EUIXEngineCore.use(EUIXDialogPlugin);
 EUIXEngineCore.use(EUIXResiliencePlugin);
@@ -120,10 +126,13 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 }
 
 export {
+    announce,
+    createFocusTrap,
     createMemoryRouter,
     createPath,
     createStaticRouter,
     DATE_PRESETS,
+    EUIXA11yPlugin,
     EUIXActionComposer,
     EUIXActionContext,
     EUIXActionRecursionError,
@@ -153,7 +162,9 @@ export {
     EUIXRouter,
     EUIXRouterPlugin,
     EUIXStoragePlugin,
+    EUIXStreamPlugin,
     EUIXStructuredError,
+    EUIXValidationPlugin,
     EUIXWatchNode,
     EUIXWebMCPError,
     EUIXWebMCPPlugin,

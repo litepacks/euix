@@ -177,6 +177,9 @@ export class EUIXExpressionParser {
                     if (scope === "result") {
                         return `(($ctx?.result?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                     }
+                    if (scope === "errors" || scope === "$errors") {
+                        return `(($data?.errors?.${jsProp}) ?? ($data?.$errors?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
+                    }
                     if (scope.startsWith("$")) {
                         return `($r(${JSON.stringify(id)}))`;
                     }

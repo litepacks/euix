@@ -230,11 +230,14 @@ Use `<api_config>` and `<api_endpoint>` to manage HTTP endpoints with reactive b
 ### `<api_endpoint>` Attributes & Behavior
 - **`auto_fetch="true"`** *(default)*: Fetches automatically when component/app mounts.
 - **`auto_fetch="false"`**: Pre-registers endpoint into engine's `_registeredXhrs` registry without fetching immediately, enabling on-demand execution via `<on_click action="REVALIDATE_API" tag="...">` or `<watch>`.
+- **`persist="localStorage|sessionStorage"`**: Enables persistent Stale-While-Revalidate caching across browser refreshes and offline sessions.
+- **`queue_offline="true"`**: Queues mutation requests (`POST`/`PUT`/`DELETE`) in persistent storage when offline, automatically flushing them when the browser comes back online.
 - **`loading="state_key"`**: Automatically binds request in-flight status (`true`/`false`) to the specified `<data_model>` state key.
 - **`error="state_key"`**: Automatically binds request failure error message to the specified `<data_model>` state key.
-- **Automatic ID-based Reactive Status (`{api.<id>.<prop>}` / `{$api.<id>.<prop>}`):** Access `{api.<id>.loading}`, `{api.<id>.error}`, `{api.<id>.status}`, `{api.<id>.data}`, and `{api.<id>.timestamp}` directly in templates and expressions.
-- **Programmatic Status (`engine.getApiStatus(endpointId)`):** Returns `{ loading, error, status, data, timestamp }`.
-- **Method & Attribute Support**: Endpoint attributes (`url`, `method`, `target`, `bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`, `loading`, `error`) can be specified directly as attributes or nested child elements.
+- **Automatic ID-based Reactive Status (`{api.<id>.<prop>}` / `{$api.<id>.<prop>}`):** Access `{api.<id>.loading}`, `{api.<id>.error}`, `{api.<id>.status}`, `{api.<id>.data}`, `{api.<id>.timestamp}`, `{api.<id>.stale}`, and `{api.<id>.isOffline}` directly in templates and expressions.
+- **Programmatic Status (`engine.getApiStatus(endpointId)`):** Returns `{ loading, error, status, data, timestamp, stale, isOffline }`.
+- **Programmatic Cache Controls**: `engine.clearApiCache(tagOrUrl)` and `engine.flushOfflineQueue()`.
+- **Method & Attribute Support**: Endpoint attributes (`url`, `method`, `target`, `bind_target`, `tag`, `select`, `auto_fetch`, `revalidate_focus`, `revalidate_online`, `persist`, `queue_offline`, `loading`, `error`) can be specified directly as attributes or nested child elements.
 - **Reentrancy Safeguard**: Built-in `_isRevalidating` guard prevents infinite loops when mutation `POST` endpoints trigger `REVALIDATE_API`.
 
 ---
@@ -660,46 +663,34 @@ EUIX Engine supports both **Component-Scoped Isolation** (for multi-instance UI 
 </for_each>
 ```
 
-### 5. `<value>` in `MUTATE_STATE` Must Be Strictly Valid JSON (No JS Operators or Expressions)
-❌ **WRONG**: Using JavaScript string concatenation (`+`), `Date.now()`, or unary operators (`!{task.done}`) inside `<value>`.
+### 5. `<value>` in `MUTATE_STATE` Smart Parsing (JSON & Dynamic JS Expressions)
+EUIX Engine includes a **Smart Object Evaluator** that seamlessly parses native JSON, dynamic JavaScript expressions, and template variables inside `<value>`:
 ```xml
-<!-- INVALID: "id":"t"+Date.now() and !{task.done} are NOT valid JSON and will throw JSON.parse errors -->
+<!-- 1. Dynamic ID with JavaScript Date.now() & state reference -->
 <on_click action="MUTATE_STATE">
   <path>tasks</path>
   <operation>PUSH</operation>
-  <value>{"id":"t"+Date.now(),"title":"{data.newTask}","done":false}</value>
+  <value>{"id": "t_" + Date.now(), "title": data.newTask, "done": false}</value>
 </on_click>
 
+<!-- 2. Dynamic boolean negation in UPDATE -->
 <on_click action="MUTATE_STATE">
   <path>tasks</path>
   <operation>UPDATE</operation>
   <where field="id" equals="{task.id}" />
-  <value>{"done": !{task.done}}</value>
-</on_click>
-```
-
-✅ **RIGHT**: Use `<on_click action="RUN_SCRIPT">` for dynamic IDs, calculations, and mutations; or use strictly valid JSON expressions:
-```xml
-<!-- Option A: RUN_SCRIPT for dynamic IDs and safe mutations (Recommended) -->
-<on_click action="RUN_SCRIPT">
-  if ($data.newTask &amp;&amp; $data.newTask.trim()) {
-    $data.tasks.push({
-      id: "t_" + Date.now(),
-      title: $data.newTask.trim(),
-      done: false
-    });
-    $data.newTask = "";
-  }
+  <value>{"done": !task.done}</value>
 </on_click>
 
-<!-- Option B: Valid JSON boolean expression in MUTATE_STATE -->
+<!-- 3. Declarative <fields> attribute syntax (Alternative) -->
 <on_click action="MUTATE_STATE">
   <path>tasks</path>
   <operation>UPDATE</operation>
   <where field="id" equals="{task.id}" />
-  <value>{"done": {task.done ? false : true}}</value>
+  <fields done="{!task.done}" />
 </on_click>
 ```
+> [!TIP]
+> Both `<value>{"done": !task.done}</value>` and `<fields done="{!task.done}" />` are fully supported and evaluated without runtime JSON parse errors.
 
 ### 6. Input Placeholders vs Initial State Value
 ❌ **WRONG**: Putting placeholder guide text into `<state>` for a two-way bound input.
@@ -1555,3 +1546,506 @@ When building applications or generating `<uid_spec>` XML templates, always veri
   </flex>
 </uid_spec>
 ```
+
+---
+
+## ⚡ 24. Build-Time Pre-compilation & Zero-JSDOM Server-Side Rendering (SSR)
+
+EUIX Engine provides dedicated subpath modules for zero-overhead build-time compilation and Node/Bun server-side rendering:
+
+### 1. Zero-JSDOM SSR (`euixjs/server`)
+Render declarative XML templates into static HTML strings on Node.js, Bun, Cloudflare Workers, or Deno with **zero DOM / JSDOM dependencies**:
+
+```js
+import { renderToString, compileXmlToHtml } from 'euixjs/server';
+
+const xmlString = `
+<uid_spec>
+  <data_model>
+    <state id="pageTitle">Storefront</state>
+    <state id="items" type="array">[{"id": 1, "name": "Coffee", "price": 4.5}]</state>
+  </data_model>
+  <flex direction="column" gap="12">
+    <h1>{data.pageTitle}</h1>
+    <for_each items="{data.items}" var="it">
+      <card><span>{it.name} - \${it.price}</span></card>
+    </for_each>
+  </flex>
+</uid_spec>
+`;
+
+// Server-rendered HTML string
+const html = renderToString(xmlString, {
+  pageTitle: 'Custom Server Title' // Optional initialData override
+});
+```
+
+### 2. Vite / Rollup Template Pre-compilation Plugin (`euixjs/compiler`)
+Pre-compile `.xml` and `.euix` templates into lightweight JavaScript AST modules at build time:
+
+```js
+// vite.config.js
+import { defineConfig } from 'vite';
+import { euixVitePlugin } from 'euixjs/compiler';
+
+export default defineConfig({
+  plugins: [euixVitePlugin()]
+});
+```
+
+```js
+// In your application code
+import AppTemplate, { ast } from './App.xml';
+import { EUIXEngineCore } from 'euixjs/core';
+
+// Mount directly without runtime DOMParser overhead
+const engine = EUIXEngineCore.mount(AppTemplate, document.getElementById('app'));
+```
+
+---
+
+## 📋 25. Declarative Form Validation Schema & Reactive Errors (`euixjs/validation`)
+
+EUIX Engine includes built-in declarative schema validation and reactive error state management:
+
+### 1. Declarative `<validation_rules>` Specification
+```xml
+<uid_spec>
+  <data_model>
+    <state id="email"></state>
+    <state id="password"></state>
+    <state id="confirm_password"></state>
+    <state id="age" type="number">18</state>
+  </data_model>
+
+  <!-- Declarative Validation Rules -->
+  <validation_rules>
+    <field id="email" required="true" email="true" message="Valid email is required" />
+    <field id="password" required="true" min_length="8" message="Password must be at least 8 chars" />
+    <field id="confirm_password" match="password" message="Passwords do not match" />
+    <field id="age" min="18" max="100" min_msg="Must be at least 18" max_msg="Must be under 100" />
+  </validation_rules>
+
+  <flex direction="column" gap="12" class="p-6 bg-white rounded-xl shadow-lg">
+    <!-- Email Input & Reactive Error Display -->
+    <flex direction="column" gap="4">
+      <input bind="email" placeholder="Enter email" class="input {errors.email ? 'border-red-500' : ''}" />
+      <span class="text-red-500 text-sm" if="{errors.email}">{errors.email}</span>
+    </flex>
+
+    <!-- Password Input -->
+    <flex direction="column" gap="4">
+      <input type="password" bind="password" placeholder="Enter password" class="input" />
+      <span class="text-red-500 text-sm">{errors.password}</span>
+    </flex>
+
+    <!-- Confirm Password Input -->
+    <flex direction="column" gap="4">
+      <input type="password" bind="confirm_password" placeholder="Confirm password" class="input" />
+      <span class="text-red-500 text-sm">{errors.confirm_password}</span>
+    </flex>
+
+    <!-- Submit Button with Declarative VALIDATE_FORM Action -->
+    <button class="btn btn-primary">
+      <on_click action="VALIDATE_FORM" on_success="SubmitFormWorkflow" />
+      Create Account
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### 2. Supported Validation Rule Attributes on `<field>`
+- **`required="true"`**: Field cannot be empty or whitespace.
+- **`email="true"`**: Validates standard email address RFC regex format.
+- **`url="true"`**: Validates `http://` / `https://` web URL format.
+- **`min_length="8"` / `max_length="64"`**: Enforces string character length bounds.
+- **`min="18"` / `max="100"`**: Enforces numeric value ranges.
+- **`pattern="^[A-Z]{3}-\d{3}$"`**: Enforces custom regular expression pattern.
+- **`match="password"`**: Enforces value equality with another state key (e.g. password confirmation).
+- **`message="..."`**: Fallback custom error message for the field.
+
+### 3. Programmatic API & Dynamic Validation
+```js
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXValidationPlugin } from 'euixjs/validation';
+
+EUIXEngineCore.use(EUIXValidationPlugin);
+
+// Validate entire form
+const { isValid, errors } = engine.validateForm();
+
+// Validate single field
+const errorMsg = engine.validateField('email'); // returns null if valid
+
+// Register custom validator function
+engine.registerValidationRule('username', {
+  custom: (val, state, engine) => {
+    if (val === 'admin') return 'Username "admin" is reserved';
+    return null;
+  }
+});
+
+// Clear all validation errors
+engine.resetValidation();
+```
+
+---
+
+## ⚡ 26. Declarative WebSocket & SSE Live Streaming (`euixjs/stream`)
+
+EUIX Engine provides full declarative and programmatic support for real-time WebSocket connections and Server-Sent Events (SSE) data streams:
+
+### 1. Declarative `<api_stream>` / `<websocket>` / `<sse>` Specification
+```xml
+<uid_spec>
+  <data_model>
+    <state id="ticker" type="object">{"price": 0, "volume": 0}</state>
+    <state id="feed" type="array">[]</state>
+  </data_model>
+
+  <api_config base_url="wss://stream.example.com">
+    <!-- 1. Real-Time WebSocket Live Price Stream -->
+    <api_stream 
+      id="crypto_ticker" 
+      type="websocket" 
+      url="/prices/btc" 
+      target="ticker" 
+      auto_connect="true" 
+      reconnect="true" 
+      reconnect_interval="3000"
+      reconnect_attempts="10" 
+    />
+
+    <!-- 2. Server-Sent Events (SSE) Notification Stream (Appends to Array) -->
+    <api_stream 
+      id="notifications" 
+      type="sse" 
+      url="https://api.example.com/live/notifications" 
+      target="feed" 
+      operation="PUSH" 
+      auto_connect="true" 
+    />
+  </api_config>
+
+  <flex direction="column" gap="16" class="p-6 bg-white rounded-xl shadow-lg">
+    <!-- WebSocket Reactive Connection Status & Live Data -->
+    <flex direction="row" justify="between" align="center">
+      <h2>BTC/USDT Live: <strong>\${data.ticker.price}</strong></h2>
+      <span class="badge {stream.crypto_ticker.connected ? 'bg-green-500' : 'bg-red-500'}">
+        {stream.crypto_ticker.status}
+      </span>
+    </flex>
+
+    <!-- Interactive Controls & Message Dispatch -->
+    <flex direction="row" gap="8">
+      <button class="btn">
+        <on_click action="STREAM_SEND" stream="crypto_ticker">
+          {"action": "subscribe", "symbol": "BTC"}
+        </on_click>
+        Subscribe BTC
+      </button>
+
+      <button class="btn">
+        <on_click action="STREAM_DISCONNECT" stream="crypto_ticker" />
+        Disconnect
+      </button>
+
+      <button class="btn btn-primary">
+        <on_click action="STREAM_CONNECT" stream="crypto_ticker" />
+        Reconnect
+      </button>
+    </flex>
+
+    <!-- SSE Live Notifications Feed (<for_each>) -->
+    <flex direction="column" gap="8">
+      <for_each items="{data.feed}" var="item">
+        <card class="p-3 bg-gray-50 border rounded">
+          <span>{item.text}</span>
+        </card>
+      </for_each>
+    </flex>
+  </flex>
+</uid_spec>
+```
+
+### 2. Supported Attributes on `<api_stream>`
+- **`id="..."` / `name="..."`**: Unique stream identifier.
+- **`type="websocket|sse"`**: Streaming protocol type (`websocket` or `sse`).
+- **`url="..."` / `src="..."`**: Stream URL (supports `wss://`, `ws://`, `https://`, `http://`).
+- **`target="..."` / `bind_target="..."`**: State key to auto-write incoming JSON data into.
+- **`operation="REPLACE|PUSH|UNSHIFT"`**: Data mutation strategy for target arrays (default: `REPLACE`).
+- **`event_name="..."`**: Custom SSE event name listener for `EventSource` (e.g. `event_name="ticker"`).
+- **`auto_connect="true|false"`**: Whether to initiate connection on mount (default: `true`).
+- **`reconnect="true|false"`**: Auto-reconnect on unexpected closure (default: `true`).
+- **`reconnect_interval="3000"`**: Time in milliseconds between reconnection attempts.
+- **`reconnect_attempts="10"`**: Maximum reconnection attempts before stopping.
+- **`on_message="..."` / `on_open="..."` / `on_close="..."` / `on_error="..."`**: Composed action names to trigger on stream events.
+
+### 3. Reactive Stream State (`{stream.<id>.<prop>}` / `{$stream.<id>.<prop>}`)
+- **`{stream.<id>.status}`**: Current status string (`"connected" | "connecting" | "disconnected" | "error"`).
+- **`{stream.<id>.connected}`**: Boolean indicating if the stream is currently open.
+- **`{stream.<id>.lastMessage}`**: Raw or parsed JSON object of the last received message.
+- **`{stream.<id>.error}`**: Error description string if connection failed.
+
+### 4. Programmatic API
+```js
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXStreamPlugin } from 'euixjs/stream';
+
+EUIXEngineCore.use(EUIXStreamPlugin);
+
+// Connect / Disconnect
+engine.connectStream('crypto_ticker');
+engine.disconnectStream('crypto_ticker');
+
+// Send message over WebSocket
+engine.sendStreamMessage('crypto_ticker', { action: 'ping' });
+
+// Get current reactive status
+const status = engine.getStreamStatus('crypto_ticker');
+console.log(status.status, status.connected, status.lastMessage);
+```
+
+---
+
+## ⏱️ 27. DevTools Time-Travel Debugging, State Snapshots & Undo/Redo
+
+EUIX Engine includes built-in Time-Travel Debugging and an interactive State Timeline subsystem within `@euix/devtools` (`EUIXDevTools` / `EUIXStateHistoryManager`):
+
+### 1. Features
+- **Immutable State Snapshots**: Automatically captures deep-cloned snapshots of state transitions on `setState`, `mutateState`, and composed actions.
+- **Deep Diff Engine (`computeStateDiff`)**: Calculates property-level state diffs (`added`, `removed`, `changed`) between consecutive checkpoints.
+- **Arbitrary Scrubbing & Time-Travel**: Jump to any past snapshot in history; automatically updates DOM bindings and re-synchronizes the UI.
+- **Undo / Redo Support**: Declarative and programmatic undo/redo operations with boundary guards.
+- **Timeline Tab in DevTools Drawer**: Scrub bar, milestone snapshot cards with colored Diffs (green `+`, red `-`, yellow `~`), Restore buttons, and state JSON export/import.
+
+### 2. Declarative History Actions
+```xml
+<uid_spec>
+  <data_model>
+    <state id="step" type="number">1</state>
+    <state id="formData" type="object">{}</state>
+  </data_model>
+
+  <flex direction="column" gap="12">
+    <h1>Wizard Step: {data.step}</h1>
+
+    <!-- Declarative History Buttons -->
+    <flex direction="row" gap="8">
+      <button class="btn">
+        <on_click action="UNDO_STATE" />
+        ⏮ Undo
+      </button>
+
+      <button class="btn">
+        <on_click action="REDO_STATE" />
+        ⏭ Redo
+      </button>
+
+      <button class="btn btn-primary">
+        <on_click action="TAKE_SNAPSHOT" label="Step Completed" />
+        📸 Save Milestone
+      </button>
+    </flex>
+  </flex>
+</uid_spec>
+```
+
+### 3. Programmatic API & DevTools Console
+```js
+import { EUIXEngineCore } from 'euixjs/core';
+import { EUIXDevTools, EUIXStateHistoryManager, computeStateDiff } from 'euixjs/devtools';
+
+// Mount Engine & Initialize DevTools Inspector
+const engine = EUIXEngineCore.mount(xml, container);
+const devtools = EUIXDevTools.init(engine);
+
+// Programmatic Time-Travel & Undo/Redo
+engine.undo();              // Reverts to previous snapshot
+engine.redo();              // Advances to next snapshot
+engine.canUndo();           // Boolean: true if history has previous states
+engine.canRedo();           // Boolean: true if history has future states
+engine.takeSnapshot('Form 1'); // Creates a named milestone snapshot
+engine.timeTravelTo(2);     // Jumps directly to snapshot index 2
+
+// Export / Import History for bug reproduction
+const historyJson = engine.exportStateHistory();
+engine.importStateHistory(historyJson);
+
+// Browser DevTools Console Shortcuts ($euix)
+window.$euix.undo();
+window.$euix.redo();
+window.$euix.timeTravel(0); // Jump to initial state
+console.log(window.$euix.snapshots());
+```
+
+---
+
+## ♿ 28. Accessibility (A11y), Focus Traps & ARIA Keyboard Navigation (`euixjs/a11y`)
+
+EUIX Engine includes built-in WAI-ARIA compliance, automated modal focus trapping, accordion keyboard navigation, and screen reader live region announcers.
+
+### 1. Accessible Modal Dialogs (`<dialog>`)
+- **Automated Focus Trap**: Automatically traps `Tab` / `Shift+Tab` focus cycling within the open dialog modal.
+- **Escape Key Handling**: Pressing `Escape` automatically dismisses the dialog and returns focus to the trigger button.
+- **Body Scroll Lock**: Automatically locks background body scroll (`overflow: hidden`) when modal is open.
+- **ARIA Semantics**: Auto-generates `id`, `aria-labelledby`, `aria-describedby`, `aria-modal="true"`, and `role="dialog|alertdialog"`.
+- **Initial & Return Focus**: Supports `initial_focus="#selector"` and restores focus upon modal closure.
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="showModal" type="boolean">false</state>
+  </data_model>
+
+  <flex direction="column">
+    <button>
+      <on_click action="SET_STATE">
+        <path>data.showModal</path>
+        <value>true</value>
+      </on_click>
+      Open Profile
+    </button>
+
+    <dialog bind="showModal" title="Edit Profile" role="dialog" lock_scroll="true">
+      <description>Update your public account information.</description>
+      <input id="name_input" placeholder="Your name" />
+      <actions>
+        <button class="btn-primary">Save Changes</button>
+      </actions>
+    </dialog>
+  </flex>
+</uid_spec>
+```
+
+### 2. Accessible Collapsible & Accordions (`<collapse>`)
+- **WAI-ARIA Accordion Semantics**: Auto-links `aria-controls` with `aria-labelledby` and `role="region"`, setting `aria-expanded="true|false"`.
+- **Keyboard Arrow Navigation**: Supports `ArrowDown`, `ArrowUp`, `Home`, and `End` between accordion headers in the same container or `group="..."`.
+
+```xml
+<uid_spec>
+  <div class="accordion-group">
+    <collapse bind="data.tab1" title="Account Settings" group="settings">
+      <p>Account configuration options</p>
+    </collapse>
+    <collapse bind="data.tab2" title="Privacy Settings" group="settings">
+      <p>Privacy configuration options</p>
+    </collapse>
+  </div>
+</uid_spec>
+```
+
+### 3. Screen Reader Live Announcements & `<live_region>`
+- **`<live_region>`**: Renders dynamic ARIA live regions (`aria-live="polite|assertive"`).
+- **`ANNOUNCE` Action**: Declarative `<on_click action="ANNOUNCE" message="..." priority="polite|assertive" />`.
+- **Programmatic Announcer**: `engine.announce(message, priority)`.
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="syncStatus">Ready</state>
+  </data_model>
+
+  <flex direction="column">
+    <!-- Live screen reader update container -->
+    <live_region bind="syncStatus" priority="polite" />
+
+    <button>
+      <on_click action="ANNOUNCE" message="Changes saved successfully!" priority="assertive" />
+      Save Record
+    </button>
+  </flex>
+</uid_spec>
+```
+
+### 4. Modular A11y Utility Imports
+```js
+import { createFocusTrap, getFocusableElements, announce, setupRovingTabIndex, EUIXA11yPlugin } from 'euixjs/a11y';
+import { EUIXEngineCore } from 'euixjs/core';
+
+EUIXEngineCore.use(EUIXA11yPlugin);
+
+// Standalone Focus Trap
+const trap = createFocusTrap(modalElement, {
+  initialFocus: '#first-input',
+  onEscape: () => modalElement.remove()
+});
+trap.activate();
+// ...
+trap.deactivate();
+
+// Screen Reader Announcement
+announce('File uploaded successfully', 'polite');
+```
+
+---
+
+## 📐 29. XSD/JSON Schema, TypeScript Type Generator & EUIX CLI (`euix`)
+
+EUIX Engine includes built-in tooling for IDE auto-completion, XML linting, and compile-time TypeScript type safety.
+
+### 1. EUIX CLI Commands (`npx euix`)
+```bash
+# 1. Generate official XML Schema Definition (XSD) for VS Code / IntelliJ autocompletion
+npx euix schema:xsd -o ./schema/uid_spec.xsd
+
+# 2. Generate JSON Schema validator
+npx euix schema:json -o ./schema/uid_spec.schema.json
+
+# 3. Generate strict TypeScript type declarations (.d.ts) from an XML template
+npx euix typegen ./src/components/UserProfile.xml -o ./src/types/UserProfile.d.ts
+
+# 4. Pre-compile XML template to JavaScript module
+npx euix compile ./src/App.xml -o ./src/App.compiled.js
+```
+
+### 2. IDE XML Autocompletion Setup (VS Code / JetBrains)
+Link `uid_spec.xsd` to your XML templates for instant IntelliSense, attribute completion, and type validation:
+
+```xml
+<uid_spec xmlns="http://euix.org/schema/uid_spec"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://euix.org/schema/uid_spec ./schema/uid_spec.xsd">
+  
+  <data_model>
+    <state id="counter" type="number">0</state>
+    <state id="userName" type="string">Guest</state>
+  </data_model>
+
+  <flex direction="column" gap="16">
+    <h1>Hello, {data.userName}!</h1>
+  </flex>
+</uid_spec>
+```
+
+### 3. Programmatic TypeScript Generator API (`euixjs/compiler`)
+```js
+import { generateComponentTypes, generateXSDSchema, generateJsonSchema } from 'euixjs/compiler';
+
+const xmlString = `
+<component_def name="CounterCard">
+  <data_model>
+    <state id="count" type="number">0</state>
+  </data_model>
+  <actions>
+    <action_def name="Increment">
+      <param name="step" type="number" default="1" />
+      <step action="SET_STATE">
+        <path>data.count</path>
+        <value>{data.count + args.step}</value>
+      </step>
+    </action_def>
+  </actions>
+</component_def>
+`;
+
+// Generates TypeScript interface declarations (.d.ts)
+const tsCode = generateComponentTypes(xmlString, { componentName: 'CounterCard' });
+console.log(tsCode);
+```
+
+
+
+
+
+

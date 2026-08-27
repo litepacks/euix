@@ -389,6 +389,11 @@ export const ACTION_DISPATCH_TABLE = {
     SET_TITLE: "_handleSetTitleAction",
     ANIMATE: "_handleAnimateAction",
     TRANSITION: "_handleAnimateAction",
+    UNDO_STATE: "_handleUndoStateAction",
+    HISTORY_UNDO: "_handleUndoStateAction",
+    REDO_STATE: "_handleRedoStateAction",
+    HISTORY_REDO: "_handleRedoStateAction",
+    TAKE_SNAPSHOT: "_handleTakeSnapshotAction",
 };
 
 export const _resolveRoot = (r) => r;

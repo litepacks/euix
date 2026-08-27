@@ -323,6 +323,80 @@ export function _handleRunScriptAction(actionNode, context = {}) {
     }
 }
 
+function evaluateObjectExpression(engine, expr, context = {}) {
+    if (!expr || typeof expr !== "string") return null;
+    const trimmed = expr.trim();
+    if (!trimmed) return null;
+
+    try {
+        return JSON.parse(trimmed);
+    } catch (_) {}
+
+    const sanitized = trimmed.replace(/\{([a-zA-Z_$][a-zA-Z0-9_.]*)\}/g, (match, p1) => {
+        const val = engine && isFn(engine.resolveValueFromPath) ? engine.resolveValueFromPath(p1, context) : undefined;
+        return val !== undefined ? JSON.stringify(val) : p1;
+    });
+
+    try {
+        return JSON.parse(sanitized);
+    } catch (_) {}
+
+    try {
+        const itemVal =
+            context.item !== undefined
+                ? context.item
+                : context._varName && context[context._varName] !== undefined
+                  ? context[context._varName]
+                  : undefined;
+        const taskVal = context.task !== undefined ? context.task : itemVal;
+        const fn = new Function(
+            "$data",
+            "data",
+            "$ctx",
+            "context",
+            "$item",
+            "item",
+            "task",
+            `return (${sanitized});`,
+        );
+        const res = fn(
+            engine?.state || engine?._rawState || {},
+            engine?.state || engine?._rawState || {},
+            context,
+            context,
+            itemVal,
+            itemVal,
+            taskVal,
+        );
+        if (res && typeof res === "object") return res;
+    } catch (_) {
+        try {
+            const fn2 = new Function(
+                "$data",
+                "data",
+                "$ctx",
+                "context",
+                "$item",
+                "item",
+                "task",
+                `return (${trimmed});`,
+            );
+            const res2 = fn2(
+                engine?.state || engine?._rawState || {},
+                engine?.state || engine?._rawState || {},
+                context,
+                context,
+                context.item,
+                context.item,
+                context.task,
+            );
+            if (res2 && typeof res2 === "object") return res2;
+        } catch (_) {}
+    }
+
+    return null;
+}
+
 export function _handleMutateStateAction(actionNode, context = {}) {
     const pathNode = this.getChild(actionNode, "path");
     const opNode = this.getChild(actionNode, "operation");
@@ -369,19 +443,13 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             let currVal = parseInt(item[fieldName] || 1, 10);
             if (operation === MUTATION_OPS.INCREMENT) {
                 currVal += 1;
-                item[fieldName] = currVal;
-                currentList[index] = item;
             } else {
-                currVal -= 1;
-                if (currVal <= 0) {
-                    currentList.splice(index, 1);
-                } else {
-                    item[fieldName] = currVal;
-                    currentList[index] = item;
-                }
+                currVal = Math.max(1, currVal - 1);
             }
-            this.setState(path, currentList);
+            item[fieldName] = currVal;
+            currentList[index] = item;
         }
+        this.setState(path, currentList);
         return;
     }
 
@@ -395,12 +463,9 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             : "";
         const textValue = this.interpolate(rawText, context);
 
-        let parsedObj = null;
-        if (textValue?.startsWith("{") && textValue.endsWith("}")) {
-            try {
-                parsedObj = JSON.parse(textValue);
-            } catch (_e) {}
-        }
+        let parsedObj =
+            evaluateObjectExpression(this, rawText, context) ||
+            evaluateObjectExpression(this, textValue, context);
 
         const itemId =
             (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
@@ -518,27 +583,27 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             const rawMatch = whereNode.getAttribute("equals") || whereNode.textContent.trim();
             const matchValue = this.interpolate(rawMatch, context);
 
-            this.batch(() => {
-                const nextList = list.filter((item) => {
-                    if (!item) return false;
-                    const actual = item[field];
-                    return !(
-                        actual === matchValue ||
-                        (actual !== undefined &&
-                            actual !== null &&
-                            matchValue !== undefined &&
-                            matchValue !== null &&
-                            String(actual) === String(matchValue))
-                    );
-                });
-                this.setState(path, nextList);
-                this.applyResets(actionNode);
-                if (String(this._rawState.editing_id) === String(matchValue)) {
-                    if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
-                    if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
-                }
+            const filtered = list.filter((item) => {
+                if (!item) return false;
+                const actual = item[field];
+                return (
+                    actual !== matchValue &&
+                    String(actual) !== String(matchValue) &&
+                    actual !== parseInt(matchValue, 10)
+                );
             });
+            this.batch(() => {
+                this.setState(path, filtered);
+                this.applyResets(actionNode);
+            });
+            return;
         }
+
+        list.pop();
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
         return;
     }
 
@@ -573,48 +638,80 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SWAP) {
-        const whereNode = this.getChild(actionNode, "where");
-        const targetWhereNode = this.getChild(actionNode, "target_where") || this.getChild(actionNode, "target");
         const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const indexANode = this.getChild(actionNode, "indexA");
+        const indexBNode = this.getChild(actionNode, "indexB");
+        const fromNode = this.getChild(actionNode, "from");
+        const toNode = this.getChild(actionNode, "to");
+        const idxA = parseInt(
+            this.interpolate(indexANode ? indexANode.textContent.trim() : fromNode ? fromNode.textContent.trim() : "-1", context),
+            10,
+        );
+        const idxB = parseInt(
+            this.interpolate(indexBNode ? indexBNode.textContent.trim() : toNode ? toNode.textContent.trim() : "-1", context),
+            10,
+        );
 
-        if (whereNode && targetWhereNode) {
-            const field1 = whereNode.getAttribute("field") || "id";
-            const rawMatch1 = whereNode.getAttribute("equals") || whereNode.textContent.trim();
-            const id1 = this.interpolate(rawMatch1, context);
-
-            const field2 = targetWhereNode.getAttribute("field") || "id";
-            const rawMatch2 = targetWhereNode.getAttribute("equals") || targetWhereNode.textContent.trim();
-            const id2 = this.interpolate(rawMatch2, context);
-
-            const idx1 = list.findIndex((item) => String(item[field1]) === String(id1));
-            const idx2 = list.findIndex((item) => String(item[field2]) === String(id2));
-
-            if (idx1 !== -1 && idx2 !== -1 && idx1 !== idx2) {
-                const temp = list[idx1];
-                list[idx1] = list[idx2];
-                list[idx2] = temp;
-
-                if (list[idx1].status && list[idx2].status) {
-                    const tempStatus = list[idx1].status;
-                    list[idx1].status = list[idx2].status;
-                    list[idx2].status = tempStatus;
-                }
-
-                this.batch(() => {
-                    this.setState(path, list);
-                    this.applyResets(actionNode);
-                });
-            }
+        if (idxA >= 0 && idxB >= 0 && idxA < list.length && idxB < list.length) {
+            const temp = list[idxA];
+            list[idxA] = list[idxB];
+            list[idxB] = temp;
+            this.batch(() => {
+                this.setState(path, list);
+                this.applyResets(actionNode);
+            });
         }
+        return;
+    }
+
+    if (operation === MUTATION_OPS.REVERSE) {
+        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        list.reverse();
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
+        return;
+    }
+
+    if (operation === MUTATION_OPS.INSERT) {
+        const indexNode = this.getChild(actionNode, "index");
+        const valNode = this.getChild(actionNode, "value");
+        const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
+        const rawIdx = indexNode ? indexNode.textContent.trim() : actionNode.getAttribute("index") || "0";
+        const idx = parseInt(this.interpolate(rawIdx, context), 10);
+        const rawText = valItem
+            ? (typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) ||
+              valItem.textContent?.trim() ||
+              ""
+            : "";
+        const textValue = this.interpolate(rawText, context);
+        let parsedObj =
+            evaluateObjectExpression(this, rawText, context) ||
+            evaluateObjectExpression(this, textValue, context);
+        const itemId =
+            (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
+            parsedObj?.id ||
+            `task-${Date.now()}`;
+        const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId, text: textValue };
+
+        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const safeIdx = Math.max(0, Math.min(list.length, Number.isNaN(idx) ? list.length : idx));
+        list.splice(safeIdx, 0, newItem);
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
         return;
     }
 
     if (operation === MUTATION_OPS.UPDATE) {
         const whereNode = this.getChild(actionNode, "where");
+        const valNode = this.getChild(actionNode, "value");
         const fieldsNode =
             this.getChild(actionNode, "fields") ||
             this.getChild(actionNode, "item") ||
-            this.getChild(actionNode, "value") ||
+            valNode ||
             actionNode;
         if (!fieldsNode) return;
 
@@ -626,6 +723,15 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             for (let fnIdx = 0; fnIdx < fnLen; fnIdx++) {
                 const attr = fnAttrs[fnIdx];
                 updates[attr.name] = this.interpolate(attr.value, context);
+            }
+        }
+        if (valNode && valNode.textContent?.trim()) {
+            const rawValText = valNode.textContent.trim();
+            const smartObj =
+                evaluateObjectExpression(this, rawValText, context) ||
+                evaluateObjectExpression(this, this.interpolate(rawValText, context), context);
+            if (smartObj && typeof smartObj === "object") {
+                Object.assign(updates, smartObj);
             }
         }
 
@@ -671,4 +777,23 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             }
         });
     }
+}
+
+export function _handleUndoStateAction(actionNode, context = {}) {
+    if (this._devtools?.history) return this._devtools.history.undo();
+    if (this._historyManager) return this._historyManager.undo();
+    return false;
+}
+
+export function _handleRedoStateAction(actionNode, context = {}) {
+    if (this._devtools?.history) return this._devtools.history.redo();
+    if (this._historyManager) return this._historyManager.redo();
+    return false;
+}
+
+export function _handleTakeSnapshotAction(actionNode, context = {}) {
+    const label = (actionNode?.getAttribute && actionNode.getAttribute("label")) || "Manual Snapshot";
+    if (this._devtools?.history) return this._devtools.history.takeSnapshot(label);
+    if (this._historyManager) return this._historyManager.takeSnapshot(label);
+    return null;
 }

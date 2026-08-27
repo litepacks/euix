@@ -494,11 +494,12 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
     if (xmlNode._hasEventTags === false) return;
 
     const eventMap = new Map();
-    const childNodes = xmlNode.children || [];
-    const chLen = childNodes.length;
+    const rawChildren = xmlNode.childNodes || xmlNode.children || [];
+    const chLen = rawChildren.length;
 
     for (let i = 0; i < chLen; i++) {
-        const child = childNodes[i];
+        const child = rawChildren[i];
+        if (child.nodeType !== 1) continue;
         const tagName = child.tagName.toLowerCase();
         let eventType = null;
 

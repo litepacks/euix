@@ -1,8 +1,12 @@
 /**
  * EUIXDialogPlugin.js
- * Modal Dialog Component Plugin for EUIX Engine.
+ * Modal Dialog Component Plugin for EUIX Engine with Automated WAI-ARIA Focus Trap and A11y.
  * Renders declarative <dialog bind="..." show="..." title="..."> XML modal overlay containers.
  */
+
+import { createFocusTrap } from "./a11y/focusTrap.js";
+
+let dialogUidCounter = 0;
 
 export const EUIXDialogPlugin = {
     name: "dialog",
@@ -23,12 +27,24 @@ export const EUIXDialogPlugin = {
             let open = bindPath ? this.isTruthy(this.getState(bindPath)) : false;
 
             const closeOnBackdrop = xmlNode.getAttribute("close_on_backdrop") !== "false";
+            const lockScroll = xmlNode.getAttribute("lock_scroll") !== "false";
+            const initialFocus = xmlNode.getAttribute("initial_focus") || "";
+            const dialogRole = xmlNode.getAttribute("role") || "dialog";
             const summaryNode = this.getChild(xmlNode, "summary");
             const actionsNode = this.getChild(xmlNode, "actions");
+            const descriptionNode = this.getChild(xmlNode, "description");
             const titleAttr = xmlNode.getAttribute("title") || "";
             const title = summaryNode
                 ? this.interpolate(summaryNode.textContent.trim(), context)
                 : this.interpolate(titleAttr, context) || "Dialog";
+
+            const uid = ++dialogUidCounter;
+            const titleId = `euix-dialog-title-${uid}`;
+            const descId = `euix-dialog-desc-${uid}`;
+
+            let previousActiveElement = null;
+            let focusTrap = null;
+            let originalBodyOverflow = "";
 
             const close = () => {
                 if (bindPath) {
@@ -69,9 +85,10 @@ export const EUIXDialogPlugin = {
             panel.className =
                 xmlNode.getAttribute("panel_class") ||
                 "dialog-panel bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-800 max-w-md w-full overflow-hidden";
-            panel.setAttribute("role", "dialog");
+            panel.setAttribute("role", dialogRole);
             panel.setAttribute("aria-modal", "true");
-            panel.setAttribute("aria-label", title);
+            panel.setAttribute("aria-labelledby", titleId);
+            panel.setAttribute("tabindex", "-1");
 
             const header = document.createElement("div");
             header.className =
@@ -79,6 +96,7 @@ export const EUIXDialogPlugin = {
                 "dialog-header p-4 border-b border-slate-800 flex items-center justify-between";
 
             const titleEl = document.createElement("h3");
+            titleEl.id = titleId;
             titleEl.className = "dialog-title text-base font-bold text-white";
             titleEl.textContent = title;
 
@@ -86,7 +104,7 @@ export const EUIXDialogPlugin = {
             closeBtn.type = "button";
             closeBtn.className =
                 "dialog-close text-slate-400 hover:text-white text-lg font-bold px-2 py-1 rounded-md cursor-pointer";
-            closeBtn.setAttribute("aria-label", "Kapat");
+            closeBtn.setAttribute("aria-label", xmlNode.getAttribute("close_label") || "Close");
             closeBtn.textContent = "×";
             closeBtn.onclick = (e) => {
                 e.stopPropagation();
@@ -98,6 +116,12 @@ export const EUIXDialogPlugin = {
 
             const body = document.createElement("div");
             body.className = xmlNode.getAttribute("body_class") || "dialog-body p-5";
+
+            if (descriptionNode) {
+                body.id = descId;
+                panel.setAttribute("aria-describedby", descId);
+            }
+
             const bNodes = xmlNode.childNodes;
             const bLen = bNodes ? bNodes.length : 0;
             for (let i = 0; i < bLen; i++) {
@@ -132,14 +156,39 @@ export const EUIXDialogPlugin = {
             panel.onclick = (e) => e.stopPropagation();
             backdrop.appendChild(panel);
 
+            // Focus Trap Instance
+            focusTrap = createFocusTrap(panel, {
+                initialFocus: initialFocus || closeBtn,
+                onEscape: () => close(),
+            });
+
             const updateDialogState = (isOpen) => {
                 open = isOpen;
                 if (open) {
+                    previousActiveElement = document.activeElement;
                     if (!containerNode.contains(backdrop)) {
                         containerNode.appendChild(backdrop);
-                        if (backdrop.focus) backdrop.focus();
                     }
+
+                    // Body scroll lock
+                    if (lockScroll && typeof document !== "undefined" && document.body) {
+                        originalBodyOverflow = document.body.style.overflow;
+                        document.body.style.overflow = "hidden";
+                    }
+
+                    // Activate Focus Trap
+                    focusTrap.activate();
                 } else {
+                    // Deactivate Focus Trap & restore focus
+                    if (focusTrap.isActive()) {
+                        focusTrap.deactivate();
+                    }
+
+                    // Restore body scroll
+                    if (lockScroll && typeof document !== "undefined" && document.body) {
+                        document.body.style.overflow = originalBodyOverflow;
+                    }
+
                     if (containerNode.contains(backdrop)) {
                         containerNode.removeChild(backdrop);
                     }

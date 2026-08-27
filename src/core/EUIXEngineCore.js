@@ -19,13 +19,16 @@ import {
 import {
     _handleFocusAction,
     _handleMutateStateAction,
+    _handleRedoStateAction,
     _handleRethrowAction,
     _handleRevalidateAction,
     _handleRunScriptAction,
     _handleSetStateAction,
     _handleSetTitleAction,
+    _handleTakeSnapshotAction,
     _handleThrowAction,
     _handleToggleStateAction,
+    _handleUndoStateAction,
 } from "./actions/BuiltInActions.js";
 import {
     escapeHtml,
@@ -634,6 +637,18 @@ class EUIXEngineCore {
 
     _handleMutateStateAction(actionNode, context = {}) {
         return _handleMutateStateAction.call(this, actionNode, context);
+    }
+
+    _handleUndoStateAction(actionNode, context = {}) {
+        return _handleUndoStateAction.call(this, actionNode, context);
+    }
+
+    _handleRedoStateAction(actionNode, context = {}) {
+        return _handleRedoStateAction.call(this, actionNode, context);
+    }
+
+    _handleTakeSnapshotAction(actionNode, context = {}) {
+        return _handleTakeSnapshotAction.call(this, actionNode, context);
     }
 
     _executeActionInternalBody(actionNode, context = {}) {

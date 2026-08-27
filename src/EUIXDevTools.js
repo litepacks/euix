@@ -208,12 +208,16 @@ if (typeof document !== "undefined") {
     }
 }
 
+import { EUIXStateHistoryManager, computeStateDiff } from "./plugins/inspector/history.js";
+
 export {
     buildComponentTree,
     checkUniqueness,
+    computeStateDiff,
     createDebugSnapshot,
     EUIXInspector,
     EUIXInspectorPlugin,
+    EUIXStateHistoryManager,
     euix,
     generateSelectors,
     getByAction,

@@ -143,6 +143,33 @@ export function resolveValueFromPath(engine, path, context = {}) {
         if (!prop) return status;
         return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
     }
+    if (path.startsWith("stream.") || path.startsWith("$stream.")) {
+        const clean = path.replace(/^(\$stream|stream)\./, "");
+        const parts = clean.split(".");
+        const streamId = parts[0];
+        const prop = parts.slice(1).join(".");
+        const status = isFn(engine.getStreamStatus) ? engine.getStreamStatus(streamId) : engine._streamStatus?.[streamId];
+        if (!status) return undefined;
+        if (!prop) return status;
+        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+    }
+    if (path.startsWith("errors.") || path.startsWith("$errors.")) {
+        const clean = path.replace(/^(\$errors|errors)\./, "");
+        if (engine._formErrors && engine._formErrors[clean] !== undefined) {
+            return engine._formErrors[clean];
+        }
+        const stateErrors = isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null;
+        if (stateErrors && typeof stateErrors === "object") {
+            return stateErrors[clean];
+        }
+        return isFn(engine.getState) ? engine.getState(path) : undefined;
+    }
+    if (path === "errors" || path === "$errors") {
+        return engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null) || {};
+    }
+    if (path === "$isValid" || path === "isValid") {
+        return engine._isFormValid !== undefined ? engine._isFormValid : (isFn(engine.getState) ? engine.getState("$isValid") : true);
+    }
     if (path.startsWith("data.") || path.startsWith("state.")) {
         const cleanKey = path.replace(/^(data|state)\./, "");
         if (context._localState && context._localState[cleanKey] !== undefined) {

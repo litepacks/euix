@@ -23,7 +23,12 @@ export default defineConfig({
         'plugins/EUIXDatePlugin': resolve(__dirname, 'src/plugins/EUIXDatePlugin.js'),
         'plugins/EUIXInspectorPlugin': resolve(__dirname, 'src/plugins/EUIXInspectorPlugin.js'),
         'plugins/EUIXPlaywright': resolve(__dirname, 'src/plugins/inspector/playwright.js'),
-        'plugins/EUIXWebMCPPlugin': resolve(__dirname, 'src/plugins/EUIXWebMCPPlugin.js')
+        'plugins/EUIXWebMCPPlugin': resolve(__dirname, 'src/plugins/EUIXWebMCPPlugin.js'),
+        'plugins/EUIXValidationPlugin': resolve(__dirname, 'src/plugins/EUIXValidationPlugin.js'),
+        'plugins/EUIXStreamPlugin': resolve(__dirname, 'src/plugins/EUIXStreamPlugin.js'),
+        'plugins/EUIXA11yPlugin': resolve(__dirname, 'src/plugins/EUIXA11yPlugin.js'),
+        'EUIXCompiler': resolve(__dirname, 'src/compiler/index.js'),
+        'EUIXServer': resolve(__dirname, 'src/server/index.js')
       },
       formats: ['es']
     },

@@ -480,6 +480,37 @@ export function interpolate(engine, text, context = {}) {
                         }
                     }
                 }
+            } else if (c.scope === "stream" || c.scope === "$stream") {
+                if (c.prop) {
+                    const parts = c.parts;
+                    const streamId = parts[0];
+                    const streamProp = parts.slice(1).join(".");
+                    const status = isFn(engine.getStreamStatus)
+                        ? engine.getStreamStatus(streamId)
+                        : engine._streamStatus?.[streamId];
+                    if (status) {
+                        if (!streamProp) {
+                            out += typeof status === "object" ? JSON.stringify(status) : String(status);
+                        } else {
+                            const val = streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+                            if (val !== undefined && val !== null) out += String(val);
+                        }
+                    }
+                }
+            } else if (c.scope === "errors" || c.scope === "$errors") {
+                const errObj = engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
+                if (errObj) {
+                    if (!c.prop) {
+                        out += typeof errObj === "object" ? safeStringify(errObj) : String(errObj);
+                    } else {
+                        const parts = c.parts;
+                        let curr = errObj;
+                        for (let p = 0; p < parts.length && curr !== undefined && curr !== null; p++) {
+                            curr = curr[parts[p]];
+                        }
+                        if (curr !== undefined && curr !== null) out += String(curr);
+                    }
+                }
             } else if (c.scope === "result") {
                 if (!c.prop) {
                     if (context && context.result !== undefined && context.result !== null) {
@@ -558,10 +589,28 @@ export function interpolate(engine, text, context = {}) {
         return match;
     });
 
-    // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {api.name}, {$api.name}, {$route.name}, {$router.name}, {$fetcher.name}
+    // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {errors.name}, {$errors.name}, {api.name}, {$api.name}, {stream.name}, {$stream.name}, {$route.name}, {$router.name}, {$fetcher.name}
     result = result.replace(
-        /\{(args|params|result|err|error|local|\$local|global|api|\$api|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.]+))?\}/g,
+        /\{(args|params|result|err|error|local|\$local|global|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.]+))?\}/g,
         (match, scope, prop) => {
+            if (scope === "stream" || scope === "$stream") {
+                const parts = (prop || "").split(".");
+                const streamId = parts[0];
+                const streamProp = parts.slice(1).join(".");
+                const status = isFn(engine.getStreamStatus)
+                    ? engine.getStreamStatus(streamId)
+                    : engine._streamStatus?.[streamId];
+                if (!status) return "";
+                if (!streamProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
+                const val = streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+                return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
+            }
+            if (scope === "errors" || scope === "$errors") {
+                const errObj = engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
+                if (!errObj) return "";
+                if (!prop) return typeof errObj === "object" ? JSON.stringify(errObj) : String(errObj);
+                return errObj[prop] !== undefined ? String(errObj[prop]) : "";
+            }
             if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
                 const rootState = engine.getState(scope);
                 if (rootState === undefined || rootState === null) return "";
@@ -1210,7 +1259,7 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
 
         const matches = Array.from(
             attrValue.matchAll(
-                /(?:parent\.)?(?:data|local|\$local|api|\$api|\$route|\$router|\$fetcher)\.([a-zA-Z0-9_.[\]]+)/g,
+                /(?:parent\.)?(?:data|local|\$local|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)\.([a-zA-Z0-9_.[\]]+)/g,
             ),
         );
         if (matches.length > 0) {
@@ -1232,6 +1281,29 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
                     engine.registerBinding(`${scopeKey}.${key}`, el, "attribute", () => {
                         engine.updateAttributeBinding(el, attrName, attrValue, context);
                     });
+                } else if (attrValue.includes("stream.") || attrValue.includes("$stream.")) {
+                    const parts = key.split(".");
+                    const streamId = parts[0];
+                    const streamProp = parts[1];
+                    const updateFn = () => {
+                        engine.updateAttributeBinding(el, attrName, attrValue, context);
+                    };
+                    if (streamProp) {
+                        engine.registerBinding(`stream:${streamId}:${streamProp}`, el, "attribute", updateFn);
+                        engine.registerBinding(`stream.${streamId}.${streamProp}`, el, "attribute", updateFn);
+                        engine.registerBinding(`$stream.${streamId}.${streamProp}`, el, "attribute", updateFn);
+                    }
+                    engine.registerBinding(`stream:${streamId}`, el, "attribute", updateFn);
+                    engine.registerBinding(`stream.${streamId}`, el, "attribute", updateFn);
+                    engine.registerBinding(`$stream.${streamId}`, el, "attribute", updateFn);
+                } else if (attrValue.includes("errors.") || attrValue.includes("$errors.")) {
+                    const updateFn = () => {
+                        engine.updateAttributeBinding(el, attrName, attrValue, context);
+                    };
+                    engine.registerBinding(`errors.${key}`, el, "attribute", updateFn);
+                    engine.registerBinding(`$errors.${key}`, el, "attribute", updateFn);
+                    engine.registerBinding("errors", el, "attribute", updateFn);
+                    engine.registerBinding("$errors", el, "attribute", updateFn);
                 } else if (attrValue.includes(`api.${key}`) || attrValue.includes(`$api.${key}`)) {
                     const parts = key.split(".");
                     const epId = parts[0];
@@ -1366,6 +1438,11 @@ export function isStaticSubtree(xmlNode, engine = null) {
     if (
         srcAttr ||
         tagName.startsWith("on_") ||
+        tagName === "button" ||
+        tagName === "input" ||
+        tagName === "select" ||
+        tagName === "textarea" ||
+        tagName === "form" ||
         tagName === "for_each" ||
         tagName === "component" ||
         tagName === "import" ||
@@ -1390,6 +1467,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
         typeAttr === "outlet" ||
         typeAttr === "custom" ||
         nameAttr === "lazy" ||
+        xmlNode._hasEventTags ||
         METADATA_AND_EVENT_TAGS.has(tagName)
     ) {
         xmlNode._isStaticSubtree = false;
@@ -1533,7 +1611,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
         const matches = Array.from(
             txt.matchAll(
-                /(?:parent\.)?(?:data|local|\$local|api|\$api|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.[\]]+))?/g,
+                /(?:parent\.)?(?:data|local|\$local|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.[\]]+))?/g,
             ),
         );
         if (matches.length > 0) {
@@ -1546,6 +1624,29 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                         textNode.textContent = engine.interpolate(txt, context);
                     };
                     engine.registerBinding(`${scopeKey}.${key}`, textNode, "text_node", updateFn);
+                } else if (txt.includes("stream.") || txt.includes("$stream.")) {
+                    const parts = key.split(".");
+                    const streamId = parts[0];
+                    const streamProp = parts[1];
+                    const updateFn = () => {
+                        textNode.textContent = engine.interpolate(txt, context);
+                    };
+                    if (streamProp) {
+                        engine.registerBinding(`stream:${streamId}:${streamProp}`, textNode, "text_node", updateFn);
+                        engine.registerBinding(`stream.${streamId}.${streamProp}`, textNode, "text_node", updateFn);
+                        engine.registerBinding(`$stream.${streamId}.${streamProp}`, textNode, "text_node", updateFn);
+                    }
+                    engine.registerBinding(`stream:${streamId}`, textNode, "text_node", updateFn);
+                    engine.registerBinding(`stream.${streamId}`, textNode, "text_node", updateFn);
+                    engine.registerBinding(`$stream.${streamId}`, textNode, "text_node", updateFn);
+                } else if (txt.includes("errors.") || txt.includes("$errors.")) {
+                    const updateFn = () => {
+                        textNode.textContent = engine.interpolate(txt, context);
+                    };
+                    engine.registerBinding(`errors.${key}`, textNode, "text_node", updateFn);
+                    engine.registerBinding(`$errors.${key}`, textNode, "text_node", updateFn);
+                    engine.registerBinding("errors", textNode, "text_node", updateFn);
+                    engine.registerBinding("$errors", textNode, "text_node", updateFn);
                 } else if (txt.includes(`api.${key}`) || txt.includes(`$api.${key}`)) {
                     const parts = key.split(".");
                     const epId = parts[0];
@@ -1905,6 +2006,10 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
     if (tagName === "dialog") {
         return isFn(engine.renderDialog) ? engine.renderDialog(xmlNode, context) : null;
+    }
+
+    if (tagName === "live_region" || tagName === "live-region") {
+        return isFn(engine.renderLiveRegion) ? engine.renderLiveRegion(xmlNode, context) : null;
     }
 
     if (tagName === "head" || tagName === "helmet") {

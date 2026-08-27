@@ -6,6 +6,9 @@
   "main": "dist/EUIXEngine.umd.js",
   "module": "dist/EUIXEngine.es.js",
   "types": "./types/index.d.ts",
+  "bin": {
+    "euix": "./bin/euix.js"
+  },
   "exports": {
     ".": {
       "types": "./types/index.d.ts",
@@ -61,6 +64,10 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXHeadPlugin.es.js"
     },
+    "./a11y": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXA11yPlugin.es.js"
+    },
     "./leaflet": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXLeafletPlugin.es.js"
@@ -105,6 +112,22 @@
     "./webmcp": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXWebMCPPlugin.es.js"
+    },
+    "./compiler": {
+      "types": "./types/compiler.d.ts",
+      "import": "./dist/EUIXCompiler.es.js"
+    },
+    "./server": {
+      "types": "./types/server.d.ts",
+      "import": "./dist/EUIXServer.es.js"
+    },
+    "./validation": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXValidationPlugin.es.js"
+    },
+    "./stream": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXStreamPlugin.es.js"
     }
   },
   "files": [

@@ -1,8 +1,9 @@
-/**
- * EUIXApiPlugin.js
- * SWR REST API Engine & HTTP Data Fetching Plugin for EUIX Engine.
- * Provides REST XHR fetching, SWR caching, Anti-CSRF token injection, and revalidation.
- */
+const getApiStore = (type) => {
+    const s = String(type || "").toLowerCase();
+    if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
+    if (s === "local" || s === "localstorage" || s === "true" || s === "indexeddb") return typeof localStorage !== "undefined" ? localStorage : null;
+    return null;
+};
 
 export const EUIXApiPlugin = {
     name: "api",
@@ -20,6 +21,8 @@ export const EUIXApiPlugin = {
                     onResponse: null,
                     revalidateFocus: false,
                     revalidateOnline: false,
+                    persist: null,
+                    queueOffline: false,
                 };
             }
             if (options.baseUrl !== undefined) this._apiConfig.baseUrl = options.baseUrl;
@@ -28,6 +31,8 @@ export const EUIXApiPlugin = {
                 this._apiConfig.revalidateFocus = Boolean(options.revalidateFocus);
             if (options.revalidateOnline !== undefined)
                 this._apiConfig.revalidateOnline = Boolean(options.revalidateOnline);
+            if (options.persist !== undefined) this._apiConfig.persist = options.persist;
+            if (options.queueOffline !== undefined) this._apiConfig.queueOffline = Boolean(options.queueOffline);
             if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
             if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
             if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
@@ -51,6 +56,107 @@ export const EUIXApiPlugin = {
             if (!name) return this;
             if (!this._apiConfig) this.configureApi();
             this._apiConfig.headers.delete(String(name).trim());
+            return this;
+        };
+
+        proto._readPersistentApiCache = function (storageKey, storageType, ttlMs) {
+            const store = getApiStore(storageType);
+            if (!store) return null;
+            try {
+                const raw = store.getItem(storageKey);
+                if (!raw) return null;
+                const entry = JSON.parse(raw);
+                if (entry && entry.timestamp) {
+                    if (ttlMs > 0 && Date.now() - entry.timestamp > ttlMs) {
+                        store.removeItem(storageKey);
+                        return null;
+                    }
+                    return entry;
+                }
+            } catch (_) {}
+            return null;
+        };
+
+        proto._writePersistentApiCache = function (storageKey, storageType, data) {
+            const store = getApiStore(storageType);
+            if (!store) return;
+            try {
+                store.setItem(storageKey, JSON.stringify({ data, timestamp: Date.now() }));
+            } catch (_) {}
+        };
+
+        proto._removePersistentApiCache = function (storageKey, storageType) {
+            const store = getApiStore(storageType);
+            if (store) {
+                try { store.removeItem(storageKey); } catch (_) {}
+            }
+        };
+
+        proto._enqueueOfflineMutation = function (mutationOptions) {
+            const queueKey = "euix_api_offline_queue";
+            const store = typeof localStorage !== "undefined" ? localStorage : null;
+            if (!store) return;
+            try {
+                const raw = store.getItem(queueKey);
+                const queue = raw ? JSON.parse(raw) : [];
+                queue.push({
+                    url: mutationOptions.url,
+                    method: mutationOptions.method,
+                    body: mutationOptions.body,
+                    headers: mutationOptions.headers,
+                    timestamp: Date.now(),
+                });
+                store.setItem(queueKey, JSON.stringify(queue));
+            } catch (_) {}
+        };
+
+        proto.flushOfflineQueue = async function () {
+            const queueKey = "euix_api_offline_queue";
+            const store = typeof localStorage !== "undefined" ? localStorage : null;
+            if (!store) return [];
+            try {
+                const raw = store.getItem(queueKey);
+                if (!raw) return [];
+                const queue = JSON.parse(raw);
+                store.removeItem(queueKey);
+                const results = [];
+                for (const item of queue) {
+                    try {
+                        const res = await fetch(item.url, {
+                            method: item.method,
+                            headers: item.headers,
+                            body: item.body,
+                        });
+                        results.push({ url: item.url, success: res.ok });
+                    } catch (err) {
+                        results.push({ url: item.url, success: false, error: err.message });
+                    }
+                }
+                return results;
+            } catch (_) {
+                return [];
+            }
+        };
+
+        proto.clearApiCache = function (tagOrUrl) {
+            if (this._xhrCache) {
+                if (tagOrUrl) {
+                    this._xhrCache.delete(tagOrUrl);
+                } else {
+                    this._xhrCache.clear();
+                }
+            }
+            const store = typeof localStorage !== "undefined" ? localStorage : null;
+            if (store) {
+                if (tagOrUrl) {
+                    store.removeItem(`euix_api_${tagOrUrl}`);
+                } else {
+                    for (let i = store.length - 1; i >= 0; i--) {
+                        const k = store.key(i);
+                        if (k && k.startsWith("euix_api_")) store.removeItem(k);
+                    }
+                }
+            }
             return this;
         };
 
@@ -78,7 +184,10 @@ export const EUIXApiPlugin = {
             };
 
             this._focusRevalidateHandler = () => onRevalidateEvent("focus");
-            this._onlineRevalidateHandler = () => onRevalidateEvent("online");
+            this._onlineRevalidateHandler = async () => {
+                await this.flushOfflineQueue();
+                onRevalidateEvent("online");
+            };
 
             window.addEventListener("focus", this._focusRevalidateHandler);
             window.addEventListener("online", this._onlineRevalidateHandler);
@@ -299,6 +408,24 @@ export const EUIXApiPlugin = {
                   compApiConfig.cacheTtl ||
                   0;
             const cacheTtlMs = parseInt(cacheTtlRaw, 10);
+            const epId = idAttr || tagAttr;
+            const persistAttr =
+                actionNode.getAttribute("persist") ||
+                actionNode.getAttribute("persistent") ||
+                this.getChild(actionNode, "persist")?.textContent.trim() ||
+                this.getChild(actionNode, "persistent")?.textContent.trim() ||
+                compApiConfig.persist ||
+                (this._apiConfig && this._apiConfig.persist) ||
+                null;
+            const persistKey =
+                actionNode.getAttribute("persist_key") ||
+                this.getChild(actionNode, "persist_key")?.textContent.trim() ||
+                `euix_api_${epId || finalUrl}`;
+            const queueOffline =
+                actionNode.getAttribute("queue_offline") === "true" ||
+                this.getChild(actionNode, "queue_offline")?.textContent.trim() === "true" ||
+                compApiConfig.queueOffline === true ||
+                (this._apiConfig && this._apiConfig.queueOffline === true);
 
             if (!this._registeredXhrs) this._registeredXhrs = new Set();
             let existingEntry = null;
@@ -329,7 +456,6 @@ export const EUIXApiPlugin = {
                 return;
             }
 
-            const epId = idAttr || tagAttr;
             if (epId) {
                 if (!this._apiStatus) this._apiStatus = {};
                 this._apiStatus[epId] = {
@@ -338,6 +464,8 @@ export const EUIXApiPlugin = {
                     status: null,
                     data: this._apiStatus[epId]?.data || null,
                     timestamp: this._apiStatus[epId]?.timestamp || 0,
+                    stale: false,
+                    isOffline: false,
                 };
                 this.syncBindings(`api:${epId}:loading`, true);
                 this.syncBindings(`api.${epId}.loading`, true);
@@ -345,27 +473,50 @@ export const EUIXApiPlugin = {
                 this.syncBindings(`api.${epId}`, this._apiStatus[epId]);
             }
 
-            // Stale-While-Revalidate Caching Check
-            if (cacheTtlMs > 0 && (method === "GET" || method === "HEAD")) {
-                if (!this._xhrCache) this._xhrCache = new Map();
-                const cached = this._xhrCache.get(finalUrl);
+            // Stale-While-Revalidate & Persistent Caching Check
+            let cached = null;
+            if (this._xhrCache && this._xhrCache.has(finalUrl)) {
+                cached = this._xhrCache.get(finalUrl);
+            } else if (persistAttr) {
+                cached = this._readPersistentApiCache(persistKey, persistAttr, cacheTtlMs);
+                if (cached) {
+                    if (!this._xhrCache) this._xhrCache = new Map();
+                    this._xhrCache.set(finalUrl, cached);
+                }
+            }
+
+            const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+
+            if (cached && (method === "GET" || method === "HEAD")) {
                 const now = Date.now();
-                if (cached && now - cached.timestamp < cacheTtlMs) {
-                    this.batch(() => {
-                        if (loadingPath) this.setState(loadingPath, "false", { silent: true });
-                        if (epId && this._apiStatus) {
-                            this._apiStatus[epId].loading = false;
-                            this.syncBindings(`api:${epId}:loading`, false);
-                            this.syncBindings(`api.${epId}.loading`, false);
-                        }
-                        let data = cached.data;
-                        if (select) data = this.getJsonPath(data, select);
-                        if (Array.isArray(data)) {
-                            data = this.mapResponseItems(data, itemMapNode);
-                        }
-                        if (target) this.setState(target, data, { operation: targetOp });
-                    });
-                    return;
+                const isFresh = cacheTtlMs > 0 && now - cached.timestamp < cacheTtlMs;
+
+                // Instantly render cached/stale data to UI
+                this.batch(() => {
+                    let data = cached.data;
+                    if (select) data = this.getJsonPath(data, select);
+                    if (Array.isArray(data)) {
+                        data = this.mapResponseItems(data, itemMapNode);
+                    }
+                    if (target) this.setState(target, data, { operation: targetOp });
+                    if (epId && this._apiStatus) {
+                        this._apiStatus[epId] = {
+                            loading: !isFresh && !isOffline,
+                            error: null,
+                            status: 200,
+                            data: cached.data,
+                            timestamp: cached.timestamp,
+                            stale: !isFresh,
+                            isOffline,
+                        };
+                        this.syncBindings(`api:${epId}`, this._apiStatus[epId]);
+                        this.syncBindings(`api.${epId}`, this._apiStatus[epId]);
+                    }
+                });
+
+                if (isFresh || isOffline) {
+                    if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                    return cached.data;
                 }
             }
 
@@ -586,6 +737,9 @@ export const EUIXApiPlugin = {
                             if (!this._xhrCache) this._xhrCache = new Map();
                             this._xhrCache.set(finalUrl, { data, timestamp: Date.now() });
                         }
+                        if (persistAttr && (method === "GET" || method === "HEAD")) {
+                            this._writePersistentApiCache(persistKey, persistAttr, data);
+                        }
 
                         if (this.applyResets) this.applyResets(actionNode);
                         if (errorPath) this.setState(errorPath, "", { silent: true });
@@ -609,6 +763,11 @@ export const EUIXApiPlugin = {
                         (err.message && err.message.match(/HTTP (\d+)/)
                             ? parseInt(err.message.match(/HTTP (\d+)/)[1], 10)
                             : null);
+                    const isOfflineNow = (typeof navigator !== "undefined" && navigator.onLine === false) || !status;
+                    if (isOfflineNow && queueOffline && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+                        this._enqueueOfflineMutation({ url: finalUrl, method, body, headers: headersObj });
+                    }
+
                     const StructuredErrorClass =
                         engineClass.EUIXStructuredError ||
                         (typeof window !== "undefined" && window.EUIXStructuredError);
@@ -631,8 +790,10 @@ export const EUIXApiPlugin = {
                                 loading: false,
                                 error: structuredErr.message || "Network error",
                                 status: status || 0,
-                                data: null,
+                                data: this._apiStatus[epId]?.data || null,
                                 timestamp: Date.now(),
+                                stale: Boolean(this._apiStatus[epId]?.data),
+                                isOffline: isOfflineNow,
                             };
                             this.syncBindings(`api:${epId}:loading`, false);
                             this.syncBindings(`api.${epId}.loading`, false);

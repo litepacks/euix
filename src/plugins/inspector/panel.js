@@ -151,6 +151,7 @@ export class InspectorPanel {
 
         const tabs = [
             { id: "inspect", label: "🔍 Inspect" },
+            { id: "timeline", label: `⏱️ Timeline (${this.inspector.history?.snapshots?.length || 0})` },
             { id: "tree", label: "🌳 Tree" },
             { id: "logs", label: `⚡ Actions (${this.inspector.actionLogs.length})` },
             { id: "state", label: "📊 State" },
@@ -199,6 +200,7 @@ export class InspectorPanel {
 
     renderTabContent() {
         if (this.activeTab === "inspect") return this.renderInspectTab();
+        if (this.activeTab === "timeline") return this.renderTimelineTab();
         if (this.activeTab === "tree") return this.renderTreeTab();
         if (this.activeTab === "actions" || this.activeTab === "logs") return this.renderActionsTab();
         if (this.activeTab === "state") return this.renderStateTab();
@@ -206,6 +208,110 @@ export class InspectorPanel {
         if (this.activeTab === "search") return this.renderSearchTab();
         if (this.activeTab === "perf") return this.renderPerfTab();
         return "";
+    }
+
+    renderTimelineTab() {
+        const history = this.inspector.history;
+        const snapshots = history ? history.snapshots : [];
+        const currentIndex = history ? history.currentIndex : -1;
+        const canUndo = history ? history.canUndo() : false;
+        const canRedo = history ? history.canRedo() : false;
+
+        return `
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <!-- Timeline Controls -->
+                <div style="background:#1e293b;padding:8px 10px;border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <button id="euix-history-undo" ${!canUndo ? "disabled" : ""} style="background:${canUndo ? "#334155" : "#1e293b"};color:${canUndo ? "#38bdf8" : "#475569"};border:1px solid rgba(56,189,248,${canUndo ? "0.4" : "0.1"});padding:4px 8px;border-radius:5px;font-size:10px;font-weight:bold;cursor:${canUndo ? "pointer" : "not-allowed"};">⏮ Undo</button>
+                        <button id="euix-history-redo" ${!canRedo ? "disabled" : ""} style="background:${canRedo ? "#334155" : "#1e293b"};color:${canRedo ? "#38bdf8" : "#475569"};border:1px solid rgba(56,189,248,${canRedo ? "0.4" : "0.1"});padding:4px 8px;border-radius:5px;font-size:10px;font-weight:bold;cursor:${canRedo ? "pointer" : "not-allowed"};">⏭ Redo</button>
+                    </div>
+                    <div style="display:flex;gap:4px;align-items:center;">
+                        <button id="euix-history-snapshot" style="background:#047857;color:#ecfdf5;border:none;padding:4px 8px;border-radius:5px;font-size:10px;font-weight:bold;cursor:pointer;">📸 Snapshot</button>
+                        <button id="euix-history-clear" style="background:#334155;color:#94a3b8;border:none;padding:4px 8px;border-radius:5px;font-size:10px;cursor:pointer;">🧹 Clear</button>
+                    </div>
+                </div>
+
+                <!-- Timeline Scrubber -->
+                ${
+                    snapshots.length > 1
+                        ? `
+                <div style="background:#1e293b;padding:8px 10px;border-radius:8px;display:flex;flex-direction:column;gap:4px;">
+                    <div style="display:flex;justify-content:space-between;color:#94a3b8;font-size:9px;">
+                        <span>⏮ Initial</span>
+                        <span style="color:#38bdf8;font-weight:bold;">Step ${currentIndex + 1} / ${snapshots.length}</span>
+                        <span>Latest ⏭</span>
+                    </div>
+                    <input id="euix-history-scrubber" type="range" min="0" max="${snapshots.length - 1}" value="${currentIndex}" style="width:100%;cursor:pointer;accent-color:#38bdf8;" />
+                </div>
+                `
+                        : ""
+                }
+
+                <!-- Snapshots List -->
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="color:#38bdf8;font-weight:bold;font-size:11px;">📜 Snapshot History (${snapshots.length})</div>
+                    ${snapshots
+                        .slice()
+                        .reverse()
+                        .map((snap) => {
+                            const isCurrent = snap.index === currentIndex;
+                            const diff = snap.diff || {};
+                            const hasDiff = diff.hasChanges;
+
+                            return `
+                        <div class="euix-history-card" data-index="${snap.index}" style="background:#1e293b;border:1px solid ${isCurrent ? "#22c55e" : "rgba(255,255,255,0.08)"};border-radius:8px;padding:8px 10px;box-shadow:${isCurrent ? "0 0 10px rgba(34,197,94,0.2)" : "none"};">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="background:${isCurrent ? "#22c55e" : "#334155"};color:${isCurrent ? "#052e16" : "#f8fafc"};font-weight:bold;padding:1px 5px;border-radius:4px;font-size:9px;">#${snap.index + 1}</span>
+                                    <span style="color:#f8fafc;font-weight:bold;font-size:11px;">${this.escape(snap.label)}</span>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="color:#64748b;font-size:9px;">${snap.timestamp}</span>
+                                    ${
+                                        isCurrent
+                                            ? `<span style="color:#22c55e;font-weight:bold;font-size:9px;">📍 ACTIVE</span>`
+                                            : `<button class="euix-restore-btn" data-index="${snap.index}" style="background:#334155;border:1px solid rgba(56,189,248,0.3);color:#38bdf8;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">⏪ Restore</button>`
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- Diff View -->
+                            ${
+                                hasDiff
+                                    ? `
+                            <div style="background:#0f172a;padding:6px;border-radius:5px;margin-top:6px;font-size:10px;display:flex;flex-direction:column;gap:2px;">
+                                ${Object.entries(diff.changed || {})
+                                    .map(
+                                        ([k, v]) => `
+                                    <div style="color:#facc15;"><span style="color:#64748b;">~</span> <strong>${this.escape(k)}</strong>: <span style="color:#f87171;">${this.escape(JSON.stringify(v.from))}</span> &rarr; <span style="color:#4ade80;">${this.escape(JSON.stringify(v.to))}</span></div>
+                                `,
+                                    )
+                                    .join("")}
+                                ${Object.entries(diff.added || {})
+                                    .map(
+                                        ([k, v]) => `
+                                    <div style="color:#4ade80;"><span style="color:#22c55e;">+</span> <strong>${this.escape(k)}</strong>: ${this.escape(JSON.stringify(v))}</div>
+                                `,
+                                    )
+                                    .join("")}
+                                ${Object.entries(diff.removed || {})
+                                    .map(
+                                        ([k, v]) => `
+                                    <div style="color:#f87171;"><span style="color:#ef4444;">-</span> <strong>${this.escape(k)}</strong>: ${this.escape(JSON.stringify(v))}</div>
+                                `,
+                                    )
+                                    .join("")}
+                            </div>
+                            `
+                                    : ""
+                            }
+                        </div>
+                    `;
+                        })
+                        .join("")}
+                </div>
+            </div>
+        `;
     }
 
     renderInspectTab() {
@@ -646,6 +752,64 @@ export class InspectorPanel {
                 this.bindTabEvents();
             };
         }
+
+        // Timeline Controls
+        const undoBtn = document.getElementById("euix-history-undo");
+        if (undoBtn) {
+            undoBtn.onclick = () => {
+                if (this.inspector.history) {
+                    this.inspector.history.undo();
+                    this.render();
+                }
+            };
+        }
+        const redoBtn = document.getElementById("euix-history-redo");
+        if (redoBtn) {
+            redoBtn.onclick = () => {
+                if (this.inspector.history) {
+                    this.inspector.history.redo();
+                    this.render();
+                }
+            };
+        }
+        const snapshotBtn = document.getElementById("euix-history-snapshot");
+        if (snapshotBtn) {
+            snapshotBtn.onclick = () => {
+                if (this.inspector.history) {
+                    const label = prompt("Snapshot label:", `Snapshot ${this.inspector.history.snapshots.length + 1}`) || "Manual Snapshot";
+                    this.inspector.history.takeSnapshot(label);
+                    this.render();
+                }
+            };
+        }
+        const clearHistoryBtn = document.getElementById("euix-history-clear");
+        if (clearHistoryBtn) {
+            clearHistoryBtn.onclick = () => {
+                if (this.inspector.history) {
+                    this.inspector.history.clearHistory();
+                    this.render();
+                }
+            };
+        }
+        const scrubber = document.getElementById("euix-history-scrubber");
+        if (scrubber) {
+            scrubber.oninput = (e) => {
+                if (this.inspector.history) {
+                    this.inspector.history.timeTravelTo(Number(e.target.value));
+                    this.render();
+                }
+            };
+        }
+        const restoreBtns = this.panelEl.querySelectorAll(".euix-restore-btn");
+        restoreBtns.forEach((btn) => {
+            btn.onclick = () => {
+                const idx = Number(btn.getAttribute("data-index"));
+                if (this.inspector.history) {
+                    this.inspector.history.timeTravelTo(idx);
+                    this.render();
+                }
+            };
+        });
 
         // Clear actions
         const clearBtn = document.getElementById("euix-clear-logs") || document.getElementById("euix-clear-actions");
