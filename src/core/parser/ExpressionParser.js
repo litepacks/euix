@@ -182,11 +182,12 @@ export class EUIXExpressionParser {
                     }
                     return `(($ctx?.[${JSON.stringify(scope)}]?.${jsProp}) ?? ($ctx?.item?.${jsProp}) ?? $r(${JSON.stringify(id)}))`;
                 }
-                return `(($r(${JSON.stringify(id)})) !== undefined ? ($r(${JSON.stringify(id)})) : ${JSON.stringify(id)})`;
+                return `(($ctx?.[${JSON.stringify(id)}]) ?? ($ctx?.item?.[${JSON.stringify(id)}]) ?? ($data?.[${JSON.stringify(id)}]) ?? (($r(${JSON.stringify(id)})) !== undefined ? ($r(${JSON.stringify(id)})) : ${JSON.stringify(id)}))`;
             }
             if (token.type === "OPERATOR" && token.value === "!") {
                 consume();
-                return `(!${parseUnary()} || ${parseUnary()} === "false")`;
+                const operand = parseUnary();
+                return `(!(${operand}) || (${operand}) === "false")`;
             }
             consume();
             return "undefined";
@@ -379,7 +380,8 @@ export class EUIXExpressionParser {
                     }
 
                     const expr = templateString.slice(i + 1, closeIdx).trim();
-                    if (expr && !expr.startsWith('"') && !expr.includes('":') && !expr.includes("':")) {
+                    const isJsonObject = /^\s*["'][a-zA-Z0-9_$-]+["']\s*:/.test(expr) && !expr.includes("?");
+                    if (expr && !isJsonObject) {
                         if (i > lastIdx) {
                             parts.push(JSON.stringify(templateString.slice(lastIdx, i)));
                         }
@@ -426,7 +428,13 @@ export class EUIXExpressionParser {
         try {
             const compiled = EUIXExpressionParser.compileExpression(exprString);
             if (compiled) {
-                const dataScope = engine ? engine._state : (context && context.$data ? context.$data : (context && context.data ? context.data : null));
+                const dataScope = engine
+                    ? engine._rawState || engine.state
+                    : context && context.$data
+                      ? context.$data
+                      : context && context.data
+                        ? context.data
+                        : null;
                 const localScope = context ? (context._localState || context.local) : null;
                 const resolver = typeof resolveValueFn === "function" ? resolveValueFn : (p) => (engine ? engine.resolveValueFromPath(p, context) : undefined);
                 return compiled(dataScope, localScope, context, engine, resolver);

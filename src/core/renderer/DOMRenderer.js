@@ -536,10 +536,10 @@ export function interpolate(engine, text, context = {}) {
     // Fast-path 3: JIT compiled template function for complex expressions/ternaries/math
     const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
     if (jitFn) {
-        const dataScope = engine._state;
+        const dataScope = engine ? (engine._rawState || engine.state) : null;
         const localScope = context._localState || context.local;
         const res = jitFn(dataScope, localScope, context, engine, (p) => engine.resolveValueFromPath(p, context));
-        if (res !== undefined && res !== null && res !== "") return res;
+        if (res !== undefined && res !== null) return res;
     }
 
     let result = text;
@@ -1349,7 +1349,8 @@ export function applyRef(engine, el, xmlNode, context = {}) {
 export function isStaticSubtree(xmlNode, engine = null) {
     if (!xmlNode) return false;
     if (xmlNode.nodeType === 3) {
-        return !xmlNode.nodeValue || !xmlNode.nodeValue.includes("{");
+        const txt = xmlNode.textContent || xmlNode.nodeValue || "";
+        return !txt.includes("{");
     }
     if (xmlNode.nodeType !== 1) return false;
 

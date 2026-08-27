@@ -340,21 +340,25 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                             getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                         }
                     } else if (trimmed.startsWith(`{${varName}.`) && trimmed.endsWith("}")) {
-                        const innerPath = trimmed.slice(varName.length + 2, -1);
-                        const parts = innerPath.split(".");
-                        getter = (item) => {
-                            let curr = item;
-                            for (let p = 0; p < parts.length && curr != null; p++) {
-                                curr = curr[parts[p]];
-                            }
-                            return String(curr ?? "");
-                        };
+                        const innerPath = trimmed.slice(varName.length + 2, -1).trim();
+                        if (/^[a-zA-Z0-9_.]+$/.test(innerPath)) {
+                            const parts = innerPath.split(".");
+                            getter = (item) => {
+                                let curr = item;
+                                for (let p = 0; p < parts.length && curr != null; p++) {
+                                    curr = curr[parts[p]];
+                                }
+                                return String(curr ?? "");
+                            };
+                        }
                     }
                     if (!getter) {
                         const jitFn = EUIXExpressionParser.compileTemplateFunction(txt);
                         if (jitFn) {
-                            getter = (item, ctx) =>
-                                jitFn(engine._state, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                            getter = (item, ctx) => {
+                                const dataScope = engine ? (engine._rawState || engine.state) : null;
+                                return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                            };
                         } else {
                             getter = (_item, ctx) => engine.interpolate(txt, ctx);
                         }
@@ -388,21 +392,25 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                                     getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
                                 }
                             } else if (trimmed.startsWith(`{${varName}.`) && trimmed.endsWith("}")) {
-                                const innerPath = trimmed.slice(varName.length + 2, -1);
-                                const parts = innerPath.split(".");
-                                getter = (item) => {
-                                    let curr = item;
-                                    for (let p = 0; p < parts.length && curr != null; p++) {
-                                        curr = curr[parts[p]];
-                                    }
-                                    return String(curr ?? "");
-                                };
+                                const innerPath = trimmed.slice(varName.length + 2, -1).trim();
+                                if (/^[a-zA-Z0-9_.]+$/.test(innerPath)) {
+                                    const parts = innerPath.split(".");
+                                    getter = (item) => {
+                                        let curr = item;
+                                        for (let p = 0; p < parts.length && curr != null; p++) {
+                                            curr = curr[parts[p]];
+                                        }
+                                        return String(curr ?? "");
+                                    };
+                                }
                             }
                             if (!getter) {
                                 const jitFn = EUIXExpressionParser.compileTemplateFunction(attrVal);
                                 if (jitFn) {
-                                    getter = (item, ctx) =>
-                                        jitFn(engine._state, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                    getter = (item, ctx) => {
+                                        const dataScope = engine ? (engine._rawState || engine.state) : null;
+                                        return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                    };
                                 } else {
                                     getter = (_item, ctx) => engine.interpolate(attrVal, ctx);
                                 }
@@ -444,6 +452,53 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                         eventsObj,
                         resolver: _getStaticNodeResolver(path),
                     });
+                }
+
+                if (xNode.childNodes?.length === 1 && xNode.childNodes[0].nodeType === 3) {
+                    const txt = xNode.childNodes[0].textContent;
+                    if (txt?.includes("{")) {
+                        let getter = null;
+                        const trimmed = txt.trim();
+                        const match = trimmed.match(/^\{([a-zA-Z_$][a-zA-Z0-9_$]*)(?:\.([a-zA-Z0-9_$]+))?\}$/);
+                        if (match) {
+                            const [_, scope, prop] = match;
+                            if (scope === varName) {
+                                getter = prop ? (item) => String(item?.[prop] ?? "") : (item) => String(item ?? "");
+                            }
+                        } else if (trimmed.startsWith(`{${varName}.`) && trimmed.endsWith("}")) {
+                            const innerPath = trimmed.slice(varName.length + 2, -1).trim();
+                            if (/^[a-zA-Z0-9_.]+$/.test(innerPath)) {
+                                const parts = innerPath.split(".");
+                                getter = (item) => {
+                                    let curr = item;
+                                    for (let p = 0; p < parts.length && curr != null; p++) {
+                                        curr = curr[parts[p]];
+                                    }
+                                    return String(curr ?? "");
+                                };
+                            }
+                        }
+                        if (!getter) {
+                            const jitFn = EUIXExpressionParser.compileTemplateFunction(txt);
+                            if (jitFn) {
+                                getter = (item, ctx) => {
+                                    const dataScope = engine ? (engine._rawState || engine.state) : null;
+                                    return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                };
+                            } else {
+                                getter = (_item, ctx) => engine.interpolate(txt, ctx);
+                            }
+                        }
+                        dynamicSlots.push({
+                            childIndex: cIdx,
+                            path: [...path],
+                            type: "text",
+                            rawExpr: txt,
+                            getter,
+                            resolver: _getStaticNodeResolver(path),
+                        });
+                    }
+                    return;
                 }
 
                 const xChildNodes = xNode.childNodes;
