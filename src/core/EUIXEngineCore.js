@@ -272,6 +272,13 @@ class EUIXEngineCore {
         return reportError(this, error, contextInfo);
     }
 
+    static _globalErrorHandler = null;
+
+    static onError(handler) {
+        EUIXEngineCore._globalErrorHandler = handler;
+        return this;
+    }
+
     static _astCache = _astCache;
     static get _astCacheMaxSize() {
         return _astCacheMaxSize;

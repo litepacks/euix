@@ -49,6 +49,11 @@ export function reportError(engine, error, contextInfo = "") {
     ) {
         console.warn(`[EUIXEngine Fallback] ${contextInfo ? `${contextInfo}: ` : ""}${msg}`);
     }
+    if (EngineClass && isFn(EngineClass._globalErrorHandler)) {
+        try {
+            EngineClass._globalErrorHandler(error, contextInfo, engine);
+        } catch (_) {}
+    }
     if (engine && isFn(engine.onError)) {
         try {
             engine.onError(error, contextInfo);

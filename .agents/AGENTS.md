@@ -792,14 +792,20 @@ When an XML element or custom component fails during rendering, EUIX Engine isol
 <div class="euix-error-fallback">⚠️ Component Error: &lt;broken_component&gt;</div>
 ```
 
-### Programmatic Global Error Handler (`engine.onError`)
-Register a global `onError` callback on the engine instance to capture all uncaught runtime errors, XML parsing failures, XHR errors, or component rendering exceptions for telemetry or error monitoring:
-```js
-const engine = EUIXEngine.mount(xmlString, '#app');
+### Programmatic Global Error Handlers (`EUIXEngine.onError` & `engine.onError`)
+Register application-wide or instance-level global error listeners to capture all uncaught runtime errors, XML parsing failures, XHR errors, or component rendering exceptions (e.g. for Sentry, LogRocket, Datadog):
 
+```js
+// 1. Static Application-Wide Global Error Handler (Captures across all engine mounts)
+EUIXEngine.onError((error, contextInfo, engine) => {
+  console.error(`[EUIX Global Error] ${contextInfo}:`, error);
+  // Send to telemetry (e.g. Sentry.captureException(error))
+});
+
+// 2. Instance-Specific Error Handler
+const engine = EUIXEngine.mount(xmlString, '#app');
 engine.onError = (error, contextInfo) => {
-  console.error(`[EUIX Error Boundary] ${contextInfo}:`, error);
-  // Send to error logging service
+  console.error(`[EUIX App Error] ${contextInfo}:`, error);
 };
 ```
 
