@@ -84,6 +84,18 @@ export function parseXmlToAst(xmlString, options = {}) {
         return match;
     });
 
+    // 1.6. Auto-protect raw JS inside RUN_SCRIPT action tags or <script> tags with CDATA
+    processedXml = processedXml.replace(
+        /(<(?:on_[a-zA-Z0-9_-]+|step)\s+[^>]*?action=["']RUN_SCRIPT["'][^>]*?>)([\s\S]*?)(<\/(?:on_[a-zA-Z0-9_-]+|step)>)/gi,
+        (match, openTag, content, closeTag) => {
+            if (!content || content.includes("<![CDATA[")) return match;
+            if (/[<>&]/.test(content)) {
+                return `${openTag}<![CDATA[\n${content}\n]]>${closeTag}`;
+            }
+            return match;
+        }
+    );
+
     // 2. Remove stray closing tags for void elements & ensure self-closing for unclosed void tags
     processedXml = processedXml.replace(
         /<\/(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)>/gi,
@@ -94,7 +106,7 @@ export function parseXmlToAst(xmlString, options = {}) {
         "<$1$2 />",
     );
 
-    // 3. Normalize bare/valueless boolean attributes inside tags (e.g. <button disabled> -> <button disabled="">)
+    // 3. Normalize bare/valueless boolean attributes & escape raw ampersands inside attributes
     processedXml = processedXml.replace(/<([a-zA-Z0-9_-]+)([^>]*?)(\/?)>/g, (match, tagName, attrsStr, selfClose) => {
         if (!attrsStr?.trim()) return match;
         let inQuotes = false;
@@ -105,7 +117,11 @@ export function parseXmlToAst(xmlString, options = {}) {
         while (i < attrsStr.length) {
             const char = attrsStr[i];
             if (inQuotes) {
-                newAttrs += char;
+                if (char === "&" && !/^&(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);/.test(attrsStr.slice(i))) {
+                    newAttrs += "&amp;";
+                } else {
+                    newAttrs += char;
+                }
                 if (char === quoteChar) inQuotes = false;
                 i++;
                 continue;

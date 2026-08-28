@@ -211,7 +211,44 @@ export function _handleRunScriptAction(actionNode, context = {}) {
     });
     const targetEl = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
     try {
-        const isAsync = interpolatedCode.includes("await ");
+        let preamble = "";
+        if (context) {
+            const keys = Object.keys(context).filter(
+                (k) =>
+                    /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) &&
+                    ![
+                        "$el",
+                        "$data",
+                        "$engine",
+                        "$evt",
+                        "$args",
+                        "$result",
+                        "$retry",
+                        "$cancellationSignal",
+                        "$newValue",
+                        "$prevValue",
+                        "$oldValue",
+                        "$path",
+                        "$err",
+                        "$date",
+                        "$ctx",
+                        "$context",
+                        "$item",
+                        "$index",
+                        "$local",
+                        "this",
+                    ].includes(k),
+            );
+            if (keys.length > 0) {
+                preamble = keys.map((k) => `var ${k} = $ctx[${JSON.stringify(k)}];`).join("\n") + "\n";
+            }
+            if (context._varName && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(context._varName) && !keys.includes(context._varName)) {
+                preamble += `var ${context._varName} = $item;\n`;
+            }
+        }
+        const executableCode = preamble + interpolatedCode;
+
+        const isAsync = executableCode.includes("await ");
         const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor;
         const fn = isAsync
             ? new AsyncFunction(
@@ -234,7 +271,7 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                   "$item",
                   "$index",
                   "$local",
-                  interpolatedCode,
+                  executableCode,
               )
             : new Function(
                   "$el",
@@ -256,7 +293,7 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                   "$item",
                   "$index",
                   "$local",
-                  interpolatedCode,
+                  executableCode,
               );
         const nVal = context.$newValue !== undefined ? context.$newValue : context.newValue;
         const pVal =

@@ -357,19 +357,32 @@ EUIX Engine provides declarative lifecycle hooks embedded directly inside XML sp
 </uid_spec>
 ```
 
-### Script Execution Context (`action="RUN_SCRIPT"`)
-Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, the following sandbox context variables are injected automatically:
-- `$el`: Current DOM element reference
-- `$data`: Reactive state data object (read/write access)
-- `$engine`: `EUIXEngine` instance
-- `$evt`: Native browser DOM Event object
-- `$ctx` / `$context`: Execution context object containing all loop variables (e.g. `$ctx.task`, `$ctx.todo`)
-- `$item`: Current loop item object in `<for_each>` containers
-- `$index`: Current loop integer index (`0, 1, 2...`)
-- `$local`: Component-scoped isolated state store (for `isolated="true"` components)
-- `$args`: Composed action workflow parameters (`<arg>`)
-- `$result`: Return value of the previous step in action pipelines
-- `$date`: Intl/Date manipulation helper (when `EUIXDatePlugin` is loaded)
+### Script Execution Context & Auto-Injected Variables (`action="RUN_SCRIPT"`)
+Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, JavaScript executes in a zero-boilerplate reactive sandbox with automatic variable injection:
+- **Named Loop Variable (e.g. `task`, `todo`, `item`)**: When inside `<for_each var="task">`, the loop variable (`task`) is directly accessible as a normal JS variable (`task.done = !task.done;`).
+- `$item`: Current loop item object in `<for_each>` containers.
+- `$ctx` / `$context`: Full execution context object (e.g. `$ctx.task`, `$ctx.todo`).
+- `$index`: Current loop integer index (`0, 1, 2...`).
+- `$data`: Reactive state data object (read/write access: `$data.counter = 5;`, `$data.tasks.push(...)`).
+- `$el`: Current DOM element reference.
+- `$engine`: `EUIXEngine` instance.
+- `$evt`: Native browser DOM Event object.
+- `$local`: Component-scoped isolated state store (for `isolated="true"` components).
+- `$args`: Composed action workflow parameters (`<arg>`).
+- `$result`: Return value of the previous step in action pipelines.
+- `$date`: Intl/Date manipulation helper (when `EUIXDatePlugin` is loaded).
+
+> [!TIP]
+> **No XML Entity Escaping Required (`&&`, `<`, `>` Work Out of the Box)**:
+> You do **NOT** need to write `&amp;&amp;`, `&lt;`, `&gt;` or manually wrap code in `<![CDATA[...]]>`. The EUIX Parser automatically pre-sanitizes raw logical operators (`&&`, `||`, `<`, `>`) in script blocks and XML attributes. Write standard JavaScript naturally:
+> ```xml
+> <on_click action="RUN_SCRIPT">
+>   if ($data.newTask && $data.newTask.trim().length > 0) {
+>     $data.tasks.push({ id: Date.now(), title: $data.newTask.trim(), done: false });
+>     $data.newTask = "";
+>   }
+> </on_click>
+> ```
 
 ---
 
@@ -715,10 +728,10 @@ EUIX Engine includes a **Smart Object Evaluator** that seamlessly parses native 
 </for_each>
 ```
 
-✅ **RIGHT**: Wrap card elements with reactive `<if condition="...">` inside `<for_each>`:
+✅ **RIGHT**: Wrap card elements with reactive `<if condition="...">` inside `<for_each>` (write raw `&&`, `||` without XML entities):
 ```xml
 <for_each items="{data.tasks}" var="task" key="id">
-  <if condition="data.filter == 'all' || (data.filter == 'active' &amp;&amp; !task.done) || (data.filter == 'done' &amp;&amp; task.done)">
+  <if condition="{data.filter} == 'all' || ({data.filter} == 'active' && !{task.done}) || ({data.filter} == 'done' && {task.done})">
     <card>{task.title}</card>
   </if>
 </for_each>
