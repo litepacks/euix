@@ -213,6 +213,7 @@ export function _handleRunScriptAction(actionNode, context = {}) {
     try {
         let preamble = "";
         if (context) {
+            const declRegex = (name) => new RegExp(`\\b(?:const|let|var|function)\\s+${name}\\b`);
             const keys = Object.keys(context).filter(
                 (k) =>
                     /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) &&
@@ -237,12 +238,18 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                         "$index",
                         "$local",
                         "this",
-                    ].includes(k),
+                    ].includes(k) &&
+                    !declRegex(k).test(interpolatedCode),
             );
             if (keys.length > 0) {
                 preamble = keys.map((k) => `var ${k} = $ctx[${JSON.stringify(k)}];`).join("\n") + "\n";
             }
-            if (context._varName && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(context._varName) && !keys.includes(context._varName)) {
+            if (
+                context._varName &&
+                /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(context._varName) &&
+                !keys.includes(context._varName) &&
+                !declRegex(context._varName).test(interpolatedCode)
+            ) {
                 preamble += `var ${context._varName} = $item;\n`;
             }
         }
