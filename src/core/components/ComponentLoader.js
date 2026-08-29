@@ -39,6 +39,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
         }
 
         const nestedImports = Array.from(doc.querySelectorAll("import"));
+        const loadPromises = [];
         for (const imp of nestedImports) {
             const impSrc = imp.getAttribute("src");
             const impName = imp.getAttribute("name") || imp.getAttribute("as");
@@ -55,8 +56,9 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
             const isViewport =
                 imp.getAttribute("viewport") === "true" ||
                 imp.getAttribute("observer") === "true" ||
-                lazyAttr === "viewport";
-            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
+                lazyAttr === "viewport" ||
+                (isLazy && lazyAttr !== "hover" && lazyAttr !== "idle" && !preloadAttr);
+            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "300px";
 
             if (impSrc && impName) {
                 const currentStack = options.parentStack || [(name || "").toLowerCase()];
@@ -79,12 +81,18 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
                         });
                     }
                 } else {
-                    await EngineClass.loadComponent(impName, impSrc, {
-                        ...options,
-                        parentStack: currentStack,
-                    });
+                    loadPromises.push(
+                        EngineClass.loadComponent(impName, impSrc, {
+                            ...options,
+                            parentStack: currentStack,
+                        })
+                    );
                 }
             }
+        }
+
+        if (loadPromises.length > 0) {
+            await Promise.all(loadPromises);
         }
 
         return EngineClass.registerComponentSpec(name, doc, options);
@@ -165,8 +173,103 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
     return compName;
 }
 
+export function initComponentSchema(engine, specNode, context = {}) {
+    if (!engine || !specNode) return;
+
+    // 1. Action / Workflow definitions
+    if (isFn(engine.constructor.registerActionDef)) {
+        const actionDefNodes = Array.from(
+            specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : []
+        );
+        actionDefNodes.forEach((def) => {
+            const actName = def.getAttribute("name") || def.getAttribute("id");
+            if (actName) {
+                engine.constructor.registerActionDef(actName, def);
+            }
+        });
+    }
+
+    // 2. Computed signals
+    const computedNodes = specNode.querySelectorAll
+        ? Array.from(specNode.querySelectorAll("computed"))
+        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("computed") : []);
+    computedNodes.forEach((node) => {
+        const id = node.getAttribute("id") || node.getAttribute("name");
+        const deps = node.getAttribute("deps") || node.getAttribute("watch");
+        const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
+        if (id && isFn(engine.computed) && (!engine._computedRegistry || !engine._computedRegistry.has(id))) {
+            engine.computed(id, getter, deps);
+        }
+    });
+
+    // 3. Watch observers
+    const watchNodes = specNode.querySelectorAll
+        ? Array.from(specNode.querySelectorAll("watch"))
+        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("watch") : []);
+    watchNodes.forEach((node) => {
+        const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
+        if (path && isFn(engine.watch)) {
+            engine.watch(path, node);
+        }
+    });
+
+    // 4. Keyframe / Animation definitions
+    const animDefNodes = [
+        ...Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("animation_def") : []),
+        ...Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("keyframe_def") : []),
+    ];
+    animDefNodes.forEach((node) => {
+        const name = node.getAttribute("name") || node.getAttribute("id");
+        if (name && isFn(engine.registerAnimationDef)) {
+            engine.registerAnimationDef(name, node);
+        }
+    });
+
+    // 5. API Config & Endpoints
+    const apiConfigNode = specNode.querySelector ? specNode.querySelector("api_config, api_client, api") : null;
+    if (apiConfigNode && engine._apiConfig) {
+        const baseUrl =
+            apiConfigNode.getAttribute("base_url") ||
+            apiConfigNode.getAttribute("baseUrl") ||
+            apiConfigNode.getAttribute("url");
+        if (baseUrl && !engine._apiConfig.baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
+
+        const credentials = apiConfigNode.getAttribute("credentials");
+        if (credentials && !engine._apiConfig.credentials) engine._apiConfig.credentials = credentials.trim();
+
+        const timeout = apiConfigNode.getAttribute("timeout");
+        if (timeout && !engine._apiConfig.timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
+
+        const headerNodes = Array.from(apiConfigNode.querySelectorAll("headers > header, header"));
+        headerNodes.forEach((h) => {
+            const name = h.getAttribute("name") || h.getAttribute("key");
+            const val = h.textContent.trim() || h.getAttribute("value") || "";
+            if (name && isFn(engine.setApiHeader)) engine.setApiHeader(name, val);
+        });
+    }
+
+    const apiEndpoints = specNode.querySelectorAll
+        ? Array.from(specNode.querySelectorAll("api_endpoint, endpoint"))
+        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("api_endpoint") : []).concat(
+              Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("endpoint") : [])
+          );
+    if (isFn(engine.handleXHR) && apiEndpoints.length > 0) {
+        apiEndpoints.forEach((node) => {
+            const autoFetchAttr = node.getAttribute("auto_fetch");
+            const autoFetch = autoFetchAttr !== "false";
+            if (autoFetch) {
+                engine.handleXHR(node);
+            } else {
+                engine.handleXHR(node, { _registerOnly: true });
+            }
+        });
+    }
+}
+
 export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     if (!specNode) return null;
+
+    initComponentSchema(engine, specNode, context);
 
     const rawChildren = getChildNodes(usageNode).filter((n) => isElem(n) || (isTxtNode(n) && trimStr(n) !== ""));
     const namedSlots = new Map();

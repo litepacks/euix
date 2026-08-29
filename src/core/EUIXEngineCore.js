@@ -45,6 +45,7 @@ import {
 import {
     loadComponent,
     loadComponentFile,
+    initComponentSchema,
     registerComponentSpec,
     registerEngineComponentSpec,
     renderComponentSpec,
@@ -581,6 +582,10 @@ class EUIXEngineCore {
 
     renderComponentSpec(specNode, usageNode, context = {}) {
         return renderComponentSpec(this, specNode, usageNode, context);
+    }
+
+    initComponentSchema(specNode, context = {}) {
+        return initComponentSchema(this, specNode, context);
     }
 
     applyResets(actionNode) {

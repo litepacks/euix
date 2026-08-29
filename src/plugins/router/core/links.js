@@ -31,7 +31,7 @@ export function createLinkRenderer(engine, routerInstance) {
         const isExact = xmlNode.hasAttribute("exact") && xmlNode.getAttribute("exact") !== "false";
         const isReplace = xmlNode.hasAttribute("replace") && xmlNode.getAttribute("replace") !== "false";
         const isPreserveScroll = xmlNode.hasAttribute("preserve-scroll") || xmlNode.hasAttribute("preserve_scroll");
-        const prefetchMode = xmlNode.getAttribute("prefetch") || "none";
+        const prefetchMode = xmlNode.getAttribute("prefetch") || "intent";
 
         const rawTo = xmlNode.getAttribute("to") || xmlNode.getAttribute("href") || xmlNode.getAttribute("route");
         const namedRoute = xmlNode.getAttribute("route") || xmlNode.getAttribute("name");
@@ -133,6 +133,10 @@ export function createLinkRenderer(engine, routerInstance) {
             } else if (prefetchMode === "intent" || prefetchMode === "hover") {
                 linkEl.addEventListener("mouseenter", () => routerInstance.prefetch(targetPath), { once: true });
                 linkEl.addEventListener("focus", () => routerInstance.prefetch(targetPath), { once: true });
+                linkEl.addEventListener("touchstart", () => routerInstance.prefetch(targetPath), {
+                    once: true,
+                    passive: true,
+                });
             } else if (prefetchMode === "viewport" && typeof IntersectionObserver !== "undefined") {
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach((entry) => {

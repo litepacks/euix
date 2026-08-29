@@ -61,8 +61,9 @@ export function mount(engine, appXmlString, options = {}) {
             const isViewport =
                 imp.getAttribute("viewport") === "true" ||
                 imp.getAttribute("observer") === "true" ||
-                lazyAttr === "viewport";
-            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "200px";
+                lazyAttr === "viewport" ||
+                (isLazy && lazyAttr !== "hover" && lazyAttr !== "idle" && !preloadAttr);
+            const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "300px";
             if (src && name) {
                 if (isLazy) {
                     if (typeof engine.constructor.registerLazyComponent === "function") {

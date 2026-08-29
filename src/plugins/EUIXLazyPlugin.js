@@ -48,9 +48,12 @@ export function EUIXLazyPlugin(EngineClass) {
         const key = (name || "").toLowerCase();
         const fallback = typeof options === "string" ? options : options?.fallback || null;
         const preload = options?.preload || (options?.hover ? "hover" : options?.idle ? "idle" : null);
-        const observer = typeof options === "object" ? Boolean(options?.observer || options?.viewport) : false;
+        const observer =
+            typeof options === "object" && ("observer" in options || "viewport" in options)
+                ? Boolean(options?.observer || options?.viewport)
+                : preload !== "hover" && preload !== "idle";
         const rootMargin =
-            typeof options === "object" ? options?.rootMargin || options?.root_margin || "200px" : "200px";
+            typeof options === "object" ? options?.rootMargin || options?.root_margin || "300px" : "300px";
         const minHeight = options?.minHeight || options?.min_height || null;
         const aspectRatio = options?.aspectRatio || options?.aspect_ratio || null;
         const placeholderClass = options?.placeholderClass || options?.placeholder_class || null;
@@ -372,6 +375,9 @@ export function EUIXLazyPlugin(EngineClass) {
                     }
 
                     cleanup();
+                    if (typeof this.initComponentSchema === "function") {
+                        this.initComponentSchema(specNode, context);
+                    }
                     const realDom = this.renderComponentSpec(specNode, xmlNode, context);
                     if (realDom && placeholder.parentNode) {
                         this.applyRef(realDom, xmlNode, context);

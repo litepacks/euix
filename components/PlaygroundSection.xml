@@ -68,22 +68,22 @@
         <import name="app-header" src="components/AppHeader.xml" />
         <import name="webmcp-section" src="components/WebMCPSection.xml" />
         <import name="reactive-section" src="components/ReactiveSection.xml" />
-        <import name="animation-section" src="components/AnimationSection.xml" />
-        <import name="action-composer-section" src="components/ActionComposerSection.xml" />
-        <import name="ecommerce-section" src="components/EcommerceSection.xml" />
-        <import name="virtual-list-section" src="components/VirtualListSection.xml" />
-        <import name="kanban-section" src="components/KanbanSection.xml" />
-        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" />
-        <import name="table-section" src="components/TableSection.xml" />
-        <import name="counter-section" src="components/CounterSection.xml" />
-        <import name="countdown-section" src="components/CountdownSection.xml" />
-        <import name="persistence-section" src="components/PersistenceSection.xml" />
-        <import name="api-client-section" src="components/ApiClientSection.xml" />
-        <import name="todo-section" src="components/TodoSection.xml" />
-        <import name="posts-crud-section" src="components/PostsCrudSection.xml" />
-        <import name="pokemon-section" src="components/PokemonSection.xml" />
-        <import name="form-section" src="components/FormSection.xml" />
-        <import name="events-section" src="components/EventsSection.xml" />
+        <import name="animation-section" src="components/AnimationSection.xml" lazy="true" min_height="280px" />
+        <import name="action-composer-section" src="components/ActionComposerSection.xml" lazy="true" min_height="320px" />
+        <import name="ecommerce-section" src="components/EcommerceSection.xml" lazy="true" min_height="350px" />
+        <import name="virtual-list-section" src="components/VirtualListSection.xml" lazy="true" min_height="400px" />
+        <import name="kanban-section" src="components/KanbanSection.xml" lazy="true" min_height="420px" />
+        <import name="crypto-portfolio-section" src="components/CryptoPortfolioSection.xml" lazy="true" min_height="360px" />
+        <import name="table-section" src="components/TableSection.xml" lazy="true" min_height="380px" />
+        <import name="counter-section" src="components/CounterSection.xml" lazy="true" min_height="220px" />
+        <import name="countdown-section" src="components/CountdownSection.xml" lazy="true" min_height="220px" />
+        <import name="persistence-section" src="components/PersistenceSection.xml" lazy="true" min_height="250px" />
+        <import name="api-client-section" src="components/ApiClientSection.xml" lazy="true" min_height="320px" />
+        <import name="todo-section" src="components/TodoSection.xml" lazy="true" min_height="340px" />
+        <import name="posts-crud-section" src="components/PostsCrudSection.xml" lazy="true" min_height="360px" />
+        <import name="pokemon-section" src="components/PokemonSection.xml" lazy="true" min_height="360px" />
+        <import name="form-section" src="components/FormSection.xml" lazy="true" min_height="300px" />
+        <import name="events-section" src="components/EventsSection.xml" lazy="true" min_height="280px" />
         <import name="confirm-modal" src="components/ConfirmModal.xml" />
         <import name="state-bridge-badge" src="components/StateBridgeBadge.xml" />
     </imports>
