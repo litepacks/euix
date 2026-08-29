@@ -1412,7 +1412,12 @@ export function applyRef(engine, el, xmlNode, context = {}) {
         const resolvedRef = engine.interpolate(refAttr, context);
         if (resolvedRef) {
             engine.refs[resolvedRef] = el;
+            el.dataset.euixRef = resolvedRef;
             el.dataset.xuiRef = resolvedRef;
+            if (typeof el.setAttribute === "function") {
+                el.setAttribute("data-euix-ref", resolvedRef);
+                el.setAttribute("data-xui-ref", resolvedRef);
+            }
         }
     }
     return el;

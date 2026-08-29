@@ -202,9 +202,9 @@ export function generateSelectors(element, doc = document) {
         });
     }
 
-    const ref = element.dataset?.xuiRef;
+    const ref = element.dataset?.euixRef || element.dataset?.xuiRef || element.getAttribute("data-euix-ref") || element.getAttribute("data-xui-ref");
     if (ref) {
-        const sel = `[data-xui-ref="${ref}"]`;
+        const sel = `[data-euix-ref="${ref}"]`;
         const uniq = checkUniqueness(sel, doc);
         candidates.push({
             type: "ref",

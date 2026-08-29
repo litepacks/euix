@@ -86,7 +86,7 @@ export class EuixPlaywrightWrapper {
         if (refOrSelector.startsWith(".") || refOrSelector.startsWith("#") || refOrSelector.startsWith("[")) {
             return this._getLocator(refOrSelector);
         }
-        return this._getLocator(`[data-xui-ref="${refOrSelector}"]`);
+        return this._getLocator(`[data-euix-ref="${refOrSelector}"], [data-xui-ref="${refOrSelector}"]`);
     }
 
     /**

@@ -456,6 +456,8 @@ export function registerBinding(engine, path, el, kind, updateFn = null) {
     list.push({ el, kind, updateFn, depMask });
 
     if (typeof el.setAttribute === "function") {
+        el.setAttribute("data-euix-key", path);
+        el.setAttribute("data-euix-bind", kind);
         el.setAttribute("data-xui-key", path);
         el.setAttribute("data-xui-bind", kind);
     }
@@ -587,30 +589,19 @@ export function mutateState(engine, key, operation, payload = {}) {
 }
 
 export function batch(engine, fn) {
-    const wasBatching = engine._batching;
-    engine._batching = true;
-    try {
-        fn();
-    } finally {
-        engine._batching = wasBatching;
-        if (!wasBatching) {
-            if (engine._rawState) {
-                Object.keys(engine._rawState).forEach((key) => {
-                    engine.syncBindings(key, engine._rawState[key]);
-                });
-            }
-        }
-    }
+    return batchUpdates(engine, fn);
 }
 
 export function batchUpdates(engine, fn) {
     if (!isFn(fn)) return;
-    const wasBatching = engine._isBatching;
+    const wasBatching = engine._isBatching || engine._batching;
     engine._isBatching = true;
+    engine._batching = true;
     try {
         fn();
     } finally {
         engine._isBatching = wasBatching;
+        engine._batching = wasBatching;
         if (!wasBatching) {
             engine.flushStateUpdates();
         }

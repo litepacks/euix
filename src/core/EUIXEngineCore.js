@@ -154,6 +154,7 @@ class EUIXEngineCore {
         this._rawState = null;
         this.xmlDoc = null;
         this._batching = false;
+        this._isBatching = false;
         this._pendingFocusKey = null;
         this._bindings = new Map();
         this._stateKeyBits = new Map();

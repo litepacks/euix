@@ -50,7 +50,7 @@ export function setBindingValue(engine, binding, value, context = {}, options = 
     }
     if (context[binding.scope] && typeof context[binding.scope] === "object") {
         context[binding.scope][binding.prop] = value;
-        if (!options.silent && !engine._batching) {
+        if (!options.silent && !engine._isBatching && !engine._batching) {
             engine.syncBindings(binding.scope, context[binding.scope]);
             if (context._parentStateKey) {
                 engine.syncBindings(context._parentStateKey, engine.getState(context._parentStateKey));

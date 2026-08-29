@@ -87,8 +87,24 @@ export function getElementMetadata(element, engine = null) {
         element.getAttribute("data-testid") ||
         directMeta?.testId ||
         "";
-    const refName = element.dataset?.xuiRef || directMeta?.ref || "";
-    const bindPath = element.dataset?.xuiBind || element.dataset?.xuiKey || element.getAttribute("bind") || "";
+    const refName =
+        element.dataset?.euixRef ||
+        element.dataset?.xuiRef ||
+        element.getAttribute("data-euix-ref") ||
+        element.getAttribute("data-xui-ref") ||
+        directMeta?.ref ||
+        "";
+    const bindPath =
+        element.dataset?.euixBind ||
+        element.dataset?.euixKey ||
+        element.dataset?.xuiBind ||
+        element.dataset?.xuiKey ||
+        element.getAttribute("data-euix-bind") ||
+        element.getAttribute("data-euix-key") ||
+        element.getAttribute("data-xui-bind") ||
+        element.getAttribute("data-xui-key") ||
+        element.getAttribute("bind") ||
+        "";
     let actions = [];
 
     if (element.getAttribute("data-euix-action")) {

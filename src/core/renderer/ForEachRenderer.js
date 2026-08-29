@@ -24,6 +24,32 @@ export function _isVisualXmlChild(n) {
     return false;
 }
 
+export function _setItemIndex(item, idx) {
+    if (item && typeof item === "object" && Object.isExtensible(item)) {
+        try {
+            if (item._index !== idx) {
+                Object.defineProperty(item, "_index", {
+                    value: idx,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false,
+                });
+            }
+            if (item.index !== idx) {
+                Object.defineProperty(item, "index", {
+                    value: idx,
+                    writable: true,
+                    configurable: true,
+                    enumerable: false,
+                });
+            }
+        } catch {
+            item._index = idx;
+            item.index = idx;
+        }
+    }
+}
+
 export function _extractExternalKeysFromExpr(expr, varName, targetSet) {
     if (!expr?.includes("{")) return;
     _EXT_KEY_RE.lastIndex = 0;
@@ -771,10 +797,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 for (let i = startIndex; i < endIndex; i++) {
                     const item = list[i];
                     if (!item) continue;
-                    if (typeof item === "object" && Object.isExtensible(item)) {
-                        item._index = i;
-                        item.index = i;
-                    }
+                    _setItemIndex(item, i);
+
                     const key = getItemKey(item, i);
                     const hash = getItemHash(item);
                     activeKeys.add(key);
@@ -869,10 +893,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
             const seenKeys = new Set();
             for (let idx = 0; idx < listLen; idx++) {
                 const item = list[idx];
-                if (item && typeof item === "object" && Object.isExtensible(item)) {
-                    item._index = idx;
-                    item.index = idx;
-                }
+                _setItemIndex(item, idx);
+
                 const rawKey = getItemKey(item, idx);
                 let key = rawKey;
                 if (seenKeys.has(key)) {
@@ -911,10 +933,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 const seenKeys = new Set(oldKeys);
                 for (let idx = oldLen; idx < listLen; idx++) {
                     const item = list[idx];
-                    if (item && typeof item === "object" && Object.isExtensible(item)) {
-                        item._index = idx;
-                        item.index = idx;
-                    }
+                    _setItemIndex(item, idx);
+
                     const rawKey = getItemKey(item, idx);
                     let key = rawKey;
                     if (seenKeys.has(key)) {
@@ -952,10 +972,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
                 const hasExtKeys = Boolean(compiled?.externalKeys && compiled.externalKeys.size > 0);
                 for (let idx = 0; idx < oldLen; idx++) {
                     const item = list[idx];
-                    if (item && typeof item === "object" && Object.isExtensible(item)) {
-                        item._index = idx;
-                        item.index = idx;
-                    }
+                    _setItemIndex(item, idx);
+
                     const key = oldKeys[idx];
                     const existing = oldKeyedMap.get(key);
                     const hash = getItemHash(item);
@@ -980,10 +998,8 @@ export function renderForEach(engine, xmlNode, context = {}) {
         const seenKeysInPass = new Set();
         for (let idx = 0; idx < listLen; idx++) {
             const item = list[idx];
-            if (item && typeof item === "object" && Object.isExtensible(item)) {
-                item._index = idx;
-                item.index = idx;
-            }
+            _setItemIndex(item, idx);
+
             const rawKey = getItemKey(item, idx);
             let key = rawKey;
             if (seenKeysInPass.has(key)) {

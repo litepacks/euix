@@ -145,7 +145,7 @@ export function _handleFocusAction(actionNode, context = {}) {
     if (this.refs[resolved] && isFn(this.refs[resolved].focus)) {
         this.refs[resolved].focus();
     } else {
-        const el = document.querySelector(`[data-euix-ref="${resolved}"], #${resolved}`);
+        const el = document.querySelector(`[data-euix-ref="${resolved}"], [data-xui-ref="${resolved}"], #${resolved}`);
         if (el && isFn(el.focus)) el.focus();
     }
 }
