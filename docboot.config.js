@@ -1,5 +1,4 @@
 /** @type {import('docboot').DocbootConfig} */
-
 export default {
   title: "EUIX Engine",
   description: "Lightweight declarative UI runtime for building interactive interfaces directly from markup, without a virtual DOM or mandatory build pipeline.",
