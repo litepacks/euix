@@ -236,14 +236,15 @@ export class EUIXExpressionParser {
 
         function parseRelational() {
             return parseBinary(parseAdditive, [">", "<", ">=", "<="], (op, l, r) => {
-                return `(Number(${l}) ${op} Number(${r}))`;
+                return `((!Number.isNaN(Number(${l})) && !Number.isNaN(Number(${r})) && (${l}) !== "" && (${r}) !== "" && (${l}) !== null && (${r}) !== null) ? (Number(${l}) ${op} Number(${r})) : ((${l}) ${op} (${r})))`;
             });
         }
 
         function parseEquality() {
             return parseBinary(parseRelational, ["==", "!="], (op, l, r) => {
-                if (op === "==") return `(String((${l}) ?? "").trim() === String((${r}) ?? "").trim())`;
-                if (op === "!=") return `(String((${l}) ?? "").trim() !== String((${r}) ?? "").trim())`;
+                const eqCheck = `(((${l}) === (${r})) || (((${l}) !== null && (${l}) !== undefined && (${r}) !== null && (${r}) !== undefined && typeof (${l}) !== "object" && typeof (${r}) !== "object") ? (String(${l}).trim() === String(${r}).trim()) : false))`;
+                if (op === "==") return `(${eqCheck})`;
+                if (op === "!=") return `(!${eqCheck})`;
             });
         }
 

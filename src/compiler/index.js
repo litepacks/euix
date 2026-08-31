@@ -62,8 +62,22 @@ export function compileXmlToAst(xmlString) {
             continue;
         }
 
-        // Find tag closing '>'
-        let tagEnd = src.indexOf(">", tagStart);
+        // Find tag closing '>' while respecting quoted attribute strings
+        let tagEnd = -1;
+        let inQuote = null;
+        for (let i = tagStart + 1; i < len; i++) {
+            const char = src[i];
+            if (char === '"' || char === "'") {
+                if (inQuote === char) {
+                    inQuote = null;
+                } else if (!inQuote) {
+                    inQuote = char;
+                }
+            } else if (char === ">" && !inQuote) {
+                tagEnd = i;
+                break;
+            }
+        }
         if (tagEnd === -1) break;
 
         const tagContent = src.slice(tagStart + 1, tagEnd).trim();

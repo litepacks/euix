@@ -139,7 +139,13 @@ export class EUIXActionRegistry {
         const steps = [];
         let returnExpr = "";
 
-        const paramNodes = Array.from(xmlNode.querySelectorAll("param, arg_def, parameter"));
+        const directChildren = Array.from(xmlNode.children || xmlNode.childNodes || []).filter(
+            (n) => n && n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && n.tagName,
+        );
+        const paramNodes = directChildren.filter((n) => {
+            const t = n.tagName.toLowerCase();
+            return t === "param" || t === "arg_def" || t === "parameter";
+        });
         paramNodes.forEach((pNode) => {
             const pName = pNode.getAttribute("name") || pNode.getAttribute("id");
             if (pName) {

@@ -71,7 +71,6 @@ export function generateComponentTypes(xmlString, options = {}) {
     const actions = [];
     const endpoints = [];
     const streams = [];
-    const props = [];
 
     // Traverse AST
     function traverse(node) {
@@ -158,9 +157,7 @@ export function generateComponentTypes(xmlString, options = {}) {
         if (a.params.length === 0) {
             return `    ${a.name}: () => Promise<any>;`;
         }
-        const paramFields = a.params
-            .map((p) => `${p.name}${p.required ? "" : "?"}: ${p.type}`)
-            .join("; ");
+        const paramFields = a.params.map((p) => `${p.name}${p.required ? "" : "?"}: ${p.type}`).join("; ");
         return `    ${a.name}: (args: { ${paramFields} }) => Promise<any>;`;
     });
     if (actionLines.length === 0) {

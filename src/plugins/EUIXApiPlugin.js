@@ -1,7 +1,8 @@
 const getApiStore = (type) => {
     const s = String(type || "").toLowerCase();
     if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
-    if (s === "local" || s === "localstorage" || s === "true" || s === "indexeddb") return typeof localStorage !== "undefined" ? localStorage : null;
+    if (s === "local" || s === "localstorage" || s === "true" || s === "indexeddb")
+        return typeof localStorage !== "undefined" ? localStorage : null;
     return null;
 };
 
@@ -59,7 +60,7 @@ export const EUIXApiPlugin = {
             return this;
         };
 
-        proto._readPersistentApiCache = function (storageKey, storageType, ttlMs) {
+        proto._readPersistentApiCache = (storageKey, storageType, ttlMs) => {
             const store = getApiStore(storageType);
             if (!store) return null;
             try {
@@ -77,7 +78,7 @@ export const EUIXApiPlugin = {
             return null;
         };
 
-        proto._writePersistentApiCache = function (storageKey, storageType, data) {
+        proto._writePersistentApiCache = (storageKey, storageType, data) => {
             const store = getApiStore(storageType);
             if (!store) return;
             try {
@@ -85,10 +86,12 @@ export const EUIXApiPlugin = {
             } catch (_) {}
         };
 
-        proto._removePersistentApiCache = function (storageKey, storageType) {
+        proto._removePersistentApiCache = (storageKey, storageType) => {
             const store = getApiStore(storageType);
             if (store) {
-                try { store.removeItem(storageKey); } catch (_) {}
+                try {
+                    store.removeItem(storageKey);
+                } catch (_) {}
             }
         };
 
@@ -99,18 +102,24 @@ export const EUIXApiPlugin = {
             try {
                 const raw = store.getItem(queueKey);
                 const queue = raw ? JSON.parse(raw) : [];
+                let plainHeaders = mutationOptions.headers;
+                if (typeof Headers !== "undefined" && plainHeaders instanceof Headers) {
+                    plainHeaders = Object.fromEntries(plainHeaders.entries());
+                } else if (plainHeaders instanceof Map) {
+                    plainHeaders = Object.fromEntries(plainHeaders.entries());
+                }
                 queue.push({
                     url: mutationOptions.url,
                     method: mutationOptions.method,
                     body: mutationOptions.body,
-                    headers: mutationOptions.headers,
+                    headers: plainHeaders,
                     timestamp: Date.now(),
                 });
                 store.setItem(queueKey, JSON.stringify(queue));
             } catch (_) {}
         };
 
-        proto.flushOfflineQueue = async function () {
+        proto.flushOfflineQueue = async () => {
             const queueKey = "euix_api_offline_queue";
             const store = typeof localStorage !== "undefined" ? localStorage : null;
             if (!store) return [];
@@ -146,16 +155,20 @@ export const EUIXApiPlugin = {
                     this._xhrCache.clear();
                 }
             }
-            const store = typeof localStorage !== "undefined" ? localStorage : null;
-            if (store) {
-                if (tagOrUrl) {
-                    store.removeItem(`euix_api_${tagOrUrl}`);
-                } else {
-                    for (let i = store.length - 1; i >= 0; i--) {
-                        const k = store.key(i);
-                        if (k && k.startsWith("euix_api_")) store.removeItem(k);
+            const stores = [];
+            if (typeof localStorage !== "undefined") stores.push(localStorage);
+            if (typeof sessionStorage !== "undefined") stores.push(sessionStorage);
+            for (const store of stores) {
+                try {
+                    if (tagOrUrl) {
+                        store.removeItem(`euix_api_${tagOrUrl}`);
+                    } else {
+                        for (let i = store.length - 1; i >= 0; i--) {
+                            const k = store.key(i);
+                            if (k && k.startsWith("euix_api_")) store.removeItem(k);
+                        }
                     }
-                }
+                } catch (_) {}
             }
             return this;
         };

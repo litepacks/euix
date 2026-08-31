@@ -17,13 +17,26 @@ export interface EUIXStateOptions {
 
 export type EUIXMutationOperation =
     | 'PUSH'
+    | 'APPEND'
     | 'POP'
     | 'SHIFT'
     | 'UNSHIFT'
+    | 'PREPEND'
     | 'REMOVE'
+    | 'DELETE'
     | 'SWAP'
     | 'UPDATE'
-    | 'CLEAR';
+    | 'SET'
+    | 'INSERT'
+    | 'MOVE_UP'
+    | 'MOVE_DOWN'
+    | 'REVERSE'
+    | 'SORT'
+    | 'INCREMENT'
+    | 'DECREMENT'
+    | 'CLEAR'
+    | 'EMPTY'
+    | 'RESET';
 
 export interface EUIXStructuredErrorOptions {
     message: string;
@@ -79,6 +92,8 @@ export class EUIXEngineCore {
     getState<T = any>(key: string): T;
     setState<T = any>(key: string, value: T, options?: EUIXStateOptions): void;
     mutateState(path: string, operation: EUIXMutationOperation, payload?: any): this;
+    batch(fn: () => void): void;
+    batchUpdates(fn: () => void): void;
 
     watch(key: string, callback: (newValue: any, oldValue: any) => void): () => void;
     watchState(key: string, callback: (newValue: any, oldValue: any) => void): () => void;
@@ -86,6 +101,19 @@ export class EUIXEngineCore {
 
     registerAction(name: string, handler: (actionNode: Element, context: Record<string, any>) => any): this;
     handleAction(actionNode: Element, context?: Record<string, any>): any;
+    executeAction(actionName: string, args?: Record<string, any>): Promise<any>;
+
+    clearApiCache(tagOrUrl?: string): void;
+    flushOfflineQueue(): Promise<void>;
+    getApiStatus(endpointId: string): {
+        loading: boolean;
+        error: string | null;
+        status: number | null;
+        data: any;
+        timestamp: number | null;
+        stale: boolean;
+        isOffline: boolean;
+    };
 
     interpolate(text: string, context?: Record<string, any>): string;
     evalCondition(conditionStr: string, context?: Record<string, any>): boolean;

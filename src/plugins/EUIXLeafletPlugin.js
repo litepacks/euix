@@ -166,6 +166,21 @@ export const EUIXLeafletPlugin = {
                 this._leafletMaps.set(mapId, map);
                 this._leafletLayers.set(mapId, map._layersMap);
 
+                const cleanupMap = () => {
+                    try {
+                        if (map && typeof map.remove === "function") {
+                            map.remove();
+                        }
+                    } catch (_) {}
+                    if (this._leafletMaps) this._leafletMaps.delete(mapId);
+                    if (this._leafletLayers) this._leafletLayers.delete(mapId);
+                };
+                if (typeof this.onUnmount === "function") {
+                    this.onUnmount(cleanupMap);
+                } else {
+                    (this._destroyHooks = this._destroyHooks || []).push(cleanupMap);
+                }
+
                 // 1. Tile Layer
                 const tileNode = this.getChild(xmlNode, "tile_layer") || this.getChild(xmlNode, "tile");
                 const tileUrl =

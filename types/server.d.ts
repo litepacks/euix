@@ -3,6 +3,7 @@ import { EUIXAstNode } from "./compiler.js";
 export interface RenderOptions {
     isStatic?: boolean;
     includeHydrationScript?: boolean;
+    components?: Record<string, string | EUIXAstNode>;
     [key: string]: any;
 }
 

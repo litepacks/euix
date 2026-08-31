@@ -7,6 +7,22 @@ import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
 import { EUIXStructuredError } from "../parser/errors.js";
 import { isFn, MUTATION_OPS, trimStr } from "../utils/constants.js";
 
+const _actionEvalCache = new Map();
+const MAX_ACTION_CACHE = 1000;
+
+function _getActionEvalFn(rawExpr) {
+    let fn = _actionEvalCache.get(rawExpr);
+    if (!fn) {
+        if (_actionEvalCache.size >= MAX_ACTION_CACHE) {
+            const firstKey = _actionEvalCache.keys().next().value;
+            if (firstKey !== undefined) _actionEvalCache.delete(firstKey);
+        }
+        fn = new Function("$data", "data", "$date", "date", "context", `return (${rawExpr});`);
+        _actionEvalCache.set(rawExpr, fn);
+    }
+    return fn;
+}
+
 export function _handleSetStateAction(actionNode, context = {}) {
     const pathNode = this.getChild(actionNode, "path");
     const valueNode = this.getChild(actionNode, "value");
@@ -69,7 +85,7 @@ export function _handleSetStateAction(actionNode, context = {}) {
             nextValue = this.interpolate(rawValue, context);
         } else if (rawValue.includes("(") && rawValue.includes(")")) {
             try {
-                const fn = new Function("$data", "data", "$date", "date", "context", `return (${rawValue});`);
+                const fn = _getActionEvalFn(rawValue);
                 const evaluated = fn(this.data, this.data, this.$date || this.date, this.$date || this.date, context);
                 nextValue = evaluated !== undefined ? evaluated : "";
             } catch (_) {
@@ -337,7 +353,8 @@ export function _handleRunScriptAction(actionNode, context = {}) {
                         );
                         return customKey ? context[customKey] : undefined;
                     })();
-        const indexVal = context._index !== undefined ? context._index : context.index !== undefined ? context.index : 0;
+        const indexVal =
+            context._index !== undefined ? context._index : context.index !== undefined ? context.index : 0;
         const localVal = context._localState || context.local || null;
         return fn.call(
             targetEl,
@@ -411,16 +428,7 @@ function evaluateObjectExpression(engine, expr, context = {}) {
                   ? context[context._varName]
                   : undefined;
         const taskVal = context.task !== undefined ? context.task : itemVal;
-        const fn = new Function(
-            "$data",
-            "data",
-            "$ctx",
-            "context",
-            "$item",
-            "item",
-            "task",
-            `return (${sanitized});`,
-        );
+        const fn = new Function("$data", "data", "$ctx", "context", "$item", "item", "task", `return (${sanitized});`);
         const res = fn(
             engine?.state || engine?._rawState || {},
             engine?.state || engine?._rawState || {},
@@ -529,9 +537,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             : "";
         const textValue = this.interpolate(rawText, context);
 
-        let parsedObj =
-            evaluateObjectExpression(this, rawText, context) ||
-            evaluateObjectExpression(this, textValue, context);
+        const parsedObj =
+            evaluateObjectExpression(this, rawText, context) || evaluateObjectExpression(this, textValue, context);
 
         const itemId =
             (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
@@ -640,7 +647,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         if (whereNode) {
             const field = whereNode.getAttribute("field") || "id";
             const op = whereNode.getAttribute("op") || whereNode.getAttribute("operator") || "equals";
-            const rawEquals = whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim();
+            const rawEquals =
+                whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim();
             const targetVal = rawEquals !== null ? this.interpolate(rawEquals, context) : null;
 
             if (targetVal !== null) {
@@ -662,7 +670,12 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.POP) {
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
         list.pop();
         this.batch(() => {
             this.setState(path, list);
@@ -672,7 +685,12 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SHIFT) {
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
         list.shift();
         this.batch(() => {
             this.setState(path, list);
@@ -685,7 +703,9 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const whereNode = this.getChild(actionNode, "where");
         const field = whereNode?.getAttribute("field") || "id";
         const op = whereNode?.getAttribute("op") || whereNode?.getAttribute("operator") || "equals";
-        const rawEquals = whereNode ? whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim() : null;
+        const rawEquals = whereNode
+            ? whereNode.getAttribute("equals") || whereNode.getAttribute("value") || whereNode.textContent.trim()
+            : null;
         const targetVal = rawEquals !== null ? this.interpolate(rawEquals, context) : null;
 
         const valNode = this.getChild(actionNode, "value");
@@ -717,7 +737,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const curVal = this.getState(path);
         const list = Array.isArray(curVal)
             ? [...curVal]
-            : Array.isArray(this._rawState[path])
+            : Array.isArray(this._rawState?.[path])
               ? [...this._rawState[path]]
               : [];
 
@@ -753,14 +773,22 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     if (operation === MUTATION_OPS.MOVE_UP || operation === MUTATION_OPS.MOVE_DOWN) {
         const idxNode = this.getChild(actionNode, "index");
         const whereNode = this.getChild(actionNode, "where");
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
         let targetIdx = -1;
 
         if (idxNode) {
             targetIdx = parseInt(this.interpolate(idxNode.textContent.trim(), context), 10);
         } else if (whereNode) {
             const field = whereNode.getAttribute("field") || "id";
-            const eqVal = this.interpolate(whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "", context);
+            const eqVal = this.interpolate(
+                whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "",
+                context,
+            );
             targetIdx = list.findIndex((it) => String(it?.[field]) === String(eqVal));
         }
 
@@ -780,17 +808,28 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SWAP) {
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
         const indexANode = this.getChild(actionNode, "indexA");
         const indexBNode = this.getChild(actionNode, "indexB");
         const fromNode = this.getChild(actionNode, "from");
         const toNode = this.getChild(actionNode, "to");
         let idxA = parseInt(
-            this.interpolate(indexANode ? indexANode.textContent.trim() : fromNode ? fromNode.textContent.trim() : "-1", context),
+            this.interpolate(
+                indexANode ? indexANode.textContent.trim() : fromNode ? fromNode.textContent.trim() : "-1",
+                context,
+            ),
             10,
         );
         let idxB = parseInt(
-            this.interpolate(indexBNode ? indexBNode.textContent.trim() : toNode ? toNode.textContent.trim() : "-1", context),
+            this.interpolate(
+                indexBNode ? indexBNode.textContent.trim() : toNode ? toNode.textContent.trim() : "-1",
+                context,
+            ),
             10,
         );
 
@@ -799,12 +838,18 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         if (idxA === -1 && whereNode) {
             const field = whereNode.getAttribute("field") || "id";
-            const eqVal = this.interpolate(whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "", context);
+            const eqVal = this.interpolate(
+                whereNode.getAttribute("equals") || whereNode.getAttribute("value") || "",
+                context,
+            );
             idxA = list.findIndex((it) => String(it?.[field]) === String(eqVal));
         }
         if (idxB === -1 && targetWhereNode) {
             const field = targetWhereNode.getAttribute("field") || "id";
-            const eqVal = this.interpolate(targetWhereNode.getAttribute("equals") || targetWhereNode.getAttribute("value") || "", context);
+            const eqVal = this.interpolate(
+                targetWhereNode.getAttribute("equals") || targetWhereNode.getAttribute("value") || "",
+                context,
+            );
             idxB = list.findIndex((it) => String(it?.[field]) === String(eqVal));
         }
 
@@ -821,7 +866,12 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.REVERSE) {
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
         list.reverse();
         this.batch(() => {
             this.setState(path, list);
@@ -842,14 +892,14 @@ export function _handleMutateStateAction(actionNode, context = {}) {
               ""
             : "";
         const textValue = this.interpolate(rawText, context);
-        let parsedObj =
-            evaluateObjectExpression(this, rawText, context) ||
-            evaluateObjectExpression(this, textValue, context);
+        const parsedObj =
+            evaluateObjectExpression(this, rawText, context) || evaluateObjectExpression(this, textValue, context);
         const itemId =
             (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
             parsedObj?.id ||
             `task-${Date.now()}`;
-        const newItem = parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId, text: textValue };
+        const newItem =
+            parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId, text: textValue };
 
         const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
         const safeIdx = Math.max(0, Math.min(list.length, Number.isNaN(idx) ? list.length : idx));
@@ -865,10 +915,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const whereNode = this.getChild(actionNode, "where");
         const valNode = this.getChild(actionNode, "value");
         const fieldsNode =
-            this.getChild(actionNode, "fields") ||
-            this.getChild(actionNode, "item") ||
-            valNode ||
-            actionNode;
+            this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || valNode || actionNode;
         if (!fieldsNode) return;
 
         const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];

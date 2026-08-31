@@ -461,4 +461,6 @@ export const MUTATION_OPS = Object.freeze({
     SWAP: "SWAP",
     MOVE_UP: "MOVE_UP",
     MOVE_DOWN: "MOVE_DOWN",
+    REVERSE: "REVERSE",
+    SORT: "SORT",
 });

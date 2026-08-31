@@ -20,9 +20,37 @@ export function renderToString(xmlOrAst, initialData = {}, options = {}) {
     const state = { ...initialData };
     _extractDataModel(ast, state);
 
-    // 2. Render AST nodes to HTML string
-    const html = _renderNode(ast, state, {});
+    // 2. Build component registry
+    const compRegistry = new Map();
+    if (options.components && typeof options.components === "object") {
+        for (const [name, compXmlOrAst] of Object.entries(options.components)) {
+            const compAst = typeof compXmlOrAst === "string" ? compileXmlToAst(compXmlOrAst) : compXmlOrAst;
+            if (compAst) compRegistry.set(name.toLowerCase(), compAst);
+        }
+    }
+    _extractComponents(ast, compRegistry);
+
+    // 3. Render AST nodes to HTML string
+    const html = _renderNode(ast, state, {}, compRegistry);
     return html;
+}
+
+/**
+ * Extracts component definitions from AST.
+ */
+function _extractComponents(node, registry = new Map()) {
+    if (!node || typeof node !== "object") return registry;
+    if (node.tag === "component_def" && node.attrs?.name) {
+        registry.set(node.attrs.name.toLowerCase(), node);
+    }
+    if (Array.isArray(node.children)) {
+        for (const child of node.children) {
+            if (typeof child === "object") {
+                _extractComponents(child, registry);
+            }
+        }
+    }
+    return registry;
 }
 
 /**
@@ -35,7 +63,10 @@ function _extractDataModel(node, state) {
             if (typeof child === "object" && (child.tag === "state" || child.tag === "computed")) {
                 const key = child.attrs.id || child.attrs.key || child.attrs.name;
                 const type = (child.attrs.type || "").toLowerCase();
-                const rawContent = (child.children || []).filter(c => typeof c === "string").join("").trim();
+                const rawContent = (child.children || [])
+                    .filter((c) => typeof c === "string")
+                    .join("")
+                    .trim();
                 if (key && state[key] === undefined) {
                     if (type === "number") {
                         state[key] = parseFloat(rawContent) || 0;
@@ -72,7 +103,7 @@ function _extractDataModel(node, state) {
 /**
  * Recursively renders an AST node into HTML.
  */
-function _renderNode(node, state, context = {}) {
+function _renderNode(node, state, context = {}, compRegistry = new Map()) {
     if (!node) return "";
     if (typeof node === "string") {
         return _interpolateString(node, state, context);
@@ -80,13 +111,14 @@ function _renderNode(node, state, context = {}) {
 
     const tag = node.tag ? node.tag.toLowerCase() : "";
 
-    // Ignore non-visual tags during SSR
+    // Ignore non-visual and definition tags during SSR
     if (
         tag === "data_model" ||
         tag === "api_config" ||
         tag === "api_endpoint" ||
         tag === "actions" ||
         tag === "action_def" ||
+        tag === "component_def" ||
         tag.startsWith("on_") ||
         tag === "event" ||
         tag === "step" ||
@@ -96,12 +128,62 @@ function _renderNode(node, state, context = {}) {
         return "";
     }
 
+    // <children /> or <slot /> slot projection
+    if (tag === "children" || tag === "slot") {
+        if (context.$children && Array.isArray(context.$children)) {
+            let slotOutput = "";
+            for (const child of context.$children) {
+                slotOutput += _renderNode(child, state, context.$parentContext || context, compRegistry);
+            }
+            return slotOutput;
+        }
+        return "";
+    }
+
+    // <component name="..." /> or custom registered tag (e.g. <user-card />)
+    const compName = tag === "component" ? (node.attrs.name || node.attrs.is || "").toLowerCase() : tag;
+    const compDef = compRegistry.get(compName);
+    if (compDef && tag !== "uid_spec" && tag !== "root") {
+        const props = {};
+        for (const [k, v] of Object.entries(node.attrs || {})) {
+            if (k === "name" && tag === "component") continue;
+            props[k] = _interpolateString(v, state, context);
+        }
+        const compContext = {
+            ...context,
+            props,
+            $props: props,
+            $children: node.children || [],
+            $parentContext: context,
+        };
+        const compState = { ...state };
+        _extractDataModel(compDef, compState);
+
+        let compOutput = "";
+        const effectiveChildren = compDef.tag === "component_def" ? compDef.children : [compDef];
+        for (const child of effectiveChildren) {
+            compOutput += _renderNode(child, compState, compContext, compRegistry);
+        }
+        return compOutput;
+    }
+
     // <for_each items="{data.items}" var="item">
     if (tag === "for_each") {
         const itemsExpr = node.attrs.items || node.attrs.from || "";
         const varName = node.attrs.var || node.attrs.as || "item";
-        const cleanPath = itemsExpr.replace(/^\{|\}$/g, "").replace(/^(data|state)\./, "");
-        const list = _resolvePath(state, cleanPath) || [];
+        const rawExpr = itemsExpr.replace(/^\{|\}$/g, "").trim();
+        const cleanPath = rawExpr.replace(/^(data|state)\./, "");
+        let list = _resolvePath(state, cleanPath, context);
+        if (!Array.isArray(list)) {
+            try {
+                const contextKeys = Object.keys(context || {}).filter((k) => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k));
+                const contextVals = contextKeys.map((k) => context[k]);
+                const jsExpr = rawExpr.replace(/(?:^|[^a-zA-Z0-9_])(data|state)\.([a-zA-Z0-9_]+)/g, "$data.$2");
+                const fn = _getCompiledServerFn(jsExpr, contextKeys);
+                const evaluated = fn(state, state, context, context, ...contextVals);
+                if (Array.isArray(evaluated)) list = evaluated;
+            } catch (_) {}
+        }
         if (!Array.isArray(list)) return "";
 
         let output = "";
@@ -112,10 +194,10 @@ function _renderNode(node, state, context = {}) {
                 [varName]: item,
                 item,
                 _index: idx,
-                index: idx
+                index: idx,
             };
             for (const child of node.children) {
-                output += _renderNode(child, state, childContext);
+                output += _renderNode(child, state, childContext, compRegistry);
             }
         }
         return output;
@@ -129,7 +211,7 @@ function _renderNode(node, state, context = {}) {
 
         let output = "";
         for (const child of node.children) {
-            output += _renderNode(child, state, context);
+            output += _renderNode(child, state, context, compRegistry);
         }
         return output;
     }
@@ -177,6 +259,20 @@ function _renderNode(node, state, context = {}) {
         delete attrs.color;
         delete attrs.size;
         delete attrs.weight;
+    } else if (tag === "collapse") {
+        htmlTag = "div";
+        const title = attrs.title ? _interpolateString(attrs.title, state, context) : "";
+        attrs["class"] = attrs["class"] ? `euix-collapse ${attrs["class"]}` : "euix-collapse";
+        delete attrs.title;
+        delete attrs.bind;
+        let childrenHtml = "";
+        if (Array.isArray(node.children)) {
+            for (const child of node.children) {
+                childrenHtml += _renderNode(child, state, context, compRegistry);
+            }
+        }
+        const headerHtml = title ? `<div class="euix-collapse-header">${_escapeHtml(title)}</div>` : "";
+        return `<div class="${_escapeHtml(attrs["class"])}">${headerHtml}<div class="euix-collapse-body">${childrenHtml}</div></div>`;
     }
 
     // Process attributes and bindings
@@ -206,11 +302,43 @@ function _renderNode(node, state, context = {}) {
     let childrenHtml = "";
     if (Array.isArray(node.children)) {
         for (const child of node.children) {
-            childrenHtml += _renderNode(child, state, context);
+            childrenHtml += _renderNode(child, state, context, compRegistry);
         }
     }
 
     return `<${htmlTag}${attrsHtml}>${childrenHtml}</${htmlTag}>`;
+}
+
+const _serverFnCache = new Map();
+const _serverCondCache = new Map();
+const MAX_SERVER_CACHE = 1000;
+
+function _getCompiledServerFn(jsExpr, contextKeys = []) {
+    const key = `${jsExpr}:::${contextKeys.join(",")}`;
+    let fn = _serverFnCache.get(key);
+    if (!fn) {
+        if (_serverFnCache.size >= MAX_SERVER_CACHE) {
+            const first = _serverFnCache.keys().next().value;
+            if (first !== undefined) _serverFnCache.delete(first);
+        }
+        fn = new Function("$data", "data", "$ctx", "context", ...contextKeys, `return (${jsExpr});`);
+        _serverFnCache.set(key, fn);
+    }
+    return fn;
+}
+
+function _getCompiledServerCond(jsExpr, contextKeys = []) {
+    const key = `${jsExpr}:::${contextKeys.join(",")}`;
+    let fn = _serverCondCache.get(key);
+    if (!fn) {
+        if (_serverCondCache.size >= MAX_SERVER_CACHE) {
+            const first = _serverCondCache.keys().next().value;
+            if (first !== undefined) _serverCondCache.delete(first);
+        }
+        fn = new Function("$data", "data", "$ctx", "context", ...contextKeys, `return Boolean(${jsExpr});`);
+        _serverCondCache.set(key, fn);
+    }
+    return fn;
 }
 
 function _interpolateString(str, state, context = {}) {
@@ -222,10 +350,10 @@ function _interpolateString(str, state, context = {}) {
             return String(pathVal);
         }
         try {
-            const contextKeys = Object.keys(context || {}).filter(k => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k));
-            const contextVals = contextKeys.map(k => context[k]);
+            const contextKeys = Object.keys(context || {}).filter((k) => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k));
+            const contextVals = contextKeys.map((k) => context[k]);
             const jsExpr = cleanExpr.replace(/(?:^|[^a-zA-Z0-9_])(data|state)\.([a-zA-Z0-9_]+)/g, "$data.$2");
-            const fn = new Function("$data", "data", "$ctx", "context", ...contextKeys, `return (${jsExpr});`);
+            const fn = _getCompiledServerFn(jsExpr, contextKeys);
             const res = fn(state, state, context, context, ...contextVals);
             return res !== undefined && res !== null ? String(res) : "";
         } catch (_) {
@@ -236,11 +364,14 @@ function _interpolateString(str, state, context = {}) {
 
 function _evaluateCondition(condition, state, context = {}) {
     try {
-        const clean = condition.replace(/&amp;&amp;/g, "&&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
-        const contextKeys = Object.keys(context || {}).filter(k => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k));
-        const contextVals = contextKeys.map(k => context[k]);
+        const clean = condition
+            .replace(/&amp;&amp;/g, "&&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">");
+        const contextKeys = Object.keys(context || {}).filter((k) => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k));
+        const contextVals = contextKeys.map((k) => context[k]);
         const jsExpr = clean.replace(/(?:^|[^a-zA-Z0-9_])(data|state)\.([a-zA-Z0-9_]+)/g, "$data.$2");
-        const fn = new Function("$data", "data", "$ctx", "context", ...contextKeys, `return Boolean(${jsExpr});`);
+        const fn = _getCompiledServerCond(jsExpr, contextKeys);
         return fn(state, state, context, context, ...contextVals);
     } catch (_) {
         return true;
@@ -280,4 +411,3 @@ function _escapeHtml(str) {
 }
 
 export const compileXmlToHtml = renderToString;
-
