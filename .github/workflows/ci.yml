@@ -37,8 +37,22 @@ jobs:
       - name: Package Artifact Smoke Test
         run: npm run test:package
 
-      - name: Install Playwright Browsers
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright Browsers & OS Dependencies
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
+
+      - name: Install Playwright OS System Dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
 
       - name: Run Playwright E2E Matrix (Chromium, Firefox, WebKit)
         run: npm run test:browser
