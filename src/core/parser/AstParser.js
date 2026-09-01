@@ -221,6 +221,127 @@ export function parseXmlToAst(xmlString, options = {}) {
     return _cloneDocument(doc);
 }
 
+export function serializeAst(docOrXml) {
+    let doc = docOrXml;
+    if (typeof docOrXml === "string") {
+        doc = parseXmlToAst(docOrXml);
+    }
+    if (!doc) return null;
+
+    function serializeNode(node) {
+        if (!node) return null;
+        if (node.nodeType === 1) {
+            const attrs = {};
+            if (node.attributes) {
+                for (let i = 0; i < node.attributes.length; i++) {
+                    const attr = node.attributes[i];
+                    attrs[attr.name] = attr.value;
+                }
+            }
+            const children = [];
+            if (node.childNodes) {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    const child = serializeNode(node.childNodes[i]);
+                    if (child) children.push(child);
+                }
+            }
+            return {
+                type: 1,
+                tag: node.tagName,
+                attrs,
+                children,
+            };
+        }
+        if (node.nodeType === 3) {
+            const text = node.textContent;
+            if (text === null || text === undefined) return null;
+            return {
+                type: 3,
+                text,
+            };
+        }
+        if (node.nodeType === 4) {
+            return {
+                type: 4,
+                text: node.textContent || "",
+            };
+        }
+        if (node.nodeType === 8) {
+            return {
+                type: 8,
+                text: node.textContent || "",
+            };
+        }
+        if (node.nodeType === 9) {
+            return {
+                type: 9,
+                root: node.documentElement ? serializeNode(node.documentElement) : null,
+            };
+        }
+        return null;
+    }
+
+    return serializeNode(doc);
+}
+
+export function deserializeAst(astJson) {
+    if (!astJson) return null;
+    if (typeof document === "undefined") return null;
+
+    let doc;
+    if (document.implementation && typeof document.implementation.createDocument === "function") {
+        doc = document.implementation.createDocument(null, null, null);
+    } else {
+        doc = document.createElement("xml");
+    }
+
+    function deserializeNode(nodeData) {
+        if (!nodeData) return null;
+        if (nodeData.type === 9) {
+            if (nodeData.root) {
+                const rootEl = deserializeNode(nodeData.root);
+                if (rootEl) doc.appendChild(rootEl);
+            }
+            return doc;
+        }
+        if (nodeData.type === 1) {
+            const el = doc.createElement ? doc.createElement(nodeData.tag) : document.createElement(nodeData.tag);
+            if (nodeData.attrs) {
+                for (const [key, val] of Object.entries(nodeData.attrs)) {
+                    el.setAttribute(key, val);
+                }
+            }
+            if (Array.isArray(nodeData.children)) {
+                for (let i = 0; i < nodeData.children.length; i++) {
+                    const child = deserializeNode(nodeData.children[i]);
+                    if (child) el.appendChild(child);
+                }
+            }
+            return el;
+        }
+        if (nodeData.type === 3) {
+            return doc.createTextNode ? doc.createTextNode(nodeData.text) : document.createTextNode(nodeData.text);
+        }
+        if (nodeData.type === 4) {
+            return doc.createCDATASection ? doc.createCDATASection(nodeData.text) : doc.createTextNode(nodeData.text);
+        }
+        if (nodeData.type === 8) {
+            return doc.createComment ? doc.createComment(nodeData.text) : document.createComment(nodeData.text);
+        }
+        return null;
+    }
+
+    if (astJson.type === 9) {
+        return deserializeNode(astJson);
+    }
+    const singleNode = deserializeNode(astJson);
+    if (singleNode && singleNode.nodeType === 1) {
+        doc.appendChild(singleNode);
+        return doc;
+    }
+    return singleNode;
+}
+
 export function clearAstCache() {
     _astCache.clear();
     _astCacheStats.hits = 0;
@@ -256,9 +377,12 @@ export function getAstCacheStats() {
 export const AstParser = {
     parse: parseXmlToAst,
     parseXmlToAst,
+    serializeAst,
+    deserializeAst,
     clearAstCache,
     setAstCacheSize,
     getAstCacheStats,
 };
 
 export default AstParser;
+

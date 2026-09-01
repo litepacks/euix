@@ -7,9 +7,19 @@ import { getNow, isElem, isFn, isScoped } from "../utils/constants.js";
 
 export function mount(engine, appXmlString, options = {}) {
     const mountStart = getNow();
-    engine.xmlDoc = engine.constructor.parseXmlToAst(appXmlString, { ...options, silent: true });
+    if (typeof appXmlString === "object" && appXmlString !== null) {
+        if (appXmlString.nodeType) {
+            engine.xmlDoc = appXmlString;
+        } else if (isFn(engine.constructor.deserializeAst)) {
+            engine.xmlDoc = engine.constructor.deserializeAst(appXmlString);
+        } else {
+            engine.xmlDoc = appXmlString;
+        }
+    } else {
+        engine.xmlDoc = engine.constructor.parseXmlToAst(appXmlString, { ...options, silent: true });
+    }
 
-    const parserError = engine.xmlDoc.querySelector("parsererror");
+    const parserError = engine.xmlDoc && engine.xmlDoc.querySelector ? engine.xmlDoc.querySelector("parsererror") : null;
     if (parserError) {
         const errorText = parserError.textContent.trim();
         const lineMatch = errorText.match(/line\s+(\d+)/i) || errorText.match(/:(\d+):/);

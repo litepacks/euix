@@ -108,17 +108,33 @@ export const EUIXNavigatorPlugin = {
                 hardware: hw,
             };
 
-            if (this._rawState) {
-                this._rawState[targetKey] = nextState;
-                this._rawState.$device = nextState;
-                this._rawState.device = nextState;
-            }
-            this.setState(targetKey, nextState);
-            this.setState("$device", nextState);
-            this.setState("device", nextState);
+            const setDeviceState = (updated) => {
+                if (typeof this.batch === "function") {
+                    this.batch(() => {
+                        if (this._rawState) {
+                            this._rawState[targetKey] = updated;
+                            this._rawState.$device = updated;
+                            this._rawState.device = updated;
+                        }
+                        this.setState(targetKey, updated);
+                        this.setState("$device", updated);
+                        this.setState("device", updated);
+                    });
+                } else {
+                    if (this._rawState) {
+                        this._rawState[targetKey] = updated;
+                        this._rawState.$device = updated;
+                        this._rawState.device = updated;
+                    }
+                    this.setState(targetKey, updated);
+                    this.setState("$device", updated);
+                    this.setState("device", updated);
+                }
+                this.$device = updated;
+                this.device = updated;
+            };
 
-            this.$device = nextState;
-            this.device = nextState;
+            setDeviceState(nextState);
 
             // Network Change Tracking
             if (options.trackNetwork !== false) {
@@ -130,9 +146,7 @@ export const EUIXNavigatorPlugin = {
                         ...newNet,
                         network: newNet,
                     };
-                    this.setState(targetKey, updated);
-                    this.setState("$device", updated);
-                    this.setState("device", updated);
+                    setDeviceState(updated);
                 };
 
                 window.addEventListener("online", updateNetwork);
@@ -178,9 +192,7 @@ export const EUIXNavigatorPlugin = {
                                             dischargingTime: battery.dischargingTime || Infinity,
                                         },
                                     };
-                                    this.setState(targetKey, updated);
-                                    this.setState("$device", updated);
-                                    this.setState("device", updated);
+                                    setDeviceState(updated);
                                 };
 
                                 updateBattery();
@@ -446,9 +458,13 @@ export const EUIXNavigatorPlugin = {
                     const navConfig =
                         (targetDoc.getElementsByTagName
                             ? targetDoc.getElementsByTagName("navigator_config")[0] ||
-                              targetDoc.getElementsByTagName("device_config")[0]
+                              targetDoc.getElementsByTagName("device_config")[0] ||
+                              targetDoc.getElementsByTagName("navigator")[0] ||
+                              targetDoc.getElementsByTagName("device")[0]
                             : null) ||
-                        (targetDoc.querySelector ? targetDoc.querySelector("navigator_config, device_config") : null);
+                        (targetDoc.querySelector
+                            ? targetDoc.querySelector("navigator_config, device_config, navigator, device")
+                            : null);
                     if (navConfig && typeof this._processNavigatorTag === "function") {
                         this._processNavigatorTag(navConfig);
                     } else if (typeof this.initNavigatorState === "function") {

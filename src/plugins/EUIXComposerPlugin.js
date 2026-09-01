@@ -208,6 +208,41 @@ export class EUIXActionRegistry {
     }
 }
 
+function coerceComposerType(val, type) {
+    if (val === undefined || val === null || !type) return val;
+    const lowerType = String(type).toLowerCase();
+    if (lowerType === "number" || lowerType === "int" || lowerType === "integer" || lowerType === "float") {
+        const num = Number(val);
+        return Number.isNaN(num) ? val : num;
+    }
+    if (lowerType === "boolean" || lowerType === "bool") {
+        return val === true || val === "true" || val === 1 || val === "1";
+    }
+    if (lowerType === "object" || lowerType === "json") {
+        if (typeof val === "string") {
+            try {
+                return JSON.parse(val);
+            } catch (_) {
+                return val;
+            }
+        }
+        return val;
+    }
+    if (lowerType === "array") {
+        if (typeof val === "string") {
+            try {
+                const arr = JSON.parse(val);
+                if (Array.isArray(arr)) return arr;
+            } catch (_) {}
+        }
+        return Array.isArray(val) ? val : [val];
+    }
+    if (lowerType === "string") {
+        return val;
+    }
+    return val;
+}
+
 export class EUIXActionComposer {
     static async execute(actionDef, rawArgs = EMPTY_OBJ, engine = null, parentEventContext = EMPTY_OBJ) {
         const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
@@ -224,6 +259,9 @@ export class EUIXActionComposer {
                 }
                 if (typeof val === "string" && engine) {
                     val = engine.interpolate(val, callerContext);
+                }
+                if (p.type) {
+                    val = coerceComposerType(val, p.type);
                 }
                 evaluatedArgs[p.name] = val;
             });

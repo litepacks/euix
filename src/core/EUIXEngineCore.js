@@ -72,9 +72,11 @@ import {
     _astCacheStats,
     _cloneDocument,
     clearAstCache,
+    deserializeAst,
     generateCodeFrame,
     getAstCacheStats,
     parseXmlToAst,
+    serializeAst,
     setAstCacheSize,
 } from "./parser/AstParser.js";
 import { EUIXExpressionParser } from "./parser/ExpressionParser.js";
@@ -312,6 +314,48 @@ class EUIXEngineCore {
 
     static setAstCacheSize(maxSize) {
         return setAstCacheSize(maxSize);
+    }
+
+    static serializeAst(docOrXml) {
+        return serializeAst(docOrXml);
+    }
+
+    static deserializeAst(astJson) {
+        return deserializeAst(astJson);
+    }
+
+    get isPending() {
+        return !!this._isPending;
+    }
+
+    startTransition(fn) {
+        if (!isFn(fn)) return Promise.resolve();
+        this._isPending = true;
+        try {
+            const res = fn();
+            if (res && typeof res.then === "function") {
+                return res.finally(() => {
+                    this._isPending = false;
+                });
+            }
+        } finally {
+            this._isPending = false;
+        }
+        return Promise.resolve();
+    }
+
+    scheduleIdle(fn, options = { timeout: 1000 }) {
+        if (!isFn(fn)) return () => {};
+        if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+            const handle = window.requestIdleCallback(() => fn(this), options);
+            return () => {
+                if (typeof window.cancelIdleCallback === "function") {
+                    window.cancelIdleCallback(handle);
+                }
+            };
+        }
+        const timer = setTimeout(() => fn(this), 1);
+        return () => clearTimeout(timer);
     }
 
     static mount(xmlString, containerSelector = "#app", options = {}) {
