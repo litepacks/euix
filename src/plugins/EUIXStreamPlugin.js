@@ -62,13 +62,15 @@ export const EUIXStreamPlugin = {
 
         proto.getStreamStatus = function (streamId) {
             this._initStreamEngine();
-            return this._streamStatus[streamId] || {
-                status: "disconnected",
-                connected: false,
-                lastMessage: null,
-                error: null,
-                reconnectCount: 0,
-            };
+            return (
+                this._streamStatus[streamId] || {
+                    status: "disconnected",
+                    connected: false,
+                    lastMessage: null,
+                    error: null,
+                    reconnectCount: 0,
+                }
+            );
         };
 
         proto.connectStream = function (streamId) {
@@ -83,13 +85,21 @@ export const EUIXStreamPlugin = {
             this.disconnectStream(streamId);
 
             let url = this.interpolate(config.url || "", {});
-            if (config.baseUrl && !url.startsWith("ws://") && !url.startsWith("wss://") && !url.startsWith("http://") && !url.startsWith("https://")) {
+            if (
+                config.baseUrl &&
+                !url.startsWith("ws://") &&
+                !url.startsWith("wss://") &&
+                !url.startsWith("http://") &&
+                !url.startsWith("https://")
+            ) {
                 const base = config.baseUrl.replace(/\/+$/, "");
                 const cleanUrl = url.replace(/^\/+/, "");
                 url = `${base}/${cleanUrl}`;
             }
 
-            const type = (config.type || (url.startsWith("ws://") || url.startsWith("wss://") ? "websocket" : "sse")).toLowerCase();
+            const type = (
+                config.type || (url.startsWith("ws://") || url.startsWith("wss://") ? "websocket" : "sse")
+            ).toLowerCase();
 
             this._updateStreamStatus(streamId, {
                 status: "connecting",
@@ -105,7 +115,8 @@ export const EUIXStreamPlugin = {
         };
 
         proto._connectWebSocket = function (streamId, url, config) {
-            const WSClass = typeof WebSocket !== "undefined" ? WebSocket : (typeof window !== "undefined" ? window.WebSocket : null);
+            const WSClass =
+                typeof WebSocket !== "undefined" ? WebSocket : typeof window !== "undefined" ? window.WebSocket : null;
             if (!WSClass) {
                 this._updateStreamStatus(streamId, {
                     status: "error",
@@ -116,7 +127,11 @@ export const EUIXStreamPlugin = {
             }
 
             try {
-                const protocols = config.protocols ? (Array.isArray(config.protocols) ? config.protocols : [config.protocols]) : undefined;
+                const protocols = config.protocols
+                    ? Array.isArray(config.protocols)
+                        ? config.protocols
+                        : [config.protocols]
+                    : undefined;
                 const socket = protocols ? new WSClass(url, protocols) : new WSClass(url);
                 const streamEntry = {
                     type: "websocket",
@@ -177,7 +192,12 @@ export const EUIXStreamPlugin = {
         };
 
         proto._connectSSE = function (streamId, url, config) {
-            const EventSourceClass = typeof EventSource !== "undefined" ? EventSource : (typeof window !== "undefined" ? window.EventSource : null);
+            const EventSourceClass =
+                typeof EventSource !== "undefined"
+                    ? EventSource
+                    : typeof window !== "undefined"
+                      ? window.EventSource
+                      : null;
             if (!EventSourceClass) {
                 this._updateStreamStatus(streamId, {
                     status: "error",
@@ -188,7 +208,9 @@ export const EUIXStreamPlugin = {
             }
 
             try {
-                const sse = new EventSourceClass(url, { withCredentials: config.withCredentials === true || config.withCredentials === "true" });
+                const sse = new EventSourceClass(url, {
+                    withCredentials: config.withCredentials === true || config.withCredentials === "true",
+                });
                 const streamEntry = {
                     type: "sse",
                     socket: sse,
@@ -375,7 +397,9 @@ export const EUIXStreamPlugin = {
                         node.getAttribute("tag") ||
                         node.getAttribute("stream");
                     if (id) {
-                        const autoConnect = node.getAttribute("auto_connect") !== "false" && node.getAttribute("autoconnect") !== "false";
+                        const autoConnect =
+                            node.getAttribute("auto_connect") !== "false" &&
+                            node.getAttribute("autoconnect") !== "false";
                         this.registerStream(id, {
                             id,
                             baseUrl,
@@ -420,8 +444,14 @@ export const EUIXStreamPlugin = {
                 (this.getChild && this.getChild(actionNode, "stream")?.textContent?.trim()) ||
                 context?.streamId ||
                 "";
-            const valueNode = this.getChild ? this.getChild(actionNode, "value") || this.getChild(actionNode, "message") || this.getChild(actionNode, "body") : null;
-            let payload = valueNode ? valueNode.textContent.trim() : (actionNode?.getAttribute && (actionNode.getAttribute("value") || actionNode.getAttribute("message")));
+            const valueNode = this.getChild
+                ? this.getChild(actionNode, "value") ||
+                  this.getChild(actionNode, "message") ||
+                  this.getChild(actionNode, "body")
+                : null;
+            let payload = valueNode
+                ? valueNode.textContent.trim()
+                : actionNode?.getAttribute && (actionNode.getAttribute("value") || actionNode.getAttribute("message"));
             if (!payload && actionNode && actionNode.textContent) {
                 payload = actionNode.textContent.trim();
             }
@@ -457,5 +487,5 @@ export const EUIXStreamPlugin = {
             }
             return false;
         });
-    }
+    },
 };

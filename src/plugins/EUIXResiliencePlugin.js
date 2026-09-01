@@ -189,7 +189,12 @@ export const EUIXResiliencePlugin = {
             if (typeof this._handleActionInternal === "function") {
                 const delegatedNode = Object.create(actionNode || {}, {
                     getAttribute: {
-                        value: (attr) => (attr === "action" ? "DELAY" : (actionNode?.getAttribute ? actionNode.getAttribute(attr) : null)),
+                        value: (attr) =>
+                            attr === "action"
+                                ? "DELAY"
+                                : actionNode?.getAttribute
+                                  ? actionNode.getAttribute(attr)
+                                  : null,
                         writable: true,
                         configurable: true,
                     },
@@ -203,14 +208,19 @@ export const EUIXResiliencePlugin = {
                 actionNode?.getAttribute?.("duration") ||
                 this.getChild?.(actionNode, "ms")?.textContent?.trim() ||
                 this.getChild?.(actionNode, "delay")?.textContent?.trim();
-            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : (msAttr || "0");
+            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : msAttr || "0";
             return handleDelayDirect(this, interpolatedMs, context);
         });
         engineClass.registerAction("SLEEP", async function (actionNode, context) {
             if (typeof this._handleActionInternal === "function") {
                 const delegatedNode = Object.create(actionNode || {}, {
                     getAttribute: {
-                        value: (attr) => (attr === "action" ? "DELAY" : (actionNode?.getAttribute ? actionNode.getAttribute(attr) : null)),
+                        value: (attr) =>
+                            attr === "action"
+                                ? "DELAY"
+                                : actionNode?.getAttribute
+                                  ? actionNode.getAttribute(attr)
+                                  : null,
                         writable: true,
                         configurable: true,
                     },
@@ -224,7 +234,7 @@ export const EUIXResiliencePlugin = {
                 actionNode?.getAttribute?.("duration") ||
                 this.getChild?.(actionNode, "ms")?.textContent?.trim() ||
                 this.getChild?.(actionNode, "delay")?.textContent?.trim();
-            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : (msAttr || "0");
+            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : msAttr || "0";
             return handleDelayDirect(this, interpolatedMs, context);
         });
 

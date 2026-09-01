@@ -249,7 +249,9 @@ function _renderNode(node, state, context = {}, compRegistry = new Map()) {
                         : attrs.justify
             : "";
         const justify = justifyVal ? `justify-content: ${justifyVal};` : "";
-        const flexStyle = `display: flex; flex-direction: ${dir}; ${gap} ${align} ${justify}`.replace(/\s+/g, " ").trim();
+        const flexStyle = `display: flex; flex-direction: ${dir}; ${gap} ${align} ${justify}`
+            .replace(/\s+/g, " ")
+            .trim();
         attrs["style"] = attrs["style"] ? `${flexStyle}; ${attrs["style"]}` : flexStyle;
         delete attrs.direction;
         delete attrs.gap;

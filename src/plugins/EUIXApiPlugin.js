@@ -95,7 +95,7 @@ export const EUIXApiPlugin = {
             }
         };
 
-        proto._enqueueOfflineMutation = function (mutationOptions) {
+        proto._enqueueOfflineMutation = (mutationOptions) => {
             const queueKey = "euix_api_offline_queue";
             const store = typeof localStorage !== "undefined" ? localStorage : null;
             if (!store) return;

@@ -3,7 +3,7 @@
  * Screen Reader Live Region Announcer & Keyboard Navigation Helpers for EUIX.
  */
 
-let liveAnnouncerEl = null;
+const liveAnnouncerEl = null;
 
 /**
  * Gets or creates a singleton visually-hidden ARIA live region element for screen readers.
@@ -11,7 +11,7 @@ let liveAnnouncerEl = null;
  * @param {"polite"|"assertive"} [priority="polite"]
  * @returns {HTMLElement}
  */
-export function getOrCreateAnnouncer(doc = (typeof document !== "undefined" ? document : null), priority = "polite") {
+export function getOrCreateAnnouncer(doc = typeof document !== "undefined" ? document : null, priority = "polite") {
     if (!doc) return null;
 
     const id = `euix-a11y-announcer-${priority}`;
@@ -47,7 +47,7 @@ export function getOrCreateAnnouncer(doc = (typeof document !== "undefined" ? do
  * @param {"polite"|"assertive"} [priority="polite"] - Urgency level
  * @param {Document} [doc] - Target document
  */
-export function announce(message, priority = "polite", doc = (typeof document !== "undefined" ? document : null)) {
+export function announce(message, priority = "polite", doc = typeof document !== "undefined" ? document : null) {
     if (!message || !doc) return;
     const announcer = getOrCreateAnnouncer(doc, priority);
     if (!announcer) return;
@@ -78,10 +78,12 @@ export function setupRovingTabIndex(items, options = {}) {
             let nextIndex = -1;
             const currentIndex = items.indexOf(item);
 
-            const isNext = (orientation !== "horizontal" && e.key === "ArrowDown") ||
-                           (orientation !== "vertical" && e.key === "ArrowRight");
-            const isPrev = (orientation !== "horizontal" && e.key === "ArrowUp") ||
-                           (orientation !== "vertical" && e.key === "ArrowLeft");
+            const isNext =
+                (orientation !== "horizontal" && e.key === "ArrowDown") ||
+                (orientation !== "vertical" && e.key === "ArrowRight");
+            const isPrev =
+                (orientation !== "horizontal" && e.key === "ArrowUp") ||
+                (orientation !== "vertical" && e.key === "ArrowLeft");
 
             if (isNext) {
                 e.preventDefault();

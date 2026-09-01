@@ -569,7 +569,9 @@ export const EUIXChartPlugin = {
             }
 
             if (!chart && actionName !== "CHART_DESTROY") {
-                console.warn(`[EUIXChartPlugin] Action "${actionName}" target chart "${chartId || "(unspecified)"}" not found.`);
+                console.warn(
+                    `[EUIXChartPlugin] Action "${actionName}" target chart "${chartId || "(unspecified)"}" not found.`,
+                );
                 return false;
             }
 

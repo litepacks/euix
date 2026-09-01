@@ -4,6 +4,7 @@
  * High-performance runtime introspection, element debugging, and stable E2E selector generator.
  */
 
+import { computeStateDiff, EUIXStateHistoryManager } from "./inspector/history.js";
 import {
     buildComponentTree,
     createDebugSnapshot,
@@ -13,7 +14,6 @@ import {
 import { OverlayManager } from "./inspector/overlay.js";
 import { InspectorPanel } from "./inspector/panel.js";
 import { generateSelectors } from "./inspector/selectors.js";
-import { EUIXStateHistoryManager, computeStateDiff } from "./inspector/history.js";
 
 export class EUIXInspector {
     constructor(engine, options = {}) {
@@ -422,7 +422,7 @@ export function inspector(options = {}) {
     };
 }
 
-export { EUIXStateHistoryManager, computeStateDiff };
+export { computeStateDiff, EUIXStateHistoryManager };
 
 export const EUIXInspectorPlugin = inspector();
 

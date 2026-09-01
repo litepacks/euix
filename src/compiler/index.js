@@ -29,8 +29,20 @@ export function compileXmlToAst(xmlString) {
     const len = src.length;
 
     const VOID_ELEMENTS = new Set([
-        "area", "base", "br", "col", "embed", "hr", "img", "input",
-        "link", "meta", "param", "source", "track", "wbr"
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
     ]);
 
     while (pos < len) {
@@ -104,7 +116,7 @@ export function compileXmlToAst(xmlString) {
             tag: tagName,
             attrs,
             children: [],
-            isSelfClosing
+            isSelfClosing,
         };
 
         const parent = stack[stack.length - 1];
@@ -127,7 +139,14 @@ function _parseAttributes(attrsStr) {
     let match;
     while ((match = regex.exec(attrsStr)) !== null) {
         const name = match[1];
-        const val = match[2] !== undefined ? match[2] : match[3] !== undefined ? match[3] : match[4] !== undefined ? match[4] : "";
+        const val =
+            match[2] !== undefined
+                ? match[2]
+                : match[3] !== undefined
+                  ? match[3]
+                  : match[4] !== undefined
+                    ? match[4]
+                    : "";
         attrs[name] = val;
     }
     return attrs;
@@ -168,11 +187,11 @@ export function euixVitePlugin(options = {}) {
                 const js = compileXmlToJs(code, options);
                 return {
                     code: js,
-                    map: { mappings: "" }
+                    map: { mappings: "" },
                 };
             }
             return null;
-        }
+        },
     };
 }
 
@@ -182,5 +201,5 @@ export function euixVitePlugin(options = {}) {
 export const euixRollupPlugin = euixVitePlugin;
 export const euixPlugin = euixVitePlugin;
 
-export { generateXSDSchema, generateJsonSchema } from "./schemaGenerator.js";
+export { generateJsonSchema, generateXSDSchema } from "./schemaGenerator.js";
 export { generateComponentTypes } from "./typeGenerator.js";

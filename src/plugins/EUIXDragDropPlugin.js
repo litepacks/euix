@@ -13,7 +13,13 @@ function resolveDraggableId(context, el) {
         if (context.card?.id !== undefined) return context.card.id;
         if (context._varName && context[context._varName]?.id !== undefined) return context[context._varName].id;
         for (const k of Object.keys(context)) {
-            if (!k.startsWith("_") && !k.startsWith("$") && context[k] && typeof context[k] === "object" && context[k].id !== undefined) {
+            if (
+                !k.startsWith("_") &&
+                !k.startsWith("$") &&
+                context[k] &&
+                typeof context[k] === "object" &&
+                context[k].id !== undefined
+            ) {
                 return context[k].id;
             }
         }

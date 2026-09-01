@@ -41,6 +41,7 @@ Directly manipulates real browser DOM elements (`node.textContent = ...`, `eleme
 
 ---
 
-## 🧭 Next Step
+## 🧭 Next Steps
 
-Read about performance benchmarks in **[Performance & Benchmarks](/advanced/performance)**.
+- Explore the foundational design and native porting roadmap in **[Philosophy & Multi-Platform Vision](/advanced/philosophy-and-multiplatform)**.
+- Read about performance benchmarks in **[Performance & Benchmarks](/advanced/performance)**.

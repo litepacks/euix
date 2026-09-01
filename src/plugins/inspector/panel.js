@@ -776,7 +776,9 @@ export class InspectorPanel {
         if (snapshotBtn) {
             snapshotBtn.onclick = () => {
                 if (this.inspector.history) {
-                    const label = prompt("Snapshot label:", `Snapshot ${this.inspector.history.snapshots.length + 1}`) || "Manual Snapshot";
+                    const label =
+                        prompt("Snapshot label:", `Snapshot ${this.inspector.history.snapshots.length + 1}`) ||
+                        "Manual Snapshot";
                     this.inspector.history.takeSnapshot(label);
                     this.render();
                 }

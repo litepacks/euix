@@ -180,4 +180,3 @@ export function applyArrayMutation(current, operation, payload = {}) {
     }
     return current;
 }
-

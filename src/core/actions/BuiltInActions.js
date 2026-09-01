@@ -175,7 +175,9 @@ export function _handleRevalidateAction(actionNode, context = {}) {
     const tagNode = this.getChild ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") : null;
     const rawTag = tagNode
         ? tagNode.textContent.trim()
-        : actionNode?.getAttribute ? actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "" : "";
+        : actionNode?.getAttribute
+          ? actionNode.getAttribute("tag") || actionNode.getAttribute("url") || ""
+          : "";
     const tag = this.interpolate(rawTag, context);
     if (typeof this.revalidateApi === "function") {
         this.revalidateApi(tag);
@@ -896,12 +898,17 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             : Array.isArray(this._rawState?.[path])
               ? [...this._rawState[path]]
               : [];
-        const byNode = this.getChild(actionNode, "by") || this.getChild(actionNode, "field") || this.getChild(actionNode, "key");
-        const rawBy = byNode ? byNode.textContent.trim() : actionNode.getAttribute("by") || actionNode.getAttribute("field") || actionNode.getAttribute("key") || "";
+        const byNode =
+            this.getChild(actionNode, "by") || this.getChild(actionNode, "field") || this.getChild(actionNode, "key");
+        const rawBy = byNode
+            ? byNode.textContent.trim()
+            : actionNode.getAttribute("by") || actionNode.getAttribute("field") || actionNode.getAttribute("key") || "";
         const field = this.interpolate(rawBy, context);
 
         const orderNode = this.getChild(actionNode, "order") || this.getChild(actionNode, "direction");
-        const rawOrder = orderNode ? orderNode.textContent.trim() : actionNode.getAttribute("order") || actionNode.getAttribute("direction") || "asc";
+        const rawOrder = orderNode
+            ? orderNode.textContent.trim()
+            : actionNode.getAttribute("order") || actionNode.getAttribute("direction") || "asc";
         const order = this.interpolate(rawOrder, context).toLowerCase();
         const isDesc = order === "desc" || order === "descending" || order === "reverse";
 

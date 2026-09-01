@@ -3,8 +3,10 @@
  * Declarative Form Validation Schema & Reactive Error Engine for EUIX Engine.
  */
 
-const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
-const URL_REGEX = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
+const EMAIL_REGEX =
+    /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+const URL_REGEX =
+    /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/;
 
 export const EUIXValidationPlugin = {
     name: "validation",
@@ -276,9 +278,7 @@ export const EUIXValidationPlugin = {
                                         field.getAttribute("email") === "true" ||
                                         field.getAttribute("type") === "email",
                                     emailMsg: field.getAttribute("email_msg"),
-                                    url:
-                                        field.getAttribute("url") === "true" ||
-                                        field.getAttribute("type") === "url",
+                                    url: field.getAttribute("url") === "true" || field.getAttribute("type") === "url",
                                     urlMsg: field.getAttribute("url_msg"),
                                     minLength: field.getAttribute("min_length") || field.getAttribute("minlength"),
                                     minLengthMsg: field.getAttribute("min_length_msg"),
@@ -335,14 +335,10 @@ export const EUIXValidationPlugin = {
                                 el.getAttribute("type") === "email",
                             emailMsg: el.getAttribute("email_msg") || existing.emailMsg,
                             minLength:
-                                el.getAttribute("min_length") ||
-                                el.getAttribute("minlength") ||
-                                existing.minLength,
+                                el.getAttribute("min_length") || el.getAttribute("minlength") || existing.minLength,
                             minLengthMsg: el.getAttribute("min_length_msg") || existing.minLengthMsg,
                             maxLength:
-                                el.getAttribute("max_length") ||
-                                el.getAttribute("maxlength") ||
-                                existing.maxLength,
+                                el.getAttribute("max_length") || el.getAttribute("maxlength") || existing.maxLength,
                             maxLengthMsg: el.getAttribute("max_length_msg") || existing.maxLengthMsg,
                             message: el.getAttribute("message") || el.getAttribute("msg") || existing.message,
                         });
@@ -386,5 +382,5 @@ export const EUIXValidationPlugin = {
         engineClass.registerAction("CLEAR_ERRORS", function () {
             this.resetValidation();
         });
-    }
+    },
 };

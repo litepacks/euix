@@ -43,9 +43,9 @@ import {
     setBindingValue,
 } from "./binding/BindingResolver.js";
 import {
+    initComponentSchema,
     loadComponent,
     loadComponentFile,
-    initComponentSchema,
     registerComponentSpec,
     registerEngineComponentSpec,
     renderComponentSpec,
@@ -93,12 +93,12 @@ import {
     evalCondition,
     extractStateKeys,
     interpolate,
+    processStyleTag,
     render,
     renderConditional,
     resolveBindPath,
-    updateAttributeBinding,
-    processStyleTag,
     scopeCSS,
+    updateAttributeBinding,
 } from "./renderer/DOMRenderer.js";
 import { getConstant, registerConstant, registerGlobalConstant } from "./state/Constants.js";
 import {
@@ -280,7 +280,7 @@ class EUIXEngineCore {
 
     static onError(handler) {
         EUIXEngineCore._globalErrorHandler = handler;
-        return this;
+        return EUIXEngineCore;
     }
 
     static _astCache = _astCache;

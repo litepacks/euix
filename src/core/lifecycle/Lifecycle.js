@@ -19,7 +19,8 @@ export function mount(engine, appXmlString, options = {}) {
         engine.xmlDoc = engine.constructor.parseXmlToAst(appXmlString, { ...options, silent: true });
     }
 
-    const parserError = engine.xmlDoc && engine.xmlDoc.querySelector ? engine.xmlDoc.querySelector("parsererror") : null;
+    const parserError =
+        engine.xmlDoc && engine.xmlDoc.querySelector ? engine.xmlDoc.querySelector("parsererror") : null;
     if (parserError) {
         const errorText = parserError.textContent.trim();
         const lineMatch = errorText.match(/line\s+(\d+)/i) || errorText.match(/:(\d+):/);

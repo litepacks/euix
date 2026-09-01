@@ -251,9 +251,7 @@ export function validateInput(input = {}, schema = {}) {
         // Enum validation
         if (spec.enum && Array.isArray(spec.enum) && spec.enum.length > 0) {
             const valToCheck = sanitizedInput[key];
-            const isMatch = spec.enum.some(
-                (e) => e === valToCheck || String(e) === String(valToCheck),
-            );
+            const isMatch = spec.enum.some((e) => e === valToCheck || String(e) === String(valToCheck));
             if (!isMatch) {
                 throw new EUIXWebMCPError(
                     "VALIDATION_ERROR",

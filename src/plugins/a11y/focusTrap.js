@@ -10,9 +10,9 @@ export const FOCUSABLE_SELECTOR = [
     'select:not([disabled]):not([tabindex="-1"])',
     'textarea:not([disabled]):not([tabindex="-1"])',
     'button:not([disabled]):not([tabindex="-1"])',
-    'iframe',
-    'object',
-    'embed',
+    "iframe",
+    "object",
+    "embed",
     '[tabindex]:not([tabindex="-1"])',
     '[contenteditable]:not([tabindex="-1"])',
 ].join(", ");
@@ -49,7 +49,8 @@ export function getFocusableElements(container) {
  */
 export function createFocusTrap(container, options = {}) {
     let active = false;
-    let previousActiveElement = options.returnFocusElement || (typeof document !== "undefined" ? document.activeElement : null);
+    let previousActiveElement =
+        options.returnFocusElement || (typeof document !== "undefined" ? document.activeElement : null);
 
     function handleKeyDown(e) {
         if (!active || !container) return;
@@ -94,7 +95,8 @@ export function createFocusTrap(container, options = {}) {
         activate() {
             if (active) return;
             active = true;
-            previousActiveElement = options.returnFocusElement || (typeof document !== "undefined" ? document.activeElement : null);
+            previousActiveElement =
+                options.returnFocusElement || (typeof document !== "undefined" ? document.activeElement : null);
 
             container.addEventListener("keydown", handleKeyDown);
 

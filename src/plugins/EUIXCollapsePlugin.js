@@ -118,7 +118,9 @@ export const EUIXCollapsePlugin = {
             header.addEventListener("keydown", (e) => {
                 let siblingHeaders = [];
                 if (group) {
-                    const groupItems = document.querySelectorAll(`[data-euix-collapse-group="${group}"] .euix-collapse-header`);
+                    const groupItems = document.querySelectorAll(
+                        `[data-euix-collapse-group="${group}"] .euix-collapse-header`,
+                    );
                     siblingHeaders = Array.from(groupItems);
                 } else if (root.parentElement) {
                     siblingHeaders = Array.from(root.parentElement.querySelectorAll(".euix-collapse-header"));

@@ -12,6 +12,7 @@ import {
     processStyleTag,
     scopeCSS,
 } from "./core/EUIXEngineCore.js";
+import { announce, createFocusTrap, EUIXA11yPlugin } from "./plugins/EUIXA11yPlugin.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
 import { EUIXApiPlugin } from "./plugins/EUIXApiPlugin.js";
 import { EUIXChartError, EUIXChartPlugin } from "./plugins/EUIXChartPlugin.js";
@@ -57,7 +58,6 @@ import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
 import { EUIXStreamPlugin } from "./plugins/EUIXStreamPlugin.js";
 import { EUIXValidationPlugin } from "./plugins/EUIXValidationPlugin.js";
 import { EUIXWebMCPError, EUIXWebMCPPlugin, WebMCPPlugin } from "./plugins/EUIXWebMCPPlugin.js";
-import { EUIXA11yPlugin, createFocusTrap, announce } from "./plugins/EUIXA11yPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXA11yPlugin);
@@ -173,12 +173,12 @@ export {
     matchPath,
     matchRoutes,
     parsePath,
+    processStyleTag,
     RouterError,
     RouterRedirect,
     resolvePath,
-    WebMCPPlugin,
-    processStyleTag,
     scopeCSS,
+    WebMCPPlugin,
 };
 
 export default EUIXEngine;

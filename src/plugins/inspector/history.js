@@ -93,7 +93,7 @@ export class EUIXStateHistoryManager {
 
         if (this.engine.mutateState) {
             const originalMutateState = this.engine.mutateState.bind(this.engine);
-            this.engine.mutateState = function (path, operation, value, options = {}) {
+            this.engine.mutateState = (path, operation, value, options = {}) => {
                 const res = originalMutateState(path, operation, value, options);
                 if (!self._isTimeTraveling && !options?._skipHistory) {
                     const label = `mutateState("${path}", "${operation}")`;
@@ -240,12 +240,16 @@ export class EUIXStateHistoryManager {
     }
 
     exportHistory() {
-        return JSON.stringify({
-            version: "1.0",
-            exportedAt: new Date().toISOString(),
-            currentIndex: this.currentIndex,
-            snapshots: this.snapshots,
-        }, null, 2);
+        return JSON.stringify(
+            {
+                version: "1.0",
+                exportedAt: new Date().toISOString(),
+                currentIndex: this.currentIndex,
+                snapshots: this.snapshots,
+            },
+            null,
+            2,
+        );
     }
 
     importHistory(jsonString) {

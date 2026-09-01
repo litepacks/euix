@@ -439,8 +439,11 @@ export class EUIXExpressionParser {
                       : context && context.data
                         ? context.data
                         : null;
-                const localScope = context ? (context._localState || context.local) : null;
-                const resolver = typeof resolveValueFn === "function" ? resolveValueFn : (p) => (engine ? engine.resolveValueFromPath(p, context) : undefined);
+                const localScope = context ? context._localState || context.local : null;
+                const resolver =
+                    typeof resolveValueFn === "function"
+                        ? resolveValueFn
+                        : (p) => (engine ? engine.resolveValueFromPath(p, context) : undefined);
                 return compiled(dataScope, localScope, context, engine, resolver);
             }
         } catch (_) {}

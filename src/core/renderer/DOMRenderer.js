@@ -492,13 +492,17 @@ export function interpolate(engine, text, context = {}) {
                         if (!streamProp) {
                             out += typeof status === "object" ? JSON.stringify(status) : String(status);
                         } else {
-                            const val = streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+                            const val = streamProp
+                                .split(".")
+                                .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
                             if (val !== undefined && val !== null) out += String(val);
                         }
                     }
                 }
             } else if (c.scope === "errors" || c.scope === "$errors") {
-                const errObj = engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
+                const errObj =
+                    engine._formErrors ||
+                    (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
                 if (errObj) {
                     if (!c.prop) {
                         out += typeof errObj === "object" ? safeStringify(errObj) : String(errObj);
@@ -567,7 +571,7 @@ export function interpolate(engine, text, context = {}) {
     // Fast-path 3: JIT compiled template function for complex expressions/ternaries/math
     const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
     if (jitFn) {
-        const dataScope = engine ? (engine._rawState || engine.state) : null;
+        const dataScope = engine ? engine._rawState || engine.state : null;
         const localScope = context._localState || context.local;
         const res = jitFn(dataScope, localScope, context, engine, (p) => engine.resolveValueFromPath(p, context));
         if (res !== undefined && res !== null) return res;
@@ -602,11 +606,19 @@ export function interpolate(engine, text, context = {}) {
                     : engine._streamStatus?.[streamId];
                 if (!status) return "";
                 if (!streamProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
-                const val = streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
-                return val !== undefined && val !== null ? (typeof val === "object" ? JSON.stringify(val) : String(val)) : "";
+                const val = streamProp
+                    .split(".")
+                    .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+                return val !== undefined && val !== null
+                    ? typeof val === "object"
+                        ? JSON.stringify(val)
+                        : String(val)
+                    : "";
             }
             if (scope === "errors" || scope === "$errors") {
-                const errObj = engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
+                const errObj =
+                    engine._formErrors ||
+                    (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
                 if (!errObj) return "";
                 if (!prop) return typeof errObj === "object" ? JSON.stringify(errObj) : String(errObj);
                 return errObj[prop] !== undefined ? String(errObj[prop]) : "";
@@ -1513,12 +1525,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
             const attr = attrs[i];
             const name = attr.name.toLowerCase();
             const val = attr.value || "";
-            if (
-                name.startsWith("on_") ||
-                name === "bind" ||
-                name === "ref" ||
-                val.includes("{")
-            ) {
+            if (name.startsWith("on_") || name === "bind" || name === "ref" || val.includes("{")) {
                 xmlNode._isStaticSubtree = false;
                 return false;
             }
@@ -2513,9 +2520,12 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
 
     const renderCss = () => {
         let css = scopedTemplate;
-        css = css.replace(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g, (match, expr) => {
-            return engine.interpolate(`{${expr}}`, context);
-        });
+        css = css.replace(
+            /\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g,
+            (match, expr) => {
+                return engine.interpolate(`{${expr}}`, context);
+            },
+        );
         if (styleEl.textContent !== css) {
             styleEl.textContent = css;
         }
@@ -2529,7 +2539,8 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
     engine._injectedStyles.add(styleEl);
 
     // Dynamic state expressions in CSS
-    const exprMatches = rawCss.match(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g) || [];
+    const exprMatches =
+        rawCss.match(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g) || [];
     if (exprMatches.length > 0) {
         exprMatches.forEach((match) => {
             const rawExpr = match.slice(1, -1).trim();

@@ -548,7 +548,9 @@ export const EUIXRouterPlugin = {
             const topLevelOutlet =
                 root &&
                 Array.from(root.children || []).some(
-                    (c) => c.tagName && (c.tagName.toLowerCase() === "outlet" || c.tagName.toLowerCase() === "router-outlet"),
+                    (c) =>
+                        c.tagName &&
+                        (c.tagName.toLowerCase() === "outlet" || c.tagName.toLowerCase() === "router-outlet"),
                 );
             if (topLevelOutlet) {
                 return null;
@@ -678,7 +680,9 @@ export const EUIXRouterPlugin = {
         const handleHybridRevalidate = async function (actionNode, context) {
             const routeAttr = actionNode.getAttribute("route");
             const tagAttr = actionNode.getAttribute("tag") || actionNode.getAttribute("url");
-            const tagChild = this.getChild ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") : null;
+            const tagChild = this.getChild
+                ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url")
+                : null;
 
             if (routeAttr && this.router) {
                 await this.router.revalidate(routeAttr);

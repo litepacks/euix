@@ -3,8 +3,8 @@
  * Keyed reconciliation, longest increasing subsequence diffing, virtual scrolling, and <for_each> renderer for EUIX Engine.
  */
 
-import { _getNodeAtPath, _getStaticNodeResolver, getForEachItemHash } from "../utils/constants.js";
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
+import { _getNodeAtPath, _getStaticNodeResolver, getForEachItemHash } from "../utils/constants.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 
@@ -385,7 +385,7 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                         const jitFn = EUIXExpressionParser.compileTemplateFunction(txt);
                         if (jitFn) {
                             getter = (item, ctx) => {
-                                const dataScope = engine ? (engine._rawState || engine.state) : null;
+                                const dataScope = engine ? engine._rawState || engine.state : null;
                                 return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
                             };
                         } else {
@@ -437,8 +437,10 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                                 const jitFn = EUIXExpressionParser.compileTemplateFunction(attrVal);
                                 if (jitFn) {
                                     getter = (item, ctx) => {
-                                        const dataScope = engine ? (engine._rawState || engine.state) : null;
-                                        return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                        const dataScope = engine ? engine._rawState || engine.state : null;
+                                        return jitFn(dataScope, null, ctx, engine, (p) =>
+                                            engine.resolveValueFromPath(p, ctx),
+                                        );
                                     };
                                 } else {
                                     getter = (_item, ctx) => engine.interpolate(attrVal, ctx);
@@ -511,8 +513,10 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                             const jitFn = EUIXExpressionParser.compileTemplateFunction(txt);
                             if (jitFn) {
                                 getter = (item, ctx) => {
-                                    const dataScope = engine ? (engine._rawState || engine.state) : null;
-                                    return jitFn(dataScope, null, ctx, engine, (p) => engine.resolveValueFromPath(p, ctx));
+                                    const dataScope = engine ? engine._rawState || engine.state : null;
+                                    return jitFn(dataScope, null, ctx, engine, (p) =>
+                                        engine.resolveValueFromPath(p, ctx),
+                                    );
                                 };
                             } else {
                                 getter = (_item, ctx) => engine.interpolate(txt, ctx);

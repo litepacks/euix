@@ -93,7 +93,7 @@ export function parseXmlToAst(xmlString, options = {}) {
                 return `${openTag}<![CDATA[\n${content}\n]]>${closeTag}`;
             }
             return match;
-        }
+        },
     );
 
     // 2. Remove stray closing tags for void elements & ensure self-closing for unclosed void tags
@@ -385,4 +385,3 @@ export const AstParser = {
 };
 
 export default AstParser;
-

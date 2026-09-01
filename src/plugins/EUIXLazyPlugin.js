@@ -217,7 +217,10 @@ export function EUIXLazyPlugin(EngineClass) {
 
             if (lastError) {
                 if (lastError.code !== "CIRCULAR_LAZY_DEPENDENCY") {
-                    console.error(`[EUIXLazyPlugin] Error loading lazy component '${key}' from '${entry.src}':`, lastError);
+                    console.error(
+                        `[EUIXLazyPlugin] Error loading lazy component '${key}' from '${entry.src}':`,
+                        lastError,
+                    );
                 }
                 throw lastError;
             }

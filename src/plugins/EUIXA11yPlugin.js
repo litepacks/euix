@@ -3,10 +3,10 @@
  * Accessibility (A11y) & Automated WAI-ARIA Focus Management Plugin for EUIX Engine.
  */
 
-import { createFocusTrap, getFocusableElements, FOCUSABLE_SELECTOR } from "./a11y/focusTrap.js";
 import { announce, getOrCreateAnnouncer, setupRovingTabIndex } from "./a11y/announcer.js";
+import { createFocusTrap, FOCUSABLE_SELECTOR, getFocusableElements } from "./a11y/focusTrap.js";
 
-export { createFocusTrap, getFocusableElements, FOCUSABLE_SELECTOR, announce, setupRovingTabIndex };
+export { announce, createFocusTrap, FOCUSABLE_SELECTOR, getFocusableElements, setupRovingTabIndex };
 
 export const EUIXA11yPlugin = {
     name: "a11y",
@@ -17,9 +17,7 @@ export const EUIXA11yPlugin = {
             announce(message, priority, doc);
         };
 
-        engineClass.prototype.createFocusTrap = function (element, options = {}) {
-            return createFocusTrap(element, options);
-        };
+        engineClass.prototype.createFocusTrap = (element, options = {}) => createFocusTrap(element, options);
 
         // Register declarative ANNOUNCE action
         if (typeof engineClass.registerAction === "function") {
@@ -53,9 +51,11 @@ export const EUIXA11yPlugin = {
 
             const isHidden = xmlNode.getAttribute("hidden") !== "false";
             if (isHidden) {
-                el.style.cssText = "position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;";
+                el.style.cssText =
+                    "position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;";
             } else {
-                if (xmlNode.getAttribute("class")) el.className = this.interpolate(xmlNode.getAttribute("class"), context);
+                if (xmlNode.getAttribute("class"))
+                    el.className = this.interpolate(xmlNode.getAttribute("class"), context);
             }
 
             const updateContent = (val) => {

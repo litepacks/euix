@@ -3,6 +3,7 @@
  * Component specification registry, async loader, slot projection, and scoped state engine for EUIX Engine.
  */
 
+import { processStyleTag } from "../renderer/DOMRenderer.js";
 import {
     getAttr,
     getChildNodes,
@@ -14,7 +15,6 @@ import {
     toNum,
     trimStr,
 } from "../utils/constants.js";
-import { processStyleTag } from "../renderer/DOMRenderer.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
     try {
@@ -85,7 +85,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
                         EngineClass.loadComponent(impName, impSrc, {
                             ...options,
                             parentStack: currentStack,
-                        })
+                        }),
                     );
                 }
             }
@@ -179,7 +179,7 @@ export function initComponentSchema(engine, specNode, context = {}) {
     // 1. Action / Workflow definitions
     if (isFn(engine.constructor.registerActionDef)) {
         const actionDefNodes = Array.from(
-            specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : []
+            specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : [],
         );
         actionDefNodes.forEach((def) => {
             const actName = def.getAttribute("name") || def.getAttribute("id");
@@ -251,7 +251,7 @@ export function initComponentSchema(engine, specNode, context = {}) {
     const apiEndpoints = specNode.querySelectorAll
         ? Array.from(specNode.querySelectorAll("api_endpoint, endpoint"))
         : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("api_endpoint") : []).concat(
-              Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("endpoint") : [])
+              Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("endpoint") : []),
           );
     if (isFn(engine.handleXHR) && apiEndpoints.length > 0) {
         apiEndpoints.forEach((node) => {
