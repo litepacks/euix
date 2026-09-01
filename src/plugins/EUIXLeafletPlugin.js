@@ -245,8 +245,14 @@ export const EUIXLeafletPlugin = {
 
                     this.setState(bindPath, items);
                     if (statusMsg) {
-                        const statusPath = this.parseBindPath("data.status");
-                        if (statusPath) this.setState(statusPath, statusMsg);
+                        const rawStatusBind =
+                            xmlNode.getAttribute("status_target") ||
+                            xmlNode.getAttribute("status_path") ||
+                            xmlNode.getAttribute("status_bind");
+                        if (rawStatusBind) {
+                            const statusPath = this.parseBindPath(rawStatusBind);
+                            if (statusPath) this.setState(statusPath, statusMsg);
+                        }
                     }
                 };
 

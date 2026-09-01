@@ -4,6 +4,23 @@
  * Provides touch, pointer, and HTML5 drag-and-drop mechanics with floating ghost previews.
  */
 
+function resolveDraggableId(context, el) {
+    if (context) {
+        if (context.id !== undefined) return context.id;
+        if (context.$item?.id !== undefined) return context.$item.id;
+        if (context.item?.id !== undefined) return context.item.id;
+        if (context.task?.id !== undefined) return context.task.id;
+        if (context.card?.id !== undefined) return context.card.id;
+        if (context._varName && context[context._varName]?.id !== undefined) return context[context._varName].id;
+        for (const k of Object.keys(context)) {
+            if (!k.startsWith("_") && !k.startsWith("$") && context[k] && typeof context[k] === "object" && context[k].id !== undefined) {
+                return context[k].id;
+            }
+        }
+    }
+    return el?.getAttribute ? el.getAttribute("data-id") || el.id || "" : "";
+}
+
 export const EUIXDragDropPlugin = {
     name: "dnd",
     install(engineClass) {
@@ -17,14 +34,17 @@ export const EUIXDragDropPlugin = {
             el.style.webkitUserSelect = "none";
             el.style.webkitUserDrag = "element";
 
+            el.addEventListener("dragstart", (e) => {
+                this.handleDragEvent("dragstart", e, el, context);
+            });
+
             el.addEventListener("pointerdown", (e) => {
                 if (
                     e.target?.closest &&
                     (e.target.closest("button") || e.target.closest("input") || e.target.closest("select"))
                 )
                     return;
-                const taskId =
-                    context && context.task && context.task.id ? context.task.id : el.getAttribute("data-id") || el.id;
+                const taskId = resolveDraggableId(context, el);
                 if (taskId) {
                     this.setState("dragged_id", String(taskId));
 
@@ -97,12 +117,7 @@ export const EUIXDragDropPlugin = {
                     e.target && typeof e.target.closest === "function"
                         ? e.target.closest('[draggable="true"]') || el
                         : el;
-                const dragVal =
-                    context && context.task && context.task.id
-                        ? context.task.id
-                        : dragEl
-                          ? dragEl.getAttribute("data-id") || dragEl.id
-                          : "";
+                const dragVal = resolveDraggableId(context, dragEl);
                 if (dragVal) {
                     this.setState("dragged_id", String(dragVal));
                 }

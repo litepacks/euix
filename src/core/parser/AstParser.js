@@ -86,7 +86,7 @@ export function parseXmlToAst(xmlString, options = {}) {
 
     // 1.6. Auto-protect raw JS inside RUN_SCRIPT action tags or <script> tags with CDATA
     processedXml = processedXml.replace(
-        /(<(?:on_[a-zA-Z0-9_-]+|step)\s+[^>]*?action=["']RUN_SCRIPT["'][^>]*?>)([\s\S]*?)(<\/(?:on_[a-zA-Z0-9_-]+|step)>)/gi,
+        /(<(?:on_[a-zA-Z0-9_-]+|step)\s+[^>]*?action=["'](?:RUN_SCRIPT|SCRIPT|EVAL_JS|EXEC_JS)["'][^>]*?>)([\s\S]*?)(<\/(?:on_[a-zA-Z0-9_-]+|step)>)/gi,
         (match, openTag, content, closeTag) => {
             if (!content || content.includes("<![CDATA[")) return match;
             if (/[<>&]/.test(content)) {
@@ -169,7 +169,7 @@ export function parseXmlToAst(xmlString, options = {}) {
 
     // 6. Auto-wrap raw script/action tags in CDATA if they contain unescaped code
     sanitizedXml = sanitizedXml.replace(
-        /(<(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)[^>]*action=["']RUN_SCRIPT["'][^>]*>)([\s\S]*?)(<\/(?:on_click|on_mount|on_unmount|on_interval|on_state_change|step|script)>)/gi,
+        /(<(?:on_[a-zA-Z0-9_-]+|step|script)[^>]*action=["'](?:RUN_SCRIPT|SCRIPT|EVAL_JS|EXEC_JS)["'][^>]*>)([\s\S]*?)(<\/(?:on_[a-zA-Z0-9_-]+|step|script)>)/gi,
         (m, openTag, content, closeTag) => {
             if (content.includes("<![CDATA[")) return m;
             return `${openTag}<![CDATA[${content}]]>${closeTag}`;
@@ -252,3 +252,13 @@ export function getAstCacheStats() {
         hitRatio: parseFloat(hitRatio.toFixed(4)),
     };
 }
+
+export const AstParser = {
+    parse: parseXmlToAst,
+    parseXmlToAst,
+    clearAstCache,
+    setAstCacheSize,
+    getAstCacheStats,
+};
+
+export default AstParser;

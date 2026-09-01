@@ -186,22 +186,46 @@ export const EUIXResiliencePlugin = {
             return handleDelayDirect(this, interpolatedMs, context);
         });
         engineClass.registerAction("WAIT", async function (actionNode, context) {
-            return this._handleActionInternal(
-                {
-                    ...actionNode,
-                    getAttribute: (attr) => (attr === "action" ? "DELAY" : actionNode.getAttribute(attr)),
-                },
-                context,
-            );
+            if (typeof this._handleActionInternal === "function") {
+                const delegatedNode = Object.create(actionNode || {}, {
+                    getAttribute: {
+                        value: (attr) => (attr === "action" ? "DELAY" : (actionNode?.getAttribute ? actionNode.getAttribute(attr) : null)),
+                        writable: true,
+                        configurable: true,
+                    },
+                });
+                return this._handleActionInternal(delegatedNode, context);
+            }
+            const msAttr =
+                actionNode?.getAttribute?.("ms") ||
+                actionNode?.getAttribute?.("delay") ||
+                actionNode?.getAttribute?.("for") ||
+                actionNode?.getAttribute?.("duration") ||
+                this.getChild?.(actionNode, "ms")?.textContent?.trim() ||
+                this.getChild?.(actionNode, "delay")?.textContent?.trim();
+            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : (msAttr || "0");
+            return handleDelayDirect(this, interpolatedMs, context);
         });
         engineClass.registerAction("SLEEP", async function (actionNode, context) {
-            return this._handleActionInternal(
-                {
-                    ...actionNode,
-                    getAttribute: (attr) => (attr === "action" ? "DELAY" : actionNode.getAttribute(attr)),
-                },
-                context,
-            );
+            if (typeof this._handleActionInternal === "function") {
+                const delegatedNode = Object.create(actionNode || {}, {
+                    getAttribute: {
+                        value: (attr) => (attr === "action" ? "DELAY" : (actionNode?.getAttribute ? actionNode.getAttribute(attr) : null)),
+                        writable: true,
+                        configurable: true,
+                    },
+                });
+                return this._handleActionInternal(delegatedNode, context);
+            }
+            const msAttr =
+                actionNode?.getAttribute?.("ms") ||
+                actionNode?.getAttribute?.("delay") ||
+                actionNode?.getAttribute?.("for") ||
+                actionNode?.getAttribute?.("duration") ||
+                this.getChild?.(actionNode, "ms")?.textContent?.trim() ||
+                this.getChild?.(actionNode, "delay")?.textContent?.trim();
+            const interpolatedMs = this.interpolate ? this.interpolate(msAttr || "0", context) : (msAttr || "0");
+            return handleDelayDirect(this, interpolatedMs, context);
         });
 
         // Register TIMEOUT Action Handler

@@ -25,7 +25,7 @@ export function resolveBinding(engine, xmlNode, context = {}) {
         if (raw.startsWith("data.")) {
             return { type: "state", path: raw.slice(5) };
         }
-        const ctxMatch = raw.match(/^(\w+)\.(\w+)$/);
+        const ctxMatch = raw.match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)\.(.+)$/);
         if (ctxMatch && context[ctxMatch[1]] && typeof context[ctxMatch[1]] === "object") {
             return { type: "context", scope: ctxMatch[1], prop: ctxMatch[2] };
         }
@@ -39,7 +39,16 @@ export function resolveBinding(engine, xmlNode, context = {}) {
 export function getBindingValue(engine, binding, context = {}) {
     if (!binding) return undefined;
     if (binding.type === "state") return engine.getState(binding.path);
-    return context[binding.scope] ? context[binding.scope][binding.prop] : undefined;
+    if (!context[binding.scope]) return undefined;
+    if (binding.prop.includes(".")) {
+        const parts = binding.prop.split(".");
+        let curr = context[binding.scope];
+        for (let i = 0; i < parts.length && curr != null; i++) {
+            curr = curr[parts[i]];
+        }
+        return curr;
+    }
+    return context[binding.scope][binding.prop];
 }
 
 export function setBindingValue(engine, binding, value, context = {}, options = {}) {
@@ -49,7 +58,19 @@ export function setBindingValue(engine, binding, value, context = {}, options = 
         return;
     }
     if (context[binding.scope] && typeof context[binding.scope] === "object") {
-        context[binding.scope][binding.prop] = value;
+        if (binding.prop.includes(".")) {
+            const parts = binding.prop.split(".");
+            let curr = context[binding.scope];
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (!curr[parts[i]] || typeof curr[parts[i]] !== "object") {
+                    curr[parts[i]] = {};
+                }
+                curr = curr[parts[i]];
+            }
+            curr[parts[parts.length - 1]] = value;
+        } else {
+            context[binding.scope][binding.prop] = value;
+        }
         if (!options.silent && !engine._isBatching && !engine._batching) {
             engine.syncBindings(binding.scope, context[binding.scope]);
             if (context._parentStateKey) {

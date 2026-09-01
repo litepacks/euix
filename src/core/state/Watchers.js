@@ -13,10 +13,12 @@ export function watch(engine, key, callback) {
     engine._stateWatchers.get(parsedKey).push(callback);
     return () => {
         const list = engine._stateWatchers.get(parsedKey) || [];
-        engine._stateWatchers.set(
-            parsedKey,
-            list.filter((cb) => cb !== callback),
-        );
+        const nextList = list.filter((cb) => cb !== callback);
+        if (nextList.length === 0) {
+            engine._stateWatchers.delete(parsedKey);
+        } else {
+            engine._stateWatchers.set(parsedKey, nextList);
+        }
     };
 }
 

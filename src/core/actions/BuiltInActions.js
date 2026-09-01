@@ -167,12 +167,21 @@ export function _handleFocusAction(actionNode, context = {}) {
 }
 
 export function _handleRevalidateAction(actionNode, context = {}) {
-    const tagNode = this.getChild(actionNode, "tag") || this.getChild(actionNode, "url");
+    const routeAttr = actionNode?.getAttribute ? actionNode.getAttribute("route") : null;
+    if (routeAttr && this.router && typeof this.router.revalidate === "function") {
+        this.router.revalidate(routeAttr);
+        return;
+    }
+    const tagNode = this.getChild ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") : null;
     const rawTag = tagNode
         ? tagNode.textContent.trim()
-        : actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "";
+        : actionNode?.getAttribute ? actionNode.getAttribute("tag") || actionNode.getAttribute("url") || "" : "";
     const tag = this.interpolate(rawTag, context);
-    this.revalidateApi(tag);
+    if (typeof this.revalidateApi === "function") {
+        this.revalidateApi(tag);
+    } else if (this.router && typeof this.router.revalidate === "function") {
+        this.router.revalidate(tag);
+    }
 }
 
 export function _handleSetTitleAction(actionNode, context = {}) {
@@ -873,6 +882,54 @@ export function _handleMutateStateAction(actionNode, context = {}) {
               ? [...this._rawState[path]]
               : [];
         list.reverse();
+        this.batch(() => {
+            this.setState(path, list);
+            this.applyResets(actionNode);
+        });
+        return;
+    }
+
+    if (operation === MUTATION_OPS.SORT) {
+        const curVal = this.getState(path);
+        const list = Array.isArray(curVal)
+            ? [...curVal]
+            : Array.isArray(this._rawState?.[path])
+              ? [...this._rawState[path]]
+              : [];
+        const byNode = this.getChild(actionNode, "by") || this.getChild(actionNode, "field") || this.getChild(actionNode, "key");
+        const rawBy = byNode ? byNode.textContent.trim() : actionNode.getAttribute("by") || actionNode.getAttribute("field") || actionNode.getAttribute("key") || "";
+        const field = this.interpolate(rawBy, context);
+
+        const orderNode = this.getChild(actionNode, "order") || this.getChild(actionNode, "direction");
+        const rawOrder = orderNode ? orderNode.textContent.trim() : actionNode.getAttribute("order") || actionNode.getAttribute("direction") || "asc";
+        const order = this.interpolate(rawOrder, context).toLowerCase();
+        const isDesc = order === "desc" || order === "descending" || order === "reverse";
+
+        if (field) {
+            list.sort((a, b) => {
+                const valA = a != null && typeof a === "object" ? a[field] : a;
+                const valB = b != null && typeof b === "object" ? b[field] : b;
+                if (valA === valB) return 0;
+                if (valA == null) return isDesc ? -1 : 1;
+                if (valB == null) return isDesc ? 1 : -1;
+                if (typeof valA === "number" && typeof valB === "number") {
+                    return isDesc ? valB - valA : valA - valB;
+                }
+                const strA = String(valA);
+                const strB = String(valB);
+                return isDesc ? strB.localeCompare(strA) : strA.localeCompare(strB);
+            });
+        } else {
+            list.sort((a, b) => {
+                if (a === b) return 0;
+                if (a == null) return isDesc ? -1 : 1;
+                if (b == null) return isDesc ? 1 : -1;
+                if (typeof a === "number" && typeof b === "number") {
+                    return isDesc ? b - a : a - b;
+                }
+                return isDesc ? String(b).localeCompare(String(a)) : String(a).localeCompare(String(b));
+            });
+        }
         this.batch(() => {
             this.setState(path, list);
             this.applyResets(actionNode);

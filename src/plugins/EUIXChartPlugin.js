@@ -545,7 +545,11 @@ export const EUIXChartPlugin = {
                 actionNode.getAttribute("chart_id") ||
                 actionNode.getAttribute("id");
 
-            let chart = chartId ? this._charts.get(chartId) : this._charts.values().next().value;
+            let chart = chartId
+                ? this._charts.get(chartId)
+                : this._charts.size === 1
+                  ? this._charts.values().next().value
+                  : null;
 
             if (!chart && chartId && typeof document !== "undefined") {
                 const el =
@@ -560,12 +564,12 @@ export const EUIXChartPlugin = {
                 }
             }
 
-            if (!chart && this._charts.size > 0) {
+            if (!chart && !chartId && this._charts.size === 1) {
                 chart = this._charts.values().next().value;
             }
 
             if (!chart && actionName !== "CHART_DESTROY") {
-                console.warn(`[EUIXChartPlugin] Action "${actionName}" target chart "${chartId}" not found.`);
+                console.warn(`[EUIXChartPlugin] Action "${actionName}" target chart "${chartId || "(unspecified)"}" not found.`);
                 return false;
             }
 

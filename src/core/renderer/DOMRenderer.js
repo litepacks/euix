@@ -1935,6 +1935,11 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                     if (e.target.checked) engine.setBindingValue(binding, el.value, context);
                 };
             }
+        } else if (binding) {
+            const val = engine.getBindingValue(binding, context);
+            el.value = val !== undefined && val !== null ? val : "";
+            if (binding.type === "state") engine.registerBinding(binding.path, el, "input");
+            el.oninput = (e) => engine.setBindingValue(binding, e.target.value, context, { sourceEl: e.target });
         } else if (bindPath) {
             el.value = engine.getState(bindPath) ?? "";
             engine.registerBinding(bindPath, el, "input");

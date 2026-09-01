@@ -11,7 +11,26 @@ let dialogUidCounter = 0;
 export const EUIXDialogPlugin = {
     name: "dialog",
     install(engineClass) {
+        const proto = engineClass.prototype;
+        proto._activeDialogs = proto._activeDialogs || new Set();
+
+        const originalUnmount = proto.unmount;
+        proto.unmount = function () {
+            if (this._activeDialogs) {
+                this._activeDialogs.forEach((cleanup) => {
+                    try {
+                        cleanup();
+                    } catch (_) {}
+                });
+                this._activeDialogs.clear();
+            }
+            if (typeof originalUnmount === "function") {
+                return originalUnmount.apply(this, arguments);
+            }
+        };
+
         engineClass.prototype.renderDialog = function (xmlNode, context = {}) {
+            if (!this._activeDialogs) this._activeDialogs = new Set();
             const rawBind =
                 xmlNode.getAttribute("bind") ||
                 xmlNode.getAttribute("show") ||
@@ -54,6 +73,8 @@ export const EUIXDialogPlugin = {
                     } else {
                         this.setState(bindPath, false);
                     }
+                } else {
+                    updateDialogState(false);
                 }
             };
 
@@ -89,6 +110,7 @@ export const EUIXDialogPlugin = {
             panel.setAttribute("aria-modal", "true");
             panel.setAttribute("aria-labelledby", titleId);
             panel.setAttribute("tabindex", "-1");
+            if (descriptionNode) panel.setAttribute("aria-describedby", descId);
 
             const header = document.createElement("div");
             header.className =
@@ -113,6 +135,7 @@ export const EUIXDialogPlugin = {
 
             header.appendChild(titleEl);
             header.appendChild(closeBtn);
+            panel.appendChild(header);
 
             const body = document.createElement("div");
             body.className = xmlNode.getAttribute("body_class") || "dialog-body p-5";
@@ -136,7 +159,6 @@ export const EUIXDialogPlugin = {
                 if (el) body.appendChild(el);
             }
 
-            panel.appendChild(header);
             panel.appendChild(body);
 
             if (actionsNode) {
@@ -156,11 +178,24 @@ export const EUIXDialogPlugin = {
             panel.onclick = (e) => e.stopPropagation();
             backdrop.appendChild(panel);
 
-            // Focus Trap Instance
             focusTrap = createFocusTrap(panel, {
                 initialFocus: initialFocus || closeBtn,
                 onEscape: () => close(),
             });
+
+            const cleanupDialog = () => {
+                if (focusTrap && focusTrap.isActive()) {
+                    focusTrap.deactivate();
+                }
+                if (lockScroll && typeof document !== "undefined" && document.body) {
+                    document.body.style.overflow = originalBodyOverflow;
+                }
+                if (containerNode && containerNode.contains(backdrop)) {
+                    try {
+                        containerNode.removeChild(backdrop);
+                    } catch (_) {}
+                }
+            };
 
             const updateDialogState = (isOpen) => {
                 open = isOpen;
@@ -170,21 +205,18 @@ export const EUIXDialogPlugin = {
                         containerNode.appendChild(backdrop);
                     }
 
-                    // Body scroll lock
                     if (lockScroll && typeof document !== "undefined" && document.body) {
                         originalBodyOverflow = document.body.style.overflow;
                         document.body.style.overflow = "hidden";
                     }
 
-                    // Activate Focus Trap
                     focusTrap.activate();
+                    this._activeDialogs.add(cleanupDialog);
                 } else {
-                    // Deactivate Focus Trap & restore focus
                     if (focusTrap.isActive()) {
                         focusTrap.deactivate();
                     }
 
-                    // Restore body scroll
                     if (lockScroll && typeof document !== "undefined" && document.body) {
                         document.body.style.overflow = originalBodyOverflow;
                     }
@@ -192,6 +224,7 @@ export const EUIXDialogPlugin = {
                     if (containerNode.contains(backdrop)) {
                         containerNode.removeChild(backdrop);
                     }
+                    this._activeDialogs.delete(cleanupDialog);
                 }
             };
 

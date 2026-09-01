@@ -107,5 +107,77 @@ export function applyArrayMutation(current, operation, payload = {}) {
         }
         return current;
     }
+    if (op === MUTATION_OPS.REVERSE) {
+        current.reverse();
+        return current;
+    }
+    if (op === MUTATION_OPS.MOVE_UP) {
+        let idx = -1;
+        if (payload && payload.index !== undefined) {
+            idx = Number(payload.index);
+        } else if (payload?.where) {
+            const { field, equals } = payload.where;
+            idx = current.findIndex(
+                (item) => item && (item[field] === equals || String(item[field]) === String(equals)),
+            );
+        }
+        if (idx > 0 && idx < current.length) {
+            const temp = current[idx];
+            current[idx] = current[idx - 1];
+            current[idx - 1] = temp;
+        }
+        return current;
+    }
+    if (op === MUTATION_OPS.MOVE_DOWN) {
+        let idx = -1;
+        if (payload && payload.index !== undefined) {
+            idx = Number(payload.index);
+        } else if (payload?.where) {
+            const { field, equals } = payload.where;
+            idx = current.findIndex(
+                (item) => item && (item[field] === equals || String(item[field]) === String(equals)),
+            );
+        }
+        if (idx >= 0 && idx < current.length - 1) {
+            const temp = current[idx];
+            current[idx] = current[idx + 1];
+            current[idx + 1] = temp;
+        }
+        return current;
+    }
+    if (op === MUTATION_OPS.SORT) {
+        const field = payload?.by || payload?.field || payload?.key;
+        const order = String(payload?.order || payload?.direction || "asc").toLowerCase();
+        const isDesc = order === "desc" || order === "descending" || order === "reverse";
+        if (typeof payload?.compare === "function") {
+            current.sort(payload.compare);
+        } else if (field) {
+            current.sort((a, b) => {
+                const valA = a != null && typeof a === "object" ? a[field] : a;
+                const valB = b != null && typeof b === "object" ? b[field] : b;
+                if (valA === valB) return 0;
+                if (valA == null) return isDesc ? -1 : 1;
+                if (valB == null) return isDesc ? 1 : -1;
+                if (typeof valA === "number" && typeof valB === "number") {
+                    return isDesc ? valB - valA : valA - valB;
+                }
+                const strA = String(valA);
+                const strB = String(valB);
+                return isDesc ? strB.localeCompare(strA) : strA.localeCompare(strB);
+            });
+        } else {
+            current.sort((a, b) => {
+                if (a === b) return 0;
+                if (a == null) return isDesc ? -1 : 1;
+                if (b == null) return isDesc ? 1 : -1;
+                if (typeof a === "number" && typeof b === "number") {
+                    return isDesc ? b - a : a - b;
+                }
+                return isDesc ? String(b).localeCompare(String(a)) : String(a).localeCompare(String(b));
+            });
+        }
+        return current;
+    }
     return current;
 }
+

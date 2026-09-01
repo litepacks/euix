@@ -344,11 +344,14 @@ export const EUIXReactivePlugin = {
                 this._stateWatchers.get(parsedKey).push(handlerOrFn);
                 return () => {
                     const list = this._stateWatchers ? this._stateWatchers.get(parsedKey) || [] : [];
-                    if (this._stateWatchers)
-                        this._stateWatchers.set(
-                            parsedKey,
-                            list.filter((cb) => cb !== handlerOrFn),
-                        );
+                    if (this._stateWatchers) {
+                        const nextList = list.filter((cb) => cb !== handlerOrFn);
+                        if (nextList.length === 0) {
+                            this._stateWatchers.delete(parsedKey);
+                        } else {
+                            this._stateWatchers.set(parsedKey, nextList);
+                        }
+                    }
                 };
             }
 

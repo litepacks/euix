@@ -689,14 +689,16 @@ export const EUIXApiPlugin = {
                         if (select) data = this.getJsonPath(data, select);
                         if (Array.isArray(data)) {
                             data = this.mapResponseItems(data, itemMapNode);
+                        } else if (typeof data === "number") {
+                            // Preserve native number type and precision
                         } else if (
-                            typeof data === "number" ||
-                            (typeof data === "string" &&
-                                !Number.isNaN(parseFloat(data)) &&
-                                /^\d+(\.\d+)?$/.test(String(data).trim()))
+                            typeof data === "string" &&
+                            target &&
+                            typeof this._rawState?.[target] === "number" &&
+                            !Number.isNaN(parseFloat(data)) &&
+                            /^-?\d+(\.\d+)?$/.test(String(data).trim())
                         ) {
-                            const num = parseFloat(data);
-                            data = Number.isInteger(num) ? String(num) : num.toFixed(2);
+                            data = parseFloat(data);
                         }
 
                         if (target) {

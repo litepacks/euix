@@ -5,6 +5,23 @@
  * with dynamic reactive state bindings (like React Helmet).
  */
 
+function extractHeadKeys(text) {
+    if (!text || !text.includes("{")) return [];
+    const keys = [];
+    const regex = /(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)|\{([a-zA-Z0-9_]+)\}/g;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+        const fullPath = m[1] || m[2];
+        if (fullPath) {
+            const rootKey = fullPath.split(".")[0].split("[")[0];
+            if (rootKey && !["data", "local", "$local", "parent", "props", "$props"].includes(rootKey)) {
+                keys.push(rootKey);
+            }
+        }
+    }
+    return keys;
+}
+
 export const EUIXHeadPlugin = {
     name: "head",
     install(engineClass) {
@@ -67,9 +84,9 @@ export const EUIXHeadPlugin = {
             updateTitle();
 
             // Track dynamic reactive placeholders
-            const matches = Array.from(rawText.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g));
-            if (matches.length > 0) {
-                const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
+            const keys = extractHeadKeys(rawText);
+            if (keys.length > 0) {
+                const uniqueKeys = new Set(keys);
                 uniqueKeys.forEach((key) => {
                     const isLocal =
                         context._localState &&
@@ -130,20 +147,16 @@ export const EUIXHeadPlugin = {
             updateMeta();
 
             // Track dynamic placeholders
-            if (rawContent && rawContent.includes("{")) {
-                const matches = Array.from(
-                    rawContent.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g),
-                );
-                if (matches.length > 0) {
-                    const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
-                    uniqueKeys.forEach((key) => {
-                        const isLocal =
-                            context._localState &&
-                            (context._localState[key] !== undefined || rawContent.includes(`local.${key}`));
-                        const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
-                        this.registerBinding(bindKey, metaEl, "head_meta", updateMeta);
-                    });
-                }
+            const keys = extractHeadKeys(rawContent);
+            if (keys.length > 0) {
+                const uniqueKeys = new Set(keys);
+                uniqueKeys.forEach((key) => {
+                    const isLocal =
+                        context._localState &&
+                        (context._localState[key] !== undefined || rawContent.includes(`local.${key}`));
+                    const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
+                    this.registerBinding(bindKey, metaEl, "head_meta", updateMeta);
+                });
             }
 
             return document.createComment("euix:meta");
@@ -176,20 +189,16 @@ export const EUIXHeadPlugin = {
 
             updateLink();
 
-            if (rawHref.includes("{")) {
-                const matches = Array.from(
-                    rawHref.matchAll(/(?:parent\.)?(?:data|local|\$local)\.([a-zA-Z0-9_.[\]]+)/g),
-                );
-                if (matches.length > 0) {
-                    const uniqueKeys = new Set(matches.map((m) => m[1].split(".")[0]));
-                    uniqueKeys.forEach((key) => {
-                        const isLocal =
-                            context._localState &&
-                            (context._localState[key] !== undefined || rawHref.includes(`local.${key}`));
-                        const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
-                        this.registerBinding(bindKey, linkEl, "head_link", updateLink);
-                    });
-                }
+            const keys = extractHeadKeys(rawHref);
+            if (keys.length > 0) {
+                const uniqueKeys = new Set(keys);
+                uniqueKeys.forEach((key) => {
+                    const isLocal =
+                        context._localState &&
+                        (context._localState[key] !== undefined || rawHref.includes(`local.${key}`));
+                    const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
+                    this.registerBinding(bindKey, linkEl, "head_link", updateLink);
+                });
             }
 
             return document.createComment("euix:link");

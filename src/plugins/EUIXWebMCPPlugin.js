@@ -249,8 +249,12 @@ export function validateInput(input = {}, schema = {}) {
         }
 
         // Enum validation
-        if (spec.enum && Array.isArray(spec.enum)) {
-            if (!spec.enum.includes(sanitizedInput[key])) {
+        if (spec.enum && Array.isArray(spec.enum) && spec.enum.length > 0) {
+            const valToCheck = sanitizedInput[key];
+            const isMatch = spec.enum.some(
+                (e) => e === valToCheck || String(e) === String(valToCheck),
+            );
+            if (!isMatch) {
                 throw new EUIXWebMCPError(
                     "VALIDATION_ERROR",
                     `Parameter '${key}' value '${sanitizedInput[key]}' is not in allowed enum values [${spec.enum.join(", ")}].`,

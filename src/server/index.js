@@ -227,9 +227,29 @@ function _renderNode(node, state, context = {}, compRegistry = new Map()) {
         htmlTag = "div";
         const dir = attrs.direction || "row";
         const gap = attrs.gap ? `gap: ${attrs.gap}px;` : "";
-        const align = attrs.align ? `align-items: ${attrs.align};` : "";
-        const justify = attrs.justify ? `justify-content: ${attrs.justify};` : "";
-        const flexStyle = `display: flex; flex-direction: ${dir}; ${gap} ${align} ${justify}`.trim();
+        const alignVal = attrs.align
+            ? attrs.align === "start"
+                ? "flex-start"
+                : attrs.align === "end"
+                  ? "flex-end"
+                  : attrs.align
+            : "";
+        const align = alignVal ? `align-items: ${alignVal};` : "";
+        const justifyVal = attrs.justify
+            ? attrs.justify === "between"
+                ? "space-between"
+                : attrs.justify === "around"
+                  ? "space-around"
+                  : attrs.justify === "evenly"
+                    ? "space-evenly"
+                    : attrs.justify === "start"
+                      ? "flex-start"
+                      : attrs.justify === "end"
+                        ? "flex-end"
+                        : attrs.justify
+            : "";
+        const justify = justifyVal ? `justify-content: ${justifyVal};` : "";
+        const flexStyle = `display: flex; flex-direction: ${dir}; ${gap} ${align} ${justify}`.replace(/\s+/g, " ").trim();
         attrs["style"] = attrs["style"] ? `${flexStyle}; ${attrs["style"]}` : flexStyle;
         delete attrs.direction;
         delete attrs.gap;

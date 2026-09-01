@@ -196,18 +196,39 @@ export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
         observer.observe(domEl);
     }
 
-    // 5. <on_unmount> / <on_destroy>
+    // 5. <on_unmount> / <on_destroy> (Shared MutationObserver to prevent N observers on document.body)
     const onUnmountNodes = [...engine.getChildren(xmlNode, "on_unmount"), ...engine.getChildren(xmlNode, "on_destroy")];
     if (onUnmountNodes.length && typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
-        let fired = false;
-        const observer = new MutationObserver(() => {
-            if (!fired && !document.body.contains(domEl)) {
-                fired = true;
-                observer.disconnect();
-                onUnmountNodes.forEach((node) => engine.handleAction(node, context));
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
+        registerUnmountCallback(engine, domEl, onUnmountNodes, context);
+    }
+}
+
+export function registerUnmountCallback(engine, domEl, onUnmountNodes, context) {
+    if (!engine._unmountTracked) {
+        engine._unmountTracked = new Map();
+    }
+    engine._unmountTracked.set(domEl, { onUnmountNodes, context });
+
+    if (!engine._sharedUnmountObserver && typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+        const rootTarget = document.body || engine.container;
+        if (rootTarget) {
+            engine._sharedUnmountObserver = new MutationObserver(() => {
+                if (!engine._unmountTracked || engine._unmountTracked.size === 0) return;
+                const toRemove = [];
+                for (const [el, entry] of engine._unmountTracked.entries()) {
+                    if (!document.body || !document.body.contains(el)) {
+                        toRemove.push(el);
+                        entry.onUnmountNodes.forEach((node) => engine.handleAction(node, entry.context));
+                    }
+                }
+                toRemove.forEach((el) => engine._unmountTracked.delete(el));
+                if (engine._unmountTracked.size === 0 && engine._sharedUnmountObserver) {
+                    engine._sharedUnmountObserver.disconnect();
+                    engine._sharedUnmountObserver = null;
+                }
+            });
+            engine._sharedUnmountObserver.observe(rootTarget, { childList: true, subtree: true });
+        }
     }
 }
 
@@ -740,6 +761,13 @@ export function destroy(engine) {
     if (engine._activeIntervals && engine._activeIntervals.length > 0) {
         engine._activeIntervals.forEach((id) => clearInterval(id));
         engine._activeIntervals = [];
+    }
+    if (engine._sharedUnmountObserver) {
+        engine._sharedUnmountObserver.disconnect();
+        engine._sharedUnmountObserver = null;
+    }
+    if (engine._unmountTracked) {
+        engine._unmountTracked.clear();
     }
     if (engine._bindings) {
         engine._bindings.clear();

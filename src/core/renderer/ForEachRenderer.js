@@ -285,6 +285,9 @@ export function _isComplexForEachChild(engine, node) {
     const tag = (node.tagName || "").toLowerCase();
     const EngineClass = engine.constructor;
     if (
+        node.getAttribute?.("draggable") === "true" ||
+        node.getAttribute?.("draggable") === "" ||
+        node.getAttribute?.("bind") ||
         (tag === "component" &&
             (node.getAttribute("src") ||
                 (node.getAttribute("name") &&

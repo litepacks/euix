@@ -110,7 +110,7 @@ export class EUIXDateFormatter {
             const str = value.trim();
             if (str === "now") return new Date();
             // Numeric timestamp string
-            if (/^\d{10,13}$/.test(str)) {
+            if (/^\d{1,13}$/.test(str)) {
                 const num = parseInt(str, 10);
                 const d = new Date(num < 1e11 ? num * 1000 : num);
                 return Number.isNaN(d.getTime()) ? null : d;

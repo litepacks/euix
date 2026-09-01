@@ -668,14 +668,50 @@ export const EUIXRouterPlugin = {
         engineClass.registerAction("NAVIGATE", handleNavigate);
         engineClass.registerAction("ROUTER_NAVIGATE", handleNavigate);
 
-        const handleRevalidate = async function (actionNode, context) {
+        const handleRouterRevalidate = async function (actionNode, context) {
             if (!this.router) return false;
             const routeId = actionNode.getAttribute("route") || actionNode.getAttribute("id");
             await this.router.revalidate(routeId);
             return true;
         };
-        engineClass.registerAction("REVALIDATE", handleRevalidate);
-        engineClass.registerAction("ROUTER_REVALIDATE", handleRevalidate);
+
+        const handleHybridRevalidate = async function (actionNode, context) {
+            const routeAttr = actionNode.getAttribute("route");
+            const tagAttr = actionNode.getAttribute("tag") || actionNode.getAttribute("url");
+            const tagChild = this.getChild ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") : null;
+
+            if (routeAttr && this.router) {
+                await this.router.revalidate(routeAttr);
+                return true;
+            }
+
+            if ((tagAttr || tagChild) && typeof this.revalidateApi === "function") {
+                const rawTag = tagChild ? tagChild.textContent.trim() : tagAttr;
+                const tag = this.interpolate(rawTag || "", context);
+                await this.revalidateApi(tag);
+                return true;
+            }
+
+            if (this.router && actionNode.getAttribute("id") && typeof this.revalidateApi !== "function") {
+                await this.router.revalidate(actionNode.getAttribute("id"));
+                return true;
+            }
+
+            let handled = false;
+            if (typeof this.revalidateApi === "function") {
+                const id = actionNode.getAttribute("id") || "";
+                await this.revalidateApi(id);
+                handled = true;
+            }
+            if (this.router) {
+                await this.router.revalidate();
+                handled = true;
+            }
+            return handled;
+        };
+
+        engineClass.registerAction("REVALIDATE", handleHybridRevalidate);
+        engineClass.registerAction("ROUTER_REVALIDATE", handleRouterRevalidate);
 
         engineClass.registerAction("ROUTER_BACK", function () {
             if (this.router) this.router.back();

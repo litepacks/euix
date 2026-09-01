@@ -51,8 +51,9 @@ export const EUIXValidationPlugin = {
             const strVal = val !== undefined && val !== null ? String(val).trim() : "";
             let errorMsg = null;
 
-            // 1. Required rule
-            if (rules.required && !strVal) {
+            // 1. Required rule (handles empty strings, null, undefined, and boolean false)
+            const isUncheckedBool = val === false || (typeof val === "boolean" && !val);
+            if (rules.required && (!strVal || isUncheckedBool)) {
                 errorMsg = rules.requiredMsg || rules.message || `${cleanKey} is required`;
             }
 
@@ -168,6 +169,14 @@ export const EUIXValidationPlugin = {
             return { isValid, errors };
         };
 
+        proto.validate = function () {
+            return this.validateForm().isValid;
+        };
+
+        proto.validateAll = function () {
+            return this.validateForm();
+        };
+
         /**
          * Sets an individual field's validation error message.
          * @param {string} fieldId
@@ -196,6 +205,26 @@ export const EUIXValidationPlugin = {
             this.syncBindings("errors", { ...this._formErrors });
             this.syncBindings("$errors", { ...this._formErrors });
             this.syncBindings("$isValid", this._isFormValid);
+        };
+
+        /**
+         * Gets the validation error message for a specific field.
+         * @param {string} fieldId
+         * @returns {string|null}
+         */
+        proto.getFieldError = function (fieldId) {
+            this._initValidationEngine();
+            const cleanKey = this.parseBindPath(fieldId);
+            return this._formErrors?.[cleanKey] || null;
+        };
+
+        /**
+         * Gets all current form validation errors.
+         * @returns {Record<string, string>}
+         */
+        proto.getFormErrors = function () {
+            this._initValidationEngine();
+            return { ...(this._formErrors || {}) };
         };
 
         /**
@@ -272,6 +301,52 @@ export const EUIXValidationPlugin = {
                             }
                         }
                     });
+                }
+            });
+
+            // Also scan form input elements directly for inline validation attributes
+            const inputTags = ["input", "textarea", "select"];
+            inputTags.forEach((it) => {
+                const elements = doc.getElementsByTagName(it);
+                for (let i = 0; i < elements.length; i++) {
+                    const el = elements[i];
+                    const bindAttr = el.getAttribute("bind") || el.getAttribute("id") || el.getAttribute("name");
+                    const hasRule =
+                        el.getAttribute("required") === "true" ||
+                        el.getAttribute("email") === "true" ||
+                        el.getAttribute("min_length") ||
+                        el.getAttribute("minlength") ||
+                        el.getAttribute("max_length") ||
+                        el.getAttribute("maxlength") ||
+                        el.getAttribute("pattern");
+                    if (bindAttr && hasRule) {
+                        const cleanBind = this.parseBindPath(bindAttr);
+                        const existing = this._validationRules.get(cleanBind) || {};
+                        this.registerValidationRule(cleanBind, {
+                            ...existing,
+                            required: existing.required || el.getAttribute("required") === "true",
+                            requiredMsg:
+                                el.getAttribute("required_msg") ||
+                                el.getAttribute("required_message") ||
+                                existing.requiredMsg,
+                            email:
+                                existing.email ||
+                                el.getAttribute("email") === "true" ||
+                                el.getAttribute("type") === "email",
+                            emailMsg: el.getAttribute("email_msg") || existing.emailMsg,
+                            minLength:
+                                el.getAttribute("min_length") ||
+                                el.getAttribute("minlength") ||
+                                existing.minLength,
+                            minLengthMsg: el.getAttribute("min_length_msg") || existing.minLengthMsg,
+                            maxLength:
+                                el.getAttribute("max_length") ||
+                                el.getAttribute("maxlength") ||
+                                existing.maxLength,
+                            maxLengthMsg: el.getAttribute("max_length_msg") || existing.maxLengthMsg,
+                            message: el.getAttribute("message") || el.getAttribute("msg") || existing.message,
+                        });
+                    }
                 }
             });
         };
