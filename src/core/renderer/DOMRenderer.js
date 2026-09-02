@@ -21,6 +21,8 @@ import {
     safeStringify,
 } from "../utils/constants.js";
 import { renderForEach } from "./ForEachRenderer.js";
+import { renderErrorBoundary } from "./ErrorBoundaryRenderer.js";
+import { extractBindModifiers, coerceBindingValue } from "../binding/BindingResolver.js";
 
 export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
     if (!el || !isElem(xmlNode)) return;
@@ -1113,7 +1115,7 @@ export function resolveBindPath(engine, xmlNode) {
         return engine.parseBindPath(xmlNode);
     }
     if (!xmlNode) return "";
-    const bindAttr = typeof xmlNode.getAttribute === "function" ? xmlNode.getAttribute("bind") : null;
+    const { bindAttr } = extractBindModifiers(xmlNode);
     if (bindAttr) return engine.parseBindPath(bindAttr);
 
     const onChange = engine.getChild(xmlNode, "on_change");
@@ -1462,6 +1464,9 @@ export function isStaticSubtree(xmlNode, engine = null) {
         tagName === "form" ||
         tagName === "for_each" ||
         tagName === "component" ||
+        tagName === "error_boundary" ||
+        tagName === "error-boundary" ||
+        tagName === "boundary" ||
         tagName === "import" ||
         tagName === "lazy" ||
         tagName === "slot" ||
@@ -1734,21 +1739,101 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             projectedNodes = slots.default;
         }
 
+        // 1. Extract scoped slot properties from <slot ...> attributes (e.g. item="{item}", index="{$index}")
+        const slotScopeProps = {};
+        if (xmlNode.attributes && xmlNode.attributes.length > 0) {
+            const aLen = xmlNode.attributes.length;
+            for (let i = 0; i < aLen; i++) {
+                const a = xmlNode.attributes[i];
+                if (a.name !== "name" && a.name !== "type" && a.name !== "class" && a.name !== "style") {
+                    const val = a.value;
+                    let resolvedVal;
+                    if (
+                        typeof val === "string" &&
+                        val.startsWith("{") &&
+                        val.endsWith("}") &&
+                        !val.slice(1, -1).includes("{")
+                    ) {
+                        const rawExpr = val.slice(1, -1).trim();
+                        resolvedVal = engine.resolveValueFromPath(rawExpr, context);
+                        if (resolvedVal === undefined) {
+                            try {
+                                resolvedVal = EUIXExpressionParser.eval(rawExpr, (k) =>
+                                    engine.resolveValueFromPath(k, context),
+                                );
+                            } catch (_) {
+                                resolvedVal = engine.interpolate(val, context);
+                            }
+                        }
+                    } else {
+                        resolvedVal = engine.interpolate(val, context);
+                    }
+                    slotScopeProps[a.name] = resolvedVal;
+                }
+            }
+        }
+
         if (projectedNodes.length > 0) {
+            const baseContext = slots?.parentContext || context;
             projectedNodes.forEach((pNode) => {
-                if (getTagName(pNode) === "slot") {
+                const pTag = getTagName(pNode);
+
+                // Build scoped context with variables
+                const scopedContext = {
+                    ...baseContext,
+                    ...slotScopeProps,
+                    $slot: slotScopeProps,
+                    slotProps: slotScopeProps,
+                };
+
+                if (isElem(pNode)) {
+                    const scopeVarName =
+                        pNode.getAttribute("let") ||
+                        pNode.getAttribute("var") ||
+                        pNode.getAttribute("as") ||
+                        pNode.getAttribute("slot_scope") ||
+                        pNode.getAttribute("scope");
+
+                    if (scopeVarName) {
+                        scopedContext[scopeVarName] = slotScopeProps;
+                    }
+
+                    if (pNode.attributes) {
+                        const pAttrs = pNode.attributes;
+                        const paLen = pAttrs.length;
+                        for (let i = 0; i < paLen; i++) {
+                            const a = pAttrs[i];
+                            if (a.name.startsWith("let:") || a.name.startsWith("var:")) {
+                                const targetVar = a.name.slice(4);
+                                const sourceProp = a.value ? a.value.trim() : targetVar;
+                                scopedContext[targetVar] =
+                                    slotScopeProps[sourceProp] !== undefined
+                                        ? slotScopeProps[sourceProp]
+                                        : slotScopeProps;
+                            }
+                        }
+                    }
+                }
+
+                if (pTag === "slot" || pTag === "template") {
                     getChildNodes(pNode).forEach((c) => {
-                        const el = engine.createHTMLElement(c, slots.parentContext || context);
+                        const el = engine.createHTMLElement(c, scopedContext);
                         if (el) frag.appendChild(el);
                     });
                 } else {
-                    const el = engine.createHTMLElement(pNode, slots.parentContext || context);
+                    const el = engine.createHTMLElement(pNode, scopedContext);
                     if (el) frag.appendChild(el);
                 }
             });
         } else {
+            const fallbackContext = {
+                ...context,
+                ...slotScopeProps,
+                $slot: slotScopeProps,
+                slotProps: slotScopeProps,
+            };
             getChildNodes(xmlNode).forEach((c) => {
-                const el = engine.createHTMLElement(c, context);
+                const el = engine.createHTMLElement(c, fallbackContext);
                 if (el) frag.appendChild(el);
             });
         }
@@ -1820,6 +1905,10 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         return engine.applyRef(el, xmlNode, context);
     }
 
+    if (tagName === "error_boundary" || tagName === "error-boundary" || tagName === "boundary") {
+        return renderErrorBoundary(engine, xmlNode, context);
+    }
+
     if (tagName === "for_each") {
         return renderForEach(engine, xmlNode, context);
     }
@@ -1857,12 +1946,22 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         const selClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
         if (selClass) sel.className = selClass;
         const bindPath = engine.resolveBindPath(xmlNode);
+        const binding = engine.resolveBinding(xmlNode, context);
 
-        if (bindPath) {
-            sel.value = engine.getState(bindPath) ?? "";
-            engine.registerBinding(bindPath, sel, "input");
+        if (binding || bindPath) {
+            const activeBinding = binding || { type: "state", path: bindPath };
+            const initialVal = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
+            sel.value = initialVal ?? "";
+            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, sel, "input");
+
             sel.addEventListener("change", (e) => {
-                engine.setState(bindPath, e.target.value);
+                const raw = e.target.value;
+                const coerced = engine.coerceBindingValue(raw, activeBinding, xmlNode);
+                if (binding) {
+                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
+                } else {
+                    engine.setState(bindPath, coerced, { sourceEl: e.target });
+                }
             });
         }
 
@@ -1875,7 +1974,8 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             if (childEl) sel.appendChild(childEl);
         }
 
-        if (bindPath) sel.value = engine.getState(bindPath) ?? "";
+        if (binding) sel.value = engine.getBindingValue(binding, context) ?? "";
+        else if (bindPath) sel.value = engine.getState(bindPath) ?? "";
 
         return engine.applyRef(sel, xmlNode, context);
     }
@@ -1899,12 +1999,43 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         if (rows) ta.rows = parseInt(rows, 10);
 
         const bindPath = engine.resolveBindPath(xmlNode);
-        if (bindPath) {
-            ta.value = engine.getState(bindPath) ?? "";
-            engine.registerBinding(bindPath, ta, "input");
-            ta.oninput = (e) => {
-                engine.setState(bindPath, e.target.value, { sourceEl: e.target });
+        const binding = engine.resolveBinding(xmlNode, context);
+        const activeBinding = binding || (bindPath ? { type: "state", path: bindPath } : null);
+
+        if (activeBinding) {
+            const mods = activeBinding.modifiers || {};
+            const isLazy = mods.lazy || xmlNode.getAttribute("lazy") === "true";
+            const debounceMs = mods.debounce;
+
+            const initialVal = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
+            ta.value = initialVal !== undefined && initialVal !== null ? initialVal : "";
+            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, ta, "input");
+
+            const handleTextareaEvent = (e) => {
+                const coerced = engine.coerceBindingValue(e.target.value, activeBinding, xmlNode);
+                if (binding) {
+                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
+                } else {
+                    engine.setState(bindPath, coerced, { sourceEl: e.target });
+                }
             };
+
+            let eventHandler = handleTextareaEvent;
+            if (debounceMs > 0) {
+                let timer = null;
+                eventHandler = (e) => {
+                    const target = e.target;
+                    clearTimeout(timer);
+                    timer = setTimeout(() => handleTextareaEvent({ target }), debounceMs);
+                };
+            }
+
+            if (isLazy) {
+                ta.onchange = eventHandler;
+                ta.onblur = eventHandler;
+            } else {
+                ta.oninput = eventHandler;
+            }
         }
         engine.bindEvents(xmlNode, ta, context);
         return engine.applyRef(ta, xmlNode, context);
@@ -1926,31 +2057,68 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
         const bindPath = engine.resolveBindPath(xmlNode);
         const binding = engine.resolveBinding(xmlNode, context);
+        const activeBinding = binding || (bindPath ? { type: "state", path: bindPath } : null);
 
         if (inputType === "checkbox") {
-            if (binding) {
-                el.checked = engine.isTruthy(engine.getBindingValue(binding, context));
-                if (binding.type === "state") engine.registerBinding(binding.path, el, "checkbox");
-                el.onchange = (e) => engine.setBindingValue(binding, e.target.checked ? "true" : "false", context);
-            }
-        } else if (inputType === "radio") {
-            if (binding) {
-                const current = String(engine.getBindingValue(binding, context) ?? "");
-                el.checked = current === el.value;
-                if (binding.type === "state") engine.registerBinding(binding.path, el, "radio");
+            if (activeBinding) {
+                const rawInit = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
+                el.checked = engine.isTruthy(rawInit);
+                if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "checkbox");
                 el.onchange = (e) => {
-                    if (e.target.checked) engine.setBindingValue(binding, el.value, context);
+                    const boolVal = e.target.checked;
+                    const next = activeBinding.modifiers?.boolean ? boolVal : (boolVal ? "true" : "false");
+                    if (binding) engine.setBindingValue(binding, next, context);
+                    else engine.setState(bindPath, next);
                 };
             }
-        } else if (binding) {
-            const val = engine.getBindingValue(binding, context);
+        } else if (inputType === "radio") {
+            if (activeBinding) {
+                const rawInit = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
+                const current = String(rawInit ?? "");
+                el.checked = current === el.value;
+                if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "radio");
+                el.onchange = (e) => {
+                    if (e.target.checked) {
+                        const coerced = engine.coerceBindingValue(el.value, activeBinding, xmlNode);
+                        if (binding) engine.setBindingValue(binding, coerced, context);
+                        else engine.setState(bindPath, coerced);
+                    }
+                };
+            }
+        } else if (activeBinding) {
+            const mods = activeBinding.modifiers || {};
+            const isLazy = mods.lazy || xmlNode.getAttribute("lazy") === "true";
+            const debounceMs = mods.debounce;
+
+            const val = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
             el.value = val !== undefined && val !== null ? val : "";
-            if (binding.type === "state") engine.registerBinding(binding.path, el, "input");
-            el.oninput = (e) => engine.setBindingValue(binding, e.target.value, context, { sourceEl: e.target });
-        } else if (bindPath) {
-            el.value = engine.getState(bindPath) ?? "";
-            engine.registerBinding(bindPath, el, "input");
-            el.oninput = (e) => engine.setState(bindPath, e.target.value, { sourceEl: e.target });
+            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "input");
+
+            const handleInputEvent = (e) => {
+                const coerced = engine.coerceBindingValue(e.target.value, activeBinding, xmlNode);
+                if (binding) {
+                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
+                } else {
+                    engine.setState(bindPath, coerced, { sourceEl: e.target });
+                }
+            };
+
+            let eventHandler = handleInputEvent;
+            if (debounceMs > 0) {
+                let timer = null;
+                eventHandler = (e) => {
+                    const target = e.target;
+                    clearTimeout(timer);
+                    timer = setTimeout(() => handleInputEvent({ target }), debounceMs);
+                };
+            }
+
+            if (isLazy) {
+                el.onchange = eventHandler;
+                el.onblur = eventHandler;
+            } else {
+                el.oninput = eventHandler;
+            }
         }
 
         engine.bindEvents(xmlNode, el, context);
@@ -2576,3 +2744,5 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
 
     return styleEl;
 }
+
+export { renderErrorBoundary };

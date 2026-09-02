@@ -191,11 +191,88 @@ export class OverlayManager {
         }
     }
 
+    /**
+     * Visually flashes an updated DOM element with a transient glowing outline overlay.
+     */
+    flash(element, options = {}) {
+        if (typeof document === "undefined" || !element) return null;
+        let targetEl = element;
+        if (targetEl.nodeType === 3) targetEl = targetEl.parentElement;
+        if (!targetEl) return null;
+
+        const rawRect =
+            typeof targetEl.getBoundingClientRect === "function" ? targetEl.getBoundingClientRect() : null;
+        const width = rawRect?.width || targetEl.offsetWidth || 100;
+        const height = rawRect?.height || targetEl.offsetHeight || 28;
+        const top = rawRect?.top !== undefined ? rawRect.top : targetEl.offsetTop || 0;
+        const left = rawRect?.left !== undefined ? rawRect.left : targetEl.offsetLeft || 0;
+
+        if (!this.flashContainer) {
+            this.flashContainer = document.createElement("div");
+            this.flashContainer.id = "euix-inspector-flash-container";
+            this.flashContainer.style.cssText = `
+                position: fixed;
+                inset: 0;
+                pointer-events: none;
+                z-index: 999995;
+            `;
+            document.body.appendChild(this.flashContainer);
+        }
+
+        const color = options.color || "#10b981";
+        const box = document.createElement("div");
+        box.className = "euix-flash-box";
+        box.setAttribute(
+            "style",
+            `position: fixed; top: ${top}px; left: ${left}px; width: ${width}px; height: ${height}px; border: 2px solid ${color}; background: ${color}26; box-shadow: 0 0 12px ${color}80; border-radius: 4px; pointer-events: none; box-sizing: border-box; opacity: 1; transition: opacity 0.35s ease-out, transform 0.35s ease-out; transform: scale(1.02);`,
+        );
+
+        if (options.label) {
+            const label = document.createElement("div");
+            label.className = "euix-flash-label";
+            label.textContent = `⚡ ${options.label}`;
+            label.style.cssText = `
+                position: absolute;
+                top: -16px;
+                right: 0;
+                background: ${color};
+                color: #fff;
+                font-family: ui-monospace, SFMono-Regular, monospace;
+                font-size: 9px;
+                font-weight: 700;
+                padding: 1px 4px;
+                border-radius: 3px;
+                white-space: nowrap;
+            `;
+            box.appendChild(label);
+        }
+
+        this.flashContainer.appendChild(box);
+
+        if (typeof requestAnimationFrame !== "undefined") {
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    box.style.opacity = "0";
+                    box.style.transform = "scale(1)";
+                });
+            });
+        }
+
+        setTimeout(() => {
+            if (box.parentNode) {
+                box.parentNode.removeChild(box);
+            }
+        }, 400);
+
+        return box;
+    }
+
     destroy() {
         if (this.rafId) cancelAnimationFrame(this.rafId);
         if (this.highlightEl?.parentNode) this.highlightEl.parentNode.removeChild(this.highlightEl);
         if (this.tooltipEl?.parentNode) this.tooltipEl.parentNode.removeChild(this.tooltipEl);
         if (this.boundaryContainer?.parentNode) this.boundaryContainer.parentNode.removeChild(this.boundaryContainer);
+        if (this.flashContainer?.parentNode) this.flashContainer.parentNode.removeChild(this.flashContainer);
     }
 
     escape(str) {

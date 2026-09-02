@@ -130,12 +130,84 @@ function _renderNode(node, state, context = {}, compRegistry = new Map()) {
 
     // <children /> or <slot /> slot projection
     if (tag === "children" || tag === "slot") {
-        if (context.$children && Array.isArray(context.$children)) {
+        const slotName = node.attrs?.name;
+        const slots = context._projectedSlots;
+        let projectedNodes = [];
+
+        if (slotName && slots?.named?.has(slotName)) {
+            projectedNodes = slots.named.get(slotName);
+        } else if (!slotName && slots?.default?.length > 0) {
+            projectedNodes = slots.default;
+        } else if (context.$children && Array.isArray(context.$children)) {
+            projectedNodes = context.$children;
+        }
+
+        const slotScopeProps = {};
+        for (const [k, v] of Object.entries(node.attrs || {})) {
+            if (k !== "name" && k !== "type" && k !== "class" && k !== "style") {
+                slotScopeProps[k] = _interpolateString(v, state, context);
+            }
+        }
+
+        if (projectedNodes.length > 0) {
             let slotOutput = "";
-            for (const child of context.$children) {
-                slotOutput += _renderNode(child, state, context.$parentContext || context, compRegistry);
+            const baseContext = slots?.parentContext || context.$parentContext || context;
+            for (const pNode of projectedNodes) {
+                if (!pNode) continue;
+                if (typeof pNode === "string") {
+                    slotOutput += _interpolateString(pNode, state, baseContext);
+                    continue;
+                }
+                const pTag = pNode.tag;
+                const scopedContext = {
+                    ...baseContext,
+                    ...slotScopeProps,
+                    $slot: slotScopeProps,
+                    slotProps: slotScopeProps,
+                };
+
+                const pAttrs = pNode.attrs || {};
+                const scopeVarName =
+                    pAttrs.let ||
+                    pAttrs.var ||
+                    pAttrs.as ||
+                    pAttrs.slot_scope ||
+                    pAttrs.scope;
+                if (scopeVarName) {
+                    scopedContext[scopeVarName] = slotScopeProps;
+                }
+                for (const [attrName, attrVal] of Object.entries(pAttrs)) {
+                    if (attrName.startsWith("let:") || attrName.startsWith("var:")) {
+                        const targetVar = attrName.slice(4);
+                        const sourceProp = attrVal ? attrVal.trim() : targetVar;
+                        scopedContext[targetVar] =
+                            slotScopeProps[sourceProp] !== undefined ? slotScopeProps[sourceProp] : slotScopeProps;
+                    }
+                }
+
+                if (pTag === "slot" || pTag === "template") {
+                    if (pNode.children) {
+                        for (const child of pNode.children) {
+                            slotOutput += _renderNode(child, state, scopedContext, compRegistry);
+                        }
+                    }
+                } else {
+                    slotOutput += _renderNode(pNode, state, scopedContext, compRegistry);
+                }
             }
             return slotOutput;
+        } else if (node.children && node.children.length > 0) {
+            let fallbackOutput = "";
+            const fallbackContext = {
+                ...context,
+                ...slotScopeProps,
+                $slot: slotScopeProps,
+                slotProps: slotScopeProps,
+            };
+            for (const child of node.children) {
+                fallbackOutput += _renderNode(child, state, fallbackContext, compRegistry);
+            }
+            return fallbackOutput;
         }
         return "";
     }
@@ -149,12 +221,40 @@ function _renderNode(node, state, context = {}, compRegistry = new Map()) {
             if (k === "name" && tag === "component") continue;
             props[k] = _interpolateString(v, state, context);
         }
+
+        const rawChildren = node.children || [];
+        const namedSlots = new Map();
+        const defaultSlots = [];
+        for (const child of rawChildren) {
+            if (!child || typeof child === "string") {
+                defaultSlots.push(child);
+                continue;
+            }
+            const childTag = child.tag;
+            const slotName =
+                child.attrs?.slot ||
+                (["slot", "template"].includes(childTag)
+                    ? child.attrs?.name || child.attrs?.slot
+                    : null);
+            if (slotName && slotName !== "default") {
+                if (!namedSlots.has(slotName)) namedSlots.set(slotName, []);
+                namedSlots.get(slotName).push(child);
+            } else {
+                defaultSlots.push(child);
+            }
+        }
+
         const compContext = {
             ...context,
             props,
             $props: props,
-            $children: node.children || [],
+            $children: defaultSlots,
             $parentContext: context,
+            _projectedSlots: {
+                named: namedSlots,
+                default: defaultSlots,
+                parentContext: context,
+            },
         };
         const compState = { ...state };
         _extractDataModel(compDef, compState);
@@ -214,6 +314,70 @@ function _renderNode(node, state, context = {}, compRegistry = new Map()) {
             output += _renderNode(child, state, context, compRegistry);
         }
         return output;
+    }
+
+    // <error_boundary> or <error-boundary> or <boundary>
+    if (tag === "error_boundary" || tag === "error-boundary" || tag === "boundary") {
+        let fallbackNode = null;
+        let fallbackLet = "error";
+        const mainChildren = [];
+
+        for (const child of node.children) {
+            if (child && typeof child === "object") {
+                const cTag = child.tag;
+                if (
+                    cTag === "fallback" ||
+                    (cTag === "template" &&
+                        (child.attrs?.slot === "fallback" ||
+                            child.attrs?.name === "fallback" ||
+                            child.attrs?.id === "fallback"))
+                ) {
+                    fallbackNode = child;
+                    fallbackLet = child.attrs?.let || child.attrs?.var || child.attrs?.as || "error";
+                    continue;
+                }
+            }
+            mainChildren.push(child);
+        }
+
+        const fallbackAttr = node.attrs?.fallback;
+        try {
+            let output = "";
+            for (const child of mainChildren) {
+                output += _renderNode(child, state, context, compRegistry);
+            }
+            const cls = node.attrs?.class ? ` ${node.attrs.class}` : "";
+            return `<div class="euix-error-boundary${cls}">${output}</div>`;
+        } catch (err) {
+            const errObj = {
+                message: err?.message || String(err),
+                code: err?.code || "SSR_ERROR",
+                name: err?.name || "Error",
+            };
+            const cls = node.attrs?.class ? ` ${node.attrs.class}` : "";
+            if (fallbackNode) {
+                const fallbackContext = {
+                    ...context,
+                    [fallbackLet]: errObj,
+                    $error: errObj,
+                    error: errObj,
+                    err: errObj,
+                };
+                let fbOutput = "";
+                for (const child of fallbackNode.children) {
+                    fbOutput += _renderNode(child, state, fallbackContext, compRegistry);
+                }
+                return `<div class="euix-error-boundary${cls}">${fbOutput}</div>`;
+            } else if (fallbackAttr) {
+                const fbText = _interpolateString(fallbackAttr, state, {
+                    ...context,
+                    error: errObj,
+                    $error: errObj,
+                });
+                return `<div class="euix-error-boundary${cls}"><span class="euix-error-fallback">${fbText}</span></div>`;
+            }
+            return `<div class="euix-error-boundary${cls}"></div>`;
+        }
     }
 
     // Map custom EUIX tags to semantic HTML tags

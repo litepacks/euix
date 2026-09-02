@@ -394,6 +394,10 @@ export const ACTION_DISPATCH_TABLE = {
     REDO_STATE: "_handleRedoStateAction",
     HISTORY_REDO: "_handleRedoStateAction",
     TAKE_SNAPSHOT: "_handleTakeSnapshotAction",
+    RESET_ERROR_BOUNDARY: "_handleResetErrorBoundaryAction",
+    RETRY_ERROR_BOUNDARY: "_handleResetErrorBoundaryAction",
+    RESET_BOUNDARY: "_handleResetErrorBoundaryAction",
+    RETRY_BOUNDARY: "_handleResetErrorBoundaryAction",
 };
 
 export const _resolveRoot = (r) => r;

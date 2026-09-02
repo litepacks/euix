@@ -26,13 +26,37 @@ function _getActionEvalFn(rawExpr) {
 export function _handleSetStateAction(actionNode, context = {}) {
     const pathNode = this.getChild(actionNode, "path");
     const valueNode = this.getChild(actionNode, "value");
-    if (!pathNode) return;
+    let rawPath =
+        trimStr(pathNode) ||
+        (actionNode.getAttribute ? actionNode.getAttribute("path") || actionNode.getAttribute("set") || "" : "");
+    let rawValue = trimStr(valueNode) || (actionNode.getAttribute ? actionNode.getAttribute("value") || "" : "");
 
-    const rawPath = trimStr(pathNode);
+    if (!rawPath) return;
+
+    // Check if rawPath is an inline shorthand like "counter={data.counter + 1}" or "count: 5"
+    if (!rawValue) {
+        const eqIdx = rawPath.indexOf("=");
+        const colonIdx = rawPath.indexOf(":");
+        const splitIdx = eqIdx !== -1 ? eqIdx : colonIdx;
+        if (splitIdx !== -1) {
+            rawValue = rawPath.slice(splitIdx + 1).trim();
+            rawPath = rawPath.slice(0, splitIdx).trim();
+        } else if (context._evt && context._evt.target) {
+            const t = context._evt.target;
+            rawValue = t.type === "checkbox" ? (t.checked ? "true" : "false") : (t.value ?? "");
+        }
+    }
+
+    if (
+        (rawValue.startsWith("'") && rawValue.endsWith("'") && rawValue.length >= 2) ||
+        (rawValue.startsWith('"') && rawValue.endsWith('"') && rawValue.length >= 2)
+    ) {
+        rawValue = rawValue.slice(1, -1);
+    }
+
     const interpolatedPath = this.interpolate(rawPath, context);
     const path = this.parseBindPath(interpolatedPath);
 
-    const rawValue = trimStr(valueNode);
     let nextValue = "";
 
     const evalGetter = (key) => {
@@ -126,7 +150,13 @@ export function _handleToggleStateAction(actionNode, context = {}) {
     const pathNode = this.getChild(actionNode, "path");
     const rawPath = pathNode
         ? pathNode.textContent.trim()
-        : actionNode.getAttribute("path") || actionNode.getAttribute("target") || actionNode.getAttribute("bind") || "";
+        : actionNode.getAttribute
+          ? actionNode.getAttribute("path") ||
+            actionNode.getAttribute("target") ||
+            actionNode.getAttribute("bind") ||
+            actionNode.getAttribute("toggle") ||
+            ""
+          : "";
     const interpolatedPath = this.interpolate(rawPath, context);
     const path = this.parseBindPath(interpolatedPath);
     if (!path) return;
@@ -152,9 +182,11 @@ export function _handleToggleStateAction(actionNode, context = {}) {
 
 export function _handleFocusAction(actionNode, context = {}) {
     const target =
-        actionNode.getAttribute("target") ||
-        actionNode.getAttribute("ref") ||
+        (actionNode.getAttribute
+            ? actionNode.getAttribute("target") || actionNode.getAttribute("focus") || actionNode.getAttribute("ref")
+            : "") ||
         this.getChild(actionNode, "target")?.textContent ||
+        this.getChild(actionNode, "focus")?.textContent ||
         this.getChild(actionNode, "ref")?.textContent;
     if (!target) return;
     const resolved = this.interpolate(target, context).replace(/^ref:/, "");
@@ -172,11 +204,18 @@ export function _handleRevalidateAction(actionNode, context = {}) {
         this.router.revalidate(routeAttr);
         return;
     }
-    const tagNode = this.getChild ? this.getChild(actionNode, "tag") || this.getChild(actionNode, "url") : null;
+    const tagNode = this.getChild
+        ? this.getChild(actionNode, "tag") ||
+          this.getChild(actionNode, "url") ||
+          this.getChild(actionNode, "revalidate")
+        : null;
     const rawTag = tagNode
         ? tagNode.textContent.trim()
         : actionNode?.getAttribute
-          ? actionNode.getAttribute("tag") || actionNode.getAttribute("url") || ""
+          ? actionNode.getAttribute("tag") ||
+            actionNode.getAttribute("revalidate") ||
+            actionNode.getAttribute("url") ||
+            ""
           : "";
     const tag = this.interpolate(rawTag, context);
     if (typeof this.revalidateApi === "function") {
@@ -224,7 +263,14 @@ export function _handleRethrowAction(_actionNode, context = {}) {
 
 export function _handleRunScriptAction(actionNode, context = {}) {
     const code =
-        actionNode.textContent.trim() || actionNode.getAttribute("code") || actionNode.getAttribute("script") || "";
+        (actionNode.getAttribute
+            ? actionNode.getAttribute("run") ||
+              actionNode.getAttribute("script") ||
+              actionNode.getAttribute("code") ||
+              actionNode.getAttribute("eval")
+            : "") ||
+        actionNode.textContent?.trim() ||
+        "";
     if (!code) return;
     const decodedCode = code
         .replace(/&lt;/g, "<")
@@ -482,13 +528,75 @@ function evaluateObjectExpression(engine, expr, context = {}) {
     return null;
 }
 
+export function parseMutateExpr(expr) {
+    if (!expr || typeof expr !== "string") return null;
+    const trimmed = expr.trim();
+
+    const m = trimmed.match(
+        /^([a-zA-Z0-9_$.]+)\.([a-zA-Z_]+)(?:\(([\s\S]*)\)|(?:\s+where\s+([\s\S]+))|(?:\s+(.*)))?$/i,
+    );
+    if (!m) return null;
+
+    const path = m[1];
+    const operation = m[2].toUpperCase();
+    const parenArgs = m[3];
+    const whereClause = m[4];
+    const restArgs = m[5];
+
+    let where = null;
+    const value = parenArgs || restArgs || "";
+
+    if (whereClause) {
+        const wm = whereClause.trim().match(/^([a-zA-Z0-9_$.]+)\s*(==|=|===|equals|!=|neq)\s*(.*)$/i);
+        if (wm) {
+            where = {
+                field: wm[1].replace(/^(item|row)\./, ""),
+                op: wm[2] === "!=" || wm[2] === "neq" ? "neq" : "eq",
+                equals: wm[3].replace(/^['"]|['"]$/g, ""),
+            };
+        }
+    }
+
+    return { path, operation, value, where };
+}
+
 export function _handleMutateStateAction(actionNode, context = {}) {
-    const pathNode = this.getChild(actionNode, "path");
-    const opNode = this.getChild(actionNode, "operation");
-    const rawPath = trimStr(pathNode) || actionNode.getAttribute("path") || "";
-    const interpolatedPath = this.interpolate(rawPath, context);
-    const path = this.parseBindPath(interpolatedPath);
-    const operation = (trimStr(opNode) || actionNode.getAttribute("operation") || "").toUpperCase();
+    const mutateAttr = actionNode.getAttribute
+        ? actionNode.getAttribute("mutate") || actionNode.getAttribute("expr")
+        : null;
+    let path = "";
+    let operation = "";
+    let parsedWhere = null;
+    let shorthandValue = null;
+
+    if (mutateAttr) {
+        const parsed = parseMutateExpr(mutateAttr);
+        if (parsed) {
+            const interpolatedRawPath = this.interpolate(parsed.path, context);
+            path = this.parseBindPath(interpolatedRawPath);
+            operation = parsed.operation;
+            parsedWhere = parsed.where;
+            shorthandValue = parsed.value;
+        }
+    }
+
+    if (!path) {
+        const pathNode = this.getChild(actionNode, "path");
+        const rawPath =
+            trimStr(pathNode) ||
+            (actionNode.getAttribute ? actionNode.getAttribute("path") || actionNode.getAttribute("target") : "") ||
+            "";
+        const interpolatedPath = this.interpolate(rawPath, context);
+        path = this.parseBindPath(interpolatedPath);
+    }
+    if (!operation) {
+        const opNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "op");
+        operation = (
+            trimStr(opNode) ||
+            (actionNode.getAttribute ? actionNode.getAttribute("operation") || actionNode.getAttribute("op") : "") ||
+            ""
+        ).toUpperCase();
+    }
 
     if (!path || !operation) return;
 
@@ -496,6 +604,24 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         this.batch(() => {
             this.setState(path, []);
             this.applyResets(actionNode);
+        });
+        return;
+    }
+
+    if (
+        parsedWhere &&
+        (operation === MUTATION_OPS.REMOVE ||
+            operation === MUTATION_OPS.DELETE ||
+            operation === "REMOVE" ||
+            operation === "DELETE")
+    ) {
+        const equalsVal = this.interpolate(parsedWhere.equals, context);
+        this.mutateState(path, "REMOVE", {
+            where: {
+                field: parsedWhere.field,
+                equals: equalsVal,
+                op: parsedWhere.op,
+            },
         });
         return;
     }
@@ -541,11 +667,15 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     if (operation === MUTATION_OPS.PUSH || operation === MUTATION_OPS.UNSHIFT || operation === MUTATION_OPS.PREPEND) {
         const valNode = this.getChild(actionNode, "value");
         const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
-        const rawText = valItem
-            ? (typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) ||
-              valItem.textContent?.trim() ||
-              ""
-            : "";
+        const rawText =
+            shorthandValue ||
+            (valItem
+                ? (typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) ||
+                  valItem.textContent?.trim() ||
+                  ""
+                : actionNode.getAttribute
+                  ? actionNode.getAttribute("value") || ""
+                  : "");
         const textValue = this.interpolate(rawText, context);
 
         const parsedObj =
@@ -1064,3 +1194,28 @@ export function _handleTakeSnapshotAction(actionNode, context = {}) {
     if (this._historyManager) return this._historyManager.takeSnapshot(label);
     return null;
 }
+
+export function _handleResetErrorBoundaryAction(actionNode, context = {}) {
+    const target =
+        (actionNode?.getAttribute &&
+            (actionNode.getAttribute("target") ||
+                actionNode.getAttribute("boundary") ||
+                actionNode.getAttribute("name"))) ||
+        this.getChild?.(actionNode, "target")?.textContent?.trim();
+    if (target) {
+        return this.resetErrorBoundary(target);
+    }
+    if (context._errorBoundary) {
+        context._errorBoundary.retry();
+        return true;
+    }
+    if (context._el) {
+        const boundary = this.findClosestErrorBoundary(context._el);
+        if (boundary) {
+            boundary.retry();
+            return true;
+        }
+    }
+    return false;
+}
+

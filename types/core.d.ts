@@ -71,9 +71,36 @@ export class EUIXExpressionParser {
     static interpolate(templateString: string, context?: Record<string, any>): string;
 }
 
-export class EUIXEngineCore {
+export interface BindingModifiers {
+    number?: boolean;
+    trim?: boolean;
+    boolean?: boolean;
+    lazy?: boolean;
+    debounce?: number;
+}
+
+export interface ResolvedBinding {
+    type: 'state' | 'context';
+    path?: string;
+    scope?: string;
+    prop?: string;
+    modifiers: BindingModifiers;
+}
+
+export interface ErrorBoundaryController {
+    id: string;
+    name: string;
+    hasError: boolean;
+    error: any;
+    el: HTMLElement;
+    catchError(error: Error | any): void;
+    retry(): void;
+    reset(): void;
+}
+
+export class EUIXEngineCore<TState extends Record<string, any> = Record<string, any>> {
     container: HTMLElement | null;
-    state: Record<string, any>;
+    state: TState;
     refs: Record<string, HTMLElement>;
     xmlDoc: Document | null;
     onError: ((err: EUIXStructuredError | Error, context?: string) => void) | null;
@@ -81,23 +108,56 @@ export class EUIXEngineCore {
     constructor(containerSelector?: string | HTMLElement);
 
     static use(plugin: EUIXPlugin): typeof EUIXEngineCore;
-    static mount(xmlString: string | HTMLElement, containerSelector?: string | HTMLElement): EUIXEngineCore;
+    static mount<T extends Record<string, any> = Record<string, any>>(
+        xmlString: string | HTMLElement,
+        containerSelector?: string | HTMLElement
+    ): EUIXEngineCore<T>;
     static registerAction(actionType: string, handler: (actionNode: Element, context: Record<string, any>) => any): void;
 
-    mount(xmlString: string | HTMLElement, containerSelector?: string | HTMLElement): this;
+    mount<T extends Record<string, any> = TState>(
+        xmlString: string | HTMLElement,
+        containerSelector?: string | HTMLElement
+    ): EUIXEngineCore<T>;
     unmount(): this;
     destroy(): void;
     onUnmount(callback: () => void): this;
 
-    getState<T = any>(key: string): T;
-    setState<T = any>(key: string, value: T, options?: EUIXStateOptions): void;
-    mutateState(path: string, operation: EUIXMutationOperation, payload?: any): this;
+    getState<K extends keyof TState>(key: K): TState[K];
+    getState(): TState;
+    getState<TVal = any>(key: string): TVal;
+
+    setState<K extends keyof TState>(
+        key: K,
+        value: TState[K] | ((prev: TState[K]) => TState[K]),
+        options?: EUIXStateOptions
+    ): void;
+    setState(partialState: Partial<TState>, options?: EUIXStateOptions): void;
+    setState<TVal = any>(key: string, value: TVal, options?: EUIXStateOptions): void;
+
+    mutateState<K extends keyof TState>(path: K | string, operation: EUIXMutationOperation, payload?: any): this;
+    toggleState<K extends keyof TState>(key: K | string): boolean;
     batch(fn: () => void): void;
     batchUpdates(fn: () => void): void;
 
+    watch<K extends keyof TState>(key: K, callback: (newValue: TState[K], oldValue: TState[K]) => void): () => void;
     watch(key: string, callback: (newValue: any, oldValue: any) => void): () => void;
+    watchState<K extends keyof TState>(key: K, callback: (newValue: TState[K], oldValue: TState[K]) => void): () => void;
     watchState(key: string, callback: (newValue: any, oldValue: any) => void): () => void;
     onStateChange(callback: (key: string, newValue: any, oldValue: any) => void): () => void;
+
+    // Error Boundary controls
+    getErrorBoundary(nameOrId: string): ErrorBoundaryController | undefined;
+    resetErrorBoundary(nameOrId: string): boolean;
+    catchErrorBoundary(nameOrId: string, error: Error | any): boolean;
+    findClosestErrorBoundary(element: HTMLElement): ErrorBoundaryController | null;
+
+    // Binding modifiers and coercion
+    extractBindModifiers(xmlNode: Element | null): { bindAttr: string | null; modifiers: BindingModifiers };
+    coerceBindingValue(
+        rawValue: any,
+        binding?: ResolvedBinding | { path?: string; modifiers?: BindingModifiers },
+        xmlNode?: Element | null
+    ): any;
 
     registerAction(name: string, handler: (actionNode: Element, context: Record<string, any>) => any): this;
     handleAction(actionNode: Element, context?: Record<string, any>): any;

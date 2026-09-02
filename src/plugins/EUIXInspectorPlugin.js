@@ -27,6 +27,7 @@ export class EUIXInspector {
         };
 
         this.enabled = false;
+        this.highlightUpdates = Boolean(this.options.highlightUpdates || this.options.flashUpdates);
         this.overlay = null;
         this.panel = null;
         this.history = null;
@@ -103,6 +104,13 @@ export class EUIXInspector {
             }
             if (this.panel && this.panel.isOpen && this.panel.activeTab === "actions") {
                 this.panel.render();
+            }
+        });
+
+        // 3. Binding Update & Reactive DOM Flash Hook
+        this.engine.hooks.on("binding:update", (payload) => {
+            if (this.highlightUpdates && payload.el) {
+                this.flashElement(payload.el, { label: payload.path, kind: payload.kind });
             }
         });
     }
@@ -227,6 +235,10 @@ export class EUIXInspector {
             toggle: () => this.toggle(),
             showBoundaries: () => this.showBoundaries(),
             hideBoundaries: () => this.hideBoundaries(),
+            enableHighlightUpdates: () => this.enableHighlightUpdates(),
+            disableHighlightUpdates: () => this.disableHighlightUpdates(),
+            toggleHighlightUpdates: (force) => this.toggleHighlightUpdates(force),
+            flash: (el, meta) => this.flashElement(el, meta),
         };
 
         window.$euix = api;
@@ -255,6 +267,37 @@ export class EUIXInspector {
         const next = typeof force === "boolean" ? force : !this.enabled;
         if (next) this.enable();
         else this.disable();
+    }
+
+    get highlightUpdates() {
+        return Boolean(this._highlightUpdates !== undefined ? this._highlightUpdates : this.options.highlightUpdates);
+    }
+
+    set highlightUpdates(val) {
+        this._highlightUpdates = Boolean(val);
+        if (this.panel) this.panel.updateHudFlash(this._highlightUpdates);
+    }
+
+    enableHighlightUpdates() {
+        this.highlightUpdates = true;
+        return true;
+    }
+
+    disableHighlightUpdates() {
+        this.highlightUpdates = false;
+        return false;
+    }
+
+    toggleHighlightUpdates(force) {
+        const next = typeof force === "boolean" ? force : !this.highlightUpdates;
+        if (next) this.enableHighlightUpdates();
+        else this.disableHighlightUpdates();
+        return this.highlightUpdates;
+    }
+
+    flashElement(element, meta = {}) {
+        if (!this.overlay) return null;
+        return this.overlay.flash(element, meta);
     }
 
     select(element) {

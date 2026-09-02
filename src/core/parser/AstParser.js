@@ -138,11 +138,15 @@ export function parseXmlToAst(xmlString, options = {}) {
                 i++;
                 continue;
             }
-            if (/[a-zA-Z0-9_\-:]/.test(char)) {
+            if (/[a-zA-Z0-9_\-.:]/.test(char)) {
                 let name = "";
-                while (i < attrsStr.length && /[a-zA-Z0-9_\-:]/.test(attrsStr[i])) {
+                while (i < attrsStr.length && /[a-zA-Z0-9_\-.:]/.test(attrsStr[i])) {
                     name += attrsStr[i];
                     i++;
+                }
+                // If attribute name contains dot (e.g. bind.number, bind.trim), convert to valid XML colon QName
+                if (name.includes(".")) {
+                    name = name.replace(/\./g, ":");
                 }
                 let j = i;
                 while (j < attrsStr.length && /\s/.test(attrsStr[j])) j++;
@@ -175,6 +179,31 @@ export function parseXmlToAst(xmlString, options = {}) {
             return `${openTag}<![CDATA[${content}]]>${closeTag}`;
         },
     );
+
+    // 6.5 Auto-convert dot modifiers on bind attributes (e.g. bind.number="...", bind.trim="...") to valid XML QNames bind:number="..."
+    sanitizedXml = sanitizedXml.replace(/\sbind\.([a-zA-Z0-9_-]+)=/gi, " bind:$1=");
+
+    // 7. Auto-declare xmlns for namespaced shorthand attributes (e.g. on_click:set, on_change:toggle)
+    const nsMatches = sanitizedXml.matchAll(/\s([a-zA-Z0-9_-]+):[a-zA-Z0-9_-]+=/g);
+    const prefixes = new Set();
+    for (const match of nsMatches) {
+        const pfx = match[1];
+        if (pfx !== "xmlns" && pfx !== "xml") {
+            prefixes.add(pfx);
+        }
+    }
+    if (prefixes.size > 0) {
+        const missingPfx = Array.from(prefixes).filter((pfx) => !sanitizedXml.includes(`xmlns:${pfx}=`));
+        if (missingPfx.length > 0) {
+            const xmlnsDecl = missingPfx.map((p) => `xmlns:${p}="http://euix.dev/ns/${p}"`).join(" ");
+            sanitizedXml = sanitizedXml.replace(
+                /(<(?![?!])([a-zA-Z0-9_-]+))(\s|>|\/>)/,
+                (m, openTag, tagName, rest) => {
+                    return `${openTag} ${xmlnsDecl}${rest.startsWith(" ") ? rest : ` ${rest}`}`;
+                },
+            );
+        }
+    }
 
     const bypassCache = options && options.bypassCache === true;
 

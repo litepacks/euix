@@ -277,9 +277,13 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
 
     rawChildren.forEach((child) => {
         if (isElem(child)) {
+            const childTag = getTagName(child);
             const slotName =
-                child.getAttribute("slot") || (getTagName(child) === "slot" ? child.getAttribute("name") : null);
-            if (slotName) {
+                child.getAttribute("slot") ||
+                (["slot", "template"].includes(childTag)
+                    ? child.getAttribute("name") || child.getAttribute("slot")
+                    : null);
+            if (slotName && slotName !== "default") {
                 if (!namedSlots.has(slotName)) namedSlots.set(slotName, []);
                 namedSlots.get(slotName).push(child);
                 return;
@@ -289,6 +293,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     });
 
     const props = {};
+    const propSources = {};
 
     const uAttrs = usageNode.attributes;
     if (uAttrs) {
@@ -296,7 +301,30 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         for (let uIdx = 0; uIdx < uLen; uIdx++) {
             const attr = uAttrs[uIdx];
             if (attr.name !== "type" && attr.name !== "class") {
-                props[attr.name] = engine.interpolate(attr.value, context);
+                const val = attr.value;
+                if (
+                    typeof val === "string" &&
+                    val.startsWith("{") &&
+                    val.endsWith("}") &&
+                    !val.slice(1, -1).includes("{")
+                ) {
+                    const rawExpr = val.slice(1, -1).trim();
+                    const cleanKey = engine.parseBindPath(rawExpr);
+                    if (cleanKey) propSources[attr.name] = cleanKey;
+                    let resolved = engine.resolveValueFromPath(rawExpr, context);
+                    if (resolved === undefined) {
+                        try {
+                            resolved = EUIXExpressionParser.eval(rawExpr, (k) =>
+                                engine.resolveValueFromPath(k, context),
+                            );
+                        } catch (_) {
+                            resolved = engine.interpolate(val, context);
+                        }
+                    }
+                    props[attr.name] = resolved !== undefined ? resolved : engine.interpolate(val, context);
+                } else {
+                    props[attr.name] = engine.interpolate(val, context);
+                }
             }
         }
     }
@@ -451,6 +479,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             default: defaultSlots,
             parentContext: context,
         },
+        _propSources: propSources,
         constants: {
             ...(context.constants || {}),
             ...compConstants,

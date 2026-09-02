@@ -56,6 +56,7 @@ export class InspectorPanel {
                 <div style="display:flex;align-items:center;gap:4px;">
                     <button id="euix-dev-panel-btn" style="background:#1e293b;border:1px solid rgba(56,189,248,0.3);color:#38bdf8;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.2;">📊 Panel</button>
                     <button id="euix-hud-boundaries-btn" style="background:#1e293b;border:1px solid rgba(236,72,153,0.3);color:#f472b6;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.2;">📐 Bounds</button>
+                    <button id="euix-hud-flash-btn" style="background:${this.inspector.highlightUpdates ? '#065f46' : '#1e293b'};border:1px solid rgba(16,185,129,0.3);color:#34d399;padding:2px 6px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;line-height:1.2;">⚡ Flash</button>
                 </div>
                 <span id="euix-dev-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#64748b;flex-shrink:0;"></span>
             </div>
@@ -117,6 +118,14 @@ export class InspectorPanel {
                 this.inspector.toggleBoundaries();
             };
         }
+        const flashBtn = document.getElementById("euix-hud-flash-btn");
+        if (flashBtn) {
+            flashBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.inspector.toggleHighlightUpdates();
+                this.updateHudFlash(this.inspector.highlightUpdates);
+            };
+        }
     }
 
     updateHudDot(enabled) {
@@ -124,6 +133,14 @@ export class InspectorPanel {
         if (dot) {
             dot.style.background = enabled ? "#22c55e" : "#64748b";
             dot.style.boxShadow = enabled ? "0 0 8px #22c55e" : "none";
+        }
+    }
+
+    updateHudFlash(enabled) {
+        const btn = document.getElementById("euix-hud-flash-btn");
+        if (btn) {
+            btn.style.background = enabled ? "#065f46" : "#1e293b";
+            btn.style.boxShadow = enabled ? "0 0 6px #10b981" : "none";
         }
     }
 
@@ -484,21 +501,111 @@ export class InspectorPanel {
 
         return `
             <div style="display:flex;flex-direction:column;gap:8px;">
-                <input id="euix-state-filter" type="text" placeholder="🔍 Search state key..." value="${this.escape(this.stateFilterQuery)}" style="width:100%;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 8px;border-radius:6px;font-size:11px;outline:none;box-sizing:border-box;" />
+                <!-- Toolbar: Search + Add State -->
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <input id="euix-state-filter" type="text" placeholder="🔍 Search state key..." value="${this.escape(this.stateFilterQuery)}" style="flex:1;background:#1e293b;border:1px solid rgba(255,255,255,0.1);color:#fff;padding:6px 8px;border-radius:6px;font-size:11px;outline:none;box-sizing:border-box;" />
+                    <button id="euix-state-add-toggle" style="background:#0284c7;color:#fff;border:none;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:bold;cursor:pointer;white-space:nowrap;">➕ Add</button>
+                </div>
+
+                <!-- Add State Form (Collapsible) -->
+                <div id="euix-state-add-form" style="display:${this._showAddStateForm ? "flex" : "none"};flex-direction:column;gap:6px;background:#0f172a;padding:8px;border-radius:8px;border:1px solid #0284c7;">
+                    <div style="display:flex;gap:6px;">
+                        <input id="euix-new-state-key" placeholder="Key name (e.g. user_age)" style="flex:1;background:#1e293b;border:1px solid #334155;color:#fff;padding:4px 6px;border-radius:4px;font-size:10px;" />
+                        <select id="euix-new-state-type" style="background:#1e293b;border:1px solid #334155;color:#38bdf8;padding:4px 6px;border-radius:4px;font-size:10px;">
+                            <option value="string">string</option>
+                            <option value="number">number</option>
+                            <option value="boolean">boolean</option>
+                            <option value="json">object/array (JSON)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:6px;">
+                        <input id="euix-new-state-val" placeholder="Initial value" style="flex:1;background:#1e293b;border:1px solid #334155;color:#fff;padding:4px 6px;border-radius:4px;font-size:10px;" />
+                        <button id="euix-new-state-submit" style="background:#22c55e;color:#052e16;border:none;padding:4px 10px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer;">Create</button>
+                    </div>
+                </div>
+
                 ${
                     keys.length === 0
                         ? '<div style="color:#64748b;text-align:center;padding:20px;">No matching state variables</div>'
                         : `
                     <div style="display:flex;flex-direction:column;gap:6px;">
                         ${keys
-                            .map(
-                                (k) => `
-                            <div style="background:#1e293b;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.05);">
-                                <div style="color:#38bdf8;font-weight:bold;font-size:10px;margin-bottom:2px;">🔑 ${this.escape(k)}</div>
-                                <pre style="margin:0;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;">${this.escape(typeof rawState[k] === "object" ? JSON.stringify(rawState[k], null, 2) : String(rawState[k]))}</pre>
+                            .map((k) => {
+                                const val = rawState[k];
+                                const isArr = Array.isArray(val);
+                                const isObj = val !== null && typeof val === "object" && !isArr;
+                                const isBool = typeof val === "boolean" || val === "true" || val === "false";
+                                const isNum = typeof val === "number";
+                                const typeLabel = isArr
+                                    ? `array[${val.length}]`
+                                    : isObj
+                                      ? "object"
+                                      : isBool
+                                        ? "boolean"
+                                        : isNum
+                                          ? "number"
+                                          : "string";
+                                const typeColor =
+                                    isArr || isObj
+                                        ? "#c084fc"
+                                        : isBool
+                                          ? "#f472b6"
+                                          : isNum
+                                            ? "#38bdf8"
+                                            : "#4ade80";
+
+                                return `
+                            <div class="euix-state-card" data-key="${this.escape(k)}" style="background:#1e293b;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:6px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="display:flex;align-items:center;gap:6px;">
+                                        <span style="color:#38bdf8;font-weight:bold;font-size:11px;">🔑 ${this.escape(k)}</span>
+                                        <span style="background:#0f172a;color:${typeColor};font-size:9px;font-weight:bold;padding:1px 5px;border-radius:3px;border:1px solid ${typeColor}40;">${typeLabel}</span>
+                                    </div>
+                                    <button class="euix-state-delete-btn" data-key="${this.escape(k)}" title="Delete state" style="background:transparent;border:none;color:#ef4444;cursor:pointer;font-size:10px;padding:2px 4px;opacity:0.7;">🗑️</button>
+                                </div>
+
+                                <!-- Live Interactive Value Controls -->
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    ${
+                                        isBool
+                                            ? `
+                                        <button class="euix-state-toggle-bool" data-key="${this.escape(k)}" data-val="${String(val)}" style="background:${Boolean(val === true || val === "true") ? "#065f46" : "#334155"};color:${Boolean(val === true || val === "true") ? "#34d399" : "#94a3b8"};border:1px solid ${Boolean(val === true || val === "true") ? "#10b981" : "#475569"};padding:3px 10px;border-radius:4px;font-size:10px;font-weight:bold;cursor:pointer;">
+                                            ${Boolean(val === true || val === "true") ? "TRUE ✓" : "FALSE ✗"}
+                                        </button>
+                                    `
+                                            : isNum
+                                              ? `
+                                        <div style="display:flex;align-items:center;gap:3px;">
+                                            <button class="euix-state-step-btn" data-key="${this.escape(k)}" data-step="-1" style="background:#334155;border:none;color:#fff;padding:3px 7px;border-radius:4px;font-weight:bold;cursor:pointer;">-</button>
+                                            <input class="euix-state-live-input" data-key="${this.escape(k)}" data-type="number" type="number" value="${val}" style="width:75px;background:#0f172a;border:1px solid #334155;color:#facc15;padding:3px 6px;border-radius:4px;font-size:11px;font-weight:bold;" />
+                                            <button class="euix-state-step-btn" data-key="${this.escape(k)}" data-step="1" style="background:#334155;border:none;color:#fff;padding:3px 7px;border-radius:4px;font-weight:bold;cursor:pointer;">+</button>
+                                        </div>
+                                    `
+                                              : isArr || isObj
+                                                ? `
+                                        <div style="width:100%;display:flex;flex-direction:column;gap:4px;">
+                                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                                <button class="euix-state-edit-json-toggle" data-key="${this.escape(k)}" style="background:#334155;border:1px solid rgba(255,255,255,0.1);color:#c084fc;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:bold;cursor:pointer;">✏️ Edit JSON</button>
+                                                ${isArr ? `<button class="euix-state-array-clear" data-key="${this.escape(k)}" style="background:#334155;border:none;color:#f87171;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Clear Array</button>` : ""}
+                                            </div>
+                                            <div class="euix-state-json-view" style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto;">${this.escape(JSON.stringify(val, null, 2))}</div>
+                                            <div class="euix-state-json-edit-box" style="display:none;flex-direction:column;gap:4px;margin-top:4px;">
+                                                <textarea class="euix-state-json-textarea" data-key="${this.escape(k)}" style="width:100%;height:90px;background:#0f172a;border:1px solid #c084fc;color:#facc15;padding:6px;border-radius:4px;font-size:10px;font-family:monospace;box-sizing:border-box;">${this.escape(JSON.stringify(val, null, 2))}</textarea>
+                                                <div style="display:flex;gap:4px;justify-content:flex-end;">
+                                                    <button class="euix-state-json-cancel" style="background:#334155;color:#94a3b8;border:none;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Cancel</button>
+                                                    <button class="euix-state-json-save" data-key="${this.escape(k)}" style="background:#22c55e;color:#052e16;border:none;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:bold;cursor:pointer;">💾 Save JSON</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    `
+                                                : `
+                                        <input class="euix-state-live-input" data-key="${this.escape(k)}" data-type="string" type="text" value="${this.escape(String(val ?? ""))}" style="flex:1;background:#0f172a;border:1px solid #334155;color:#facc15;padding:3px 6px;border-radius:4px;font-size:11px;" />
+                                    `
+                                    }
+                                </div>
                             </div>
-                        `,
-                            )
+                        `;
+                            })
                             .join("")}
                     </div>
                 `
@@ -740,6 +847,171 @@ export class InspectorPanel {
                 this.bindTabEvents();
             };
         }
+
+        // State Add Form Toggle
+        const addToggle = document.getElementById("euix-state-add-toggle");
+        if (addToggle) {
+            addToggle.onclick = () => {
+                this._showAddStateForm = !this._showAddStateForm;
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        }
+
+        // State Add Submit
+        const addSubmit = document.getElementById("euix-new-state-submit");
+        if (addSubmit) {
+            addSubmit.onclick = () => {
+                const keyInput = document.getElementById("euix-new-state-key");
+                const typeSelect = document.getElementById("euix-new-state-type");
+                const valInput = document.getElementById("euix-new-state-val");
+                const k = keyInput?.value?.trim();
+                if (!k || !this.engine) return;
+
+                const type = typeSelect?.value || "string";
+                let v = valInput?.value ?? "";
+                if (type === "number") v = parseFloat(v) || 0;
+                else if (type === "boolean") v = v === "true" || v === "1";
+                else if (type === "json") {
+                    try {
+                        v = JSON.parse(v);
+                    } catch (_) {
+                        v = {};
+                    }
+                }
+
+                this.engine.setState(k, v);
+                this._showAddStateForm = false;
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        }
+
+        // Live input change & enter key
+        this.panelEl.querySelectorAll(".euix-state-live-input").forEach((inp) => {
+            const commit = () => {
+                const k = inp.getAttribute("data-key");
+                const type = inp.getAttribute("data-type");
+                if (!k || !this.engine) return;
+                const v = type === "number" ? parseFloat(inp.value) || 0 : inp.value;
+                this.engine.setState(k, v);
+            };
+            inp.onchange = commit;
+            inp.onkeydown = (e) => {
+                if (e.key === "Enter") {
+                    commit();
+                    inp.blur();
+                }
+            };
+        });
+
+        // Toggle boolean
+        this.panelEl.querySelectorAll(".euix-state-toggle-bool").forEach((btn) => {
+            btn.onclick = () => {
+                const k = btn.getAttribute("data-key");
+                const cur = btn.getAttribute("data-val");
+                if (!k || !this.engine) return;
+                const next = !(cur === "true");
+                this.engine.setState(k, next);
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        });
+
+        // Numeric step buttons
+        this.panelEl.querySelectorAll(".euix-state-step-btn").forEach((btn) => {
+            btn.onclick = () => {
+                const k = btn.getAttribute("data-key");
+                const step = parseFloat(btn.getAttribute("data-step")) || 0;
+                if (!k || !this.engine) return;
+                const cur = parseFloat(this.engine.getState(k)) || 0;
+                this.engine.setState(k, cur + step);
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        });
+
+        // JSON Edit toggle
+        this.panelEl.querySelectorAll(".euix-state-edit-json-toggle").forEach((btn) => {
+            btn.onclick = () => {
+                const card = btn.closest(".euix-state-card");
+                const editBox = card?.querySelector(".euix-state-json-edit-box");
+                const view = card?.querySelector(".euix-state-json-view");
+                if (editBox && view) {
+                    const isEditing = editBox.style.display === "flex";
+                    editBox.style.display = isEditing ? "none" : "flex";
+                    view.style.display = isEditing ? "block" : "none";
+                }
+            };
+        });
+
+        // JSON Save button
+        this.panelEl.querySelectorAll(".euix-state-json-save").forEach((btn) => {
+            btn.onclick = () => {
+                const k = btn.getAttribute("data-key");
+                const card = btn.closest(".euix-state-card");
+                const textarea = card?.querySelector(".euix-state-json-textarea");
+                if (!k || !textarea || !this.engine) return;
+                try {
+                    const parsed = JSON.parse(textarea.value);
+                    this.engine.setState(k, parsed);
+                    const body =
+                        document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                    if (body) body.innerHTML = this.renderStateTab();
+                    this.bindTabEvents();
+                } catch (err) {
+                    if (typeof alert !== "undefined") alert("Invalid JSON: " + err.message);
+                }
+            };
+        });
+
+        // JSON Cancel button
+        this.panelEl.querySelectorAll(".euix-state-json-cancel").forEach((btn) => {
+            btn.onclick = () => {
+                const card = btn.closest(".euix-state-card");
+                const editBox = card?.querySelector(".euix-state-json-edit-box");
+                const view = card?.querySelector(".euix-state-json-view");
+                if (editBox && view) {
+                    editBox.style.display = "none";
+                    view.style.display = "block";
+                }
+            };
+        });
+
+        // Clear array button
+        this.panelEl.querySelectorAll(".euix-state-array-clear").forEach((btn) => {
+            btn.onclick = () => {
+                const k = btn.getAttribute("data-key");
+                if (!k || !this.engine) return;
+                this.engine.setState(k, []);
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        });
+
+        // Delete state button
+        this.panelEl.querySelectorAll(".euix-state-delete-btn").forEach((btn) => {
+            btn.onclick = () => {
+                const k = btn.getAttribute("data-key");
+                if (!k || !this.engine) return;
+                delete this.engine._rawState[k];
+                this.engine.syncBindings(k, undefined);
+                const body =
+                    document.getElementById("euix-panel-content") || document.getElementById("euix-panel-body");
+                if (body) body.innerHTML = this.renderStateTab();
+                this.bindTabEvents();
+            };
+        });
 
         // Search input
         const searchInput = document.getElementById("euix-search-input");

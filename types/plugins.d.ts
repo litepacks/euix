@@ -92,6 +92,8 @@ export interface EUIXInspectorOptions {
 export class EUIXInspector {
     constructor(engine?: EUIXEngineCore, options?: EUIXInspectorOptions);
     enabled: boolean;
+    highlightUpdates: boolean;
+    flashUpdates: boolean;
     enable(): void;
     disable(): void;
     toggle(force?: boolean): void;
@@ -99,6 +101,10 @@ export class EUIXInspector {
     showBoundaries(): void;
     hideBoundaries(): void;
     toggleBoundaries(): void;
+    enableHighlightUpdates(): void;
+    disableHighlightUpdates(): void;
+    toggleHighlightUpdates(): boolean;
+    flashElement(element: HTMLElement, options?: { label?: string; color?: string; duration?: number }): void;
     destroy(): void;
 }
 

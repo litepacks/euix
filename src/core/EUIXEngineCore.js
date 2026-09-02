@@ -29,10 +29,13 @@ import {
     _handleThrowAction,
     _handleToggleStateAction,
     _handleUndoStateAction,
+    _handleResetErrorBoundaryAction,
 } from "./actions/BuiltInActions.js";
 import {
     escapeHtml,
     escapeRegExp,
+    extractBindModifiers,
+    coerceBindingValue,
     getBindingValue,
     getJsonPath,
     getKeyMask,
@@ -96,6 +99,7 @@ import {
     processStyleTag,
     render,
     renderConditional,
+    renderErrorBoundary,
     resolveBindPath,
     scopeCSS,
     updateAttributeBinding,
@@ -588,8 +592,48 @@ class EUIXEngineCore {
         return renderConditional(this, xmlNode, context);
     }
 
+    renderErrorBoundary(xmlNode, context = {}) {
+        return renderErrorBoundary(this, xmlNode, context);
+    }
+
+    getErrorBoundary(nameOrId) {
+        return this._errorBoundaries?.get(nameOrId) || null;
+    }
+
+    resetErrorBoundary(nameOrId) {
+        const boundary = this.getErrorBoundary(nameOrId);
+        if (boundary) {
+            boundary.retry();
+            return true;
+        }
+        return false;
+    }
+
+    catchErrorBoundary(nameOrId, error) {
+        const boundary = this.getErrorBoundary(nameOrId);
+        if (boundary) {
+            boundary.catchError(error);
+            return true;
+        }
+        return false;
+    }
+
+    findClosestErrorBoundary(el) {
+        if (!el || typeof el.closest !== "function") return null;
+        const boundaryEl = el.closest(".euix-error-boundary");
+        return boundaryEl?._errorBoundary || null;
+    }
+
     resolveBindPath(xmlNode) {
         return resolveBindPath(this, xmlNode);
+    }
+
+    extractBindModifiers(xmlNode) {
+        return extractBindModifiers(xmlNode);
+    }
+
+    coerceBindingValue(rawValue, binding = {}, xmlNode = null) {
+        return coerceBindingValue(this, rawValue, binding, xmlNode);
     }
 
     applyNodeAttributes(el, xmlNode, context = {}) {
@@ -706,6 +750,10 @@ class EUIXEngineCore {
 
     _handleTakeSnapshotAction(actionNode, context = {}) {
         return _handleTakeSnapshotAction.call(this, actionNode, context);
+    }
+
+    _handleResetErrorBoundaryAction(actionNode, context = {}) {
+        return _handleResetErrorBoundaryAction.call(this, actionNode, context);
     }
 
     _executeActionInternalBody(actionNode, context = {}) {

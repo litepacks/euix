@@ -728,6 +728,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
             pooledItemContext._varName = varName;
             pooledItemContext._index = idx;
             pooledItemContext.index = idx;
+            pooledItemContext.$index = idx;
             const protos = compiled.prototypes;
             const protoLen = protos.length;
             if (protoLen === 1) {
@@ -749,6 +750,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
         childContext._varName = varName;
         childContext._index = idx;
         childContext.index = idx;
+        childContext.$index = idx;
 
         const nodes = [];
         for (let cIdx = 0; cIdx < templateChildren.length; cIdx++) {
@@ -1070,6 +1072,18 @@ export function renderForEach(engine, xmlNode, context = {}) {
         engine.registerBinding(itemsKey, listContainer, "for_each", () => {
             renderItems();
         });
+        if (itemsKey.startsWith("props.") && context._propSources) {
+            const propName = itemsKey.slice(6);
+            const sourceKey = context._propSources[propName];
+            if (sourceKey) {
+                engine.registerBinding(sourceKey, listContainer, "for_each", () => {
+                    const freshVal = engine.getState(sourceKey);
+                    if (context.props) context.props[propName] = freshVal;
+                    context[propName] = freshVal;
+                    renderItems();
+                });
+            }
+        }
         const dotIdx = itemsKey.indexOf(".");
         if (dotIdx !== -1) {
             const rootKey = itemsKey.slice(0, dotIdx);

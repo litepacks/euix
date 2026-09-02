@@ -180,6 +180,82 @@ EUIX Engine supports core state data types inside `<data_model>` using `id="..."
 
 ---
 
+## ⚡ 3.5. Action Shorthand Syntax (`on_click:set`, `on_click:toggle`, `on_click:mutate`, etc.)
+
+EUIX Engine supports concise, inline shorthand attribute syntax for all common declarative actions directly on elements or child event tags without boilerplate:
+
+### 1. State Set (`on_click:set="path=value"` or `on_change:set="path"`)
+```xml
+<!-- Inline arithmetic, string, ternary, or object updates -->
+<button on_click:set="counter={data.counter + 1}">+1</button>
+<button on_click:set="theme={data.theme == 'dark' ? 'light' : 'dark'}">Toggle Theme</button>
+<button on_click:set="user.name='Alice'">Set Alice</button>
+<button on_click:set="local.count=10">Set Scoped State</button>
+
+<!-- Auto-binding input/checkbox changes directly to state -->
+<input on_change:set="user_name" placeholder="Enter name" />
+<input type="checkbox" on_change:set="is_active" />
+```
+
+### 2. State Toggle (`on_click:toggle="path"`)
+```xml
+<!-- Toggles boolean state between true and false -->
+<button on_click:toggle="is_modal_open">Toggle Modal</button>
+<button on_click:toggle="local.is_expanded">Expand Section</button>
+```
+
+### 3. Array Mutations (`on_click:mutate="items.OP(...)"`)
+```xml
+<!-- PUSH, REMOVE, and CLEAR shorthands -->
+<button on_click:mutate="items.PUSH({id: 42, title: 'New Item'})">Add Item</button>
+<button on_click:mutate="items.REMOVE where id={item.id}">Delete Item</button>
+<button on_click:mutate="items.CLEAR">Clear All</button>
+```
+
+### 4. API Revalidation & Script Execution (`on_click:revalidate`, `on_click:run`)
+```xml
+<!-- Revalidate SWR API endpoint -->
+<button on_click:revalidate="get_users">Refresh Users</button>
+
+<!-- Inline script execution with injected sandbox ($data, $el, $evt) -->
+<button on_click:run="$data.counter += 5; console.log('Updated!')">Add 5</button>
+```
+
+### 5. Workflow Execution & Focus (`on_click:call`, `on_click:focus`)
+```xml
+<!-- Call composed action subroutine -->
+<button on_click:call="SaveUserWorkflow">Save</button>
+
+<!-- Focus input element ref or id -->
+<button on_click:focus="nameInput">Focus Input</button>
+```
+
+### 6. Event Modifiers & Filters
+```xml
+<!-- Confirmation dialog before action execution -->
+<button on_click:set="deleted=true" confirm="Are you sure you want to delete this?">Delete</button>
+
+<!-- Keyboard key filtering -->
+<input on_keydown:set="submitted=true" key="Enter" />
+
+<!-- Event prevention -->
+<form on_submit:call="SubmitForm" prevent="true">...</form>
+```
+
+### 7. Shorthand Child Tags
+```xml
+<button class="btn">
+  <on_click set="counter" value="{data.counter + 1}" />
+  +1
+</button>
+<button class="btn">
+  <on_click toggle="is_open" />
+  Toggle
+</button>
+```
+
+---
+
 ## 📡 4. REST API & SWR Data Fetching
 
 Use `<api_config>` and `<api_endpoint>` to manage HTTP endpoints with reactive binding:
@@ -242,20 +318,48 @@ Use `<api_config>` and `<api_endpoint>` to manage HTTP endpoints with reactive b
 
 ---
 
-## 🧩 5. Components & Dynamic Loading
+## 🧩 5. Components, Slots & Scoped Slots
 
-Modular XML components can be loaded asynchronously:
+Modular XML components can be declared inline (`<component_def name="...">`) or loaded asynchronously (`<component src="...">`). EUIX Engine features first-class support for **Named Slots**, **Default Slots**, and **Scoped Slots with Slot Props**:
 
 ```xml
 <uid_spec>
-  <!-- Load External Component -->
-  <component name="app-header" src="./components/AppHeader.xml" title="My Dashboard" />
+  <!-- 1. Component Definition with Scoped Slots -->
+  <component_def name="user-table">
+    <div class="table-wrapper">
+      <for_each items="{props.items}" var="u" key="id">
+        <div class="table-row">
+          <!-- Expose item and index to parent slot projection -->
+          <slot name="row" user="{u}" index="{$index}">
+            <!-- Fallback content if consumer does not project slot -->
+            <span class="fallback-row">{u.name}</span>
+          </slot>
+        </div>
+      </for_each>
+    </div>
+  </component_def>
 
-  <container class="content">
-    <p>Page Content</p>
-  </container>
+  <!-- 2. Consumer Component with Scoped Slot Projection -->
+  <component name="user-table" items="{data.users}">
+    <!-- Template unwraps automatically and binds slotProps -->
+    <template slot="row" let="slotProps">
+      <div class="custom-card">
+        <strong>#{slotProps.index + 1}:</strong> {slotProps.user.name} ({slotProps.user.role})
+      </div>
+    </template>
+  </component>
 </uid_spec>
 ```
+
+### Scoped Slot Binding Syntaxes
+
+| Syntax | Example | Description |
+| :--- | :--- | :--- |
+| **Object Alias (`let="..."`)** | `<template slot="row" let="s">` | Binds all slot props into a single object `{s.user, s.index}`. |
+| **Individual Props (`let:prop="..."`)** | `<template slot="row" let:user="u" let:index="idx">` | Destructures individual props directly into scoped variables `{u.name}`, `{idx}`. |
+| **Direct Access (Implicit)** | `<template slot="row"><span>{user.name}</span></template>` | Automatically exposes slot props directly into the template's context. |
+| **Element Projection** | `<section slot="row" let="s">...</section>` | Directly projects an HTML element instead of a `<template>` wrapper. |
+| **Fallback Slot Content** | `<slot name="head" title="{props.title}"><h3>{title}</h3></slot>` | Rendered when the consumer does not provide a projection for that slot. |
 
 ---
 
@@ -388,23 +492,43 @@ Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, J
 
 ## 🏷️ 8. Declarative XML Attributes & Directives Reference
 
-### 1. Two-Way Data Binding (`bind="..."`)
-Binds input controls reactively to a state variable key:
+### 1. Two-Way Data Binding (`bind="..."`) & Input Modifiers
+Binds input controls reactively to a state variable key with automatic type coercion and modifiers:
+
 ```xml
-<!-- Text & Textarea -->
+<!-- 1. Text & Textarea (String Binding) -->
 <input bind="user_name" placeholder="Enter name" />
 <textarea bind="bio"></textarea>
 
-<!-- Checkbox (Boolean - Use bind for void input elements) -->
-<input type="checkbox" bind="is_terms_accepted" />
+<!-- 2. Automatic Number Coercion (Stores real JS number) -->
+<input type="number" bind="age" />
+<input type="range" bind="volume" min="0" max="100" />
+<input bind.number="score" />
+<select bind.number="role_id">
+  <option value="1">Admin</option>
+  <option value="2">User</option>
+</select>
+
+<!-- 3. String Trimming Modifier (bind.trim) -->
+<input bind.trim="user_name" placeholder="Auto-trimmed on input" />
+<textarea bind.trim="notes"></textarea>
+
+<!-- 4. Real Boolean Checkbox (bind.boolean) -->
+<input type="checkbox" bind.boolean="is_active" />
 <input type="checkbox" bind="task.done" />
 
-<!-- Select Options -->
-<select bind="selected_role">
-  <option value="admin">Admin</option>
-  <option value="user">User</option>
-</select>
+<!-- 5. Lazy & Debounced Input Binding (bind.lazy / debounce) -->
+<input bind.lazy="search_query" placeholder="Updates on change/blur" />
+<input bind="keyword" debounce="300" placeholder="Debounced 300ms" />
 ```
+
+| Modifier / Directive | Syntax Example | Behavior |
+| :--- | :--- | :--- |
+| **Numeric Coercion (`type="number"` / `bind.number`)** | `<input type="number" bind="age">`<br>`<input bind.number="score">`<br>`<input bind:number="score">` | Coerces input value directly into a native JavaScript `number` rather than string. |
+| **String Trim (`bind.trim`)** | `<input bind.trim="username">`<br>`<textarea bind.trim="notes">` | Automatically trims leading and trailing whitespace from the string before committing to state. |
+| **Boolean Coercion (`bind.boolean`)** | `<input type="checkbox" bind.boolean="active">` | Stores a native JavaScript `boolean` (`true`/`false`) instead of string `"true"`/`"false"`. |
+| **Lazy Binding (`bind.lazy` / `lazy="true"`)** | `<input bind.lazy="query">` | Synchronizes with state on `"change"` / `"blur"` events instead of every `"input"` keystroke. |
+| **Debounce (`debounce="ms"`)** | `<input bind="search" debounce="300">` | Debounces state mutations by the specified milliseconds. |
 
 ### 2. Expression Interpolation (`{expression}`) & Property Access
 Attributes and text nodes accept dynamic expressions. For property access (e.g. array length or object properties), prefix with **`data.`**:
@@ -1898,6 +2022,33 @@ window.$euix.timeTravel(0); // Jump to initial state
 console.log(window.$euix.snapshots());
 ```
 
+### 4. Reactivity Visual Flash & DOM Update Highlighting (`⚡ Flash`)
+Visually highlights DOM elements and components in real-time as reactive state updates:
+- **HUD Toggle (`⚡ Flash` Button)**: Toggles visual outline flash for all active DOM bindings.
+- **Script Tag Flag**: `<script src="./dist/EUIXDevTools.umd.js" data-euix-devtools="open" data-euix-highlight-updates="true"></script>`.
+- **Programmatic Control**:
+  ```js
+  devtools.enableHighlightUpdates();  // Enable visual flash
+  devtools.disableHighlightUpdates(); // Disable visual flash
+  devtools.toggleHighlightUpdates();  // Toggle status
+  devtools.flashElement(el, { label: 'counter', color: '#10b981' }); // Manual flash trigger
+
+  // Console Shortcut ($euix)
+  window.$euix.toggleHighlightUpdates();
+  window.$euix.flash(document.querySelector('.my-card'));
+  ```
+
+### 5. Live Interactive State Editor (`State` Tab)
+DevTools provides an interactive live editor directly within the drawer panel's **State** tab:
+- **Type Badges & Controls**:
+  - `number`: Live numeric input with step buttons (`+` / `-`) preserving native JavaScript numbers.
+  - `boolean`: Quick interactive toggle button (`TRUE ✓` / `FALSE ✗`).
+  - `string`: Live inline text input with real-time reactive DOM syncing.
+  - `object` / `array`: Formatted JSON viewer with an expandable **`✏️ Edit JSON`** modal/box and **`Clear Array`** button.
+- **Dynamic State Creation (`➕ Add`)**: Modal/form to declare new state variables dynamically with type selection (`string`, `number`, `boolean`, `json`).
+- **State Deletion (`🗑️`)**: Instantly deletes/resets state variables and notifies active DOM bindings.
+- **Real-Time Search Filter**: Live key filtering as you type.
+
 ---
 
 ## ♿ 28. Accessibility (A11y), Focus Traps & ARIA Keyboard Navigation (`euixjs/a11y`)
@@ -2063,8 +2214,128 @@ const tsCode = generateComponentTypes(xmlString, { componentName: 'CounterCard' 
 console.log(tsCode);
 ```
 
+---
 
+## 🛡️ 31. Declarative Error Boundaries & Fallback UI (`<error_boundary>`)
 
+EUIX Engine provides built-in declarative error boundaries (`<error_boundary>`, `<error-boundary>`, `<boundary>`) to catch and isolate unhandled runtime exceptions, component loading/mounting failures, and expression errors without crashing the parent application tree:
 
+### 1. Declarative Fallback Template & Scoped Error Props
+```xml
+<uid_spec>
+  <flex direction="column" gap="16">
+    <!-- Rich Fallback with Scoped Error Details & Retry Button -->
+    <error_boundary name="AnalyticsBoundary" on_error="SET_STATE:has_analytics_error=true">
+      <div class="analytics-card">
+        <component src="./analytics-chart.xml" />
+      </div>
 
+      <!-- Fallback UI Rendered on Crash -->
+      <fallback let="err">
+        <div class="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          <h4 class="font-bold">⚠️ Failed to Load Analytics</h4>
+          <p class="text-sm">{err.message} (Code: {err.code})</p>
+          
+          <!-- Declarative Retry Action -->
+          <button class="btn-retry mt-2" on_click:retry="AnalyticsBoundary">
+            🔄 Try Again
+          </button>
+        </div>
+      </fallback>
+    </error_boundary>
+
+    <!-- Inline Attribute Fallback -->
+    <error_boundary name="UserPanelBoundary" fallback="⚠️ Failed to load user profile: {error.message}">
+      <component src="./user-profile.xml" />
+    </error_boundary>
+  </flex>
+</uid_spec>
+```
+
+### 2. Supported Attributes & Shorthands
+- **`fallback="..."`**: Short text or expression fallback rendered when an error is caught.
+- **`<fallback let="err">` / `<template slot="fallback" let="err">`**: Rich XML template container for custom fallback UI.
+- **`on_error="..."`**: Action shorthand or composed action workflow executed when the boundary catches an error (e.g. `on_error="alert_count={data.alert_count + 1}"`).
+- **`on_click:retry="BoundaryName"`**: Action shorthand to reset error state and re-render boundary children.
+- **`on_click="RESET_ERROR_BOUNDARY"`**: Generic action to reset the nearest parent or context error boundary.
+
+### 3. Programmatic Control & Hook Subscriptions
+```js
+// Reset and retry a boundary programmatically
+engine.resetErrorBoundary('AnalyticsBoundary');
+
+// Inspect error boundary state
+const boundary = engine.getErrorBoundary('AnalyticsBoundary');
+console.log(boundary.hasError, boundary.error);
+
+// Catch and trigger boundary programmatically
+engine.catchErrorBoundary('AnalyticsBoundary', new Error('Manual Failure'));
+
+// Global error boundary hook
+engine.hooks.on('error:boundary', (payload) => {
+  console.warn(`Error Boundary [${payload.name}] caught:`, payload.error);
+});
+```
+
+---
+
+## 🟦 29. TypeScript State Schema & Generic Typing (`mount<TState>()`)
+
+EUIX Engine provides end-to-end type safety when interacting with state in TypeScript via generic state schemas:
+
+### 1. Defining Application State Interface & Mounting
+```typescript
+import { EUIXEngine } from 'euixjs';
+
+interface DashboardState {
+  counter: number;
+  userName: string;
+  isOnline: boolean;
+  todos: Array<{ id: number; title: string; completed: boolean }>;
+}
+
+const xml = `
+  <uid_spec>
+    <data_model>
+      <state id="counter" type="number">0</state>
+      <state id="userName">Guest</state>
+      <state id="isOnline" type="boolean">true</state>
+      <state id="todos" type="array">[]</state>
+    </data_model>
+  </uid_spec>
+`;
+
+// Mount with generic state interface
+const engine = EUIXEngine.mount<DashboardState>(xml, '#app');
+```
+
+### 2. Type-Inferred State Access & Mutations
+```typescript
+// 1. Inferred return types on getState
+const count: number = engine.getState('counter');
+const user: string = engine.getState('userName');
+const allState: DashboardState = engine.getState();
+
+// 2. Type-checked setState
+engine.setState('counter', 10); // OK
+engine.setState('userName', 'Alice'); // OK
+engine.setState({ counter: 20, isOnline: false }); // Partial state updates
+
+// 3. Type-safe state mutations & toggling
+engine.mutateState('todos', 'PUSH', { id: 1, title: 'Learn EUIX', completed: false });
+engine.toggleState('isOnline');
+
+// 4. Type-safe state watchers
+engine.watch('counter', (newCount, oldCount) => {
+  console.log(`Counter changed from ${oldCount} to ${newCount}`);
+});
+```
+
+### 3. Modular Core Build Typing (`EUIXEngineCore<TState>`)
+```typescript
+import { EUIXEngineCore } from 'euixjs/core';
+
+const coreEngine = EUIXEngineCore.mount<DashboardState>(xml, '#app');
+const currentCount: number = coreEngine.getState('counter');
+```
 

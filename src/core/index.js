@@ -7,6 +7,8 @@ export { bindEvents, executeEventHandlers, handleAction } from "./actions/Action
 export {
     escapeHtml,
     escapeRegExp,
+    extractBindModifiers,
+    coerceBindingValue,
     getBindingValue,
     getJsonPath,
     getKeyMask,
@@ -65,6 +67,7 @@ export {
     interpolate,
     render,
     renderConditional,
+    renderErrorBoundary,
     updateAttributeBinding,
 } from "./renderer/DOMRenderer.js";
 export { _getLongestIncreasingSubsequence, _reconcileKeyedDOM, renderForEach } from "./renderer/ForEachRenderer.js";

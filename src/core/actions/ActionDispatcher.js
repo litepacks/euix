@@ -288,15 +288,42 @@ export function _handleActionInternal(engine, actionNode, context = {}) {
 }
 
 export function _executeActionInternalBody(engine, actionNode, context = {}) {
-    const actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
+    let actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
     const tagNameLower = actionNode.tagName ? actionNode.tagName.toLowerCase() : "";
+
+    // 0. Auto-detect shorthand action attributes if action is not explicitly declared
+    if (!actionAttr && actionNode.hasAttribute) {
+        if (actionNode.hasAttribute("set")) actionAttr = "SET_STATE";
+        else if (actionNode.hasAttribute("toggle")) actionAttr = "TOGGLE_STATE";
+        else if (actionNode.hasAttribute("mutate")) actionAttr = "MUTATE_STATE";
+        else if (actionNode.hasAttribute("revalidate")) actionAttr = "REVALIDATE_API";
+        else if (actionNode.hasAttribute("run") || actionNode.hasAttribute("script") || actionNode.hasAttribute("eval"))
+            actionAttr = "RUN_SCRIPT";
+        else if (actionNode.hasAttribute("focus")) actionAttr = "FOCUS";
+        else if (actionNode.hasAttribute("call") || actionNode.hasAttribute("workflow")) actionAttr = "CALL_ACTION";
+        else if (actionNode.hasAttribute("title")) actionAttr = "SET_TITLE";
+        else if (actionNode.hasAttribute("undo")) actionAttr = "UNDO_STATE";
+        else if (actionNode.hasAttribute("redo")) actionAttr = "REDO_STATE";
+        else if (actionNode.hasAttribute("snapshot")) actionAttr = "TAKE_SNAPSHOT";
+    }
 
     if (engine._devtools?.enabled) {
         const pathNode = engine.getChild(actionNode, "path");
         const opNode = engine.getChild(actionNode, "operation");
         engine._devtools.logAction(actionAttr || actionNode.tagName, {
-            path: pathNode ? pathNode.textContent.trim() : "",
-            operation: opNode ? opNode.textContent.trim() : "",
+            path: pathNode
+                ? pathNode.textContent.trim()
+                : actionNode.getAttribute
+                  ? actionNode.getAttribute("set") ||
+                    actionNode.getAttribute("toggle") ||
+                    actionNode.getAttribute("path") ||
+                    ""
+                  : "",
+            operation: opNode
+                ? opNode.textContent.trim()
+                : actionNode.getAttribute
+                  ? actionNode.getAttribute("mutate") || actionNode.getAttribute("op") || ""
+                  : "",
         });
     }
 
@@ -430,7 +457,20 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
 
         if (!confirmAction(engine, node, eventContext)) continue;
 
-        if (node.getAttribute("action")) {
+        const hasShorthand =
+            node.hasAttribute &&
+            (node.hasAttribute("set") ||
+                node.hasAttribute("toggle") ||
+                node.hasAttribute("mutate") ||
+                node.hasAttribute("revalidate") ||
+                node.hasAttribute("run") ||
+                node.hasAttribute("script") ||
+                node.hasAttribute("eval") ||
+                node.hasAttribute("focus") ||
+                node.hasAttribute("call") ||
+                node.hasAttribute("workflow"));
+
+        if (node.getAttribute("action") || hasShorthand) {
             const actType = node.getAttribute("action");
             if (actType === "XHR") engine.handleXHR(node, eventContext);
             else engine.handleAction(node, eventContext);
@@ -489,6 +529,112 @@ export function _setupContainerEventDelegation(engine, containerTarget) {
     }
 }
 
+export function _createShorthandActionNode(eventType, directive, attrValue, sourceXmlNode) {
+    let doc = typeof document !== "undefined" ? document : null;
+    let node;
+    try {
+        node = doc && typeof doc.createElement === "function" ? doc.createElement(`on_${eventType}`) : null;
+    } catch (_) {
+        node = null;
+    }
+
+    if (!node || !node.getAttribute) {
+        const attrs = new Map();
+        node = {
+            tagName: `ON_${eventType}`.toUpperCase(),
+            nodeType: 1,
+            children: [],
+            childNodes: [],
+            getAttribute: (k) => attrs.get(k) ?? null,
+            setAttribute: (k, v) => attrs.set(k, String(v)),
+            hasAttribute: (k) => attrs.has(k),
+            textContent: "",
+        };
+    }
+
+    // Copy event modifiers from parent element if specified
+    const confirmVal = sourceXmlNode.getAttribute ? sourceXmlNode.getAttribute("confirm") : null;
+    if (confirmVal) node.setAttribute("confirm", confirmVal);
+
+    const preventVal = sourceXmlNode.getAttribute
+        ? sourceXmlNode.getAttribute("prevent") || sourceXmlNode.getAttribute("prevent_default")
+        : null;
+    if (preventVal !== null) node.setAttribute("prevent", preventVal || "true");
+
+    const stopVal = sourceXmlNode.getAttribute
+        ? sourceXmlNode.getAttribute("stop") || sourceXmlNode.getAttribute("stop_propagation")
+        : null;
+    if (stopVal !== null) node.setAttribute("stop", stopVal || "true");
+
+    const keyVal = sourceXmlNode.getAttribute
+        ? sourceXmlNode.getAttribute("key") || sourceXmlNode.getAttribute("code")
+        : null;
+    if (keyVal) node.setAttribute("key", keyVal);
+
+    const dir = directive.toLowerCase();
+
+    if (dir === "set" || dir === "set_state") {
+        node.setAttribute("action", "SET_STATE");
+        node.setAttribute("set", attrValue);
+    } else if (dir === "toggle" || dir === "toggle_state") {
+        node.setAttribute("action", "TOGGLE_STATE");
+        node.setAttribute("path", attrValue);
+        node.setAttribute("toggle", attrValue);
+    } else if (dir === "mutate" || dir === "mutate_state") {
+        node.setAttribute("action", "MUTATE_STATE");
+        node.setAttribute("mutate", attrValue);
+    } else if (dir === "revalidate" || dir === "revalidate_api") {
+        node.setAttribute("action", "REVALIDATE_API");
+        node.setAttribute("tag", attrValue);
+        node.setAttribute("revalidate", attrValue);
+    } else if (dir === "run" || dir === "script" || dir === "eval") {
+        node.setAttribute("action", "RUN_SCRIPT");
+        node.textContent = attrValue;
+        node.setAttribute("run", attrValue);
+    } else if (dir === "focus") {
+        node.setAttribute("action", "FOCUS");
+        node.setAttribute("target", attrValue);
+        node.setAttribute("focus", attrValue);
+    } else if (dir === "call" || dir === "workflow" || dir === "action") {
+        node.setAttribute("action", attrValue);
+        node.setAttribute("name", attrValue);
+    } else if (dir === "title" || dir === "set_title") {
+        node.setAttribute("action", "SET_TITLE");
+        node.setAttribute("value", attrValue);
+        node.setAttribute("title", attrValue);
+    } else if (dir === "undo") {
+        node.setAttribute("action", "UNDO_STATE");
+    } else if (dir === "redo") {
+        node.setAttribute("action", "REDO_STATE");
+    } else if (dir === "snapshot") {
+        node.setAttribute("action", "TAKE_SNAPSHOT");
+        node.setAttribute("label", attrValue);
+    } else if (dir === "retry" || dir === "reset_boundary" || dir === "reset_error_boundary") {
+        node.setAttribute("action", "RESET_ERROR_BOUNDARY");
+        node.setAttribute("target", attrValue);
+        node.setAttribute("boundary", attrValue);
+    } else if (dir === "auto") {
+        const colonIdx = attrValue.indexOf(":");
+        if (colonIdx !== -1) {
+            const subDir = attrValue.slice(0, colonIdx).trim().toLowerCase();
+            const subVal = attrValue.slice(colonIdx + 1).trim();
+            return _createShorthandActionNode(eventType, subDir, subVal, sourceXmlNode);
+        }
+        if (attrValue.includes("=") || attrValue.includes("+") || attrValue.includes("-")) {
+            node.setAttribute("action", "SET_STATE");
+            node.setAttribute("set", attrValue);
+        } else if (attrValue.startsWith("$") || attrValue.includes("(") || attrValue.includes(";")) {
+            node.setAttribute("action", "RUN_SCRIPT");
+            node.textContent = attrValue;
+            node.setAttribute("run", attrValue);
+        } else {
+            node.setAttribute("action", attrValue);
+        }
+    }
+
+    return node;
+}
+
 export function bindEvents(engine, xmlNode, el, context = {}) {
     if (!el || xmlNode.nodeType !== 1) return;
     if (xmlNode._hasEventTags === false) return;
@@ -528,6 +674,67 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
                 eventMap.set(eventType, list);
             }
             list.push(child);
+        }
+    }
+
+    // Process element-level shorthand attributes (e.g. on_click:set="...", on_change:toggle="...", on_click="...")
+    if (xmlNode.attributes && xmlNode.attributes.length > 0) {
+        const aLen = xmlNode.attributes.length;
+        for (let aIdx = 0; aIdx < aLen; aIdx++) {
+            const attr = xmlNode.attributes[aIdx];
+            const attrName = attr.name;
+            const attrVal = attr.value;
+
+            const colonIdx = attrName.indexOf(":");
+            let eventType = null;
+            let actionDirective = null;
+
+            if (colonIdx !== -1) {
+                const prefix = attrName.slice(0, colonIdx).toLowerCase().replace(/-/g, "_");
+                const suffix = attrName
+                    .slice(colonIdx + 1)
+                    .toLowerCase()
+                    .replace(/-/g, "_");
+
+                if (prefix === "on" || prefix.startsWith("on_")) {
+                    if (prefix === "on") {
+                        const subColon = suffix.indexOf(":");
+                        if (subColon !== -1) {
+                            eventType = suffix.slice(0, subColon);
+                            actionDirective = suffix.slice(subColon + 1);
+                        } else {
+                            eventType = suffix;
+                            actionDirective = "run";
+                        }
+                    } else {
+                        eventType = prefix.replace(/^on_/, "");
+                        actionDirective = suffix;
+                    }
+                }
+            } else if (
+                (attrName.startsWith("on_") || attrName.startsWith("on-")) &&
+                attrName !== "on-unmount" &&
+                attrName !== "on-mount" &&
+                attrName !== "on_mount" &&
+                attrName !== "on_unmount"
+            ) {
+                const cleanName = attrName.replace(/-/g, "_");
+                eventType = cleanName.replace(/^on_/, "");
+                actionDirective = "auto";
+            }
+
+            if (eventType && actionDirective) {
+                if (eventType === "submit" && el.tagName && el.tagName.toLowerCase() === "button") {
+                    eventType = "click";
+                }
+                let list = eventMap.get(eventType);
+                if (!list) {
+                    list = [];
+                    eventMap.set(eventType, list);
+                }
+                const syntheticNode = _createShorthandActionNode(eventType, actionDirective, attrVal, xmlNode);
+                list.push(syntheticNode);
+            }
         }
     }
 

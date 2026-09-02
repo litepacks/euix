@@ -218,10 +218,7 @@ export function resolveValueFromPath(engine, path, context = {}) {
     if (path === "result") {
         return context.result;
     }
-    if (path === "err" || path === "error") {
-        return context.err || context.error;
-    }
-    const ctxMatch = path.match(/^(\w+)(?:\.(.+))?$/);
+    const ctxMatch = path.match(/^([a-zA-Z0-9_$]+)(?:\.(.+))?$/);
     if (ctxMatch) {
         const [_, scope, prop] = ctxMatch;
         if (scope && context && context[scope] !== undefined && context[scope] !== null) {
@@ -487,6 +484,13 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
         if (engine._isMounted && el && el.isConnected === false) {
             hasDeadNodes = true;
             continue;
+        }
+
+        if (engine.hooks) {
+            engine.hooks.emit("binding:update", { el, path, value, kind });
+        }
+        if (engine.inspector?.highlightUpdates && el) {
+            engine.inspector.flashElement(el, { label: path, kind });
         }
 
         if (isFn(updateFn)) {

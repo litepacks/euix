@@ -114,6 +114,14 @@ export class EUIXDevTools extends EUIXInspector {
         if (this.panel) this.panel.stateFilterQuery = val;
     }
 
+    get flashUpdates() {
+        return this.highlightUpdates;
+    }
+
+    set flashUpdates(val) {
+        this.highlightUpdates = val;
+    }
+
     renderPanel() {
         if (this.panel) this.panel.render();
     }
@@ -143,7 +151,13 @@ export class EUIXDevTools extends EUIXInspector {
             info = details.path ? `${type} -> ${details.path}` : `${type}`;
         }
 
-        const entry = { time, action: type, type, info, duration: 0, status: "success" };
+        const entry = {
+            time,
+            action: type,
+            info,
+            duration: details.duration || 0,
+            status: details.status || "success",
+        };
         this.actionLogs.push(entry);
         if (this.actionLogs.length > (this.options.maxEvents || 30)) {
             this.actionLogs.shift();
@@ -196,7 +210,12 @@ if (typeof document !== "undefined") {
         if (script && window.EUIXEngine && window.EUIXEngine.instance) {
             const devAttr = script.getAttribute("data-euix-devtools");
             const autoOpen = devAttr === "open" || devAttr === "true";
-            const devtools = EUIXDevTools.init(window.EUIXEngine.instance);
+            const flashAttr =
+                script.getAttribute("data-euix-highlight-updates") === "true" ||
+                script.getAttribute("data-euix-flash") === "true";
+            const devtools = EUIXDevTools.init(window.EUIXEngine.instance, {
+                highlightUpdates: flashAttr,
+            });
             if (devtools && autoOpen) devtools.toggle(true);
         }
     };
