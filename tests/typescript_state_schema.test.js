@@ -78,7 +78,9 @@ describe("TypeScript State Schema & Types Suite", () => {
 
         fs.writeFileSync(tempTsPath, sampleTs);
         try {
-            const output = execSync("npx tsc --noEmit --skipLibCheck --target ES2022 --moduleResolution node test_temp_typecheck.ts", {
+            const localTsc = path.join(process.cwd(), "node_modules/.bin/tsc");
+            const tscCmd = fs.existsSync(localTsc) ? `"${localTsc}"` : "npx -p typescript tsc";
+            const output = execSync(`${tscCmd} --noEmit --skipLibCheck --target ES2022 test_temp_typecheck.ts`, {
                 cwd: process.cwd(),
                 encoding: "utf8"
             });

@@ -25,6 +25,17 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Cache Build & Test Tooling (Vite, Vitest, Biome)
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache
+            ~/.cache/biome
+          key: ${{ runner.os }}-tooling-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**', 'tests/**') }}
+          restore-keys: |
+            ${{ runner.os }}-tooling-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-tooling-
+
       - name: Build Bundles
         run: npm run build
 
@@ -82,6 +93,18 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
+
+      - name: Cache Stryker Mutation Testing
+        uses: actions/cache@v4
+        with:
+          path: |
+            .stryker-tmp
+            reports/mutation
+            node_modules/.cache
+          key: ${{ runner.os }}-stryker-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-stryker-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-stryker-
 
       - name: Run 5-Minute Soak Test
         run: SOAK_DURATION_MIN=5 npm run test:soak
