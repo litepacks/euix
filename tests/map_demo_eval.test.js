@@ -107,20 +107,12 @@ describe("map_demo.html full template verification", () => {
         const btnFr = buttons[4];
         const btnDe = buttons[5];
 
-        console.log("Initial Active Country:", engine.getState("active_country"));
-        console.log("Initial TR Button Class:", btnTr.className);
-        console.log("Initial UK Button Class:", btnUk.className);
-
         expect(btnTr.className).toContain("active");
         expect(btnUk.className).not.toContain("active");
 
         // Click UK
         btnUk.click();
         await new Promise(r => setTimeout(r, 40));
-
-        console.log("After UK click Active Country:", engine.getState("active_country"));
-        console.log("After UK click TR Button Class:", btnTr.className);
-        console.log("After UK click UK Button Class:", btnUk.className);
 
         expect(engine.getState("active_country")).toBe("UK");
         expect(btnUk.className).toContain("active");
@@ -129,9 +121,6 @@ describe("map_demo.html full template verification", () => {
         // Click USA
         btnUsa.click();
         await new Promise(r => setTimeout(r, 40));
-
-        console.log("After USA click Active Country:", engine.getState("active_country"));
-        console.log("After USA click USA Button Class:", btnUsa.className);
 
         expect(engine.getState("active_country")).toBe("USA");
         expect(btnUsa.className).toContain("active");

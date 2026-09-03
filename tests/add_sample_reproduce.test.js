@@ -56,7 +56,6 @@ describe('Add Employee and Add Holding Verification Suite', () => {
 
         addHoldingBtn.click();
 
-        console.log('Portfolio after click:', engine.getState('portfolio'));
         expect(engine.getState('portfolio').length).toBe(2);
     });
 
@@ -108,7 +107,6 @@ describe('Add Employee and Add Holding Verification Suite', () => {
 
         addEmpBtn.click();
 
-        console.log('Employees after click:', engine.getState('employees'));
         expect(engine.getState('employees').length).toBe(2);
     });
 });

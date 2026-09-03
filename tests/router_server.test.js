@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * tests/router_server.test.js
  * Unit tests for SSR static router, hydration serialization, and client rehydration.

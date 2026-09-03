@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
 import { createHistory, MemoryHistory, HashHistory } from '../src/plugins/router/core/history.js';
 import { EUIXRouter } from '../src/plugins/router/index.js';

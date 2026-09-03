@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, afterEach } from "vitest";
 import { generateXSDSchema, generateJsonSchema, generateComponentTypes } from "../src/compiler/index.js";
 import fs from "fs";

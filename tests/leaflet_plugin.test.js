@@ -319,17 +319,11 @@ describe("EUIXLeafletPlugin - Declarative Interactive Map & Spatial Analysis Sui
         const btnTr = container.querySelector("#btn_tr");
         const btnUk = container.querySelector("#btn_uk");
 
-        console.log("Initial TR class:", btnTr.className);
-        console.log("Initial UK class:", btnUk.className);
-
         expect(btnTr.className).toContain("active");
         expect(btnUk.className).not.toContain("active");
 
         btnUk.click();
         await new Promise(r => setTimeout(r, 20));
-
-        console.log("After UK click TR class:", btnTr.className);
-        console.log("After UK click UK class:", btnUk.className);
 
         expect(btnUk.className).toContain("active");
         expect(btnTr.className).not.toContain("active");
@@ -396,11 +390,6 @@ describe("EUIXLeafletPlugin - Declarative Interactive Map & Spatial Analysis Sui
 
         btnUk.click();
         await new Promise(r => setTimeout(r, 40));
-
-        console.log("State active_country after click:", engine.getState("active_country"));
-        console.log("State status after click:", engine.getState("status"));
-        console.log("TR button class after click:", btnTr.className);
-        console.log("UK button class after click:", btnUk.className);
 
         expect(engine.getState("active_country")).toBe("UK");
         expect(engine.getState("status")).toBe("Focused on London, United Kingdom.");

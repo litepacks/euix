@@ -9,8 +9,45 @@ on:
     - cron: "0 2 * * *" # Nightly stress & soak run
 
 jobs:
-  pr_validation:
-    name: PR Validation & Battle Tests
+  unit_integration_tests:
+    name: Unit & Integration Tests (Shard ${{ matrix.shard }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ['1/2', '2/2']
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Cache Build & Test Tooling (Vite, Vitest, Biome)
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules/.cache
+            ~/.cache/biome
+          key: ${{ runner.os }}-tooling-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('src/**', 'tests/**') }}
+          restore-keys: |
+            ${{ runner.os }}-tooling-${{ hashFiles('**/package-lock.json') }}-
+            ${{ runner.os }}-tooling-
+
+      - name: Build Bundles
+        run: npm run build
+
+      - name: Run Unit & Integration Tests (Shard ${{ matrix.shard }})
+        run: npm test -- --shard=${{ matrix.shard }}
+
+  battle_and_e2e:
+    name: Battle Tests & E2E Matrix
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -39,8 +76,8 @@ jobs:
       - name: Build Bundles
         run: npm run build
 
-      - name: Run Unit & Integration Tests
-        run: npm test
+      - name: Typecheck TypeScript Schemas & Declarations
+        run: npm run typecheck
 
       - name: Run Battle Test Suite (Property, Fuzz, Roundtrip, Permutations, Chaos)
         run: npm run test:battle

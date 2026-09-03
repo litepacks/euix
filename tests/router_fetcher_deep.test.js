@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * tests/router_fetcher_deep.test.js
  * Comprehensive tests for RouteFetcher submit, load, state transitions, and revalidation.

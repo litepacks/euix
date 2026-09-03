@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { EUIXEngineCore } from "../src/core/EUIXEngineCore.js";
 import { EUIXValidationPlugin } from "../src/plugins/EUIXValidationPlugin.js";

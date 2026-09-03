@@ -56,7 +56,17 @@ export default defineConfig({
     teardownTimeout: 2000,
     fileParallelism: true,
     onConsoleLog(log) {
-      if (log.includes('[EUIXEngine Fallback]')) return false;
+      if (
+        log.includes('[EUIXEngine Fallback]') ||
+        log.includes('[EUIXRouter] No route matched') ||
+        log.includes('navigation to another Document') ||
+        log.includes('[EUIXEngine Hook Error]') ||
+        log.includes('Regex Match Error') ||
+        log.includes('Failed to load component from file') ||
+        log.includes('[EUIXLazyPlugin] Retry')
+      ) {
+        return false;
+      }
     },
     coverage: {
       provider: 'v8',

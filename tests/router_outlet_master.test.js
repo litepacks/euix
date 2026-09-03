@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EUIXRouter } from '../src/plugins/router/index.js';
 
