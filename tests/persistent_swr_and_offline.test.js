@@ -1,32 +1,31 @@
-// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { EUIXEngineCore } from "../src/core/EUIXEngineCore.js";
 import { EUIXApiPlugin } from "../src/plugins/EUIXApiPlugin.js";
-import { JSDOM } from "jsdom";
 
 describe("Persistent SWR API Cache & Offline Queue Suite", () => {
-    let dom;
     let container;
 
     beforeEach(() => {
-        dom = new JSDOM("<!DOCTYPE html><html><body><div id=\"app\"></div></body></html>", {
-            url: "http://localhost:3000"
-        });
-        global.document = dom.window.document;
-        global.window = dom.window;
-        global.DOMParser = dom.window.DOMParser;
-        global.localStorage = dom.window.localStorage;
-        global.sessionStorage = dom.window.sessionStorage;
-        global.navigator = dom.window.navigator;
+        document.body.innerHTML = '<div id="app"></div>';
+        container = document.getElementById("app");
         localStorage.clear();
         sessionStorage.clear();
-        container = document.getElementById("app");
+        Object.defineProperty(navigator, "onLine", {
+            value: true,
+            configurable: true,
+            writable: true
+        });
 
         EUIXEngineCore.use(EUIXApiPlugin);
     });
 
     afterEach(() => {
         if (container) container.innerHTML = "";
+        Object.defineProperty(navigator, "onLine", {
+            value: true,
+            configurable: true,
+            writable: true
+        });
         vi.restoreAllMocks();
     });
 
@@ -87,9 +86,10 @@ describe("Persistent SWR API Cache & Offline Queue Suite", () => {
         }));
 
         // Mock offline navigator
-        Object.defineProperty(global.navigator, "onLine", {
+        Object.defineProperty(navigator, "onLine", {
             value: false,
-            configurable: true
+            configurable: true,
+            writable: true
         });
 
         global.fetch = vi.fn().mockRejectedValue(new Error("Failed to fetch"));
@@ -128,9 +128,10 @@ describe("Persistent SWR API Cache & Offline Queue Suite", () => {
     });
 
     it("should enqueue offline mutations and flush them when online", async () => {
-        Object.defineProperty(global.navigator, "onLine", {
+        Object.defineProperty(navigator, "onLine", {
             value: false,
-            configurable: true
+            configurable: true,
+            writable: true
         });
 
         global.fetch = vi.fn().mockRejectedValue(new Error("Offline"));
