@@ -61,4 +61,13 @@ describe('Live Editor Preset Switching Test', () => {
     // Assert live preview contains Accordion
     expect(document.getElementById("preview-mount-root").innerHTML).toContain("Accordion Preset");
   });
+
+  it('should verify live-editor.html defines the 4 core canonical presets', () => {
+    const htmlContent = fs.readFileSync(path.resolve(__dirname, '../live-editor.html'), 'utf8');
+    expect(htmlContent).toContain('value="counter"');
+    expect(htmlContent).toContain('value="todo"');
+    expect(htmlContent).toContain('value="api"');
+    expect(htmlContent).toContain('value="dashboard"');
+    expect(htmlContent).toContain('Core Demos');
+  });
 });

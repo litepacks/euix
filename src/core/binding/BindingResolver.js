@@ -3,6 +3,8 @@
  * Two-way data binding resolvers, path parsers, and mapping utilities for EUIX Engine.
  */
 
+import { getRootKey, isFn } from "../utils/constants.js";
+
 export function parseBindPath(expr) {
     if (!expr) return "";
     return String(expr)
@@ -271,3 +273,213 @@ export function mapResponseItems(engine, items, itemMapNode) {
         return mapped;
     });
 }
+
+export const BINDING_NAMESPACES = new Map();
+
+export function registerBindingNamespace(namespace, handler) {
+    if (!namespace) return;
+    BINDING_NAMESPACES.set(String(namespace).toLowerCase(), handler);
+}
+
+export function resolveScopedValue(engine, scope, prop, context = {}) {
+    if (!scope) return undefined;
+    const lowerScope = scope.toLowerCase();
+
+    // 1. Custom registered namespace handler
+    const nsHandler = BINDING_NAMESPACES.get(lowerScope);
+    if (nsHandler) {
+        if (typeof nsHandler === "function") return nsHandler(engine, scope, prop, context);
+        if (typeof nsHandler.resolve === "function") return nsHandler.resolve(engine, scope, prop, context);
+    }
+
+    // 2. Stream namespace
+    if (lowerScope === "stream" || lowerScope === "$stream") {
+        const parts = (prop || "").split(".");
+        const streamId = parts[0];
+        const streamProp = parts.slice(1).join(".");
+        const status = typeof engine.getStreamStatus === "function" ? engine.getStreamStatus(streamId) : engine._streamStatus?.[streamId];
+        if (!status) return undefined;
+        if (!streamProp) return status;
+        return streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
+    }
+
+    // 3. Errors namespace
+    if (lowerScope === "errors" || lowerScope === "$errors") {
+        const errObj = engine._formErrors || (typeof engine.getState === "function" ? engine.getState("errors") || engine.getState("$errors") : null);
+        if (!errObj) return undefined;
+        if (!prop) return errObj;
+        return errObj[prop];
+    }
+
+    // 4. API namespace
+    if (lowerScope === "api" || lowerScope === "$api") {
+        if (prop) {
+            const parts = prop.split(".");
+            const endpointId = parts[0];
+            const epProp = parts.slice(1).join(".");
+            const status = typeof engine.getApiStatus === "function" ? engine.getApiStatus(endpointId) : engine._apiStatus?.[endpointId];
+            if (!status) return undefined;
+            if (!epProp) return status;
+            return epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
+        }
+        return undefined;
+    }
+
+    // 5. Context or Root State lookup for $route, $router, $fetcher, $device, etc.
+    const root = (context && context[scope] !== undefined)
+        ? context[scope]
+        : (typeof engine.getState === "function" ? engine.getState(scope) : undefined) ?? (engine && engine[scope]);
+
+    if (root !== undefined && root !== null) {
+        if (!prop) return root;
+        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), root);
+    }
+
+    return undefined;
+}
+
+export function registerScopedBinding(engine, expr, targetNode, kind, updateFn, context = {}) {
+    if (!expr || typeof expr !== "string" || !expr.includes("{")) return false;
+
+    let registeredCount = 0;
+
+    const dollarMatch = expr.match(/\$([a-zA-Z0-9_]+)/g);
+    if (dollarMatch) {
+        dollarMatch.forEach((dm) => {
+            engine.registerBinding(dm, targetNode, kind, updateFn);
+            registeredCount++;
+        });
+    }
+
+    const matches = Array.from(
+        expr.matchAll(/(?:parent\.)?([$a-zA-Z0-9_]+)(?:\.([a-zA-Z0-9_.[\]]+))?/g)
+    );
+    if (matches.length === 0) return registeredCount > 0;
+
+    const uniquePairs = new Set();
+    for (let i = 0; i < matches.length; i++) {
+        const scope = matches[i][1];
+        const prop = matches[i][2] || "";
+        uniquePairs.add(`${scope}:${prop}`);
+    }
+
+    for (const pair of uniquePairs) {
+        const colon = pair.indexOf(":");
+        const scope = pair.slice(0, colon);
+        const prop = pair.slice(colon + 1);
+        const lowerScope = scope.toLowerCase();
+
+        // Skip constants and static scopes
+        if (
+            lowerScope === "const" ||
+            lowerScope === "constant" ||
+            lowerScope === "constants" ||
+            lowerScope === "var" ||
+            lowerScope === "vars" ||
+            lowerScope === "variable" ||
+            lowerScope === "variables"
+        ) {
+            continue;
+        }
+
+        // 1. Custom namespace subscriber
+        const nsHandler = BINDING_NAMESPACES.get(lowerScope);
+        if (nsHandler && typeof nsHandler.subscribe === "function") {
+            nsHandler.subscribe(engine, scope, prop, targetNode, kind, updateFn, context);
+            registeredCount++;
+            continue;
+        }
+
+        // 2. Stream
+        if (lowerScope === "stream" || lowerScope === "$stream") {
+            const parts = prop.split(".");
+            const streamId = parts[0];
+            const streamProp = parts[1];
+            if (streamProp) {
+                engine.registerBinding(`stream:${streamId}:${streamProp}`, targetNode, kind, updateFn);
+                engine.registerBinding(`stream.${streamId}.${streamProp}`, targetNode, kind, updateFn);
+                engine.registerBinding(`$stream.${streamId}.${streamProp}`, targetNode, kind, updateFn);
+                registeredCount += 3;
+            }
+            engine.registerBinding(`stream:${streamId}`, targetNode, kind, updateFn);
+            engine.registerBinding(`stream.${streamId}`, targetNode, kind, updateFn);
+            engine.registerBinding(`$stream.${streamId}`, targetNode, kind, updateFn);
+            registeredCount += 3;
+            continue;
+        }
+
+        // 3. Errors
+        if (lowerScope === "errors" || lowerScope === "$errors") {
+            if (prop) {
+                engine.registerBinding(`errors.${prop}`, targetNode, kind, updateFn);
+                engine.registerBinding(`$errors.${prop}`, targetNode, kind, updateFn);
+                registeredCount += 2;
+            }
+            engine.registerBinding("errors", targetNode, kind, updateFn);
+            engine.registerBinding("$errors", targetNode, kind, updateFn);
+            registeredCount += 2;
+            continue;
+        }
+
+        // 4. API
+        if (lowerScope === "api" || lowerScope === "$api") {
+            const parts = prop.split(".");
+            const epId = parts[0];
+            const epProp = parts[1];
+            if (epProp) {
+                engine.registerBinding(`api:${epId}:${epProp}`, targetNode, kind, updateFn);
+                registeredCount++;
+            }
+            engine.registerBinding(`api:${epId}`, targetNode, kind, updateFn);
+            engine.registerBinding(`api.${epId}`, targetNode, kind, updateFn);
+            registeredCount += 2;
+            continue;
+        }
+
+        // 5. Scopes starting with $ (e.g. $route, $router, $fetcher, $device)
+        if (scope.startsWith("$")) {
+            engine.registerBinding(scope, targetNode, kind, updateFn);
+            registeredCount++;
+            if (prop) {
+                engine.registerBinding(`${scope}.${prop}`, targetNode, kind, updateFn);
+                registeredCount++;
+            }
+            continue;
+        }
+
+        // 6. Data / Local state bindings
+        if (scope === "data" || scope === "state" || scope === "global" || scope === "$global") {
+            const rootKey = getRootKey(prop);
+            engine.registerBinding(prop, targetNode, kind, updateFn);
+            registeredCount++;
+            if (rootKey !== prop) {
+                engine.registerBinding(rootKey, targetNode, kind, updateFn);
+                registeredCount++;
+            }
+            const innerBracketMatches = prop.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
+            for (let bIdx = 0; bIdx < innerBracketMatches.length; bIdx++) {
+                const innerKey = innerBracketMatches[bIdx].replace(/[[\]]|data\./g, "");
+                if (!/^\d+$/.test(innerKey)) {
+                    engine.registerBinding(innerKey, targetNode, kind, updateFn);
+                    registeredCount++;
+                }
+            }
+            continue;
+        }
+
+        if (scope === "local" || scope === "$local") {
+            const isLocal =
+                context._localState &&
+                (context._localState[prop] !== undefined ||
+                    expr.includes(`local.${prop}`) ||
+                    expr.includes(`$local.${prop}`));
+            const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${prop}` : prop;
+            engine.registerBinding(bindKey, targetNode, kind, updateFn);
+            registeredCount++;
+            continue;
+        }
+    }
+
+    return registeredCount > 0;
+}
+

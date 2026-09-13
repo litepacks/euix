@@ -9,18 +9,30 @@
 
 ## 📄 What is .EUIX Engine?
 
-**EUIX Engine** is a declarative UI runtime based on structured XML designed for modern web applications. It allows you to build full reactive web interfaces using **Structured XML** — handling **components** (`<component_def>`), **state management** (`<data_model>`), **Action Composer workflows** (`<action_def>`), **REST API integration** (`<api_endpoint>`), **conditional rendering** (`<if>`), **loops** (`<for_each>`), and **direct DOM updates** declaratively inside XML specs with **zero external dependencies** and an **AI-friendly syntax**.
+> **Make EUIX minimal by default and powerful by opt-in.**  
+> A lightweight reactive declarative UI runtime that turns markup + state + events into DOM updates without requiring a build step or a virtual DOM.
+
+### The 5 Core Concepts of EUIX
+
+A developer can build reactive applications by learning roughly 5 core concepts:
+
+```text
+EUIX
+├── 1. State (<data_model>) — typed reactive variables (number, string, boolean, array, object)
+├── 2. Templates — expressions {data.count}, conditions (show="{...}" / <if>), and loops (<for_each key="id">)
+├── 3. Events & Actions — simple updates (SET, TOGGLE, CALL, EMIT) and JavaScript escape hatch (engine.action)
+├── 4. Components — modular reusable definitions (<component_def>), props ({props.name}), and slots
+└── 5. Plugins — tree-shakeable opt-in extensions (.use(plugin)) for API, router, storage, charts, etc.
+```
 
 ### Why EUIX?
-- **📄 Declarative XML Specs:** State management, REST API calls, design tokens, variables, and event listeners all defined declaratively in XML without JS boilerplate.
-- **⚡ High Performance Primitives:** XML AST Caching, Expression AST LRU Caching, Keyed DOM Reconciliation (`key="id"`), State Mutation Batching (`queueMicrotask`), Event Delegation, and `DocumentFragment` DOM Batching.
-- **🧩 Modular Plugin Architecture:** Ultra-lightweight core (`euixjs/core`) with tree-shakeable eklenti extensions (`composer`, `api`, `dnd`, `storage`, `collapse`, `dialog`).
-- **🌳 Parent-Child Component Hierarchy:** Modular component architecture (`<component_def>`) with clean `<imports>`, `<import src="..." />` tags, and parent-to-child prop & state sharing (`{props.key}`).
-- **⚡ Direct DOM Updates:** State mutations directly update affected target DOM nodes without Virtual DOM reconciliation overhead.
-- **🛡️ Component-Scoped Isolation:** Modular components (`<component_def>`) with component-scoped API client configurations (`<api_config>`), design tokens (`<constants>`), and isolated reactive states.
-- **🤖 AI-Agent Friendly:** Structured XML specs allow LLMs and AI coding agents to deterministically parse, generate, and refactor UI code with zero syntactic ambiguity.
+- **📄 Declarative Markup:** State, bindings, and events declared cleanly in standard XML or HTML without complex toolchains or build steps.
+- **⚡ Zero Virtual DOM Overhead:** Fine-grained direct DOM updates directly mutate affected nodes via `queueMicrotask` batching.
+- **🧩 Minimal by Default, Powerful by Opt-In:** Tiny Core (~20 KB gzip) with tree-shakeable plugins (`api`, `router`, `composer`, `storage`, `devtools`).
+- **🛡️ Native Platform First:** Standard HTML & CSS styling, container event delegation, and direct browser APIs over bloated custom abstractions.
+- **🤖 AI-Agent Friendly:** Structured XML specs allow LLMs to deterministically parse, generate, and edit UI components without syntactic ambiguity.
 
-> 📖 **Agent & Developer Architecture Guide**: For full architecture, state reactivity, SWR REST API client, scoping matrix, and security guidelines, see [.agents/AGENTS.md](.agents/AGENTS.md).
+> 📖 **Agent & Architecture Guide**: For complete internal runtime architecture, AST caching, and plugin hooks, see [.agents/AGENTS.md](.agents/AGENTS.md).
 
 ---
 
@@ -43,22 +55,16 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
 
 ---
 
-## 🚀 Usage Guide
+## 🚀 Quick Start
 
-### 1. Embedded HTML Script Spec (`type="application/euix"`):
+### 1. Embedded HTML Script Spec (`type="application/euix"`)
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vanilla .EUIX Engine Quickstart</title>
-  <!-- Tailwind CSS & Modern Typography -->
+  <title>Vanilla .EUIX Quickstart</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-  </style>
   <script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js"></script>
 </head>
 <body class="bg-slate-100 min-h-screen flex items-center justify-center p-6">
@@ -69,42 +75,36 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
   <uid_spec>
       <data_model>
           <state id="counter" type="number">0</state>
-          <state id="tasks" type="array">[{"id": 1, "title": "Learn EUIX Engine", "status": "done"}, {"id": 2, "title": "Build Drag & Drop App", "status": "todo"}]</state>
+          <state id="tasks" type="array">[{"id": 1, "title": "Learn EUIX Core", "done": false}]</state>
       </data_model>
 
-      <flex direction="column" gap="16" class="p-6 bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100">
-          <flex direction="row" align="center" justify="between">
-              <h1 class="text-xl font-extrabold text-slate-800 tracking-tight">Counter: {data.counter}</h1>
-              <span class="px-2.5 py-1 bg-blue-50 text-blue-700 font-bold text-xs rounded-lg border border-blue-100">Declarative UI</span>
-          </flex>
+      <div class="p-6 bg-white rounded-2xl shadow-xl border border-slate-100 flex flex-col gap-4">
+          <div class="flex items-center justify-between">
+              <h1 class="text-xl font-bold text-slate-800">Counter: {data.counter}</h1>
+              <span class="px-2.5 py-1 bg-indigo-50 text-indigo-700 font-semibold text-xs rounded-lg">Zero VDOM</span>
+          </div>
 
-          <flex direction="row" gap="8">
-              <button class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-md shadow-blue-500/20">
-                  <on_click action="SET_STATE">
-                      <path>data.counter</path>
-                      <value>{data.counter + 1}</value>
-                  </on_click>
+          <div class="flex gap-2">
+              <button on_click:set="counter={data.counter + 1}" class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-sm transition">
                   ➕ Increment
               </button>
-          </flex>
+              <button on_click:set="counter=0" class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition">
+                  Reset
+              </button>
+          </div>
 
           <!-- List Rendering with Keyed DOM Reconciliation -->
-          <flex direction="column" gap="8" class="pt-2 border-t border-slate-100">
+          <div class="flex flex-col gap-2 pt-2 border-t border-slate-100">
               <for_each items="{data.tasks}" var="task" key="id">
-                  <div class="p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl flex items-center justify-between border border-slate-100 transition-colors">
-                      <span class="text-sm font-semibold text-slate-700">{task.title}</span>
-                      <button class="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg font-bold cursor-pointer transition-colors">
-                          <on_click action="MUTATE_STATE">
-                              <path>tasks</path>
-                              <operation>REMOVE</operation>
-                              <where field="id" equals="{task.id}" />
-                          </on_click>
-                          ✕
+                  <div class="p-3 bg-slate-50 rounded-xl flex items-center justify-between border border-slate-100">
+                      <span class="text-sm font-medium text-slate-700">{task.title}</span>
+                      <button on_click:mutate="tasks.REMOVE where id={task.id}" class="text-rose-500 hover:bg-rose-50 p-1 rounded-lg text-xs font-bold">
+                          ✕ Delete
                       </button>
                   </div>
               </for_each>
-          </flex>
-      </flex>
+          </div>
+      </div>
   </uid_spec>
   </script>
 </body>
@@ -113,32 +113,34 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
 
 ---
 
-### 2. Modular Plugin API (`euixjs/core` + Subpaths)
+### 2. JavaScript / ESM Import Options
 
-For custom builds and minimum bundle sizes, load **Lite Core** (`euixjs/core`) and register only the plugins you need:
-
+#### Option A: Minimal Default Import (Recommended)
 ```javascript
-import { EUIXEngineCore } from 'euixjs/core';
-import { EUIXComposerPlugin } from 'euixjs/composer';
+import { EUIX } from 'euixjs';
+// or: import { EUIXEngineCore } from 'euixjs/core';
+
+// Optional: Register plugins as needed
 import { EUIXApiPlugin } from 'euixjs/api';
-import { EUIXStoragePlugin } from 'euixjs/storage';
-import { EUIXDevTools } from 'euixjs/devtools';
+import { EUIXRouterPlugin } from 'euixjs/router';
 
-// Register plugins on Lite Core
-EUIXEngineCore
-  .use(EUIXComposerPlugin)
-  .use(EUIXApiPlugin)
-  .use(EUIXStoragePlugin);
+EUIX.use(EUIXApiPlugin).use(EUIXRouterPlugin);
 
-// Mount spec using Lite Core
-const engine = EUIXEngineCore.mount(xmlString, '#app');
-EUIXDevTools.init(engine);
+// Register JavaScript business logic actions cleanly
+EUIX.action('saveUser', async (args, { $data }) => {
+  console.log('Saving user:', args.userId);
+  $data.status = 'saved';
+});
+
+// Mount to DOM
+const engine = EUIX.mount(xmlString, '#app');
 ```
 
-#### Full Bundle API (`euixjs`)
-For full bundle backward compatibility with all plugins pre-registered:
+#### Option B: Full Bundle (`euixjs/full`)
+For convenience when all plugins (API, Router, Composer, Storage, DevTools) are desired out of the box:
 ```javascript
-import { EUIXEngine } from 'euixjs';
+import { EUIXEngine } from 'euixjs/full';
+
 const engine = EUIXEngine.mount(xmlString, '#app');
 ```
 

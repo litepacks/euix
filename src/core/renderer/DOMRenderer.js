@@ -22,7 +22,13 @@ import {
 } from "../utils/constants.js";
 import { renderForEach } from "./ForEachRenderer.js";
 import { renderErrorBoundary } from "./ErrorBoundaryRenderer.js";
-import { extractBindModifiers, coerceBindingValue } from "../binding/BindingResolver.js";
+import {
+    extractBindModifiers,
+    coerceBindingValue,
+    resolveScopedValue,
+    registerScopedBinding,
+    registerBindingNamespace,
+} from "../binding/BindingResolver.js";
 
 export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
     if (!el || !isElem(xmlNode)) return;
@@ -317,21 +323,16 @@ export function interpolate(engine, text, context = {}) {
                                     : String(v ?? "");
                         }
                     }
-                } else if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
-                    const root = engine.getState(scope) || context?.[scope];
-                    if (root !== undefined && root !== null) {
-                        const parts = prop.split(".");
-                        let curr = root;
-                        for (let pIdx = 0; pIdx < parts.length; pIdx++) {
-                            if (curr === undefined || curr === null) break;
-                            curr = curr[parts[pIdx]];
-                        }
-                        if (curr !== undefined)
-                            return typeof curr === "string"
-                                ? curr
-                                : typeof curr === "object" && curr !== null
-                                  ? safeStringify(curr)
-                                  : String(curr ?? "");
+                } else if (scope.startsWith("$") || scope === "api" || scope === "stream" || scope === "errors" || scope === "device") {
+                    const scopedVal = resolveScopedValue(engine, scope, prop, context);
+                    if (scopedVal !== undefined && scopedVal !== null) {
+                        return typeof scopedVal === "string"
+                            ? scopedVal
+                            : typeof scopedVal === "number"
+                              ? String(scopedVal)
+                              : typeof scopedVal === "object"
+                                ? safeStringify(scopedVal)
+                                : String(scopedVal ?? "");
                     }
                 } else if (context && context[scope] !== undefined && context[scope] !== null) {
                     let curr = context[scope];
@@ -399,43 +400,10 @@ export function interpolate(engine, text, context = {}) {
                 } else if (engine.constructor._globalConstants?.has(c.prop)) {
                     out += engine.constructor._globalConstants.get(c.prop);
                 }
-            } else if (c.scope === "$route" || c.scope === "$router" || c.scope === "$fetcher") {
-                const root = engine.getState(c.scope) || context?.[c.scope];
-                if (root !== undefined && root !== null) {
-                    const parts = c.parts || [c.prop];
-                    let curr = root;
-                    for (let pIdx = 0; pIdx < parts.length; pIdx++) {
-                        if (curr === undefined || curr === null) break;
-                        curr = curr[parts[pIdx]];
-                    }
-                    out +=
-                        curr !== undefined && curr !== null
-                            ? typeof curr === "object"
-                                ? safeStringify(curr)
-                                : curr
-                            : "";
-                }
-            } else if (c.scope === "$device" || c.scope === "device") {
-                const dev =
-                    engine.$device ||
-                    engine.device ||
-                    (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
-                    (context && (context.$device || context.device));
-                if (dev && c.prop) {
-                    const parts = c.parts || [c.prop];
-                    let curr = dev;
-                    for (let pIdx = 0; pIdx < parts.length; pIdx++) {
-                        if (curr === undefined || curr === null) break;
-                        curr = curr[parts[pIdx]];
-                    }
-                    out +=
-                        curr !== undefined && curr !== null
-                            ? typeof curr === "object"
-                                ? safeStringify(curr)
-                                : curr
-                            : "";
-                } else if (dev && !c.prop) {
-                    out += typeof dev === "object" ? safeStringify(dev) : String(dev);
+            } else if (c.scope.startsWith("$") || c.scope === "device") {
+                const scopedVal = resolveScopedValue(engine, c.scope, c.prop, context);
+                if (scopedVal !== undefined && scopedVal !== null) {
+                    out += typeof scopedVal === "object" ? safeStringify(scopedVal) : String(scopedVal);
                 }
             } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
                 const v = engine.getState(c.prop);
@@ -465,57 +433,17 @@ export function interpolate(engine, text, context = {}) {
                     const v = context.local[c.prop];
                     out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
                 }
-            } else if (c.scope === "api" || c.scope === "$api") {
-                if (c.prop) {
-                    const parts = c.parts;
-                    const endpointId = parts[0];
-                    const epProp = parts.slice(1).join(".");
-                    const status = isFn(engine.getApiStatus)
-                        ? engine.getApiStatus(endpointId)
-                        : engine._apiStatus?.[endpointId];
-                    if (status) {
-                        if (!epProp) {
-                            out += typeof status === "object" ? JSON.stringify(status) : String(status);
-                        } else {
-                            const val = epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
-                            if (val !== undefined && val !== null) out += String(val);
-                        }
-                    }
-                }
-            } else if (c.scope === "stream" || c.scope === "$stream") {
-                if (c.prop) {
-                    const parts = c.parts;
-                    const streamId = parts[0];
-                    const streamProp = parts.slice(1).join(".");
-                    const status = isFn(engine.getStreamStatus)
-                        ? engine.getStreamStatus(streamId)
-                        : engine._streamStatus?.[streamId];
-                    if (status) {
-                        if (!streamProp) {
-                            out += typeof status === "object" ? JSON.stringify(status) : String(status);
-                        } else {
-                            const val = streamProp
-                                .split(".")
-                                .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
-                            if (val !== undefined && val !== null) out += String(val);
-                        }
-                    }
-                }
-            } else if (c.scope === "errors" || c.scope === "$errors") {
-                const errObj =
-                    engine._formErrors ||
-                    (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
-                if (errObj) {
-                    if (!c.prop) {
-                        out += typeof errObj === "object" ? safeStringify(errObj) : String(errObj);
-                    } else {
-                        const parts = c.parts;
-                        let curr = errObj;
-                        for (let p = 0; p < parts.length && curr !== undefined && curr !== null; p++) {
-                            curr = curr[parts[p]];
-                        }
-                        if (curr !== undefined && curr !== null) out += String(curr);
-                    }
+            } else if (
+                c.scope === "api" ||
+                c.scope === "$api" ||
+                c.scope === "stream" ||
+                c.scope === "$stream" ||
+                c.scope === "errors" ||
+                c.scope === "$errors"
+            ) {
+                const val = resolveScopedValue(engine, c.scope, c.prop, context);
+                if (val !== undefined && val !== null) {
+                    out += typeof val === "object" ? safeStringify(val) : String(val);
                 }
             } else if (c.scope === "result") {
                 if (!c.prop) {
@@ -599,59 +527,22 @@ export function interpolate(engine, text, context = {}) {
     result = result.replace(
         /\{(args|params|result|err|error|local|\$local|global|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.]+))?\}/g,
         (match, scope, prop) => {
-            if (scope === "stream" || scope === "$stream") {
-                const parts = (prop || "").split(".");
-                const streamId = parts[0];
-                const streamProp = parts.slice(1).join(".");
-                const status = isFn(engine.getStreamStatus)
-                    ? engine.getStreamStatus(streamId)
-                    : engine._streamStatus?.[streamId];
-                if (!status) return "";
-                if (!streamProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
-                const val = streamProp
-                    .split(".")
-                    .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
-                return val !== undefined && val !== null
-                    ? typeof val === "object"
-                        ? JSON.stringify(val)
-                        : String(val)
-                    : "";
-            }
-            if (scope === "errors" || scope === "$errors") {
-                const errObj =
-                    engine._formErrors ||
-                    (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
-                if (!errObj) return "";
-                if (!prop) return typeof errObj === "object" ? JSON.stringify(errObj) : String(errObj);
-                return errObj[prop] !== undefined ? String(errObj[prop]) : "";
-            }
-            if (scope === "$route" || scope === "$router" || scope === "$fetcher") {
-                const rootState = engine.getState(scope);
-                if (rootState === undefined || rootState === null) return "";
-                if (!prop) return typeof rootState === "object" ? JSON.stringify(rootState) : String(rootState);
-                const val = prop
-                    .split(".")
-                    .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), rootState);
-                return val !== undefined && val !== null
-                    ? typeof val === "object"
-                        ? JSON.stringify(val)
-                        : String(val)
-                    : "";
-            }
-            if (scope === "api" || scope === "$api") {
-                if (prop) {
-                    const parts = prop.split(".");
-                    const endpointId = parts[0];
-                    const epProp = parts.slice(1).join(".");
-                    const status = isFn(engine.getApiStatus)
-                        ? engine.getApiStatus(endpointId)
-                        : engine._apiStatus?.[endpointId];
-                    if (!status) return "";
-                    if (!epProp) return typeof status === "object" ? JSON.stringify(status) : String(status);
-                    const val = epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
-                    return val !== undefined && val !== null ? String(val) : "";
+            if (
+                scope === "stream" ||
+                scope === "$stream" ||
+                scope === "errors" ||
+                scope === "$errors" ||
+                scope === "$route" ||
+                scope === "$router" ||
+                scope === "$fetcher" ||
+                scope === "api" ||
+                scope === "$api"
+            ) {
+                const val = resolveScopedValue(engine, scope, prop, context);
+                if (val !== undefined && val !== null) {
+                    return typeof val === "object" ? JSON.stringify(val) : String(val);
                 }
-                return match;
+                return (scope === "api" || scope === "$api") && !prop ? match : "";
             }
             if (scope === "local" || scope === "$local") {
                 if (context._localState && prop) {
@@ -1271,92 +1162,20 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
             }
         }
 
-        const matches = Array.from(
-            attrValue.matchAll(
-                /(?:parent\.)?(?:data|local|\$local|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)\.([a-zA-Z0-9_.[\]]+)/g,
-            ),
-        );
-        if (matches.length > 0) {
-            const uniqueKeys = new Set();
-            for (let mIdx = 0; mIdx < matches.length; mIdx++) {
-                uniqueKeys.add(matches[mIdx][1]);
+        if (attrValue && typeof attrValue === "string" && attrValue.includes("{")) {
+            const hasBinding = registerScopedBinding(
+                engine,
+                attrValue,
+                el,
+                "attribute",
+                () => {
+                    engine.updateAttributeBinding(el, attrName, attrValue, context);
+                },
+                context,
+            );
+            if (hasBinding) {
+                engine.updateAttributeBinding(el, attrName, attrValue, context);
             }
-            for (const key of uniqueKeys) {
-                if (
-                    attrValue.includes("$route.") ||
-                    attrValue.includes("$router.") ||
-                    attrValue.includes("$fetcher.")
-                ) {
-                    const scopeMatch = attrValue.match(/\$(route|router|fetcher)/);
-                    const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
-                    engine.registerBinding(scopeKey, el, "attribute", () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    });
-                    engine.registerBinding(`${scopeKey}.${key}`, el, "attribute", () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    });
-                } else if (attrValue.includes("stream.") || attrValue.includes("$stream.")) {
-                    const parts = key.split(".");
-                    const streamId = parts[0];
-                    const streamProp = parts[1];
-                    const updateFn = () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    };
-                    if (streamProp) {
-                        engine.registerBinding(`stream:${streamId}:${streamProp}`, el, "attribute", updateFn);
-                        engine.registerBinding(`stream.${streamId}.${streamProp}`, el, "attribute", updateFn);
-                        engine.registerBinding(`$stream.${streamId}.${streamProp}`, el, "attribute", updateFn);
-                    }
-                    engine.registerBinding(`stream:${streamId}`, el, "attribute", updateFn);
-                    engine.registerBinding(`stream.${streamId}`, el, "attribute", updateFn);
-                    engine.registerBinding(`$stream.${streamId}`, el, "attribute", updateFn);
-                } else if (attrValue.includes("errors.") || attrValue.includes("$errors.")) {
-                    const updateFn = () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    };
-                    engine.registerBinding(`errors.${key}`, el, "attribute", updateFn);
-                    engine.registerBinding(`$errors.${key}`, el, "attribute", updateFn);
-                    engine.registerBinding("errors", el, "attribute", updateFn);
-                    engine.registerBinding("$errors", el, "attribute", updateFn);
-                } else if (attrValue.includes(`api.${key}`) || attrValue.includes(`$api.${key}`)) {
-                    const parts = key.split(".");
-                    const epId = parts[0];
-                    const epProp = parts[1];
-                    if (epProp) {
-                        engine.registerBinding(`api:${epId}:${epProp}`, el, "attribute", () => {
-                            engine.updateAttributeBinding(el, attrName, attrValue, context);
-                        });
-                    }
-                    engine.registerBinding(`api:${epId}`, el, "attribute", () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    });
-                } else {
-                    const rootKey = getRootKey(key);
-                    const isLocal =
-                        context._localState &&
-                        (context._localState[key] !== undefined ||
-                            context._localState[rootKey] !== undefined ||
-                            attrValue.includes(`local.${key}`) ||
-                            attrValue.includes(`$local.${key}`));
-                    const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
-                    const rootBindKey = context._instanceId && isLocal ? `${context._instanceId}:${rootKey}` : rootKey;
-                    const updateFn = () => {
-                        engine.updateAttributeBinding(el, attrName, attrValue, context);
-                    };
-                    engine.registerBinding(bindKey, el, "attribute", updateFn);
-                    if (rootBindKey !== bindKey) {
-                        engine.registerBinding(rootBindKey, el, "attribute", updateFn);
-                    }
-                    const innerBracketMatches = key.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
-                    for (let bIdx = 0; bIdx < innerBracketMatches.length; bIdx++) {
-                        const innerKey = innerBracketMatches[bIdx].replace(/[[\]]|data\./g, "");
-                        if (!/^\d+$/.test(innerKey)) {
-                            engine.registerBinding(innerKey, el, "attribute", updateFn);
-                        }
-                    }
-                }
-            }
-            engine.updateAttributeBinding(el, attrName, attrValue, context);
         }
     }
 }
@@ -1391,7 +1210,13 @@ export function updateAttributeBinding(engine, el, attrName, template, context =
     if (attrName === "value" && "value" in el && el.namespaceURI !== SVG_NAMESPACE) {
         if (el.value !== newAttrVal) el.value = newAttrVal;
     } else if (attrName === "class" && el.namespaceURI !== SVG_NAMESPACE) {
-        if (el.className !== newAttrVal) el.className = newAttrVal;
+        let finalVal = newAttrVal;
+        if (el.classList && el.classList.contains("euix-flex") && !finalVal.includes("euix-flex")) {
+            finalVal = `euix-flex ${finalVal}`.trim();
+        } else if (el.classList && el.classList.contains("euix-grid") && !finalVal.includes("euix-grid")) {
+            finalVal = `euix-grid ${finalVal}`.trim();
+        }
+        if (el.className !== finalVal) el.className = finalVal;
     } else if (attrName === "style") {
         let styleVal = newAttrVal;
         if (typeof styleVal === "string" && styleVal.trim().startsWith("{") && styleVal.trim().endsWith("}")) {
@@ -1617,91 +1442,16 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         if (!txt || txt.trim() === "") return null;
         const textNode = document.createTextNode(engine.interpolate(txt, context));
 
-        if (txt.includes("$route") || txt.includes("$router") || txt.includes("$fetcher")) {
-            const scopeMatch = txt.match(/\$(route|router|fetcher)/);
-            const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
-            const updateFn = () => {
+        registerScopedBinding(
+            engine,
+            txt,
+            textNode,
+            "text_node",
+            () => {
                 textNode.textContent = engine.interpolate(txt, context);
-            };
-            engine.registerBinding(scopeKey, textNode, "text_node", updateFn);
-        }
-
-        const matches = Array.from(
-            txt.matchAll(
-                /(?:parent\.)?(?:data|local|\$local|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.[\]]+))?/g,
-            ),
+            },
+            context,
         );
-        if (matches.length > 0) {
-            const uniqueKeys = new Set(matches.map((m) => m[1]).filter(Boolean));
-            uniqueKeys.forEach((key) => {
-                if (txt.includes("$route.") || txt.includes("$router.") || txt.includes("$fetcher.")) {
-                    const scopeMatch = txt.match(/\$(route|router|fetcher)/);
-                    const scopeKey = scopeMatch ? scopeMatch[0] : "$route";
-                    const updateFn = () => {
-                        textNode.textContent = engine.interpolate(txt, context);
-                    };
-                    engine.registerBinding(`${scopeKey}.${key}`, textNode, "text_node", updateFn);
-                } else if (txt.includes("stream.") || txt.includes("$stream.")) {
-                    const parts = key.split(".");
-                    const streamId = parts[0];
-                    const streamProp = parts[1];
-                    const updateFn = () => {
-                        textNode.textContent = engine.interpolate(txt, context);
-                    };
-                    if (streamProp) {
-                        engine.registerBinding(`stream:${streamId}:${streamProp}`, textNode, "text_node", updateFn);
-                        engine.registerBinding(`stream.${streamId}.${streamProp}`, textNode, "text_node", updateFn);
-                        engine.registerBinding(`$stream.${streamId}.${streamProp}`, textNode, "text_node", updateFn);
-                    }
-                    engine.registerBinding(`stream:${streamId}`, textNode, "text_node", updateFn);
-                    engine.registerBinding(`stream.${streamId}`, textNode, "text_node", updateFn);
-                    engine.registerBinding(`$stream.${streamId}`, textNode, "text_node", updateFn);
-                } else if (txt.includes("errors.") || txt.includes("$errors.")) {
-                    const updateFn = () => {
-                        textNode.textContent = engine.interpolate(txt, context);
-                    };
-                    engine.registerBinding(`errors.${key}`, textNode, "text_node", updateFn);
-                    engine.registerBinding(`$errors.${key}`, textNode, "text_node", updateFn);
-                    engine.registerBinding("errors", textNode, "text_node", updateFn);
-                    engine.registerBinding("$errors", textNode, "text_node", updateFn);
-                } else if (txt.includes(`api.${key}`) || txt.includes(`$api.${key}`)) {
-                    const parts = key.split(".");
-                    const epId = parts[0];
-                    const epProp = parts[1];
-                    const updateFn = () => {
-                        textNode.textContent = engine.interpolate(txt, context);
-                    };
-                    if (epProp) {
-                        engine.registerBinding(`api:${epId}:${epProp}`, textNode, "text_node", updateFn);
-                    }
-                    engine.registerBinding(`api:${epId}`, textNode, "text_node", updateFn);
-                } else {
-                    const rootKey = getRootKey(key);
-                    const isLocal =
-                        context._localState &&
-                        (context._localState[key] !== undefined ||
-                            context._localState[rootKey] !== undefined ||
-                            txt.includes(`local.${key}`) ||
-                            txt.includes(`$local.${key}`));
-                    const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
-                    const rootBindKey = context._instanceId && isLocal ? `${context._instanceId}:${rootKey}` : rootKey;
-                    const updateFn = () => {
-                        textNode.textContent = engine.interpolate(txt, context);
-                    };
-                    engine.registerBinding(bindKey, textNode, "text_node", updateFn);
-                    if (rootBindKey !== bindKey) {
-                        engine.registerBinding(rootBindKey, textNode, "text_node", updateFn);
-                    }
-                    const innerBracketMatches = key.match(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g) || [];
-                    innerBracketMatches.forEach((bm) => {
-                        const innerKey = bm.replace(/[[\]]|data\./g, "");
-                        if (!/^\d+$/.test(innerKey)) {
-                            engine.registerBinding(innerKey, textNode, "text_node", updateFn);
-                        }
-                    });
-                }
-            });
-        }
 
         return textNode;
     }

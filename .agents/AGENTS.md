@@ -221,10 +221,14 @@ EUIX Engine supports concise, inline shorthand attribute syntax for all common d
 <button on_click:run="$data.counter += 5; console.log('Updated!')">Add 5</button>
 ```
 
-### 5. Workflow Execution & Focus (`on_click:call`, `on_click:focus`)
+### 5. Function Calling, Custom Events & Focus (`on_click:call`, `on_click:emit`, `on_click:focus`)
 ```xml
-<!-- Call composed action subroutine -->
+<!-- Call registered JavaScript action or composed workflow -->
 <button on_click:call="SaveUserWorkflow">Save</button>
+<button on_click:call="saveUser" user_id="42">Save User #42</button>
+
+<!-- Emit custom DOM event and trigger engine hook -->
+<button on_click:emit="task:completed">Complete</button>
 
 <!-- Focus input element ref or id -->
 <button on_click:focus="nameInput">Focus Input</button>
@@ -374,6 +378,16 @@ engine.setState('counter', 42);
 
 // Mutate array state
 engine.mutateState('items', 'PUSH', { id: Date.now(), title: 'New Item' });
+
+// Register JavaScript business logic actions
+engine.action('saveUser', async (args, { $data }) => {
+  console.log('Saved user:', args.userId);
+  $data.status = 'Saved';
+});
+
+// Programmatic event listening & emitting
+engine.on('task:completed', (payload) => console.log('Task completed:', payload));
+engine.emit('task:completed', { id: 1 });
 
 // Programmatically revalidate SWR API endpoints
 engine.revalidateApi('get_posts');

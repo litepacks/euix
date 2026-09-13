@@ -126,10 +126,17 @@
       <div class="flex items-center gap-1.5">
         <label for="preset_select" class="text-xs font-semibold text-slate-300">Preset:</label>
         <select id="preset_select" onchange="window.onPresetSelectChange(this.value)" class="px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer shadow-inner">
-          <option value="counter">Counter &amp; Todo List</option>
-          <option value="webmcp">WebMCP Browser AI Tools</option>
-          <option value="accordion">Accordion Collapse</option>
-          <option value="modal">Modal Dialog</option>
+          <optgroup label="Core Demos">
+            <option value="counter">1. Counter (State &amp; Expressions)</option>
+            <option value="todo">2. Todo App (Lists &amp; Two-Way Binding)</option>
+            <option value="api">3. REST API (Data Fetching &amp; SWR)</option>
+            <option value="dashboard">4. Dashboard (Components &amp; Props)</option>
+          </optgroup>
+          <optgroup label="Extensions">
+            <option value="webmcp">WebMCP Browser AI Tools</option>
+            <option value="accordion">Accordion (Collapse)</option>
+            <option value="modal">Modal Dialog</option>
+          </optgroup>
         </select>
       </div>
 
@@ -189,86 +196,213 @@
     // Presets Library
     const DEFAULT_XML_PRESET = `<uid_spec>
   <data_model>
-    <state id="counter">0</state>
-    <state id="user_name">Alex</state>
-    <state id="todos" type="array">
-      <item id="1" text="Try EUIX Engine Live Monaco Studio" done="true" />
-      <item id="2" text="Build declarative reactive UIs" done="false" />
-    </state>
-    <state id="new_task"></state>
+    <state id="counter" type="number">0</state>
+    <state id="step" type="number">1</state>
   </data_model>
 
-  <flex direction="column" gap="20" class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-xl mx-auto">
-    <flex direction="row" justify="between" align="center">
-      <h1 class="text-2xl font-bold text-blue-400">⚡ Hello, {data.user_name}!</h1>
-      <span class="px-3 py-1 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full border border-blue-500/30">Count: {data.counter}</span>
-    </flex>
+  <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-md mx-auto flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-indigo-400">⚡ Reactive Counter</h1>
+      <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-semibold rounded-full border border-indigo-500/30">
+        Step: {data.step}
+      </span>
+    </div>
 
-    <!-- Two-way Data Binding -->
-    <flex direction="column" gap="6">
-      <label class="text-xs font-bold uppercase tracking-wider text-slate-400">User Name</label>
-      <input bind="user_name" class="px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white focus:border-blue-500" />
-    </flex>
+    <!-- Live Numeric Expression -->
+    <div class="p-6 bg-slate-950 rounded-xl border border-slate-800 text-center">
+      <span class="text-5xl font-black tracking-tight text-white">{data.counter}</span>
+    </div>
 
-    <!-- Counter Actions -->
-    <flex direction="row" gap="12">
-      <button class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-blue-600/20 transition">
-        <on_click action="SET_STATE">
-          <path>data.counter</path>
-          <value>{data.counter} + 1</value>
-        </on_click>
-        ➕ Increment (+1)
+    <!-- Simple Declarative Actions -->
+    <div class="flex gap-3">
+      <button on_click:set="counter={data.counter - data.step}" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-sm transition">
+        − Decrease
       </button>
-      <button class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-xl text-sm transition">
-        <on_click action="SET_STATE">
-          <path>data.counter</path>
-          <value>0</value>
-        </on_click>
-        🔄 Reset
+      <button on_click:set="counter=0" class="px-4 py-3 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl text-xs transition">
+        Reset
       </button>
-    </flex>
+      <button on_click:set="counter={data.counter + data.step}" class="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-indigo-600/30 transition">
+        + Increase
+      </button>
+    </div>
 
-    <!-- Todo List Section -->
-    <flex direction="column" gap="12" class="pt-4 border-t border-slate-800">
-      <h3 class="text-sm font-bold text-slate-300">📝 Reactive Todo List ({data.todos.length})</h3>
-      
-      <flex direction="row" gap="8">
-        <input bind="new_task" placeholder="Add new task..." class="flex-1 px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-white" />
-        <button class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-semibold">
-          <on_click action="RUN_SCRIPT">
-            if ($data.new_task &amp;&amp; $data.new_task.trim()) {
-              $data.todos.push({ id: String(Date.now()), text: $data.new_task.trim(), done: false });
-              $data.new_task = "";
-            }
-          </on_click>
-          Add
-        </button>
-      </flex>
-
-      <flex direction="column" gap="8">
-        <for_each items="{data.todos}" var="todo">
-          <flex direction="row" align="center" justify="between" class="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80">
-            <flex direction="row" align="center" gap="10">
-              <input type="checkbox" bind="todo.done" class="w-4 h-4 rounded text-blue-600" />
-              <span class="text-sm {todo.done ? 'line-through text-slate-500' : 'text-slate-200'}">{todo.text}</span>
-            </flex>
-            <button class="px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded">
-              <on_click action="MUTATE_STATE">
-                <path>todos</path>
-                <operation>REMOVE</operation>
-                <where field="id" equals="{todo.id}" />
-              </on_click>
-              ✕ Delete
-            </button>
-          </flex>
-        </for_each>
-      </flex>
-    </flex>
-  </flex>
+    <!-- Step Controls -->
+    <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+      <span>Step Size:</span>
+      <div class="flex gap-2">
+        <button on_click:set="step=1" class="px-2.5 py-1 rounded {data.step === 1 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}">1</button>
+        <button on_click:set="step=5" class="px-2.5 py-1 rounded {data.step === 5 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}">5</button>
+        <button on_click:set="step=10" class="px-2.5 py-1 rounded {data.step === 10 ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300'}">10</button>
+      </div>
+    </div>
+  </div>
 </uid_spec>`;
 
     const SAMPLES = {
       counter: DEFAULT_XML_PRESET,
+      todo: `<uid_spec>
+  <data_model>
+    <state id="new_task" type="string"></state>
+    <state id="todos" type="array">
+      <item id="1" text="Explore EUIX zero-build runtime" done="true" />
+      <item id="2" text="Build declarative reactive components" done="false" />
+      <item id="3" text="Ship minimal, ultra-fast interfaces" done="false" />
+    </state>
+  </data_model>
+
+  <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-lg mx-auto flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <h1 class="text-xl font-bold text-emerald-400">📝 Reactive Todo List</h1>
+      <span class="px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-semibold rounded-full border border-emerald-500/30">
+        Total: {data.todos.length}
+      </span>
+    </div>
+
+    <!-- Input Two-Way Binding -->
+    <div class="flex gap-2">
+      <input bind="new_task" placeholder="Add a new task..." class="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
+      <button class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/30">
+        <on_click action="RUN_SCRIPT">
+          if ($data.new_task &amp;&amp; $data.new_task.trim()) {
+            $data.todos.push({ id: String(Date.now()), text: $data.new_task.trim(), done: false });
+            $data.new_task = "";
+          }
+        </on_click>
+        Add
+      </button>
+    </div>
+
+    <!-- Dynamic Iteration & Keyed Reconciliation -->
+    <div class="flex flex-col gap-2.5">
+      <for_each items="{data.todos}" var="todo" key="id">
+        <div class="flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-slate-800/80 hover:border-slate-700 transition">
+          <label class="flex items-center gap-3 cursor-pointer flex-1">
+            <input type="checkbox" bind="todo.done" class="w-4 h-4 rounded text-emerald-600 focus:ring-0 bg-slate-900 border-slate-700 cursor-pointer" />
+            <span class="text-sm {todo.done ? 'line-through text-slate-500' : 'text-slate-200'}">{todo.text}</span>
+          </label>
+          <button class="px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded-lg transition">
+            <on_click action="MUTATE_STATE">
+              <path>todos</path>
+              <operation>REMOVE</operation>
+              <where field="id" equals="{todo.id}" />
+            </on_click>
+            ✕ Delete
+          </button>
+        </div>
+      </for_each>
+    </div>
+  </div>
+</uid_spec>`,
+      api: `<uid_spec>
+  <data_model>
+    <state id="users" type="array"></state>
+  </data_model>
+
+  <!-- REST API SWR Client with automatic loading binding -->
+  <api_config base_url="https://jsonplaceholder.typicode.com">
+    <api_endpoint
+      id="get_users"
+      url="/users"
+      method="GET"
+      bind_target="users"
+      auto_fetch="true"
+    />
+  </api_config>
+
+  <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-xl mx-auto flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-cyan-400">🌐 REST API &amp; SWR Data</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Live data fetching from JSONPlaceholder</p>
+      </div>
+      <button on_click:revalidate="get_users" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5">
+        🔄 Refresh
+      </button>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div show="{api.get_users.loading}" class="p-4 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 rounded-xl text-center text-sm">
+      ⏳ Loading remote users...
+    </div>
+
+    <!-- Error Banner -->
+    <div show="{api.get_users.error}" class="p-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 rounded-xl text-center text-sm">
+      ❌ Failed to fetch: {api.get_users.error}
+    </div>
+
+    <!-- Fetched Records -->
+    <div class="flex flex-col gap-3">
+      <for_each items="{data.users}" var="u" key="id">
+        <div class="p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+          <div>
+            <div class="text-sm font-semibold text-white">{u.name}</div>
+            <div class="text-xs text-slate-400">{u.email} • {u.company.name}</div>
+          </div>
+          <span class="px-2.5 py-1 text-[11px] font-mono bg-slate-800 text-cyan-400 rounded-lg">ID #{u.id}</span>
+        </div>
+      </for_each>
+    </div>
+  </div>
+</uid_spec>`,
+      dashboard: `<uid_spec>
+  <!-- Component Definition with Props -->
+  <component_def name="metric-card">
+    <div class="p-4 bg-slate-950/70 rounded-xl border border-slate-800 flex flex-col gap-1">
+      <span class="text-xs font-medium text-slate-400">{props.title}</span>
+      <div class="flex items-baseline justify-between mt-1">
+        <span class="text-2xl font-bold text-white">{props.value}</span>
+        <span class="text-xs font-semibold {props.isPositive ? 'text-emerald-400' : 'text-rose-400'}">{props.change}</span>
+      </div>
+    </div>
+  </component_def>
+
+  <data_model>
+    <state id="active_tab">overview</state>
+    <state id="notifications" type="number">3</state>
+  </data_model>
+
+  <div class="p-8 bg-slate-900 rounded-2xl border border-slate-800 text-white shadow-2xl max-w-xl mx-auto flex flex-col gap-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-amber-400">📊 Analytics Dashboard</h1>
+        <p class="text-xs text-slate-400">Modular components, state &amp; conditional tabs</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button on_click:set="notifications=0" class="relative px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs text-slate-300 transition">
+          🔔 Alerts
+          <span show="{data.notifications > 0}" class="ml-1 px-1.5 py-0.5 bg-rose-500 text-white font-bold text-[10px] rounded-full">
+            {data.notifications}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+      <button on_click:set="active_tab='overview'" class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition {data.active_tab === 'overview' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}">
+        Overview
+      </button>
+      <button on_click:set="active_tab='reports'" class="flex-1 py-1.5 text-xs font-semibold rounded-lg transition {data.active_tab === 'reports' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}">
+        Reports
+      </button>
+    </div>
+
+    <!-- Tab 1: Overview with Reusable Components -->
+    <div show="{data.active_tab === 'overview'}" class="grid grid-cols-2 gap-3">
+      <component name="metric-card" title="Total Revenue" value="$48,250" change="+12.4%" isPositive="true" />
+      <component name="metric-card" title="Active Users" value="1,429" change="+8.1%" isPositive="true" />
+      <component name="metric-card" title="Bounce Rate" value="24.8%" change="-3.2%" isPositive="true" />
+      <component name="metric-card" title="Server Latency" value="42ms" change="+4ms" isPositive="false" />
+    </div>
+
+    <!-- Tab 2: Reports -->
+    <div show="{data.active_tab === 'reports'}" class="p-6 bg-slate-950/60 rounded-xl border border-slate-800 text-center flex flex-col items-center gap-2">
+      <span class="text-2xl">📈</span>
+      <p class="text-sm font-semibold text-white">Monthly Performance Report</p>
+      <p class="text-xs text-slate-400">All systems operating within optimal thresholds.</p>
+    </div>
+  </div>
+</uid_spec>`,
       webmcp: `<uid_spec>
   <actions>
     <action_def name="task.create">

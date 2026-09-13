@@ -382,7 +382,7 @@ export function _executeActionInternalBody(engine, actionNode, context = {}) {
             : actionAttr || tagNameLower;
 
     if (targetComposedName && isFn(engine.hasActionDef) && engine.hasActionDef(targetComposedName)) {
-        const args = isFn(engine._extractActionArgs) ? engine._extractActionArgs(actionNode, context) : {};
+        const args = isFn(engine._extractActionArgs) ? engine._extractActionArgs(actionNode, context) : extractActionArgs(engine, actionNode, context);
         return engine.executeAction(targetComposedName, args, context);
     }
 
@@ -393,8 +393,74 @@ export function _executeActionInternalBody(engine, actionNode, context = {}) {
         (tagNameLower && engine.constructor._globalActionHandlers?.get(tagNameLower.toUpperCase()));
 
     if (customHandler) {
-        return customHandler.call(engine, actionNode, context, engine);
+        const args = isFn(engine._extractActionArgs)
+            ? engine._extractActionArgs(actionNode, context)
+            : extractActionArgs(engine, actionNode, context);
+        if (context && !context.args) context.args = args;
+        return customHandler.call(engine, actionNode, context, engine, args);
     }
+}
+
+export function extractActionArgs(engine, actionNode, context = {}) {
+    const args = {};
+    if (!actionNode) return args;
+
+    const sourceEl = actionNode._sourceElement || (actionNode.parentElement ? actionNode.parentElement : null);
+    const nodesToExtract = sourceEl ? [sourceEl, actionNode] : [actionNode];
+
+    const skipAttrs = new Set([
+        "action",
+        "confirm",
+        "prevent",
+        "key",
+        "debounce",
+        "throttle",
+        "loading",
+        "error",
+        "class",
+        "style",
+        "id",
+        "ref",
+        "type",
+    ]);
+
+    nodesToExtract.forEach((currNode) => {
+        if (currNode && currNode.attributes) {
+            const aLen = currNode.attributes.length;
+            for (let i = 0; i < aLen; i++) {
+                const attr = currNode.attributes[i];
+                const name = attr.name;
+                const lower = name.toLowerCase();
+                if (
+                    !skipAttrs.has(lower) &&
+                    !lower.startsWith("on_") &&
+                    !lower.startsWith("on-") &&
+                    !lower.startsWith("bind") &&
+                    !lower.includes(":")
+                ) {
+                    const val =
+                        engine && isFn(engine.interpolate) ? engine.interpolate(attr.value, context) : attr.value;
+                    args[name] = val;
+                }
+            }
+        }
+
+        const argNodes = [
+            ...(isFn(engine?.getChildren) ? engine.getChildren(currNode, "arg") : []),
+            ...(isFn(engine?.getChildren) ? engine.getChildren(currNode, "param") : []),
+            ...(isFn(engine?.getChildren) ? engine.getChildren(currNode, "argument") : []),
+        ];
+
+        argNodes.forEach((node) => {
+            const name = node.getAttribute("name") || node.getAttribute("id");
+            if (name) {
+                const rawVal = node.getAttribute("value") || node.getAttribute("expr") || node.textContent.trim();
+                args[name] = engine && isFn(engine.interpolate) ? engine.interpolate(rawVal, context) : rawVal;
+            }
+        });
+    });
+
+    return args;
 }
 
 export function executeEventHandlers(engine, handlerNodes, eventType, e, el, context = {}) {
@@ -552,6 +618,8 @@ export function _createShorthandActionNode(eventType, directive, attrValue, sour
         };
     }
 
+    node._sourceElement = sourceXmlNode;
+
     // Copy event modifiers from parent element if specified
     const confirmVal = sourceXmlNode.getAttribute ? sourceXmlNode.getAttribute("confirm") : null;
     if (confirmVal) node.setAttribute("confirm", confirmVal);
@@ -598,6 +666,11 @@ export function _createShorthandActionNode(eventType, directive, attrValue, sour
     } else if (dir === "call" || dir === "workflow" || dir === "action") {
         node.setAttribute("action", attrValue);
         node.setAttribute("name", attrValue);
+    } else if (dir === "emit" || dir === "dispatch") {
+        node.setAttribute("action", "EMIT");
+        node.setAttribute("event", attrValue);
+        node.setAttribute("name", attrValue);
+        node.setAttribute("emit", attrValue);
     } else if (dir === "title" || dir === "set_title") {
         node.setAttribute("action", "SET_TITLE");
         node.setAttribute("value", attrValue);

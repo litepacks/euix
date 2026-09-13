@@ -1219,3 +1219,27 @@ export function _handleResetErrorBoundaryAction(actionNode, context = {}) {
     return false;
 }
 
+export function _handleEmitAction(actionNode, context = {}) {
+    const eventName =
+        (actionNode?.getAttribute
+            ? actionNode.getAttribute("event") ||
+              actionNode.getAttribute("name") ||
+              actionNode.getAttribute("emit")
+            : "") ||
+        (this.getChild && this.getChild(actionNode, "event")?.textContent.trim()) ||
+        "";
+    if (!eventName) return;
+    const args = isFn(this._extractActionArgs) ? this._extractActionArgs(actionNode, context) : {};
+    if (this.emit) {
+        this.emit(eventName, { ...args, context });
+    } else if (this.hooks?.emit) {
+        this.hooks.emit(eventName, { ...args, context });
+    }
+    const el = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
+    if (el && typeof el.dispatchEvent === "function" && typeof CustomEvent !== "undefined") {
+        try {
+            el.dispatchEvent(new CustomEvent(eventName, { detail: args, bubbles: true, composed: true }));
+        } catch (_) {}
+    }
+}
+

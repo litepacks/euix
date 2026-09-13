@@ -20,6 +20,11 @@
       "import": "./dist/EUIXEngineCore.es.js",
       "require": "./dist/EUIXEngineCore.umd.js"
     },
+    "./full": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/EUIXEngine.es.js",
+      "require": "./dist/EUIXEngine.umd.js"
+    },
     "./api": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXApiPlugin.es.js"

@@ -15,6 +15,7 @@ import {
     confirmAction,
     executeEventHandlers,
     handleAction,
+    extractActionArgs,
 } from "./actions/ActionDispatcher.js";
 import {
     _handleFocusAction,
@@ -30,6 +31,7 @@ import {
     _handleToggleStateAction,
     _handleUndoStateAction,
     _handleResetErrorBoundaryAction,
+    _handleEmitAction,
 } from "./actions/BuiltInActions.js";
 import {
     escapeHtml,
@@ -44,6 +46,7 @@ import {
     parseBindPath,
     resolveBinding,
     setBindingValue,
+    registerBindingNamespace,
 } from "./binding/BindingResolver.js";
 import {
     initComponentSchema,
@@ -119,7 +122,7 @@ import {
     toggleState,
 } from "./state/ReactiveStore.js";
 import { onStateChange, triggerStateWatchers, watch } from "./state/Watchers.js";
-import { isFn, isStr } from "./utils/constants.js";
+import { isFn, isStr, registerActionDispatch, registerMetadataTag } from "./utils/constants.js";
 import { getChild, getChildren, reportError } from "./utils/domHelpers.js";
 
 class EUIXEngineCore {
@@ -152,6 +155,26 @@ class EUIXEngineCore {
         if (actionType && isFn(handler)) {
             EUIXEngineCore._globalActionHandlers.set(String(actionType).toUpperCase(), handler);
         }
+    }
+
+    static action(actionType, handler) {
+        EUIXEngineCore.registerAction(actionType, handler);
+        return EUIXEngineCore;
+    }
+
+    static registerBindingNamespace(namespace, handler) {
+        registerBindingNamespace(namespace, handler);
+        return EUIXEngineCore;
+    }
+
+    static registerActionDispatch(actionType, handler) {
+        registerActionDispatch(actionType, handler);
+        return EUIXEngineCore;
+    }
+
+    static registerMetadataTag(tag) {
+        registerMetadataTag(tag);
+        return EUIXEngineCore;
     }
 
     constructor(containerSelector) {
@@ -205,6 +228,7 @@ class EUIXEngineCore {
         this._reactiveDepth = 0;
         this._destroyHooks = [];
         this.hooks = new EUIXHookEmitter();
+        EUIXEngineCore.hooks.emit("engine:init", this);
         if (isFn(this._setupStorageListener)) this._setupStorageListener();
         if (isFn(this._initRevalidationListeners)) this._initRevalidationListeners();
     }
@@ -422,6 +446,31 @@ class EUIXEngineCore {
         if (isStr(actionType) && isFn(handler)) {
             this._customActions.set(actionType, handler);
         }
+    }
+
+    action(actionType, handler) {
+        this.registerAction(actionType, handler);
+        return this;
+    }
+
+    emit(event, data) {
+        return this.hooks.emit(event, data);
+    }
+
+    on(event, fn) {
+        return this.hooks.on(event, fn);
+    }
+
+    off(event, fn) {
+        return this.hooks.off(event, fn);
+    }
+
+    _extractActionArgs(actionNode, context = {}) {
+        return extractActionArgs(this, actionNode, context);
+    }
+
+    _handleEmitAction(actionNode, context = {}) {
+        return _handleEmitAction.call(this, actionNode, context);
     }
 
     batch(fn) {
@@ -798,6 +847,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
 export {
     EUIXEngineCore,
+    EUIXEngineCore as EUIX,
     EUIXEngineCore as EUIXEngine,
     EUIXExpressionParser,
     EUIXHookEmitter,
@@ -805,5 +855,8 @@ export {
     EUIXXMLParseError,
     processStyleTag,
     scopeCSS,
+    registerBindingNamespace,
+    registerActionDispatch,
+    registerMetadataTag,
 };
 export default EUIXEngineCore;

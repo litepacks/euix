@@ -470,6 +470,10 @@ export function initDataModel(engine) {
             pendingEndpoints.push({ node, autoFetch });
         });
 
+        if (engine.constructor?.hooks && isFn(engine.constructor.hooks.emit)) {
+            engine.constructor.hooks.emit("lifecycle:datamodel", { engine, doc, isMainDoc, rawState, pendingEndpoints });
+        }
+
         const useScriptNodes = Array.from(
             doc.querySelectorAll
                 ? doc.querySelectorAll("use_script, script_loader, load_script")

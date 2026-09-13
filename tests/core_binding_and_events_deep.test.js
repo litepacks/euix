@@ -255,4 +255,64 @@ describe('HookEmitter Deep Coverage Suite', () => {
 
         expect(engine.getState('clicked_id')).toBe('task_100');
     });
+
+    it('should support engine.action registration and on_click:call with automatic arg extraction', () => {
+        const container = document.createElement('div');
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="status" type="string">pending</state>
+                <state id="last_user" type="string"></state>
+            </data_model>
+            <div>
+                <button class="call-btn" on_click:call="saveUser" user_id="user_99">
+                    <arg name="user_name">Alice</arg>
+                    Save
+                </button>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        const actionSpy = vi.fn((node, ctx, eng, args) => {
+            expect(args.user_id).toBe('user_99');
+            expect(args.user_name).toBe('Alice');
+            eng.setState('status', 'saved');
+            eng.setState('last_user', args.user_name);
+        });
+
+        engine.action('saveUser', actionSpy);
+
+        const btn = container.querySelector('.call-btn');
+        btn.click();
+
+        expect(actionSpy).toHaveBeenCalled();
+        expect(engine.getState('status')).toBe('saved');
+        expect(engine.getState('last_user')).toBe('Alice');
+    });
+
+    it('should support declarative EMIT action and on_click:emit shorthand with engine.on and DOM event dispatch', () => {
+        const container = document.createElement('div');
+        const xml = `
+        <uid_spec>
+            <div>
+                <button class="emit-btn" on_click:emit="userSelected" user_id="42">Select</button>
+            </div>
+        </uid_spec>
+        `;
+
+        const engine = EUIXEngineCore.mount(xml, container);
+        const emitSpy = vi.fn();
+        engine.on('userSelected', emitSpy);
+
+        const domEventSpy = vi.fn();
+        container.addEventListener('userSelected', domEventSpy);
+
+        const btn = container.querySelector('.emit-btn');
+        btn.click();
+
+        expect(emitSpy).toHaveBeenCalled();
+        expect(emitSpy.mock.calls[0][0].user_id).toBe('42');
+        expect(domEventSpy).toHaveBeenCalled();
+    });
 });

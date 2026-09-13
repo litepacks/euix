@@ -398,7 +398,18 @@ export const ACTION_DISPATCH_TABLE = {
     RETRY_ERROR_BOUNDARY: "_handleResetErrorBoundaryAction",
     RESET_BOUNDARY: "_handleResetErrorBoundaryAction",
     RETRY_BOUNDARY: "_handleResetErrorBoundaryAction",
+    EMIT: "_handleEmitAction",
 };
+
+export function registerMetadataTag(tag) {
+    if (tag) METADATA_AND_EVENT_TAGS.add(String(tag).toLowerCase());
+}
+
+export function registerActionDispatch(actionType, methodNameOrFn) {
+    if (actionType) {
+        ACTION_DISPATCH_TABLE[String(actionType).toUpperCase()] = methodNameOrFn;
+    }
+}
 
 export const _resolveRoot = (r) => r;
 export const _resolveChild0 = (r) => (r?.childNodes ? r.childNodes[0] : null);
