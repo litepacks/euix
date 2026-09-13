@@ -101,4 +101,5 @@ EUIX is built for developers who want declarative reactivity without the complex
 - **[Components](/components/components)**: Modular UI definition, props, slots, and state isolation.
 - **[Actions](/actions/actions)**: Declarative workflows, Action Composer, and sandboxed scripts.
 - **[Plugins](/plugins/plugin-system)**: Tree-shakeable extensions for REST SWR, Storage, Dialog, Maps, and WebMCP AI agents.
+- **[EUIX Doctor](/guides/doctor-static-analysis)**: Static analysis for state, composition, prop types, and reactive flows — before runtime tests.
 - **[API Reference](/reference/markup)**: Complete, searchable reference for tags, directives, and runtime methods.

@@ -88,6 +88,35 @@ You can keep components in separate `.xml` or `.euix` files and import them dyna
 
 ---
 
+## 🔗 Custom Tags & Multi-File Composition
+
+When sibling component files exist, you can use **PascalCase custom tags** instead of `<component name="...">`:
+
+**`App.xml`**
+
+```xml
+<uid_spec>
+  <data_model>
+    <state id="user" type="object">{"name": "Guest"}</state>
+  </data_model>
+
+  <Header user="{data.user}" />
+  <Dashboard user="{data.user}" />
+</uid_spec>
+```
+
+**`Header.xml`** (separate file, `component_def name="Header"`)
+
+Doctor auto-discovers sibling files when you scan `App.xml`, links parent → child in the dependency graph, and validates required props and `type` contracts.
+
+```bash
+npx euix doctor ./src/App.xml
+```
+
+Unresolved references → `EUIX1401`. Missing required props → `EUIX1402`. Type mismatches → `EUIX1403`.
+
+---
+
 ## 🧭 Next Step
 
 Learn how to pass and bind dynamic data to components in **[Props & Prop Scoping](/components/props)**.

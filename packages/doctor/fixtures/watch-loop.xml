@@ -1,0 +1,7 @@
+<component name="WatchLoop">
+  <state name="count" value="0" />
+
+  <watch path="count">
+    count++
+  </watch>
+</component>

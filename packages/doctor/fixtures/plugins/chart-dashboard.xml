@@ -1,0 +1,16 @@
+<uid_spec>
+  <data_model>
+    <state id="salesData" type="array">[
+      {"month": "Jan", "revenue": 12000, "profit": 4000},
+      {"month": "Feb", "revenue": 19000, "profit": 6500}
+    ]</state>
+  </data_model>
+
+  <chart type="bar" data="{data.salesData}" width="100%" height="320" animated="true">
+    <chart_axis x="month" y="revenue" grid="true" />
+    <chart_series y="revenue" name="Revenue" color="#10b981" />
+    <chart_series y="profit" name="Profit" color="#6366f1" />
+    <chart_tooltip format="currency" />
+    <chart_legend position="top" />
+  </chart>
+</uid_spec>

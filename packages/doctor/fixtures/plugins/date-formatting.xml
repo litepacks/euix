@@ -1,0 +1,18 @@
+<uid_spec>
+  <date_config locale="tr-TR" timezone="Europe/Istanbul" />
+
+  <data_model>
+    <state id="sampleDate">2026-08-20T14:30:00Z</state>
+    <state id="publishedAt">2026-08-20T12:00:00Z</state>
+  </data_model>
+
+  <flex direction="column" gap="8">
+    <date value="{data.sampleDate}" format="full" locale="en-US" />
+    <time value="now" format="time_medium" live="true" interval="1000" />
+    <relative_time value="{data.publishedAt}" live="true" interval="10000" />
+    <button>
+      <on_click action="SET_DATE_LOCALE" locale="de-DE" />
+      Switch Locale
+    </button>
+  </flex>
+</uid_spec>

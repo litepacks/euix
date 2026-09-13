@@ -39,6 +39,99 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
 
 ---
 
+## 🩺 1.5. EUIX Doctor — Required Static Validation for Agents
+
+**All EUIX markup and component changes MUST be validated with `@euix/doctor` before considering the work complete.** Do not rely on manual review, runtime smoke tests, or browser inspection alone. Doctor performs static semantic analysis without mounting the app.
+
+> **Agent rule:** After creating or modifying any `.xml`, `.html`, EUIX template literal, or component file, run Doctor on the affected path and fix reported errors before submitting changes.
+
+### What Doctor validates
+
+| Area | Examples |
+|------|----------|
+| **State model** | Unknown state writes (`EUIX1001`), unused state (`EUIX1002`) |
+| **Computed / watchers** | Dependency cycles (`EUIX1101`), self-triggering watchers (`EUIX1201`) |
+| **Events & actions** | Missing handlers (`EUIX1301`), event → action → state flow |
+| **Composition & props** | Unresolved component (`EUIX1401`), missing required prop (`EUIX1402`), prop type/enum mismatch (`EUIX1403`) |
+| **API & streams** | Missing error paths (`EUIX1501`), endpoint/stream registration |
+| **Behavior graph** | Event → action → state → computed → binding paths |
+| **Safe scenarios** | Dry-run flow tests without real DOM or network |
+
+### Commands (always use these)
+
+```bash
+# From monorepo root — scan default target
+npm run doctor
+
+# Scan a specific directory or file (preferred after localized edits)
+node packages/core/bin/euix.js doctor apps/playground/components
+node packages/core/bin/euix.js doctor path/to/YourComponent.xml
+
+# Run generated safe test scenarios
+node packages/core/bin/euix.js doctor apps/playground/components --test
+
+# Inspect a single file (entity breakdown + diagnostics)
+node packages/core/bin/euix.js doctor inspect path/to/YourComponent.xml
+
+# CI-friendly JSON output
+node packages/core/bin/euix.js doctor . --json > doctor-report.json
+```
+
+### Recommended agent workflow
+
+1. **Edit** — Create or modify EUIX XML/HTML/JS templates.
+2. **Scan** — Run `euix doctor <path>` on the changed files or directory.
+3. **Fix errors** — Resolve all `error`-severity diagnostics (`EUIX1001`, `EUIX1101`, `EUIX1301`, `EUIX1401`–`EUIX1403`, etc.).
+4. **Review warnings** — Address `EUIX1201` (watcher loops), `EUIX1501` (API error handling), and unused state where relevant.
+5. **Test flows** — Run with `--test` to execute dry-run behavior scenarios.
+6. **Runtime only after Doctor passes** — Use Playwright, browser, or Vitest for integration/E2E checks *after* static validation succeeds.
+
+### Key diagnostic rules agents must not ignore
+
+| Rule | Severity | Fix |
+|------|----------|-----|
+| `EUIX1001` | error | Action writes to a state that does not exist in `<data_model>` |
+| `EUIX1101` | error | Break computed dependency cycle |
+| `EUIX1201` | warning | Watcher must not write the path it watches |
+| `EUIX1301` | error | Wire event to a defined `<action>`, `<action_def>`, or built-in action |
+| `EUIX1401` | error | Fix component `src`, custom tag name, or add missing sibling `.xml` file |
+| `EUIX1402` | error | Pass all `<param required="true">` props from parent |
+| `EUIX1403` | error | Match parent binding type to child `<param type="...">` (or fix `enum`) |
+| `EUIX1501` | warning | Add `error="..."` on `<api_endpoint>` or `<catch>` for fetch actions |
+
+### VS Code / Cursor extension
+
+The **EUIX Doctor** extension (`packages/vscode-euix-doctor`) surfaces the same diagnostics in the **Problems** panel:
+
+- Runs on save (debounced workspace scan)
+- Status bar health indicator
+- Commands: *Analyze Workspace*, *Analyze Current File*, *Run Safe Test Scenarios*
+
+```bash
+# Build extension for local F5 debugging
+npm run vscode-doctor:build
+
+# Package .vsix for distribution
+npm run vscode-doctor:package
+```
+
+Open `packages/vscode-euix-doctor` and press **F5** to launch an Extension Development Host. The monorepo recommends the extension via `.vscode/extensions.json`.
+
+Human developers and agents working in VS Code/Cursor should prefer the extension for continuous feedback; use the CLI for CI and scripted validation.
+
+### Package location & docs
+
+```
+packages/doctor/               ← @euix/doctor source
+packages/vscode-euix-doctor/   ← VS Code / Cursor extension
+packages/doctor/fixtures/      ← reference scenarios (native, plugins, runtime, broken)
+packages/doctor/README.md      ← architecture, API, and CLI reference
+```
+
+Doctor is integrated into the EUIX CLI via `euix doctor`. It does **not** depend on the runtime engine — it parses markup and conventions statically, making it fast and safe for agents and CI.
+
+---
+
 ## 🚀 2. Import & Mounting
 
 ### ESM (Bundlers / Node)
@@ -735,6 +828,8 @@ EUIX Engine supports both **Component-Scoped Isolation** (for multi-instance UI 
 ---
 
 ## ⚠️ 11. Common Pitfalls & Anti-Patterns
+
+> **Tip:** Many pitfalls below are detected automatically by `euix doctor` (e.g. `EUIX1301` for missing handlers, `EUIX1201` for watcher loops, `EUIX1101` for computed cycles). Run Doctor after fixing anti-patterns to confirm the issue is resolved.
 
 ### 1. Invalid `on_<event>` Action Names & Syntax
 ❌ **WRONG**: Writing custom JS function names or using `key="..."` instead of `id="..."` in `<state>`.
@@ -1611,7 +1706,9 @@ For multi-instance UI widgets (accordions, tree nodes, tabs, dropdowns), always 
 
 ## 📋 24. Crucial XML Template Authoring Rules & Checklist
 
-When building applications or generating `<uid_spec>` XML templates, always verify against this checklist:
+When building applications or generating `<uid_spec>` XML templates, always verify against this checklist.
+
+> **Validation first:** Run `euix doctor <path>` (see [§1.5 EUIX Doctor](#15-euix-doctor--required-static-validation-for-agents)) on every changed file **before** manual review or browser testing. Treat Doctor `error` diagnostics as blocking issues.
 
 | Rule Area | ❌ Anti-Pattern | ✅ Correct Practice |
 | :--- | :--- | :--- |
@@ -1622,6 +1719,7 @@ When building applications or generating `<uid_spec>` XML templates, always veri
 | **XML Entities** | Using raw `&&` inside XML attributes | Use `&amp;&amp;` in XML attributes and scripts. |
 | **Numeric Variables** | `<state id="count">0</state>` | `<state id="count" type="number">0</state>` for math operations. |
 | **Keyed Lists** | Omitting `key` attribute on large lists | Use `<for_each items="{data.items}" var="item" key="id">` for zero-allocation reconciliation. |
+| **Static validation** | Submitting XML without automated checks | Run `euix doctor <path> --test` and fix all errors before marking work complete. |
 
 ### Complete Reference Application Example
 ```xml
@@ -2170,6 +2268,11 @@ EUIX Engine includes built-in tooling for IDE auto-completion, XML linting, and 
 
 ### 1. EUIX CLI Commands (`npx euix`)
 ```bash
+# 0. Static semantic validation (REQUIRED for agents — run on every XML/component change)
+npx euix doctor apps/playground/components
+npx euix doctor path/to/Component.xml --test
+npx euix doctor inspect path/to/Component.xml
+
 # 1. Generate official XML Schema Definition (XSD) for VS Code / IntelliJ autocompletion
 npx euix schema:xsd -o ./schema/uid_spec.xsd
 

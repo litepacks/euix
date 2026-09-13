@@ -1,0 +1,188 @@
+{
+  "name": "euixjs",
+  "version": "0.3.78",
+  "description": "EUIX Engine - Ultra-lightweight declarative HTML & XML framework",
+  "type": "module",
+  "main": "dist/EUIXEngine.umd.js",
+  "module": "dist/EUIXEngine.es.js",
+  "types": "./types/index.d.ts",
+  "bin": {
+    "euix": "./bin/euix.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/EUIXEngine.es.js",
+      "require": "./dist/EUIXEngine.umd.js"
+    },
+    "./core": {
+      "types": "./types/core.d.ts",
+      "import": "./dist/EUIXEngineCore.es.js",
+      "require": "./dist/EUIXEngineCore.umd.js"
+    },
+    "./full": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/EUIXEngine.es.js",
+      "require": "./dist/EUIXEngine.umd.js"
+    },
+    "./api": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXApiPlugin.es.js"
+    },
+    "./composer": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXComposerPlugin.es.js"
+    },
+    "./dnd": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXDragDropPlugin.es.js"
+    },
+    "./storage": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXStoragePlugin.es.js"
+    },
+    "./collapse": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXCollapsePlugin.es.js"
+    },
+    "./dialog": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXDialogPlugin.es.js"
+    },
+    "./resilience": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXResiliencePlugin.es.js"
+    },
+    "./reactive": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXReactivePlugin.es.js"
+    },
+    "./animation": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXAnimationPlugin.es.js"
+    },
+    "./head": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXHeadPlugin.es.js"
+    },
+    "./helmet": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXHeadPlugin.es.js"
+    },
+    "./a11y": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXA11yPlugin.es.js"
+    },
+    "./leaflet": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXLeafletPlugin.es.js"
+    },
+    "./navigator": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXNavigatorPlugin.es.js"
+    },
+    "./router": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXRouterPlugin.es.js"
+    },
+    "./chart": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXChartPlugin.es.js"
+    },
+    "./date": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXDatePlugin.es.js"
+    },
+    "./devtools": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/EUIXDevTools.es.js",
+      "require": "./dist/EUIXDevTools.umd.js"
+    },
+    "./inspector": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXInspectorPlugin.es.js"
+    },
+    "./inspector/playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./devtools/playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./playwright": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXPlaywright.es.js"
+    },
+    "./webmcp": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXWebMCPPlugin.es.js"
+    },
+    "./compiler": {
+      "types": "./types/compiler.d.ts",
+      "import": "./dist/EUIXCompiler.es.js"
+    },
+    "./server": {
+      "types": "./types/server.d.ts",
+      "import": "./dist/EUIXServer.es.js"
+    },
+    "./validation": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXValidationPlugin.es.js"
+    },
+    "./stream": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXStreamPlugin.es.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "types",
+    "README.md",
+    "llms.txt"
+  ],
+  "scripts": {
+    "build": "vite build && vite build --config vite.core.config.js && vite build --config vite.plugins.config.js && vite build --config vite.devtools.config.js",
+    "prepublishOnly": "npm run build",
+    "preview": "vite preview",
+    "test": "vitest run --exclude tests/benchmark.test.js --exclude \"tests/{property,fuzz,roundtrip,permutations,chaos,torture}/**\"",
+    "test:unit": "vitest run --exclude tests/benchmark.test.js --exclude \"tests/{property,fuzz,roundtrip,permutations,chaos,torture}/**\"",
+    "test:all": "vitest run --exclude tests/benchmark.test.js",
+    "test:fast": "vitest run --exclude tests/benchmark.test.js --exclude tests/memory.test.js --exclude \"tests/{property,fuzz,roundtrip,permutations,chaos,torture}/**\"",
+    "test:parallel": "vitest run --fileParallelism=true --maxConcurrency=10 --exclude tests/benchmark.test.js",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "test:battle": "vitest run tests/property tests/fuzz tests/roundtrip tests/permutations tests/chaos tests/torture",
+    "test:soak": "vitest run tests/torture/soak.test.js",
+    "bench": "vitest bench",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "format": "biome format --write src"
+  },
+  "keywords": [
+    "euix",
+    "declarative-ui",
+    "xml",
+    "vanilla-js",
+    "fine-grained-reactivity"
+  ],
+  "homepage": "https://litepacks.github.io/euix/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/litepacks/euix.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/litepacks/euix/issues"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@euix/doctor": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

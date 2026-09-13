@@ -1,0 +1,10 @@
+<uid_spec>
+  <data_model>
+    <state id="a" type="number">1</state>
+    <state id="b" type="number">2</state>
+  </data_model>
+
+  <computed id="sumA">{data.b + data.c}</computed>
+  <computed id="sumB">{data.a + data.c}</computed>
+  <computed id="sumC">{data.a + data.b}</computed>
+</uid_spec>

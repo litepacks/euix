@@ -1,0 +1,15 @@
+<uid_spec>
+  <data_model>
+    <state id="pageTitle" type="string">Dashboard</state>
+    <state id="pageDescription" type="string">EUIX analytics dashboard</state>
+  </data_model>
+
+  <head>
+    <title bind="pageTitle">{data.pageTitle} | EUIX App</title>
+    <meta name="description" content="{data.pageDescription}" />
+    <meta property="og:title" content="{data.pageTitle}" />
+    <link rel="canonical" href="https://app.example.com/dashboard" />
+  </head>
+
+  <h1>{data.pageTitle}</h1>
+</uid_spec>

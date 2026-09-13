@@ -1,0 +1,30 @@
+<uid_spec>
+  <data_model>
+    <state id="currentRoute" type="string">/</state>
+  </data_model>
+
+  <router mode="history" base="/">
+    <route id="root" path="/" layout="RootLayout">
+      <route id="home" index="true" path="/" component="HomePage" />
+      <route id="profile" path="/users/:id" component="UserProfile" loader="loadUserData" />
+      <route id="settings" path="/settings" component="SettingsPage" />
+      <route id="not-found" path="*" component="NotFoundPage" />
+    </route>
+  </router>
+
+  <flex direction="row" gap="8">
+    <link to="/" active_class="active">Home</link>
+    <link to="/users/42" active_class="active">Profile</link>
+    <link to="/settings" active_class="active">Settings</link>
+  </flex>
+
+  <outlet />
+
+  <button id="btn-navigate">
+    <on_click action="SET_STATE">
+      <path>data.currentRoute</path>
+      <value>/dashboard</value>
+    </on_click>
+    Go Dashboard
+  </button>
+</uid_spec>

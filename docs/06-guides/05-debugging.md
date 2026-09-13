@@ -11,6 +11,21 @@ EUIX includes development tooling to inspect reactive state, trace action execut
 
 ---
 
+## 🩺 Static Analysis First — EUIX Doctor
+
+Before opening the browser, run **EUIX Doctor** on changed markup. It catches missing handlers, reactive loops, broken composition, and prop type mismatches without mounting the app:
+
+```bash
+npx euix doctor path/to/components
+npx euix doctor inspect path/to/Component.xml
+```
+
+Key composition rules: `EUIX1401` (unresolved component), `EUIX1402` (missing required prop), `EUIX1403` (prop type mismatch).
+
+See the full guide: **[EUIX Doctor — Static Analysis](/guides/doctor-static-analysis)**.
+
+---
+
 ## 🛠️ Floating DevTools Inspector (`euixjs/devtools`)
 
 Add the DevTools bundle to your page during development:

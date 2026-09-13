@@ -1,0 +1,17 @@
+<component name="UserLoader">
+
+  <state name="loading" value="false" />
+  <state name="user" value="" />
+
+  <action name="loadUser">
+    loading = true;
+
+    const response = await fetch("/api/user");
+    user = await response.json();
+
+    loading = false;
+  </action>
+
+  <button @click="loadUser">Load</button>
+
+</component>

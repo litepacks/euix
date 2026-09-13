@@ -1,0 +1,17 @@
+<component name="Counter">
+
+  <state name="count" value="0" />
+
+  <computed name="double">
+    count * 2
+  </computed>
+
+  <action name="increment">
+    count++
+  </action>
+
+  <button @click="increment">
+    {{ double }}
+  </button>
+
+</component>

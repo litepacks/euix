@@ -1,0 +1,8 @@
+<uid_spec>
+  <component_def name="CounterBadge">
+    <param name="count" type="number" required="true" />
+    <span>{props.count}</span>
+  </component_def>
+
+  <CounterBadge count="not-a-number" />
+</uid_spec>

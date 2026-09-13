@@ -1,0 +1,20 @@
+<uid_spec>
+  <data_model>
+    <state id="counter" type="number">0</state>
+    <state id="isOpen" type="boolean">false</state>
+    <state id="items" type="array">[]</state>
+    <state id="searchQuery" type="string"></state>
+  </data_model>
+
+  <flex direction="column" gap="8">
+    <button on_click:set="counter={data.counter + 1}">+1</button>
+    <button on_click:toggle="isOpen">Toggle Modal</button>
+    <button on_click:mutate="items.PUSH({id: Date.now(), title: 'New'})">Add Item</button>
+    <button on_click:revalidate="get_posts">Refresh</button>
+    <button on_click:run="$data.counter += 5">Quick Add 5</button>
+    <input bind="searchQuery" on_change:set="searchQuery" debounce="300" />
+    <form on_submit:call="SubmitForm" prevent="true">
+      <button type="submit">Submit</button>
+    </form>
+  </flex>
+</uid_spec>

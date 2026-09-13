@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>EUIX Full Dashboard</title>
+  </head>
+  <body>
+    <div id="app">
+      <uid_spec>
+        <data_model>
+          <state id="activeTab" type="string">overview</state>
+          <state id="metrics" type="array">[]</state>
+          <state id="isLoading" type="boolean">false</state>
+        </data_model>
+
+        <api_config base_url="https://api.example.com">
+          <api_endpoint
+            id="dashboard_metrics"
+            url="/dashboard/metrics"
+            bind_target="metrics"
+            loading="isLoading"
+          />
+        </api_config>
+
+        <navigator bind="activeTab" type="tabs">
+          <nav_item id="overview" label="Overview" />
+          <nav_item id="reports" label="Reports" />
+        </navigator>
+
+        <chart type="line" data="{data.metrics}" height="280">
+          <chart_axis x="date" y="value" />
+          <chart_series y="value" name="Traffic" />
+        </chart>
+
+        <button @click="loadMetrics">Refresh</button>
+      </uid_spec>
+    </div>
+    <script type="module">
+      function loadMetrics() {
+        fetch("/api/dashboard/metrics")
+          .then((r) => r.json())
+          .then((data) => {
+            metrics = data;
+          });
+      }
+    </script>
+  </body>
+</html>

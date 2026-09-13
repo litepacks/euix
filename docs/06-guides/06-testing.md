@@ -9,6 +9,29 @@ group: Guides
 
 EUIX applications can be thoroughly tested using standard Node.js test runners (like **Vitest**) and browser automation tools (like **Playwright**).
 
+**Recommended order:** run **EUIX Doctor** static analysis first, then unit tests, then E2E.
+
+---
+
+## 🩺 0. Static Analysis with EUIX Doctor
+
+Doctor validates state, computed/watcher graphs, event handlers, multi-file composition, and prop contracts (`type`, `required`, `enum`) before any DOM is created:
+
+```bash
+# Scan changed components
+npx euix doctor apps/playground/components
+
+# CI-friendly JSON report
+npx euix doctor . --json > doctor-report.json
+
+# Dry-run behavior scenarios (no real network)
+npx euix doctor apps/playground/components --test
+```
+
+Fix all **`error`** diagnostics (`EUIX1001`, `EUIX1101`, `EUIX1301`, `EUIX1401`–`EUIX1403`) before writing or running Vitest/Playwright suites.
+
+See **[EUIX Doctor — Static Analysis](/guides/doctor-static-analysis)** for the full rule reference.
+
 ---
 
 ## 🧪 1. Unit Testing with Vitest & JSDOM

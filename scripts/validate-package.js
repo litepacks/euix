@@ -5,18 +5,19 @@ import path from 'path';
 console.log('=== EUIX Package Artifact Validation ===');
 
 const rootDir = process.cwd();
+const coreDir = path.join(rootDir, 'packages/core');
 const scratchDir = path.join(rootDir, 'scratch', 'package_smoke');
 
 try {
   // 1. Build project first
   console.log('[1/4] Building release bundles...');
-  execSync('npm run build', { stdio: 'inherit' });
+  execSync('npm run build', { cwd: coreDir, stdio: 'inherit' });
 
   // 2. Run npm pack
   console.log('[2/4] Executing npm pack...');
-  const packOutput = execSync('npm pack', { encoding: 'utf-8' }).trim();
+  const packOutput = execSync('npm pack', { cwd: coreDir, encoding: 'utf-8' }).trim();
   const tarballName = packOutput.split('\n').pop();
-  const tarballPath = path.join(rootDir, tarballName);
+  const tarballPath = path.join(coreDir, tarballName);
 
   if (!fs.existsSync(tarballPath)) {
     throw new Error(`Package tarball not found at: ${tarballPath}`);
@@ -35,8 +36,8 @@ try {
 
   // 4. Verify package exports and files
   console.log('[4/4] Verifying exported bundle files...');
-  const packageJson = JSON.parse(fs.readFileSync(path.join(extractedPackageDir, 'package.json'), 'utf-8'));
-  
+  JSON.parse(fs.readFileSync(path.join(extractedPackageDir, 'package.json'), 'utf-8'));
+
   const expectedFiles = [
     'dist/EUIXEngine.umd.js',
     'dist/EUIXEngine.es.js',

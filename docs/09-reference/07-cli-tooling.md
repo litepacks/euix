@@ -46,6 +46,33 @@ Pre-compiles an XML template into an optimized JavaScript module for zero-parser
 npx euix compile ./src/App.xml -o ./src/App.compiled.js
 ```
 
+### 5. `doctor [path]`
+Runs **EUIX Doctor** static analysis on a directory or file. Validates state, computed/watcher graphs, events, API paths, multi-file composition, and prop contracts.
+
+```bash
+# Scan directory or file
+npx euix doctor apps/playground/components
+npx euix doctor ./src/App.xml
+
+# Single-file entity breakdown
+npx euix doctor inspect ./src/App.xml
+
+# Dry-run test scenarios + JSON for CI
+npx euix doctor . --test --json > doctor-report.json
+```
+
+**Common flags:** `--test`, `--flows`, `--graph`, `--json`, `--fuzz` (with `--test`).
+
+**Composition diagnostics:**
+
+| Rule | Meaning |
+|------|---------|
+| `EUIX1401` | Component reference could not be resolved |
+| `EUIX1402` | Missing required prop on child component |
+| `EUIX1403` | Prop `type` or `enum` mismatch |
+
+See **[EUIX Doctor — Static Analysis](/guides/doctor-static-analysis)** for the full diagnostic reference.
+
 ---
 
 ## 🏁 Documentation Complete

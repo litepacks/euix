@@ -1,0 +1,13 @@
+<uid_spec>
+  <data_model>
+    <state id="items" type="array">[]</state>
+  </data_model>
+
+  <action name="loadDynamic">
+    const base = config.apiBase;
+    const res = await fetch(base + "/items");
+    items = await res.json();
+  </action>
+
+  <button @click="loadDynamic">Load</button>
+</uid_spec>

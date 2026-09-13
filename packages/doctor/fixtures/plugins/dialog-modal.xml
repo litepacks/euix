@@ -1,0 +1,17 @@
+<uid_spec>
+  <data_model>
+    <state id="showModal" type="boolean">false</state>
+    <state id="confirmText" type="string">Are you sure?</state>
+  </data_model>
+
+  <button on_click:toggle="showModal">Open Modal</button>
+
+  <dialog bind="showModal" title="Confirm Action" role="dialog" lock_scroll="true">
+    <description>Review before continuing.</description>
+    <p>{data.confirmText}</p>
+    <actions>
+      <button on_click:toggle="showModal">Cancel</button>
+      <button on_click:call="ConfirmDelete">Delete</button>
+    </actions>
+  </dialog>
+</uid_spec>

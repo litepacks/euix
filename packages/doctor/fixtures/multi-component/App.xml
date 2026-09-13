@@ -1,0 +1,9 @@
+<uid_spec>
+  <data_model>
+    <state id="user" type="object">{"name": "Guest"}</state>
+    <state id="page" type="string">dashboard</state>
+  </data_model>
+
+  <Header user="{data.user}" />
+  <Dashboard if="{data.page === 'dashboard'}" user="{data.user}" />
+</uid_spec>

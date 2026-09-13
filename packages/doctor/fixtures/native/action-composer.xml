@@ -1,0 +1,34 @@
+<uid_spec>
+  <data_model>
+    <state id="userName" type="string">Guest</state>
+    <state id="logs" type="array">[]</state>
+  </data_model>
+
+  <actions>
+    <action_def name="SaveUserWorkflow">
+      <param name="userName" required="true" />
+      <param name="role" default="User" />
+
+      <step action="SET_STATE">
+        <path>data.userName</path>
+        <value>{args.userName}</value>
+      </step>
+
+      <step action="MUTATE_STATE">
+        <path>logs</path>
+        <operation>UNSHIFT</operation>
+        <value>Added user {args.userName} ({args.role})</value>
+      </step>
+
+      <return>{data.userName}</return>
+    </action_def>
+  </actions>
+
+  <button id="btn-save">
+    <on_click action="SaveUserWorkflow">
+      <arg name="userName">Alice</arg>
+      <arg name="role">Admin</arg>
+    </on_click>
+    Save User
+  </button>
+</uid_spec>

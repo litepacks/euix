@@ -1,0 +1,13 @@
+<uid_spec>
+  <data_model>
+    <state id="activeTab">home</state>
+    <state id="unreadCount" type="number">3</state>
+  </data_model>
+
+  <navigator bind="activeTab" type="bottom-tabs">
+    <nav_item id="home" label="Home" icon="home" component="./tabs/HomeTab.xml" />
+    <nav_item id="search" label="Search" icon="search" component="./tabs/SearchTab.xml" />
+    <nav_item id="alerts" label="Alerts" icon="bell" badge="{data.unreadCount}" component="./tabs/AlertsTab.xml" />
+    <nav_item id="profile" label="Profile" icon="user" component="./tabs/ProfileTab.xml" />
+  </navigator>
+</uid_spec>

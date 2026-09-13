@@ -1,0 +1,18 @@
+<uid_spec>
+  <data_model>
+    <state id="theme" type="string">dark</state>
+    <state id="token" type="string"></state>
+  </data_model>
+
+  <persistence>
+    <persist key="theme" storage="localStorage" />
+    <persist key="token" storage="sessionStorage" />
+  </persistence>
+
+  <action name="saveSession">
+    localStorage.setItem('theme', data.theme);
+    sessionStorage.setItem('token', data.token);
+  </action>
+
+  <button on_click="saveSession">Save Session</button>
+</uid_spec>

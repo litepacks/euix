@@ -1,0 +1,10 @@
+<component_def name="Header">
+  <param name="user" type="object" required="true" />
+
+  <nav class="app-header">
+    <h1>EUIX App</h1>
+    <span>{props.user.name}</span>
+    <button on_click:set="page" value="dashboard">Dashboard</button>
+    <button on_click:set="page" value="settings">Settings</button>
+  </nav>
+</component_def>

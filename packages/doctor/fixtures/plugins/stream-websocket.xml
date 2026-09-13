@@ -1,0 +1,34 @@
+<uid_spec>
+  <data_model>
+    <state id="ticker" type="object">{"price": 0, "volume": 0}</state>
+    <state id="streamStatus" type="string">disconnected</state>
+  </data_model>
+
+  <api_config base_url="wss://stream.example.com">
+    <api_stream
+      id="crypto_ticker"
+      type="websocket"
+      url="/prices/btc"
+      target="ticker"
+      auto_connect="true"
+      reconnect="true"
+      reconnect_interval="3000"
+      reconnect_attempts="10"
+    />
+  </api_config>
+
+  <flex direction="column" gap="8">
+    <h2>BTC: {data.ticker.price}</h2>
+    <span class="badge">{stream.crypto_ticker.status}</span>
+    <button>
+      <on_click action="STREAM_SEND" stream="crypto_ticker">
+        {"action": "subscribe", "symbol": "BTC"}
+      </on_click>
+      Subscribe
+    </button>
+    <button>
+      <on_click action="STREAM_DISCONNECT" stream="crypto_ticker" />
+      Disconnect
+    </button>
+  </flex>
+</uid_spec>

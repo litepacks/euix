@@ -1,0 +1,16 @@
+<component name="CycleDemo">
+  <state name="a" value="1" />
+  <state name="b" value="1" />
+
+  <computed name="x">
+    b + 1
+  </computed>
+
+  <computed name="y">
+    x + 1
+  </computed>
+
+  <computed name="b">
+    y + 1
+  </computed>
+</component>

@@ -11,6 +11,33 @@ Props are attributes passed from a parent template or component into a child com
 
 ---
 
+## 📋 Declaring Prop Contracts (`<param>`)
+
+Inside `<component_def>`, declare prop names, types, defaults, and validation with `<param>`:
+
+```xml
+<component_def name="user-badge">
+  <param name="username" type="string" required="true" />
+  <param name="role" type="string" default="Member" />
+  <param name="themeColor" type="string" default="#3b82f6" />
+  <param name="priority" type="string" enum="Low,Normal,High" />
+
+  <span style="color: {props.themeColor}">{props.username} ({props.role})</span>
+</component_def>
+```
+
+| Attribute | Purpose |
+|-----------|---------|
+| `name` | Prop identifier (accessed as `{props.name}`) |
+| `type` | `string`, `number`, `boolean`, `object`, or `array` — runtime coercion + static checks |
+| `required` | Parent must pass this prop |
+| `default` | Fallback when parent omits the prop |
+| `enum` | Comma-separated allowed literal values |
+
+At runtime, EUIX coerces passed values to the declared `type`. **EUIX Doctor** validates prop contracts statically (`EUIX1402` missing required, `EUIX1403` type/enum mismatch).
+
+---
+
 ## 📥 Static vs Dynamic Props
 
 Props can receive either static string literals or dynamic reactive expressions:
@@ -57,6 +84,31 @@ When a parent's reactive state changes (e.g. `data.activeUser` changes from `"Al
 1. The prop binding `{data.activeUser}` automatically triggers an update.
 2. The child component's `{props.username}` text node updates in place immediately.
 3. No child component unmounting or DOM node recreation is required.
+
+---
+
+## 🩺 Validating Props with EUIX Doctor
+
+Doctor cross-checks parent bindings against child `<param>` declarations across files:
+
+```bash
+npx euix doctor ./src/App.xml
+```
+
+Example — type mismatch Doctor catches before runtime:
+
+```xml
+<!-- Parent -->
+<state id="user" type="string">Guest</state>
+<Header user="{data.user}" />
+
+<!-- Child Header.xml -->
+<param name="user" type="object" required="true" />
+```
+
+Doctor reports **`EUIX1403`**: prop `user` expects `object`, inferred `string`.
+
+See **[EUIX Doctor — Static Analysis](/guides/doctor-static-analysis)**.
 
 ---
 

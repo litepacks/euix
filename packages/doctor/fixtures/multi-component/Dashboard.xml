@@ -1,0 +1,28 @@
+<component_def name="Dashboard">
+  <param name="user" type="object" required="true" />
+
+  <data_model>
+    <state id="stats" type="object">{"views": 0, "clicks": 0}</state>
+    <state id="isLoading" type="boolean">false</state>
+  </data_model>
+
+  <api_config base_url="https://api.example.com">
+    <api_endpoint
+      id="user_stats"
+      url="/users/{props.user.id}/stats"
+      bind_target="stats"
+      loading="isLoading"
+    />
+  </api_config>
+
+  <flex direction="column" gap="12">
+    <h2>Welcome, {props.user.name}</h2>
+    <div if="{data.isLoading}">Loading stats...</div>
+    <card>Views: {data.stats.views}</card>
+    <card>Clicks: {data.stats.clicks}</card>
+    <button>
+      <on_click action="REVALIDATE_API" tag="user_stats" />
+      Refresh
+    </button>
+  </flex>
+</component_def>

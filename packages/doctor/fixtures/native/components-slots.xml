@@ -1,0 +1,39 @@
+<uid_spec>
+  <component_def name="UserCard">
+    <param name="title" required="true" />
+    <param name="subtitle" default="Member" />
+
+    <data_model>
+      <state id="expanded" type="boolean">false</state>
+    </data_model>
+
+    <div class="user-card">
+      <h3>{props.title}</h3>
+      <small>{props.subtitle}</small>
+      <slot name="actions">
+        <button>Default Action</button>
+      </slot>
+      <children />
+    </div>
+  </component_def>
+
+  <component_def name="UserPage">
+    <data_model>
+      <state id="users" type="array">[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]</state>
+    </data_model>
+
+    <for_each items="{data.users}" var="user" key="id">
+      <component name="UserCard" title="{user.name}" subtitle="Active">
+        <template slot="actions">
+          <button>
+            <on_click action="SET_STATE">
+              <path>data.selectedUser</path>
+              <value>{user.id}</value>
+            </on_click>
+            Select
+          </button>
+        </template>
+      </component>
+    </for_each>
+  </component_def>
+</uid_spec>

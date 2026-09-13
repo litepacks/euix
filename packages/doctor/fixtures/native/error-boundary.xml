@@ -1,0 +1,15 @@
+<uid_spec>
+  <data_model>
+    <state id="hasError" type="boolean">false</state>
+  </data_model>
+
+  <error_boundary name="ChartBoundary" on_error="SET_STATE:hasError=true">
+    <component src="./BrokenChart.xml" />
+    <fallback let="err">
+      <div class="error-fallback">
+        <h4>Chart failed: {err.message}</h4>
+        <button on_click:retry="ChartBoundary">Retry</button>
+      </div>
+    </fallback>
+  </error_boundary>
+</uid_spec>

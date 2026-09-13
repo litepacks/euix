@@ -1,0 +1,21 @@
+<uid_spec>
+  <data_model>
+    <state id="notifications" type="array">[]</state>
+  </data_model>
+
+  <api_config base_url="https://api.example.com">
+    <api_stream
+      id="live_feed"
+      type="sse"
+      url="/live/notifications"
+      target="notifications"
+      operation="PUSH"
+      auto_connect="true"
+      event_name="notification"
+    />
+  </api_config>
+
+  <for_each items="{data.notifications}" var="note" key="id">
+    <card>{note.text}</card>
+  </for_each>
+</uid_spec>

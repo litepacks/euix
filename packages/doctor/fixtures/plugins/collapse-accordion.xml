@@ -1,0 +1,15 @@
+<uid_spec>
+  <data_model>
+    <state id="sectionOpen" type="boolean">false</state>
+    <state id="tab2Open" type="boolean">true</state>
+  </data_model>
+
+  <div class="accordion-group">
+    <collapse bind="sectionOpen" title="Account Settings" group="settings">
+      <p>Account configuration options</p>
+    </collapse>
+    <collapse bind="tab2Open" title="Privacy Settings" group="settings">
+      <p>Privacy configuration options</p>
+    </collapse>
+  </div>
+</uid_spec>

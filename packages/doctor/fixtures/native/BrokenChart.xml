@@ -1,0 +1,10 @@
+<component_def name="BrokenChart">
+  <data_model>
+    <state id="points" type="array">[]</state>
+  </data_model>
+
+  <chart type="line" data="{data.points}" height="200">
+    <chart_axis x="x" y="y" />
+    <chart_series y="y" name="Series" />
+  </chart>
+</component_def>

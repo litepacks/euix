@@ -1,0 +1,14 @@
+<uid_spec>
+  <component_def name="UserPanel">
+    <param name="user" type="object" required="true" />
+    <span>{props.user.name}</span>
+  </component_def>
+
+  <component_def name="App">
+    <data_model>
+      <state id="label" type="string">Guest</state>
+    </data_model>
+
+    <UserPanel user="{data.label}" />
+  </component_def>
+</uid_spec>

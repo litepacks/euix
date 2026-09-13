@@ -58,6 +58,36 @@ Renders an instance of a registered component:
 - **`src`**: Relative or absolute path to an external XML component file (e.g. `src="./components/UserBadge.xml"`).
 - **Custom Attributes**: Any custom attributes are passed as reactive props accessible inside the component via `{props.attrName}`.
 
+### Custom tag shorthand
+
+When a matching `component_def` or sibling `.xml` file exists, PascalCase tags are equivalent to `<component name="...">`:
+
+```xml
+<Header user="{data.user}" />
+<!-- same as -->
+<component name="Header" user="{data.user}" />
+```
+
+---
+
+## 🏷️ `<param>` — Prop Contract
+
+Declared inside `<component_def>` to define the prop interface:
+
+```xml
+<param name="user" type="object" required="true" />
+<param name="count" type="number" default="0" />
+<param name="priority" type="string" enum="Low,Normal,High" />
+```
+
+| Attribute | Values | Notes |
+|-----------|--------|-------|
+| `name` | string | Required; maps to `{props.name}` |
+| `type` | `string`, `number`, `boolean`, `object`, `array` | Runtime coercion; Doctor `EUIX1403` on mismatch |
+| `required` | `true` | Doctor `EUIX1402` if parent omits prop |
+| `default` | literal | Used when parent does not pass the prop |
+| `enum` | comma-separated | Doctor validates literal values |
+
 ---
 
 ## 📦 Slot Projection Tags

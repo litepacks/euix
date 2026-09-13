@@ -1,0 +1,9 @@
+<uid_spec>
+  <data_model>
+    <state id="score" type="number">0</state>
+  </data_model>
+
+  <watch path="score">
+    score = score + 1;
+  </watch>
+</uid_spec>

@@ -1,0 +1,27 @@
+<uid_spec>
+  <data_model>
+    <state id="email" type="string"></state>
+    <state id="password" type="string"></state>
+    <state id="confirmPassword" type="string"></state>
+    <state id="age" type="number">18</state>
+  </data_model>
+
+  <validation_rules>
+    <field id="email" required="true" email="true" message="Valid email required" />
+    <field id="password" required="true" min_length="8" message="Min 8 chars" />
+    <field id="confirmPassword" match="password" message="Passwords must match" />
+    <field id="age" min="18" max="100" />
+  </validation_rules>
+
+  <flex direction="column" gap="8">
+    <input bind="email" placeholder="Email" />
+    <span if="{errors.email}">{errors.email}</span>
+    <input type="password" bind="password" placeholder="Password" />
+    <input type="password" bind="confirmPassword" placeholder="Confirm" />
+    <input type="number" bind.number="age" />
+    <button id="btn-submit">
+      <on_click action="VALIDATE_FORM" on_success="SubmitRegistration" />
+      Register
+    </button>
+  </flex>
+</uid_spec>

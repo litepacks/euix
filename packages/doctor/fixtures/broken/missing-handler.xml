@@ -1,0 +1,10 @@
+<uid_spec>
+  <data_model>
+    <state id="value" type="number">0</state>
+  </data_model>
+
+  <button id="btn-broken">
+    <on_click action="NonExistentAction" />
+    Broken Button
+  </button>
+</uid_spec>

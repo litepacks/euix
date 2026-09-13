@@ -1,0 +1,33 @@
+<uid_spec>
+  <data_model>
+    <state id="items" type="array">[]</state>
+    <state id="errorLog" type="string"></state>
+    <state id="isLoading" type="boolean">false</state>
+  </data_model>
+
+  <button id="btn-resilient">
+    <on_click action="TRY">
+      <retry attempts="3" delay="500" backoff="exponential" max_delay="3000">
+        <timeout ms="2000" message="Request timed out">
+          <step action="XHR">
+            <url>https://api.example.com/unstable</url>
+            <target>data.items</target>
+          </step>
+        </timeout>
+      </retry>
+      <catch var="err">
+        <step action="SET_STATE">
+          <path>data.errorLog</path>
+          <value>[{err.code}] {err.message}</value>
+        </step>
+      </catch>
+      <finally>
+        <step action="SET_STATE">
+          <path>data.isLoading</path>
+          <value>false</value>
+        </step>
+      </finally>
+    </on_click>
+    Resilient Fetch
+  </button>
+</uid_spec>

@@ -1,0 +1,26 @@
+<uid_spec>
+  <data_model>
+    <state id="count" type="number">0</state>
+    <state id="step" type="number">1</state>
+    <computed id="double" deps="count">
+      return data.count * 2;
+    </computed>
+  </data_model>
+
+  <flex direction="column" gap="8" class="counter-panel">
+    <h1 id="counter-title">Count: {data.count}</h1>
+    <p id="counter-double">Double: {data.double}</p>
+
+    <button id="btn-increment" on_click:set="count={data.count + data.step}">
+      Increment
+    </button>
+
+    <button id="btn-reset">
+      <on_click action="SET_STATE">
+        <path>data.count</path>
+        <value>0</value>
+      </on_click>
+      Reset
+    </button>
+  </flex>
+</uid_spec>

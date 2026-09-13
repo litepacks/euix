@@ -11,7 +11,7 @@
     "lib": ["ES2022", "DOM"]
   },
   "include": [
-    "types/**/*",
-    "tests/types/**/*"
+    "packages/core/types/**/*",
+    "packages/core/tests/types/**/*"
   ]
 }

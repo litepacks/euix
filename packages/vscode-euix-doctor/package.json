@@ -1,0 +1,108 @@
+{
+  "name": "euix-doctor",
+  "displayName": "EUIX Doctor",
+  "description": "Static semantic analysis for EUIX XML, HTML, and template files — diagnostics in the Problems panel",
+  "version": "0.1.1",
+  "publisher": "euix",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "euix",
+    "xml",
+    "declarative",
+    "linter",
+    "doctor"
+  ],
+  "activationEvents": [
+    "onLanguage:xml",
+    "onLanguage:html",
+    "workspaceContains:**/*.xml"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "euixDoctor.analyzeWorkspace",
+        "title": "EUIX Doctor: Analyze Workspace"
+      },
+      {
+        "command": "euixDoctor.analyzeFile",
+        "title": "EUIX Doctor: Analyze Current File"
+      },
+      {
+        "command": "euixDoctor.runTests",
+        "title": "EUIX Doctor: Run Safe Test Scenarios"
+      }
+    ],
+    "configuration": {
+      "title": "EUIX Doctor",
+      "properties": {
+        "euixDoctor.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable EUIX Doctor diagnostics."
+        },
+        "euixDoctor.runOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-analyze the workspace when an EUIX file is saved."
+        },
+        "euixDoctor.runOnOpen": {
+          "type": "boolean",
+          "default": false,
+          "description": "Analyze the workspace when it is opened."
+        },
+        "euixDoctor.debounceMs": {
+          "type": "number",
+          "default": 400,
+          "minimum": 0,
+          "description": "Debounce delay (ms) before running analysis after save."
+        },
+        "euixDoctor.includePatterns": {
+          "type": "array",
+          "default": [
+            "**/*.xml",
+            "**/*.html",
+            "**/*.htm"
+          ],
+          "description": "Glob patterns for files EUIX Doctor should analyze."
+        },
+        "euixDoctor.showStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show health score in the status bar after analysis."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=esm --platform=node --packages=bundle --sourcemap",
+    "prepublishOnly": "npm run build",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=esm --platform=node --packages=bundle --sourcemap --watch",
+    "package:vsix": "vsce package --no-dependencies",
+    "publish:marketplace": "vsce publish --no-dependencies",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@euix/doctor": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^7.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/litepacks/euix.git",
+    "directory": "packages/vscode-euix-doctor"
+  }
+}

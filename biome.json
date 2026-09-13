@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**/*.js"]
+    "includes": ["packages/core/src/**/*.js"]
   },
   "formatter": {
     "enabled": true,

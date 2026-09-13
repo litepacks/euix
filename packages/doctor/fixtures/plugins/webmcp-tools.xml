@@ -1,0 +1,36 @@
+<uid_spec>
+  <data_model>
+    <state id="tasks" type="array">[]</state>
+  </data_model>
+
+  <actions>
+    <action_def name="task.create">
+      <param name="title" required="true" />
+      <param name="priority" default="Normal" />
+      <step action="MUTATE_STATE">
+        <path>data.tasks</path>
+        <operation>PUSH</operation>
+        <value>{"id": "t_" + Date.now(), "title": "{args.title}", "done": false}</value>
+      </step>
+      <return>{"success": true}</return>
+    </action_def>
+  </actions>
+
+  <webmcp>
+    <tool
+      name="create_task"
+      title="Create Task"
+      description="Creates a new task"
+      action="task.create"
+      readonly="false">
+      <param name="title" type="string" required="true" />
+      <param name="priority" type="string" enum="Low,Normal,High" />
+    </tool>
+    <tool
+      name="list_tasks"
+      title="List Tasks"
+      action="task.list"
+      readonly="true"
+    />
+  </webmcp>
+</uid_spec>

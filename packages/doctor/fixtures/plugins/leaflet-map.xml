@@ -1,0 +1,18 @@
+<uid_spec>
+  <data_model>
+    <state id="markers" type="array">[
+      {"id": 1, "lat": 41.0082, "lng": 28.9784, "title": "Istanbul"},
+      {"id": 2, "lat": 39.9334, "lng": 32.8597, "title": "Ankara"}
+    ]</state>
+  </data_model>
+
+  <map center="[41.0082, 28.9784]" zoom="12" height="400px">
+    <tile_layer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+    <for_each items="{data.markers}" var="m" key="id">
+      <marker lat="{m.lat}" lng="{m.lng}" title="{m.title}">
+        <popup><h4>{m.title}</h4></popup>
+      </marker>
+    </for_each>
+    <circle center="[41.0082, 28.9784]" radius="5000" color="#10b981" />
+  </map>
+</uid_spec>

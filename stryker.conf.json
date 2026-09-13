@@ -1,10 +1,13 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "mutate": [
-    "src/core/**/*.js"
+    "packages/core/src/core/**/*.js"
   ],
   "ignoreStatic": true,
   "testRunner": "vitest",
+  "vitest": {
+    "configFile": "packages/core/vite.config.js"
+  },
   "coverageAnalysis": "perTest",
   "concurrency": 4,
   "timeoutMS": 20000,
