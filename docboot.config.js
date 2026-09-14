@@ -4,7 +4,9 @@ export default {
   description: "Lightweight declarative UI runtime for building interactive interfaces directly from markup, without a virtual DOM or mandatory build pipeline.",
   docs: "./docs",
   out: "./dist-docs",
+  base: "/euix/",
   repo: "https://github.com/litepacks/euix",
+  pwa: true,
   theme: {
     preset: "zinc",
     defaultMode: "system"

@@ -44,7 +44,7 @@ jobs:
             ${{ runner.os }}-docs-tooling-
 
       - name: Build documentation
-        run: npx docboot build
+        run: npm run docs:build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

@@ -40,7 +40,9 @@
     "publish:doctor:dry-run": "node scripts/publish-package.js doctor --dry-run",
     "publish:vscode:dry-run": "node scripts/publish-package.js vscode --dry-run",
     "publish:core:dry-run": "node scripts/publish-package.js core --dry-run",
-    "publish:packages:dry-run": "node scripts/publish-package.js all --dry-run"
+    "publish:packages:dry-run": "node scripts/publish-package.js all --dry-run",
+    "docs:build": "docboot generate assets && docboot build",
+    "docs:dev": "docboot dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.10",
@@ -48,6 +50,7 @@
     "@types/node": "^26.4.1",
     "@vitejs/plugin-legacy": "^5.4.3",
     "@vitest/coverage-v8": "^3.2.7",
+    "docboot": "^0.3.0",
     "fast-check": "^4.9.0",
     "jsdom": "^27.0.1",
     "terser": "^5.49.2",
