@@ -3,7 +3,7 @@
   "displayName": "EUIX Doctor",
   "description": "Static semantic analysis for EUIX XML, HTML, and template files — diagnostics in the Problems panel",
   "version": "0.2.5",
-  "publisher": "euix",
+  "publisher": "ahmetsimsek",
   "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
