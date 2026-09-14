@@ -1,12 +1,16 @@
 {
   "name": "@euix/doctor",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "EUIX Doctor — semantic application analysis, behavior graph, and safe test generation",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "euix-doctor": "./bin/euix-doctor.js",
+    "euix-doctor-analyze": "./bin/euix-doctor-analyze.js",
+    "euix-doctor-format": "./bin/euix-doctor-format.js",
+    "euix-doctor-watch": "./bin/euix-doctor-watch.js",
+    "euix-doctor-pre-commit": "./bin/euix-doctor-pre-commit.js",
     "doctor": "./bin/euix-doctor.js"
   },
   "exports": {

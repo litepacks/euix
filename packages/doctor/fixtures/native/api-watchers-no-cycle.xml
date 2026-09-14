@@ -1,0 +1,18 @@
+<uid_spec>
+  <data_model>
+    <state id="error" type="string"></state>
+    <watch path="api.alpha.status">
+      <step action="RUN_SCRIPT">$engine.setState('error', '');</step>
+    </watch>
+    <watch path="api.beta.status">
+      <step action="RUN_SCRIPT">$engine.setState('error', '');</step>
+    </watch>
+    <watch path="page">
+      <step action="RUN_SCRIPT">$engine.setState('error', ''); $engine.revalidateApi('alpha');</step>
+    </watch>
+  </data_model>
+  <api_config base_url="/api">
+    <api_endpoint id="alpha" url="/alpha" bind_target="error" />
+    <api_endpoint id="beta" url="/beta" bind_target="error" />
+  </api_config>
+</uid_spec>

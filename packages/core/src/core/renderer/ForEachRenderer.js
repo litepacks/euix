@@ -4,7 +4,7 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
-import { _getNodeAtPath, _getStaticNodeResolver, getForEachItemHash } from "../utils/constants.js";
+import { _getNodeAtPath, _getStaticNodeResolver, EMPTY_ARR, getForEachItemHash } from "../utils/constants.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 

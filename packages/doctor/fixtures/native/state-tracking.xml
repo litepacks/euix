@@ -1,0 +1,21 @@
+<uid_spec>
+  <data_model>
+    <state id="tab" type="string">a</state>
+    <state id="count" type="number">0</state>
+    <watch path="api.demo.status">
+      <step action="RUN_SCRIPT">$engine.setState('count', 1);</step>
+    </watch>
+  </data_model>
+
+  <api_config base_url="/api">
+    <api_endpoint id="demo" url="/demo" bind_target="count" loading="tab" />
+  </api_config>
+
+  <if condition="{data.tab} == 'a'">
+    <span>{data.count}</span>
+  </if>
+  <button>
+    <on_click action="SET_STATE"><path>data.tab</path><value>b</value></on_click>
+    Switch
+  </button>
+</uid_spec>

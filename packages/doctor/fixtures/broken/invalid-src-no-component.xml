@@ -1,0 +1,6 @@
+<uid_spec>
+  <data_model>
+    <state id="page" type="string">home</state>
+  </data_model>
+  <Panel src="./not-a-component.xml" />
+</uid_spec>

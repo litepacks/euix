@@ -1,9 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import { collectFromDocument } from "../euix/collector.js";
 import { expandComposition, finalizeCompositionRefs } from "../euix/composition.js";
 import { inferProjectPlugins } from "../euix/pluginContext.js";
 import { parseJsFile } from "../parser/oxc.js";
 import { parseHtmlDocument, parseXmlDocument } from "../parser/xml.js";
-import { scanProject } from "../scanner/index.js";
+import { fileKind, scanProject } from "../scanner/index.js";
+import { canonicalFilePath } from "../utils/paths.js";
 import type { EuixFile, EuixProject } from "./types.js";
 
 export function createEmptyProject(root: string): EuixProject {
@@ -20,6 +23,7 @@ export function createEmptyProject(root: string): EuixProject {
         events: new Map(),
         bindings: new Map(),
         routes: new Map(),
+        webMcpTools: new Map(),
         apiCalls: new Map(),
         componentRefs: new Map(),
         storageEffects: [],
@@ -38,6 +42,10 @@ export async function buildProject(root: string, target?: string): Promise<EuixP
         ingestFile(project, file);
     }
 
+    if (target) {
+        ingestCompanionJsFiles(project, path.resolve(root, target));
+    }
+
     expandComposition(project);
     finalizeCompositionRefs(project);
     project.activePlugins = [...inferProjectPlugins(project)];
@@ -45,7 +53,7 @@ export async function buildProject(root: string, target?: string): Promise<EuixP
     return project;
 }
 
-function ingestFile(project: EuixProject, file: EuixFile): void {
+export function ingestFile(project: EuixProject, file: EuixFile): void {
     if (file.kind === "xml") {
         const doc = parseXmlDocument(file.path, file.source);
         mergeCollected(project, collectFromDocument(doc));
@@ -71,6 +79,48 @@ function ingestFile(project: EuixProject, file: EuixFile): void {
     }
 }
 
+function ingestCompanionJsFiles(project: EuixProject, absTarget: string): void {
+    if (!fs.existsSync(absTarget) || !fs.statSync(absTarget).isFile()) return;
+
+    const dirs = new Set<string>();
+    const xmlDir = path.dirname(absTarget);
+    dirs.add(path.join(xmlDir, "..", "client"));
+    dirs.add(path.join(xmlDir, "..", "js"));
+    dirs.add(path.join(project.root, "src", "client"));
+    dirs.add(path.join(project.root, "src"));
+
+    const known = new Set(project.files.map((f) => canonicalFilePath(f.path)));
+
+    for (const dir of dirs) {
+        if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) continue;
+        let entries: fs.Dirent[];
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch {
+            continue;
+        }
+        for (const entry of entries) {
+            if (!entry.isFile()) continue;
+            const ext = path.extname(entry.name).toLowerCase();
+            const kind = fileKind(ext);
+            if (!kind || kind === "xml" || kind === "html") continue;
+            const full = path.normalize(path.join(dir, entry.name));
+            if (known.has(canonicalFilePath(full))) continue;
+            const source = fs.readFileSync(full, "utf8");
+            const file: EuixFile = {
+                path: full,
+                kind,
+                bytes: Buffer.byteLength(source, "utf8"),
+                lines: source.split("\n").length,
+                source,
+            };
+            project.files.push(file);
+            known.add(canonicalFilePath(full));
+            ingestFile(project, file);
+        }
+    }
+}
+
 function mergeCollected(
     project: EuixProject,
     collected: ReturnType<typeof collectFromDocument>,
@@ -85,5 +135,6 @@ function mergeCollected(
     for (const e of collected.events) project.events.set(e.id, e);
     for (const b of collected.bindings) project.bindings.set(b.id, b);
     for (const r of collected.routes) project.routes.set(r.id, r);
+    for (const t of collected.webMcpTools) project.webMcpTools.set(t.id, t);
     for (const a of collected.apiCalls) project.apiCalls.set(a.id, a);
 }

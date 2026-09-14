@@ -1,0 +1,6 @@
+<uid_spec>
+  <api_config base_url="/api">
+    <api_endpoint id="users" url="/users" bind_target="users" />
+  </api_config>
+  <on_mount action="REVALIDATE_API"><tag>ghost_endpoint</tag></on_mount>
+</uid_spec>

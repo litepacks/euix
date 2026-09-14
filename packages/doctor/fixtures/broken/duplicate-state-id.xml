@@ -1,0 +1,6 @@
+<uid_spec>
+  <data_model>
+    <state id="count" type="number">0</state>
+    <state id="count" type="number">1</state>
+  </data_model>
+</uid_spec>

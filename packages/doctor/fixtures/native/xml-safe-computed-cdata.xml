@@ -1,0 +1,8 @@
+<uid_spec>
+  <data_model>
+    <computed id="label" deps="count"><![CDATA[
+      if ($data.count <= 2) return 'few';
+      return 'many';
+    ]]></computed>
+  </data_model>
+</uid_spec>

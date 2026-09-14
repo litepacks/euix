@@ -12,6 +12,8 @@ import type {
 } from "../ir/types.js";
 import { parseHtmlDocument, parseXmlDocument, type ParsedDocument, type ParsedElement, walkElements } from "../parser/xml.js";
 import { id, makeLocation } from "../utils/location.js";
+import { canonicalFilePath, isSameFile } from "../utils/paths.js";
+import { findStateInScope, unwrapBinding } from "../analysis/stateScope.js";
 
 const MAX_IMPORT_DEPTH = 12;
 const PROP_ATTR_SKIP = new Set([
@@ -70,7 +72,7 @@ function buildRegistry(project: EuixProject): ComponentRegistry {
     const byFile = new Map<string, ComponentInfo>();
     for (const comp of project.components.values()) {
         byName.set(comp.name.toLowerCase(), comp);
-        byFile.set(path.normalize(comp.file), comp);
+        byFile.set(canonicalFilePath(comp.file), comp);
     }
     return { byName, byFile };
 }
@@ -79,7 +81,7 @@ function collectPendingImportPaths(project: EuixProject): Set<string> {
     const registry = buildRegistry(project);
     const refs = scanReferences(project, registry);
     const pending = new Set<string>();
-    const knownFiles = new Set(project.files.map((f) => path.normalize(f.path)));
+    const knownFiles = new Set(project.files.map((f) => canonicalFilePath(f.path)));
 
     for (const ref of refs) {
         const candidates: string[] = [];
@@ -92,9 +94,9 @@ function collectPendingImportPaths(project: EuixProject): Set<string> {
             candidates.push(resolveImportPath(ref.file, ref.srcPath));
         }
         for (const candidate of candidates) {
-            if (!knownFiles.has(candidate) && fs.existsSync(candidate)) {
-                pending.add(candidate);
-            }
+            if (!fs.existsSync(candidate)) continue;
+            const canonical = canonicalFilePath(candidate);
+            if (!knownFiles.has(canonical)) pending.add(canonical);
         }
     }
     return pending;
@@ -109,7 +111,7 @@ function guessComponentPath(parentFile: string, refName: string): string | null 
         path.join(dir, `${capitalize(base)}.xml`),
     ];
     for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) return path.normalize(candidate);
+        if (fs.existsSync(candidate)) return canonicalFilePath(candidate);
     }
     return null;
 }
@@ -286,7 +288,7 @@ function collectReferenceFromElement(
                 registry,
                 kind: "custom-tag",
                 refName: registryHit?.name ?? capitalize(tag),
-                srcRaw: siblingComponent ? toRelativeImport(doc.file, guessedPath!) : null,
+                srcRaw: el.attributes.src ?? (siblingComponent ? toRelativeImport(doc.file, guessedPath!) : null),
                 el,
                 loc,
             }),
@@ -302,7 +304,7 @@ function collectReferenceFromElement(
                 registry,
                 kind: "custom-tag",
                 refName: capitalize(tag),
-                srcRaw: null,
+                srcRaw: el.attributes.src ?? null,
                 el,
                 loc,
             }),
@@ -331,7 +333,7 @@ function resolveReference(input: {
 
     let resolved: ComponentInfo | null = null;
     if (srcPath) {
-        resolved = registry.byFile.get(path.normalize(srcPath)) ?? null;
+        resolved = registry.byFile.get(canonicalFilePath(srcPath)) ?? null;
     }
     if (!resolved && refName) {
         resolved = registry.byName.get(refName.toLowerCase()) ?? null;
@@ -402,8 +404,9 @@ export function resolveImportPath(fromFile: string, src: string): string {
 
 function ingestDiscoveredFile(project: EuixProject, filePath: string): boolean {
     const normalized = path.normalize(filePath);
-    if (project.files.some((f) => path.normalize(f.path) === normalized)) return false;
     if (!fs.existsSync(normalized)) return false;
+    const canonical = canonicalFilePath(normalized);
+    if (project.files.some((f) => isSameFile(f.path, canonical))) return false;
 
     const ext = path.extname(normalized).toLowerCase();
     if (![".xml", ".html", ".htm"].includes(ext)) return false;
@@ -437,6 +440,7 @@ function mergeCollected(project: EuixProject, collected: ReturnType<typeof colle
     for (const e of collected.events) project.events.set(e.id, e);
     for (const b of collected.bindings) project.bindings.set(b.id, b);
     for (const r of collected.routes) project.routes.set(r.id, r);
+    for (const t of collected.webMcpTools) project.webMcpTools.set(t.id, t);
     for (const a of collected.apiCalls) project.apiCalls.set(a.id, a);
 }
 
@@ -487,12 +491,6 @@ function normalizePropType(type: string): string {
     return type.trim().toLowerCase();
 }
 
-function unwrapBinding(value: string): string | null {
-    const trimmed = value.trim();
-    const match = trimmed.match(/^\{(.+)\}$/);
-    return match ? match[1]!.trim() : trimmed;
-}
-
 function inferPassedPropType(
     value: string,
     parentComponentId: string,
@@ -504,10 +502,11 @@ function inferPassedPropType(
     const dataMatch = expr.match(/^data\.([a-zA-Z_][\w]*)/);
     if (dataMatch) {
         const stateName = dataMatch[1]!;
-        const state = [...project.states.values()].find(
-            (s) => s.componentId === parentComponentId && s.name === stateName,
-        );
+        const state = findStateInScope(project, parentComponentId, stateName);
         if (state?.type) return normalizePropType(state.type);
+        if (state && expr.includes(".")) return "object";
+        if (state?.initialValue?.trim().startsWith("{")) return "object";
+        if (state?.initialValue?.trim().startsWith("[")) return "array";
     }
 
     if (/^(true|false)$/i.test(expr)) return "boolean";

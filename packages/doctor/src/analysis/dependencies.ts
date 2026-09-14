@@ -1,16 +1,19 @@
+import { linkApiBindingRefs } from "./apiRefs.js";
+import { linkJsStateReads, linkJsStateWrites } from "./jsStateWrites.js";
+import { linkEventStateWrites, linkPropPassStateReaders, resolveStateId } from "./stateScope.js";
+export { detectWatcherCycles, watcherSelfLoop } from "./watcherGraph.js";
 import { buildCompositionEdges } from "../euix/composition.js";
+import { extractApiTagRefs } from "../parser/expressions.js";
+import { findApiCallByTag } from "./apiRefs.js";
 import type { DependencyEdge, EuixProject } from "../ir/types.js";
 
 export function buildDependencyEdges(project: EuixProject): DependencyEdge[] {
     const edges: DependencyEdge[] = [];
-    const stateNames = new Map<string, string>();
-    for (const state of project.states.values()) {
-        stateNames.set(state.name, state.id);
-    }
 
     for (const computed of project.computed.values()) {
         for (const dep of computed.dependencies) {
-            const stateId = stateNames.get(dep.replace(/^data\./, ""));
+            const depName = dep.replace(/^data\./, "");
+            const stateId = resolveStateId(project, computed.componentId, depName);
             if (stateId) {
                 edges.push({
                     from: computed.id,
@@ -26,14 +29,14 @@ export function buildDependencyEdges(project: EuixProject): DependencyEdge[] {
 
     for (const action of project.actions.values()) {
         for (const write of action.writes) {
-            const stateId = stateNames.get(write.replace(/^data\./, ""));
+            const stateId = resolveStateId(project, action.componentId, write.replace(/^data\./, ""));
             if (stateId) {
                 edges.push({ from: action.id, to: stateId, kind: "write", confidence: "confirmed" });
                 project.states.get(stateId)?.writers.push(action.name);
             }
         }
         for (const read of action.reads) {
-            const stateId = stateNames.get(read.replace(/^data\./, ""));
+            const stateId = resolveStateId(project, action.componentId, read.replace(/^data\./, ""));
             if (stateId) {
                 edges.push({ from: action.id, to: stateId, kind: "read", confidence: "confirmed" });
                 project.states.get(stateId)?.readers.push(action.name);
@@ -60,10 +63,11 @@ export function buildDependencyEdges(project: EuixProject): DependencyEdge[] {
 
     for (const binding of project.bindings.values()) {
         for (const dep of binding.dependencies) {
+            const depName = dep.replace(/^data\./, "");
             const computed = [...project.computed.values()].find(
-                (c) => c.componentId === binding.componentId && c.name === dep,
+                (c) => c.componentId === binding.componentId && c.name === depName,
             );
-            const stateId = stateNames.get(dep.replace(/^data\./, ""));
+            const stateId = resolveStateId(project, binding.componentId, depName);
             if (computed) {
                 edges.push({ from: binding.id, to: computed.id, kind: "binds", confidence: "confirmed" });
                 computed.dependents.push(binding.target);
@@ -72,23 +76,36 @@ export function buildDependencyEdges(project: EuixProject): DependencyEdge[] {
                 project.states.get(stateId)?.bindingConsumers.push(binding.target);
             }
         }
+        for (const apiTag of extractApiTagRefs(binding.expression)) {
+            const api = findApiCallByTag(project, apiTag);
+            if (api) {
+                edges.push({ from: binding.id, to: api.id, kind: "binds", confidence: "confirmed" });
+            }
+        }
     }
 
     for (const watch of project.watchers.values()) {
         const watched = watch.path.replace(/^data\./, "");
-        const stateId = stateNames.get(watched);
+        const stateId = resolveStateId(project, watch.componentId, watched);
         if (stateId) {
             edges.push({ from: watch.id, to: stateId, kind: "read", confidence: "confirmed" });
             project.states.get(stateId)?.watcherDependents.push(watch.name);
         }
         for (const write of watch.writes) {
-            const writeId = stateNames.get(write.replace(/^data\./, ""));
+            const writeName = write.replace(/^data\./, "");
+            const writeId = resolveStateId(project, watch.componentId, writeName);
             if (writeId) {
                 edges.push({ from: watch.id, to: writeId, kind: "write", confidence: "confirmed" });
+                project.states.get(writeId)?.writers.push(`watch:${watch.name || watch.path}`);
             }
         }
     }
 
+    linkEventStateWrites(project);
+    linkPropPassStateReaders(project);
+    linkApiBindingRefs(project);
+    linkJsStateWrites(project);
+    linkJsStateReads(project);
     buildCompositionEdges(project, edges);
 
     project.dependencies = edges;
@@ -104,19 +121,6 @@ export function detectComputedCycles(project: EuixProject): string[][] {
                 .map((d) => [...project.computed.values()].find((x) => x.name === d)?.id)
                 .filter((x): x is string => !!x),
         );
-    }
-    return findCycles(graph);
-}
-
-export function detectWatcherCycles(project: EuixProject): string[][] {
-    const graph = new Map<string, string[]>();
-    for (const w of project.watchers.values()) {
-        const targets: string[] = [];
-        for (const write of w.writes) {
-            const watchers = [...project.watchers.values()].filter((x) => x.path === write || x.reads.includes(write));
-            targets.push(...watchers.map((x) => x.id));
-        }
-        graph.set(w.id, targets);
     }
     return findCycles(graph);
 }

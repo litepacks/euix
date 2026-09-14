@@ -5,15 +5,39 @@ const EVENT_ATTR = /^@|^on_/i;
 export function extractExpressionRefs(expression: string): string[] {
     const refs = new Set<string>();
     const cleaned = expression
+        .replace(/\$data\./g, "data.")
         .replace(/\?\./g, ".")
         .replace(/\[['"]([^'"]+)['"]\]/g, ".$1");
 
     for (const token of cleaned.match(IDENT) ?? []) {
         if (isKeyword(token)) continue;
+        if (token.startsWith("data.")) {
+            const stateRoot = token.slice(5).split(".")[0];
+            if (stateRoot && !isKeyword(stateRoot)) refs.add(stateRoot);
+            continue;
+        }
+        if (token.startsWith("props.")) {
+            const propRoot = token.slice(6).split(".")[0];
+            if (propRoot && !isKeyword(propRoot)) refs.add(propRoot);
+            continue;
+        }
+        if (token.startsWith("api.")) continue;
         const root = token.split(".")[0];
         if (root && !isKeyword(root)) refs.add(root);
     }
     return [...refs];
+}
+
+/** api_endpoint tag/id references such as api.overview.loading */
+export function extractApiTagRefs(expression: string): string[] {
+    const tags = new Set<string>();
+    const cleaned = expression.replace(/\?\./g, ".");
+    for (const token of cleaned.match(IDENT) ?? []) {
+        if (!token.startsWith("api.")) continue;
+        const tag = token.slice(4).split(".")[0];
+        if (tag) tags.add(tag);
+    }
+    return [...tags];
 }
 
 function isKeyword(token: string): boolean {
@@ -40,6 +64,12 @@ function isKeyword(token: string): boolean {
         "local",
         "item",
         "args",
+        "api",
+        "engine",
+        "newValue",
+        "$newValue",
+        "$data",
+        "$engine",
         "Number",
         "String",
         "Boolean",
@@ -128,6 +158,15 @@ export function normalizeEventName(name: string): string {
     return name;
 }
 
+/** $engine.setState('field', ...) / setState("field", ...) in RUN_SCRIPT bodies. */
+export function extractEngineSetStateWrites(body: string): string[] {
+    const writes = new Set<string>();
+    for (const m of body.matchAll(/\b(?:\$engine\.)?setState\s*\(\s*['"]([\w.]+)['"]/g)) {
+        if (m[1]) writes.add(m[1]!.replace(/^data\./, ""));
+    }
+    return [...writes];
+}
+
 export function analyzeActionBody(body: string): {
     reads: string[];
     writes: string[];
@@ -180,6 +219,8 @@ export function analyzeActionBody(body: string): {
     for (const kind of ["setTimeout", "setInterval", "setImmediate", "queueMicrotask", "WebSocket", "EventSource", "Worker"] as const) {
         if (body.includes(kind)) runtimeEffects.push(kind);
     }
+
+    for (const name of extractEngineSetStateWrites(body)) writes.add(name);
 
     return {
         reads: [...reads],

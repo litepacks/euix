@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "EUIX1002": "warning",
+    "COMPUTED-UNUSED": "info"
+  },
+  "ignore": ["**/fixtures/**"]
+}

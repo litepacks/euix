@@ -1,0 +1,8 @@
+<uid_spec>
+  <router mode="history" base="/">
+    <route id="home" path="/" component="HomePage" />
+    <route id="settings" path="/settings" component="SettingsPage" />
+  </router>
+  <link to="/dashboard">Dashboard</link>
+  <outlet />
+</uid_spec>

@@ -1,0 +1,12 @@
+<uid_spec>
+  <data_model>
+    <state id="a" type="string">1</state>
+    <state id="b" type="string">2</state>
+    <watch path="a">
+      <step action="RUN_SCRIPT">$engine.setState('b', $newValue);</step>
+    </watch>
+    <watch path="b">
+      <step action="RUN_SCRIPT">$engine.setState('a', $newValue);</step>
+    </watch>
+  </data_model>
+</uid_spec>

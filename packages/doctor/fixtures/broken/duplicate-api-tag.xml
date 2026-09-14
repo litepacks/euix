@@ -1,0 +1,9 @@
+<uid_spec>
+  <data_model>
+    <state id="payload" type="string"></state>
+  </data_model>
+  <api_config base_url="/api">
+    <api_endpoint id="fetch_data" url="/a" bind_target="payload" />
+    <api_endpoint id="fetch_data" url="/b" bind_target="payload" />
+  </api_config>
+</uid_spec>

@@ -1,7 +1,14 @@
+import path from "node:path";
 import { renderBehaviorGraphText } from "../graph/behavior.js";
-import type { ComponentInfo, DoctorOptions, DoctorResult, EuixProject } from "../ir/types.js";
+import type { ComponentInfo, Diagnostic, DoctorOptions, DoctorResult, EuixProject } from "../ir/types.js";
 
-export function printDoctorReport(result: DoctorResult, options: DoctorOptions): void {
+const SEVERITY_LABEL: Record<Diagnostic["severity"], string> = {
+    error: "ERROR",
+    warning: "WARN",
+    info: "INFO",
+};
+
+export function printDoctorReport(result: DoctorResult, options: DoctorOptions, suppressedBaseline = 0): void {
     const { project } = result;
     const totalLines = project.files.reduce((n, f) => n + f.lines, 0);
     const totalBytes = project.files.reduce((n, f) => n + f.bytes, 0);
@@ -17,23 +24,32 @@ export function printDoctorReport(result: DoctorResult, options: DoctorOptions):
     console.log(`Watchers         ${project.watchers.size}`);
     console.log(`Actions          ${project.actions.size}`);
     console.log(`Routes           ${project.routes.size}`);
-    console.log(`API calls        ${project.apiCalls.size}\n`);
+    console.log(`API calls        ${project.apiCalls.size}`);
+    if (project.activePlugins?.length) {
+        console.log(`Active plugins   ${project.activePlugins.join(", ")}`);
+    }
+    console.log("");
 
-    const errors = project.diagnostics.filter((d) => d.severity === "error").length;
-    const warnings = project.diagnostics.filter((d) => d.severity === "warning").length;
-    const info = project.diagnostics.filter((d) => d.severity === "info").length;
+    const errors = project.diagnostics.filter((d) => d.severity === "error");
+    const warnings = project.diagnostics.filter((d) => d.severity === "warning");
+    const info = project.diagnostics.filter((d) => d.severity === "info");
 
     console.log("Diagnostics\n");
-    console.log(`Errors                ${errors}`);
-    console.log(`Warnings              ${warnings}`);
-    console.log(`Info                  ${info}\n`);
+    console.log(`Errors                ${errors.length}`);
+    console.log(`Warnings              ${warnings.length}`);
+    console.log(`Info                  ${info.length}`);
+    if (suppressedBaseline > 0) {
+        console.log(`Baseline suppressed   ${suppressedBaseline}`);
+    }
+    console.log("");
 
     if (project.diagnostics.length > 0) {
-        for (const d of project.diagnostics.slice(0, 20)) {
-            console.log(`[${d.rule}] ${d.message} (${d.file}:${d.line})`);
-        }
-        if (project.diagnostics.length > 20) console.log(`... +${project.diagnostics.length - 20} more`);
+        printDiagnosticSummary(project.diagnostics);
         console.log("");
+        printDiagnosticList(project.diagnostics, 25);
+        console.log("");
+    } else {
+        console.log("No issues found.\n");
     }
 
     if (options.graph || options.flows) {
@@ -71,6 +87,40 @@ export function printDoctorReport(result: DoctorResult, options: DoctorOptions):
         console.log(`  ${c.label}: ${c.impact}`);
     }
     console.log(`\n${project.files.length} files analyzed in ${Math.round(result.durationMs)}ms\n`);
+}
+
+function printDiagnosticSummary(diagnostics: Diagnostic[]): void {
+    const byRule = new Map<string, number>();
+    for (const d of diagnostics) {
+        byRule.set(d.rule, (byRule.get(d.rule) ?? 0) + 1);
+    }
+    const parts = [...byRule.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([rule, count]) => `${rule} ×${count}`);
+    console.log(`By rule: ${parts.join("  ·  ")}`);
+}
+
+function printDiagnosticList(diagnostics: Diagnostic[], limit: number): void {
+    const sorted = [...diagnostics].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
+    for (const d of sorted.slice(0, limit)) {
+        const loc = formatLocation(d.file, d.line);
+        console.log(`[${d.rule}] ${SEVERITY_LABEL[d.severity]}  ${d.message}`);
+        console.log(`         at ${loc}${d.confidence !== "confirmed" ? ` (${d.confidence})` : ""}`);
+        if (d.hint) console.log(`         → ${d.hint}`);
+    }
+    if (sorted.length > limit) {
+        console.log(`... +${sorted.length - limit} more (use --json for full export)`);
+    }
+}
+
+function severityRank(severity: Diagnostic["severity"]): number {
+    if (severity === "error") return 0;
+    if (severity === "warning") return 1;
+    return 2;
+}
+
+function formatLocation(file: string, line: number): string {
+    return `${path.basename(file)}:${line}`;
 }
 
 export function printInspectReport(project: EuixProject, componentName: string): void {
@@ -133,6 +183,9 @@ function printComponentDetail(project: EuixProject, comp: ComponentInfo): void {
     const warnings = project.diagnostics.filter((d) => d.file === comp.file);
     if (warnings.length) {
         console.log("Warnings");
-        for (const w of warnings) console.log(`  ${w.message}`);
+        for (const w of warnings) {
+            console.log(`  [${w.rule}] ${w.message}`);
+            if (w.hint) console.log(`    → ${w.hint}`);
+        }
     }
 }

@@ -49,6 +49,7 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
 
 | Area | Examples |
 |------|----------|
+| **XML script safety** | Unsafe JS operators in `<computed>` / `<step>` without CDATA (`EUIX0001`) |
 | **State model** | Unknown state writes (`EUIX1001`), unused state (`EUIX1002`) |
 | **Computed / watchers** | Dependency cycles (`EUIX1101`), self-triggering watchers (`EUIX1201`) |
 | **Events & actions** | Missing handlers (`EUIX1301`), event → action → state flow |
@@ -75,13 +76,17 @@ node packages/core/bin/euix.js doctor inspect path/to/YourComponent.xml
 
 # CI-friendly JSON output
 node packages/core/bin/euix.js doctor . --json > doctor-report.json
+
+# Auto-fix supported rules (EUIX0001: wrap <computed>/<step> JS in CDATA)
+node packages/core/bin/euix.js doctor path/to/App.xml --fix
+node packages/core/bin/euix.js doctor path/to/App.xml --fix=EUIX0001 --dry-run
 ```
 
 ### Recommended agent workflow
 
 1. **Edit** — Create or modify EUIX XML/HTML/JS templates.
 2. **Scan** — Run `euix doctor <path>` on the changed files or directory.
-3. **Fix errors** — Resolve all `error`-severity diagnostics (`EUIX1001`, `EUIX1101`, `EUIX1301`, `EUIX1401`–`EUIX1403`, etc.).
+3. **Fix errors** — Resolve all `error`-severity diagnostics (`EUIX0001`, `EUIX1001`, `EUIX1101`, `EUIX1301`, `EUIX1401`–`EUIX1403`, etc.).
 4. **Review warnings** — Address `EUIX1201` (watcher loops), `EUIX1501` (API error handling), and unused state where relevant.
 5. **Test flows** — Run with `--test` to execute dry-run behavior scenarios.
 6. **Runtime only after Doctor passes** — Use Playwright, browser, or Vitest for integration/E2E checks *after* static validation succeeds.
@@ -90,6 +95,7 @@ node packages/core/bin/euix.js doctor . --json > doctor-report.json
 
 | Rule | Severity | Fix |
 |------|----------|-----|
+| `EUIX0001` | error | Wrap inline JS in `<![CDATA[ ... ]]>` inside `<computed>`, `<step>`, or `RUN_SCRIPT` — never escape operators like `<=` as XML entities (`&lt;=`). Auto-fix: `euix doctor <path> --fix` |
 | `EUIX1001` | error | Action writes to a state that does not exist in `<data_model>` |
 | `EUIX1101` | error | Break computed dependency cycle |
 | `EUIX1201` | warning | Watcher must not write the path it watches |
@@ -105,7 +111,8 @@ The **EUIX Doctor** extension (`packages/vscode-euix-doctor`) surfaces the same 
 
 - Runs on save (debounced workspace scan)
 - Status bar health indicator
-- Commands: *Analyze Workspace*, *Analyze Current File*, *Run Safe Test Scenarios*
+- Commands: *Analyze Workspace*, *Analyze Current File*, *Run Safe Test Scenarios*, *Apply Auto-Fixes to Current File*
+- Quick Fix on `EUIX0001`: wrap script body in CDATA (lightbulb in Problems panel)
 
 ```bash
 # Build extension for local F5 debugging
@@ -584,9 +591,19 @@ Inside `<on_mount>`, `<on_state_change>`, or `<on_click action="RUN_SCRIPT">`, J
 - `$date`: Intl/Date manipulation helper (when `EUIXDatePlugin` is loaded).
 
 > [!TIP]
-> **No XML Entity Escaping Required (`&&`, `<`, `>` Work Out of the Box)**:
-> You do **NOT** need to write `&amp;&amp;`, `&lt;`, `&gt;` or manually wrap code in `<![CDATA[...]]>`. The EUIX Parser automatically pre-sanitizes raw logical operators (`&&`, `||`, `<`, `>`) in script blocks and XML attributes. Write standard JavaScript naturally:
+> **Inline JavaScript vs XML markup (`<=`, `>=`, `&&`)**:
+> - **`<computed>` and `<step>` bodies** are parsed as strict XML. Comparison/logical operators (`<=`, `>=`, `&&`) break the parser unless the JS is wrapped in CDATA. Doctor reports this as **`EUIX0001`**.
+> - **Do not** escape JS operators as XML entities (`&lt;=`, `&amp;&amp;`) inside script bodies — that produces invalid JavaScript at runtime.
+> - **`RUN_SCRIPT` / `<on_mount>`** blocks may be auto-wrapped by the engine parser, but CDATA is still the safest portable pattern when scripts contain `<` or `<=`.
 > ```xml
+> <!-- ✅ CORRECT: CDATA for computed with comparisons -->
+> <computed id="label" deps="items"><![CDATA[
+>   const n = $data.items.length;
+>   if (n <= 2) return 'few';
+>   return 'many';
+> ]]></computed>
+>
+> <!-- ✅ CORRECT: plain JS in RUN_SCRIPT (engine may auto-wrap) -->
 > <on_click action="RUN_SCRIPT">
 >   if ($data.newTask && $data.newTask.trim().length > 0) {
 >     $data.tasks.push({ id: Date.now(), title: $data.newTask.trim(), done: false });
@@ -952,7 +969,30 @@ EUIX Engine includes a **Smart Object Evaluator** that seamlessly parses native 
 <input bind="newTask" placeholder="Enter task..." />
 ```
 
-### 7. Declarative List Filtering in `<for_each>` with `<if condition="...">`
+### 7. XML-Unsafe JavaScript in `<computed>` / `<step>` (Missing CDATA)
+❌ **WRONG**: Using comparison operators directly in `<computed>` without CDATA, or escaping them as XML entities.
+```xml
+<!-- INVALID: <= is parsed as XML markup; runtime fails with XML parse error -->
+<computed id="label" deps="count">
+  if ($data.count <= 2) return 'few';
+  return 'many';
+</computed>
+
+<!-- INVALID: &lt;= is not valid JavaScript -->
+<computed id="label" deps="count">
+  if ($data.count &lt;= 2) return 'few';
+</computed>
+```
+
+✅ **RIGHT**: Wrap the script body in CDATA (Doctor rule **`EUIX0001`**).
+```xml
+<computed id="label" deps="count"><![CDATA[
+  if ($data.count <= 2) return 'few';
+  return 'many';
+]]></computed>
+```
+
+### 8. Declarative List Filtering in `<for_each>` with `<if condition="...">`
 ❌ **WRONG**: Declaring a filter state (`<state id="filter">all</state>`) and filter buttons, but forgetting to filter items in `<for_each>`.
 ```xml
 <!-- INVALID: Items never change when filter state is updated -->
@@ -1106,6 +1146,13 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive wa
       return $data.firstName + " " + $data.lastName;
     </computed>
 
+    <!-- Use CDATA when the computed body contains <=, >=, &&, or other XML-sensitive tokens -->
+    <computed id="shortLabel" deps="tags"><![CDATA[
+      const selected = ($data.tags || []).filter(t => t.active);
+      if (selected.length <= 2) return selected.map(t => t.name).join(', ');
+      return selected.length + ' selected';
+    ]]></computed>
+
     <!-- 2. Watcher Declared Inside <data_model> for Live Reactive Side-Effects -->
     <watch path="searchQuery">
       <step action="REVALIDATE_API" tag="get_countries" />
@@ -1135,7 +1182,7 @@ EUIX Engine provides tree-shakeable derived state (`<computed>`) and reactive wa
 ```
 
 ### Key Capabilities & Safeguards:
-- **Side-Effect Free Derived State (`<computed>`)**: Cached evaluations with fine-grained dependency tracking. Read-only (`COMPUTED_MUTATION_ERROR`).
+- **Side-Effect Free Derived State (`<computed>`)**: Cached evaluations with fine-grained dependency tracking. Read-only (`COMPUTED_MUTATION_ERROR`). Wrap bodies containing `<=` / `>=` / `&&` in `<![CDATA[ ... ]]>` — Doctor **`EUIX0001`** flags unsafe inline JS before runtime parse failures.
 - **Circular Dependency Guards (`COMPUTED_CYCLE_ERROR`)**: Detects static and runtime dependency loops (e.g. `A -> B -> C -> A`).
 - **Reactive Side-Effects (`<watch>`)**: Triggers EUIX actions when watched state or computed paths change. Exposes `$newValue`, `$prevValue`, `$path`.
 - **Infinite Reactive Loop Guards (`WATCHER_CYCLE_ERROR`)**: Protects against cascading watcher loops with depth limits and execution tracking.
@@ -1716,7 +1763,8 @@ When building applications or generating `<uid_spec>` XML templates, always veri
 | **Item Property Updates** | Modifying inner object properties in JS (`item.done = true`) | Use `<on_click action="MUTATE_STATE">` with `<fields done="{!task.done}" />`<br>or reassign array (`$data.tasks = [...$data.tasks]`). |
 | **Input Binding vs Placeholder** | `<state id="task">Type task...</state>` | `<state id="task"></state>`<br>`<input bind="task" placeholder="Type task..." />` |
 | **List Filtering** | Setting `<state id="filter">` without `<if>` in `<for_each>` | Wrap items with `<if condition="data.filter == 'all' || ...">` inside `<for_each>`. |
-| **XML Entities** | Using raw `&&` inside XML attributes | Use `&amp;&amp;` in XML attributes and scripts. |
+| **Inline JS in `<computed>`** | `if (n <= 2)` or `&lt;=` inside `<computed>` | Wrap body in `<![CDATA[ ... ]]>`; never entity-escape JS operators. |
+| **XML Entities in attributes** | Using raw `&&` inside XML **attributes** | Use `&amp;&amp;` in attribute values only — not inside CDATA script bodies. |
 | **Numeric Variables** | `<state id="count">0</state>` | `<state id="count" type="number">0</state>` for math operations. |
 | **Keyed Lists** | Omitting `key` attribute on large lists | Use `<for_each items="{data.items}" var="item" key="id">` for zero-allocation reconciliation. |
 | **Static validation** | Submitting XML without automated checks | Run `euix doctor <path> --test` and fix all errors before marking work complete. |

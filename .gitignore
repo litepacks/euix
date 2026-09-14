@@ -141,8 +141,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
-.stryker-tmp
-reports
+test-results/
+playwright-report/
+
+# Ephemeral local scratch (validate-package, ad-hoc dev)
+scratch/*
+!scratch/.gitkeep
 
 # Cloudflare Wrangler
 .wrangler/

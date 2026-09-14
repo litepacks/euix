@@ -3,6 +3,7 @@
  * Component specification registry, async loader, slot projection, and scoped state engine for EUIX Engine.
  */
 
+import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
 import { processStyleTag } from "../renderer/DOMRenderer.js";
 import {
     getAttr,

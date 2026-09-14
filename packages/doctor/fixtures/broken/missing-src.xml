@@ -1,0 +1,6 @@
+<uid_spec>
+  <data_model>
+    <state id="page" type="string">home</state>
+  </data_model>
+  <Panel src="./does-not-exist.xml" />
+</uid_spec>

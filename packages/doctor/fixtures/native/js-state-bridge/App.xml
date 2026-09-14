@@ -1,0 +1,7 @@
+<uid_spec>
+  <data_model>
+    <state id="tableRows" type="array">[]</state>
+    <state id="tableLoading" type="boolean">false</state>
+  </data_model>
+  <button><on_click action="RB" fn="loadRows"></on_click>Load</button>
+</uid_spec>

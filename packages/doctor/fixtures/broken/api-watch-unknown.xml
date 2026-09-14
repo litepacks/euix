@@ -1,0 +1,10 @@
+<uid_spec>
+  <data_model>
+    <watch path="api.missing_endpoint.status">
+      <step action="RUN_SCRIPT">if ($newValue) $engine.setState('error', String($newValue));</step>
+    </watch>
+  </data_model>
+  <api_config base_url="/api">
+    <api_endpoint id="known" url="/known" bind_target="error" />
+  </api_config>
+</uid_spec>

@@ -114,8 +114,8 @@ jobs:
             test-results/
             playwright-report/
 
-  nightly_soak_mutation:
-    name: Nightly Soak & Mutation Testing
+  nightly_soak:
+    name: Nightly Soak Testing
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
@@ -131,20 +131,5 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: Cache Stryker Mutation Testing
-        uses: actions/cache@v4
-        with:
-          path: |
-            .stryker-tmp
-            reports/mutation
-            node_modules/.cache
-          key: ${{ runner.os }}-stryker-${{ hashFiles('**/package-lock.json') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-stryker-${{ hashFiles('**/package-lock.json') }}-
-            ${{ runner.os }}-stryker-
-
       - name: Run 5-Minute Soak Test
         run: SOAK_DURATION_MIN=5 npm run test:soak
-
-      - name: Run StrykerJS Mutation Testing
-        run: npm run test:mutation

@@ -177,6 +177,8 @@ export function inferProjectPlugins(project: EuixProject): Set<EuixPluginId> {
 
     if (project.actions.size > 0) active.add("composer");
     if (project.routes.size > 0) active.add("router");
+    if (project.apiCalls.size > 0) active.add("api");
+    if (project.webMcpTools.size > 0) active.add("webmcp");
     if ([...project.apiCalls.values()].some((a) => a.method === "WEBSOCKET" || a.method === "SSE")) {
         active.add("stream");
     }

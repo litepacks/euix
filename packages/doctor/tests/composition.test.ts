@@ -106,6 +106,33 @@ describe("Composition & imports", () => {
         expect(project.diagnostics.some((d) => d.rule === "EUIX1403" && d.message.includes("user"))).toBe(true);
     });
 
+    it("does not duplicate sibling imports on case-insensitive filesystems", async () => {
+        const project = await buildProject(fixtures, "multi-component/App.xml");
+
+        const headerComponents = [...project.components.values()].filter((c) => c.name === "Header");
+        const dashboardComponents = [...project.components.values()].filter((c) => c.name === "Dashboard");
+
+        expect(headerComponents).toHaveLength(1);
+        expect(dashboardComponents).toHaveLength(1);
+        expect(project.files).toHaveLength(3);
+    });
+
+    it("treats prop-passed and conditional states as used in multi-component App", async () => {
+        const project = await buildProject(fixtures, "multi-component/App.xml");
+        buildDependencyEdges(project);
+        runDiagnostics(project);
+
+        const unused = project.diagnostics.filter((d) => d.rule === "EUIX1002").map((d) => d.message);
+        expect(unused.some((m) => m.includes("'user'"))).toBe(false);
+        expect(unused.some((m) => m.includes("'page'"))).toBe(false);
+    });
+
+    it("detects api plugin from imported Dashboard endpoints", async () => {
+        const project = await buildProject(fixtures, "multi-component/App.xml");
+
+        expect(project.activePlugins).toContain("api");
+    });
+
     it("reports unresolved component references", async () => {
         const project = await buildProject(fixtures, "multi-component/App.xml");
         const ghostRef = {

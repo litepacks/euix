@@ -2,10 +2,9 @@
   "name": "euix-doctor",
   "displayName": "EUIX Doctor",
   "description": "Static semantic analysis for EUIX XML, HTML, and template files — diagnostics in the Problems panel",
-  "version": "0.1.1",
+  "version": "0.2.5",
   "publisher": "euix",
   "license": "MIT",
-  "type": "module",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -21,9 +20,15 @@
     "doctor"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onLanguage:xml",
     "onLanguage:html",
-    "workspaceContains:**/*.xml"
+    "workspaceContains:**/*.xml",
+    "onCommand:euixDoctor.analyzeWorkspace",
+    "onCommand:euixDoctor.analyzeFile",
+    "onCommand:euixDoctor.runTests",
+    "onCommand:euixDoctor.fixFile",
+    "onCommand:euixDoctor.formatDocument"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -39,6 +44,14 @@
       {
         "command": "euixDoctor.runTests",
         "title": "EUIX Doctor: Run Safe Test Scenarios"
+      },
+      {
+        "command": "euixDoctor.fixFile",
+        "title": "EUIX Doctor: Apply Auto-Fixes to Current File"
+      },
+      {
+        "command": "euixDoctor.formatDocument",
+        "title": "EUIX Doctor: Format Document"
       }
     ],
     "configuration": {
@@ -52,7 +65,12 @@
         "euixDoctor.runOnSave": {
           "type": "boolean",
           "default": true,
-          "description": "Re-analyze the workspace when an EUIX file is saved."
+          "description": "Re-analyze the active EUIX file when it is saved."
+        },
+        "euixDoctor.runOnType": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-analyze the active EUIX file while editing (debounced)."
         },
         "euixDoctor.runOnOpen": {
           "type": "boolean",
@@ -63,7 +81,24 @@
           "type": "number",
           "default": 400,
           "minimum": 0,
-          "description": "Debounce delay (ms) before running analysis after save."
+          "description": "Debounce delay (ms) before running analysis while typing."
+        },
+        "euixDoctor.format.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the built-in EUIX XML/HTML formatter."
+        },
+        "euixDoctor.format.indentSize": {
+          "type": "number",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Indent width for the EUIX formatter."
+        },
+        "euixDoctor.formatOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Format EUIX XML/HTML files when saved (before re-analysis)."
         },
         "euixDoctor.includePatterns": {
           "type": "array",
@@ -83,15 +118,12 @@
     }
   },
   "scripts": {
-    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=esm --platform=node --packages=bundle --sourcemap",
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --packages=bundle --sourcemap",
     "prepublishOnly": "npm run build",
-    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=esm --platform=node --packages=bundle --sourcemap --watch",
+    "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --packages=bundle --sourcemap --watch",
     "package:vsix": "vsce package --no-dependencies",
     "publish:marketplace": "vsce publish --no-dependencies",
     "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@euix/doctor": "*"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

@@ -50,7 +50,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**', '**/.stryker-tmp/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
     bail: 0,
     testTimeout: 30000,
     teardownTimeout: 2000,

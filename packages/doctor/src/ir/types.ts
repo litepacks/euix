@@ -84,6 +84,8 @@ export interface ComputedInfo {
     componentName: string;
     expression: string;
     dependencies: string[];
+    /** Set when `<computed deps="...">` is explicit (not inferred from expression). */
+    explicitDeps: string[] | null;
     dependents: string[];
     location: SourceLocation;
 }
@@ -93,6 +95,7 @@ export interface WatchInfo {
     name: string;
     path: string;
     action: string | null;
+    body: string;
     file: string;
     componentId: string;
     componentName: string;
@@ -134,6 +137,10 @@ export interface EventInfo {
     target: string;
     handler: string;
     handlerKind: "action" | "expression" | "unknown";
+    /** State names written by declarative SET_STATE / RUN_SCRIPT handlers. */
+    stateWrites: string[];
+    /** Target api_endpoint tag/id for REVALIDATE_API handlers. */
+    revalidateTag: string | null;
     location: SourceLocation;
 }
 
@@ -179,6 +186,16 @@ export interface RouteInfo {
     componentName: string | null;
     file: string;
     navigations: string[];
+    location: SourceLocation;
+}
+
+export interface WebMcpToolInfo {
+    id: string;
+    name: string;
+    action: string | null;
+    file: string;
+    componentId: string;
+    componentName: string;
     location: SourceLocation;
 }
 
@@ -247,16 +264,47 @@ export interface DependencyEdge {
 
 export type DiagnosticSeverity = "error" | "warning" | "info";
 
+export interface TextEdit {
+    start: number;
+    end: number;
+    replacement: string;
+}
+
+export interface DiagnosticFix {
+    rule: string;
+    description: string;
+    edits: TextEdit[];
+}
+
 export interface Diagnostic {
     id: string;
     rule: string;
     severity: DiagnosticSeverity;
     message: string;
+    /** Actionable fix suggestion shown below the message in CLI output. */
+    hint?: string;
+    /** Auto-fix edits when the rule supports deterministic repair. */
+    fix?: DiagnosticFix;
     file: string;
     line: number;
     column: number;
     confidence: Confidence;
     relatedIds?: string[];
+}
+
+export interface FileFix {
+    file: string;
+    rule: string;
+    description: string;
+    start: number;
+    end: number;
+    replacement: string;
+}
+
+export interface ApplyFixesResult {
+    filesChanged: number;
+    fixesApplied: number;
+    fixes: FileFix[];
 }
 
 export interface BehaviorPath {
@@ -397,6 +445,7 @@ export interface EuixProject {
     events: Map<string, EventInfo>;
     bindings: Map<string, BindingInfo>;
     routes: Map<string, RouteInfo>;
+    webMcpTools: Map<string, WebMcpToolInfo>;
     apiCalls: Map<string, ApiCallInfo>;
     componentRefs: Map<string, ComponentReference>;
     storageEffects: StorageEffect[];
@@ -409,6 +458,7 @@ export interface DoctorOptions {
     root: string;
     target?: string;
     json?: boolean;
+    sarif?: boolean;
     test?: boolean;
     flows?: boolean;
     graph?: boolean;
@@ -417,4 +467,16 @@ export interface DoctorOptions {
     inspect?: string;
     seed?: number;
     repeat?: number;
+    /** Suppress diagnostics matching entries in this baseline file. */
+    baseline?: string;
+    /** Write current diagnostics to the baseline file (use with --baseline). */
+    updateBaseline?: boolean;
+    /** Apply auto-fixes for supported rules (true = all, string = single rule id). */
+    fix?: boolean | string;
+    /** Preview fixes without writing files (use with --fix). */
+    dryRun?: boolean;
+    /** Re-run analysis when files change. */
+    watch?: boolean;
+    /** Print baseline diff summary (requires --baseline). */
+    baselineDiff?: boolean;
 }

@@ -10,9 +10,17 @@ import type {
     SlotInfo,
     StateInfo,
     WatchInfo,
+    WebMcpToolInfo,
 } from "../ir/types.js";
 import { classifyHandlerKind, EVENT_CALLBACK_ATTRS, resolveActionName } from "./actionHandlers.js";
-import { analyzeActionBody, extractBindingsFromText, extractExpressionRefs, isEventAttribute, normalizeEventName } from "../parser/expressions.js";
+import {
+    analyzeActionBody,
+    extractBindingsFromText,
+    extractEngineSetStateWrites,
+    extractExpressionRefs,
+    isEventAttribute,
+    normalizeEventName,
+} from "../parser/expressions.js";
 import {
     elementTextContent,
     findElements,
@@ -56,6 +64,7 @@ export interface CollectedEntities {
     props: PropInfo[];
     slots: SlotInfo[];
     routes: RouteInfo[];
+    webMcpTools: WebMcpToolInfo[];
     apiCalls: ApiCallInfo[];
 }
 
@@ -70,12 +79,39 @@ export function collectFromDocument(doc: ParsedDocument): CollectedEntities {
     const props: PropInfo[] = [];
     const slots: SlotInfo[] = [];
     const routes: RouteInfo[] = [];
+    const webMcpTools: WebMcpToolInfo[] = [];
     const apiCalls: ApiCallInfo[] = [];
 
     const componentEls = findElements(doc.root, COMPONENT_TAGS);
     if (componentEls.length === 0) {
-        collectLooseDocument(doc, { components, states, computed, watchers, actions, events, bindings, props, slots, routes, apiCalls });
-        return { components, states, computed, watchers, actions, events, bindings, props, slots, routes, apiCalls };
+        collectLooseDocument(doc, {
+            components,
+            states,
+            computed,
+            watchers,
+            actions,
+            events,
+            bindings,
+            props,
+            slots,
+            routes,
+            webMcpTools,
+            apiCalls,
+        });
+        return {
+            components,
+            states,
+            computed,
+            watchers,
+            actions,
+            events,
+            bindings,
+            props,
+            slots,
+            routes,
+            webMcpTools,
+            apiCalls,
+        };
     }
 
     for (const compEl of componentEls) {
@@ -106,6 +142,7 @@ export function collectFromDocument(doc: ParsedDocument): CollectedEntities {
         collectActions(doc, compEl, comp, actions, apiCalls);
         collectPropsAndSlots(doc, compEl, comp, props, slots);
         collectRoutes(doc, compEl, routes);
+        collectWebMcpTools(doc, compEl, comp, webMcpTools);
         collectApiEndpoints(doc, compEl, comp, apiCalls, actions);
         collectApiStreams(doc, compEl, comp, apiCalls, actions);
         collectDeclarativeEvents(doc, compEl, comp, events, actions);
@@ -115,7 +152,20 @@ export function collectFromDocument(doc: ParsedDocument): CollectedEntities {
         components.push(comp);
     }
 
-    return { components, states, computed, watchers, actions, events, bindings, props, slots, routes, apiCalls };
+    return {
+        components,
+        states,
+        computed,
+        watchers,
+        actions,
+        events,
+        bindings,
+        props,
+        slots,
+        routes,
+        webMcpTools,
+        apiCalls,
+    };
 }
 
 function collectLooseDocument(
@@ -156,6 +206,7 @@ function collectLooseDocument(
     collectWatchers(doc, virtualRoot, comp, out.watchers);
     collectActions(doc, virtualRoot, comp, out.actions, out.apiCalls);
     collectRoutes(doc, virtualRoot, out.routes);
+    collectWebMcpTools(doc, virtualRoot, comp, out.webMcpTools);
     collectApiEndpoints(doc, virtualRoot, comp, out.apiCalls, out.actions);
     collectApiStreams(doc, virtualRoot, comp, out.apiCalls, out.actions);
     collectDeclarativeEvents(doc, virtualRoot, comp, out.events, out.actions);
@@ -198,7 +249,8 @@ function collectComputed(doc: ParsedDocument, scope: ParsedElement, comp: Compon
         const name = el.attributes.name ?? el.attributes.id;
         if (!name) continue;
         const expression = elementTextContent(el) || el.attributes.deps || "";
-        const deps = el.attributes.deps?.split(/[, ]+/).filter(Boolean) ?? extractExpressionRefs(expression);
+        const explicitDeps = el.attributes.deps?.split(/[, ]+/).filter(Boolean) ?? null;
+        const deps = explicitDeps ?? extractExpressionRefs(expression);
         const computedId = id("computed", comp.id, name);
         computed.push({
             id: computedId,
@@ -208,6 +260,7 @@ function collectComputed(doc: ParsedDocument, scope: ParsedElement, comp: Compon
             componentName: comp.name,
             expression,
             dependencies: deps,
+            explicitDeps,
             dependents: [],
             location: makeLocation(doc.file, doc.source, el.start, el.end),
         });
@@ -219,14 +272,18 @@ function collectWatchers(doc: ParsedDocument, scope: ParsedElement, comp: Compon
     for (const el of findElements(scope, WATCH_TAGS)) {
         const path = el.attributes.path ?? el.attributes.key ?? el.attributes.name ?? el.attributes.id ?? "";
         const name = path || `watch_${watchers.length}`;
-        const body = elementTextContent(el);
+        const steps = findElements(el, new Set(["step"]));
+        const body = steps.length
+            ? steps.map((step) => elementTextContent(step)).join("\n")
+            : elementTextContent(el);
         const analysis = analyzeActionBody(body);
         const watchId = id("watch", comp.id, name);
         watchers.push({
             id: watchId,
             name,
             path,
-            action: el.attributes.action ?? null,
+            action: el.attributes.action ?? steps[0]?.attributes.action ?? null,
+            body,
             file: doc.file,
             componentId: comp.id,
             componentName: comp.name,
@@ -464,6 +521,34 @@ function extractBindingRefs(url: string): string[] {
     return refs;
 }
 
+function extractRevalidateTag(el: ParsedElement, handler: string): string | null {
+    if (handler.toUpperCase() !== "REVALIDATE_API") return null;
+    const tagEl = findElements(el, new Set(["tag"]))[0];
+    if (tagEl) {
+        const text = elementTextContent(tagEl).trim();
+        if (text) return text;
+    }
+    return el.attributes.tag ?? null;
+}
+
+function extractDeclarativeStateWrites(el: ParsedElement, handler: string): string[] {
+    const upper = handler.toUpperCase();
+    if (upper === "SET_STATE" || upper.startsWith("SET_STATE:")) {
+        const pathEl = findElements(el, new Set(["path"]))[0];
+        if (pathEl) {
+            const stateName = elementTextContent(pathEl).trim().replace(/^data\./, "");
+            return stateName ? [stateName] : [];
+        }
+        const inline = handler.includes(":") ? handler.split(":")[1] : el.attributes.set;
+        if (inline) return [inline.replace(/^data\./, "")];
+        return [];
+    }
+    if (upper === "RUN_SCRIPT" || handler.startsWith("$") || handler.includes(";")) {
+        return extractEngineSetStateWrites(elementTextContent(el));
+    }
+    return [];
+}
+
 function collectDeclarativeEvents(
     doc: ParsedDocument,
     scope: ParsedElement,
@@ -492,6 +577,8 @@ function collectDeclarativeEvents(
             target,
             handler,
             handlerKind: "unknown",
+            stateWrites: extractDeclarativeStateWrites(el, handler),
+            revalidateTag: extractRevalidateTag(el, handler),
             location: makeLocation(doc.file, doc.source, el.start, el.end),
         };
         eventDraft.handlerKind = classifyHandlerKind(eventDraft, actions);
@@ -525,6 +612,8 @@ function collectEventCallbackRefs(
             target,
             handler,
             handlerKind: resolveActionName(actions, handler).resolved ? "action" : "unknown",
+            stateWrites: [],
+            revalidateTag: null,
             location: makeLocation(doc.file, doc.source, el.start, el.end),
         };
         events.push(cbEvent);
@@ -544,6 +633,29 @@ function collectRoutes(doc: ParsedDocument, scope: ParsedElement, routes: RouteI
             navigations: [],
             location: makeLocation(doc.file, doc.source, el.start, el.end),
         });
+    }
+}
+
+function collectWebMcpTools(
+    doc: ParsedDocument,
+    scope: ParsedElement,
+    comp: ComponentInfo,
+    tools: WebMcpToolInfo[],
+): void {
+    for (const container of findElements(scope, new Set(["webmcp"]))) {
+        for (const el of findElements(container, new Set(["tool"]))) {
+            const name = el.attributes.name ?? el.attributes.id;
+            if (!name) continue;
+            tools.push({
+                id: id("webmcp", comp.id, name),
+                name,
+                action: el.attributes.action ?? null,
+                file: doc.file,
+                componentId: comp.id,
+                componentName: comp.name,
+                location: makeLocation(doc.file, doc.source, el.start, el.end),
+            });
+        }
     }
 }
 
@@ -572,6 +684,8 @@ function collectEventsAndBindings(
                     target,
                     handler: value,
                     handlerKind: "unknown",
+                    stateWrites: extractDeclarativeStateWrites(el, value),
+                    revalidateTag: extractRevalidateTag(el, value),
                     location: makeLocation(doc.file, doc.source, el.start, el.end),
                 };
                 attrEvent.handlerKind = classifyHandlerKind(attrEvent, actions);
@@ -587,6 +701,38 @@ function collectEventsAndBindings(
                     expression: value,
                     sourceId: value,
                     target: `${target}[${attr}]`,
+                    file: doc.file,
+                    componentId: comp.id,
+                    componentName: comp.name,
+                    dependencies: extractExpressionRefs(value),
+                    location: makeLocation(doc.file, doc.source, el.start, el.end),
+                });
+            }
+
+            if (attr === "if" || attr === "show" || attr === "unless" || attr === "each") {
+                const bindingId = id("binding", comp.id, target, attr);
+                bindings.push({
+                    id: bindingId,
+                    kind: "attribute",
+                    expression: value,
+                    sourceId: value,
+                    target: `${target}[${attr}]`,
+                    file: doc.file,
+                    componentId: comp.id,
+                    componentName: comp.name,
+                    dependencies: extractExpressionRefs(value),
+                    location: makeLocation(doc.file, doc.source, el.start, el.end),
+                });
+            }
+
+            if (attr === "condition" && (target === "if" || target === "show" || target === "unless")) {
+                const bindingId = id("binding", comp.id, target, "condition");
+                bindings.push({
+                    id: bindingId,
+                    kind: "attribute",
+                    expression: value,
+                    sourceId: value,
+                    target: `${target}[condition]`,
                     file: doc.file,
                     componentId: comp.id,
                     componentName: comp.name,

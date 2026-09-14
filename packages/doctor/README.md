@@ -92,10 +92,19 @@ Static rules are evaluated. Key rules:
 
 | Rule | Level | Meaning |
 |------|-------|---------|
+| `EUIX0001` | error | XML-unsafe JS in `<computed>` / `<step>` / script body (e.g. `<=` without CDATA) |
 | `EUIX1001` | error | Action writes to an unknown state |
 | `EUIX1002` | warning | State is never used |
 | `EUIX1101` | error | Computed dependency cycle |
-| `EUIX1102` | error | Computed references an unknown dependency |
+| `EUIX1102` | error | Computed references an unknown state/computed dependency |
+| `EUIX1110` | error | Template binding, watcher, or action references an unknown variable |
+
+### Format
+
+```bash
+node packages/doctor/bin/euix-doctor-format.js path/to/App.xml
+cat App.xml | node packages/doctor/bin/euix-doctor-format.js --stdin App.xml
+```
 | `EUIX1201` | warning | Watcher writes its own path (reactive loop) |
 | `EUIX1301` | error | Custom action not defined (built-ins, shorthands, imported `<action_def>` recognized) |
 | `EUIX1302` | error | Plugin action used without matching plugin markup/import |
@@ -228,6 +237,49 @@ node packages/core/bin/euix.js doctor inspect packages/doctor/fixtures/simple-co
 node packages/core/bin/euix.js doctor . --json > doctor-report.json
 ```
 
+### Config (`euix.doctor.json`)
+
+```json
+{
+  "rules": { "EUIX1002": "warning", "EUIX1701": "off" },
+  "ignore": ["**/legacy/**"]
+}
+```
+
+Inline suppressions in XML:
+
+```xml
+<!-- euix-ignore-next-line EUIX1701 -->
+<watch path="api.legacy.status" />
+```
+
+### Watch mode
+
+```bash
+node packages/doctor/bin/euix-doctor-watch.js .
+euix doctor . --watch
+```
+
+### Pre-commit
+
+```bash
+node packages/doctor/bin/euix-doctor-pre-commit.js
+```
+
+### Auto-fix (EUIX0001 CDATA wrap)
+
+```bash
+# Preview fixes without writing
+node packages/core/bin/euix.js doctor path/to/App.xml --fix --dry-run
+
+# Apply all supported auto-fixes
+node packages/core/bin/euix.js doctor path/to/App.xml --fix
+
+# Apply CDATA wrap for <= / >= / && in <computed> and RUN_SCRIPT blocks
+node packages/core/bin/euix.js doctor path/to/App.xml --fix
+node packages/core/bin/euix.js doctor path/to/App.xml --fix=EUIX0001
+```
+
 ### All flags
 
 ```
@@ -237,6 +289,12 @@ node packages/core/bin/euix.js doctor . --json > doctor-report.json
 --memory         Collect memory signals during tests
 --fuzz           Add semantic fuzz scenarios (requires --test)
 --json           JSON output
+--sarif          SARIF 2.1.0 output (includes fix metadata when available)
+--baseline=FILE  Suppress known diagnostics
+--update-baseline  Refresh baseline file
+--fix            Apply auto-fixes for supported rules
+--fix=RULE       Apply a single rule (e.g. EUIX0001)
+--dry-run        Preview --fix without writing files
 --seed=<n>       Fuzz seed
 --repeat=<n>     Memory repeat count
 ```
@@ -248,7 +306,7 @@ node packages/core/bin/euix.js doctor . --json > doctor-report.json
 The package can be imported directly:
 
 ```typescript
-import { buildProject, runDoctor } from "@euix/doctor";
+import { applyFixes, buildProject, runDoctor } from "@euix/doctor";
 import { buildDependencyEdges } from "@euix/doctor"; // via analysis module
 
 const project = await buildProject("./apps/playground", "components/CounterSection.xml");
@@ -256,6 +314,9 @@ buildDependencyEdges(project);
 
 console.log([...project.states.values()].map((s) => s.name));
 console.log(project.diagnostics);
+
+// Apply EUIX0001 CDATA auto-fixes
+applyFixes(project, { rules: ["EUIX0001"] });
 ```
 
 Full analysis pipeline:

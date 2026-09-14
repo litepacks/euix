@@ -6,7 +6,7 @@ import path from "path";
 import { execSync } from "child_process";
 
 describe("XSD / JSON Schema & TypeScript Type Generation Suite", () => {
-    const tmpDir = path.resolve(import.meta.dirname, "../../../tools/scratch/schema_test_tmp");
+    const tmpDir = path.resolve(import.meta.dirname, "../../../scratch/schema_test_tmp");
 
     afterEach(() => {
         if (fs.existsSync(tmpDir)) {
