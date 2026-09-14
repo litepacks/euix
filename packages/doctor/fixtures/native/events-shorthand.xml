@@ -6,6 +6,10 @@
     <state id="searchQuery" type="string"></state>
   </data_model>
 
+  <api_config base_url="https://api.example.com">
+    <api_endpoint id="get_posts" url="/posts" bind_target="items" />
+  </api_config>
+
   <flex direction="column" gap="8">
     <button on_click:set="counter={data.counter + 1}">+1</button>
     <button on_click:toggle="isOpen">Toggle Modal</button>

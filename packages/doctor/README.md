@@ -97,7 +97,8 @@ Static rules are evaluated. Key rules:
 | `EUIX1101` | error | Computed dependency cycle |
 | `EUIX1102` | error | Computed references an unknown dependency |
 | `EUIX1201` | warning | Watcher writes its own path (reactive loop) |
-| `EUIX1301` | error | Event handler action not found |
+| `EUIX1301` | error | Custom action not defined (built-ins, shorthands, imported `<action_def>` recognized) |
+| `EUIX1302` | error | Plugin action used without matching plugin markup/import |
 | `EUIX1401` | error | Component reference could not be resolved |
 | `EUIX1402` | error | Missing required prop on child component |
 | `EUIX1403` | error | Prop `type` or `enum` mismatch (inferred) |
@@ -341,6 +342,7 @@ Composition edges appear in the dependency graph as `composes` (parent → child
 
 Doctor performs **static analysis**; it does not run the real browser runtime:
 
+- Built-in actions (`SET_STATE`, `RUN_SCRIPT`, `REVALIDATE_API`, …) and attribute shorthands (`on_click:set`, `on_click:mutate`, …) do **not** require `<action_def>` — Doctor resolves them directly
 - Does not fully simulate plugin hook runtime behavior
 - Data-flow inference in complex JS action bodies is limited (watch for `confidence: inferred`)
 - Dynamic URLs inside template literals may be marked `unresolved`

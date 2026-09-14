@@ -1,4 +1,11 @@
 import { detectComputedCycles, detectWatcherCycles } from "../analysis/dependencies.js";
+import {
+    createProjectActionContext,
+    formatMissingHandlerMessage,
+    getHandlerDiagnosticConfidence,
+    resolveActionName,
+    resolveEventHandler,
+} from "../euix/actionHandlers.js";
 import type { Diagnostic, EuixProject } from "../ir/types.js";
 
 export function runDiagnostics(project: EuixProject): Diagnostic[] {
@@ -54,13 +61,66 @@ export function runDiagnostics(project: EuixProject): Diagnostic[] {
         diagnostics.push(diag("WATCH-CYCLE", "warning", `Watcher chain cycle detected: ${names}`, first?.file ?? project.root, first?.location.line ?? 1, first?.location.column ?? 1, "confirmed"));
     }
 
+    const actionCtx = createProjectActionContext(project);
+
     for (const event of project.events.values()) {
-        const actionExists = [...project.actions.values()].some(
-            (a) => a.componentId === event.componentId && a.name === event.handler,
+        const resolution = resolveEventHandler(project, event, actionCtx);
+        if (resolution.resolved) continue;
+
+        const confidence = getHandlerDiagnosticConfidence(event, resolution);
+        const rule = resolution.kind === "plugin-required" ? "EUIX1302" : "EUIX1301";
+        const severity = resolution.kind === "dynamic" ? "info" : "error";
+
+        diagnostics.push(
+            diag(
+                rule,
+                severity,
+                formatMissingHandlerMessage(event, resolution),
+                event.file,
+                event.location.line,
+                event.location.column,
+                confidence,
+                [event.id],
+            ),
         );
-        if (!actionExists) {
-            diagnostics.push(diag("EUIX1301", "error", `Event handler '${event.handler}' not found for ${event.name}`, event.file, event.location.line, event.location.column, "confirmed"));
-        }
+    }
+
+    for (const watch of project.watchers.values()) {
+        if (!watch.action) continue;
+        const resolution = resolveActionName(actionCtx.actions, watch.action, actionCtx);
+        if (resolution.resolved) continue;
+
+        const rule = resolution.kind === "plugin-required" ? "EUIX1302" : "EUIX1301";
+        const severity = resolution.kind === "dynamic" ? "info" : "error";
+
+        diagnostics.push(
+            diag(
+                rule,
+                severity,
+                resolution.kind === "plugin-required" && resolution.requiredPlugin
+                    ? formatMissingHandlerMessage(
+                          {
+                              id: watch.id,
+                              name: `watch@${watch.name}`,
+                              eventType: "watch",
+                              file: watch.file,
+                              componentId: watch.componentId,
+                              componentName: watch.componentName,
+                              target: "watch",
+                              handler: watch.action,
+                              handlerKind: "unknown",
+                              location: watch.location,
+                          },
+                          resolution,
+                      )
+                    : `Watcher on '${watch.path || watch.name}' references unknown action '${watch.action}' in '${watch.componentName}'.`,
+                watch.file,
+                watch.location.line,
+                watch.location.column,
+                resolution.kind === "dynamic" ? "inferred" : "confirmed",
+                [watch.id],
+            ),
+        );
     }
 
     for (const api of project.apiCalls.values()) {

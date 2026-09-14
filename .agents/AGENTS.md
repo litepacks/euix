@@ -93,7 +93,7 @@ node packages/core/bin/euix.js doctor . --json > doctor-report.json
 | `EUIX1001` | error | Action writes to a state that does not exist in `<data_model>` |
 | `EUIX1101` | error | Break computed dependency cycle |
 | `EUIX1201` | warning | Watcher must not write the path it watches |
-| `EUIX1301` | error | Wire event to a defined `<action>`, `<action_def>`, or built-in action |
+| `EUIX1301` | error | Define missing **custom** `<action_def>` — do **not** stub built-ins (`SET_STATE`, `REVALIDATE_API`, …) or shorthands (`on_click:set`) |
 | `EUIX1401` | error | Fix component `src`, custom tag name, or add missing sibling `.xml` file |
 | `EUIX1402` | error | Pass all `<param required="true">` props from parent |
 | `EUIX1403` | error | Match parent binding type to child `<param type="...">` (or fix `enum`) |

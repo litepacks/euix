@@ -1,0 +1,10 @@
+<uid_spec>
+  <actions>
+    <action_def name="ConfirmDelete">
+      <step action="SET_STATE">
+        <path>data.showModal</path>
+        <value>false</value>
+      </step>
+    </action_def>
+  </actions>
+</uid_spec>

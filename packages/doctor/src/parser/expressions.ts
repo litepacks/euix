@@ -66,7 +66,49 @@ export function extractBindingsFromText(text: string): string[] {
     return exprs;
 }
 
-export function isEventAttribute(name: string): boolean {
+const DECLARATIVE_EVENT_TAGS = new Set([
+    "on_click",
+    "on_change",
+    "on_submit",
+    "on_mount",
+    "on_unmount",
+    "on_interval",
+    "on_state_change",
+    "on_keyup",
+    "on_keydown",
+]);
+
+export function isEventAttribute(name: string, elementTag?: string): boolean {
+    const lower = name.toLowerCase();
+    const tag = elementTag?.toLowerCase();
+
+    if (tag && DECLARATIVE_EVENT_TAGS.has(tag)) {
+        if (
+            lower === "on_success" ||
+            lower === "on_error" ||
+            lower === "on_fail" ||
+            lower === "on_complete" ||
+            lower === "on_cancel" ||
+            lower === "on_finish" ||
+            lower === "on_reject" ||
+            lower === "on_settled"
+        ) {
+            return false;
+        }
+    }
+
+    if (
+        lower === "confirm" ||
+        lower === "prevent" ||
+        lower === "prevent_default" ||
+        lower === "stop" ||
+        lower === "stop_propagation" ||
+        lower === "debounce" ||
+        lower === "throttle"
+    ) {
+        return false;
+    }
+
     return (
         EVENT_ATTR.test(name) ||
         name.startsWith("on_click") ||

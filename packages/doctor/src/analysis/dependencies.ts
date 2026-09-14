@@ -46,11 +46,15 @@ export function buildDependencyEdges(project: EuixProject): DependencyEdge[] {
 
     for (const event of project.events.values()) {
         const action = [...project.actions.values()].find(
-            (a) => a.componentId === event.componentId && a.name === event.handler,
+            (a) =>
+                a.componentId === event.componentId &&
+                (a.name === event.handler || a.name === `__api__${event.handler}`),
         );
         if (action) {
             edges.push({ from: event.id, to: action.id, kind: "triggers", confidence: "confirmed" });
             event.handlerKind = "action";
+        } else if (event.handlerKind === "action") {
+            edges.push({ from: event.id, to: event.handler, kind: "triggers", confidence: "inferred" });
         }
     }
 

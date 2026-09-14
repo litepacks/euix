@@ -147,13 +147,37 @@ Doctor checks:
 | `EUIX1101` | error | Computed dependency cycle |
 | `EUIX1102` | error | Computed depends on unknown symbol |
 | `EUIX1201` | warning | Watcher reactive loop |
-| `EUIX1301` | error | Event handler not found |
+| `EUIX1301` | error | Custom action not defined (import shared `<action_def>` modules when needed) |
+| `EUIX1302` | error | Plugin action used without plugin markup/import (e.g. `STREAM_SEND` without `<api_stream>`) |
 | `EUIX1401` | error | Component reference could not be resolved |
 | `EUIX1402` | error | Missing required prop on child component |
 | `EUIX1403` | error | Prop type or enum mismatch (inferred) |
 | `EUIX1501` | warning | API call may leave loading state stuck |
 
 Treat all **`error`** diagnostics as blocking before merge or release.
+
+### Engine & plugin actions vs `<action_def>`
+
+Doctor recognizes **core engine actions**, **plugin actions**, and **attribute shorthands** — no empty `<action_def>` stubs required.
+
+| Style | Example |
+|-------|---------|
+| Core declarative | `<on_click action="SET_STATE">`, `<watch action="RUN_SCRIPT">` |
+| Plugin declarative | `<on_click action="VALIDATE_FORM">`, `STREAM_SEND`, `NAVIGATE`, `SET_DATE_LOCALE`, `CHART_UPDATE`, `XHR` |
+| Attribute shorthand | `on_click:set`, `:toggle`, `:mutate`, `:revalidate`, `:run`, `:emit`, `:focus`, `:undo`, `:redo`, `:snapshot`, `:retry` |
+| Custom shorthand | `on_click:call="MyWorkflow"`, `on_submit:call="SubmitForm"` → needs `<action_def name="MyWorkflow">` |
+| Callback attrs | `<on_click action="VALIDATE_FORM" on_success="AfterValidate">` → `AfterValidate` must exist |
+| Inline alias | `on_error="SET_STATE:hasError=true"` on `<error_boundary>` |
+
+**Do not** add fake stubs like `<action_def name="SET_STATE" />` — only define real custom workflows.
+
+**Plugin-scoped actions:** Doctor detects active plugins from markup tags (`<api_stream>`, `<date_config>`, `<chart>`, …) and JS imports (`euixjs/api`, …). Using `STREAM_SEND` without stream/api markup → `EUIX1302`.
+
+**Cross-file actions:** `<import src="./SharedActions.xml" />` loads shared `<action_def>` modules; custom actions resolve project-wide after import expansion.
+
+**Dynamic handlers:** `on_click:action="{data.handlerName}"` → `info` + `confidence: inferred` (not a blocking error).
+
+**Still not statically resolved:** runtime `engine.registerAction(...)` and handlers that depend on plugins not signaled in the scanned files.
 
 ---
 

@@ -1,0 +1,7 @@
+<uid_spec>
+  <data_model>
+    <state id="handlerName" type="string">increment</state>
+  </data_model>
+
+  <button on_click:action="{data.handlerName}">Dynamic</button>
+</uid_spec>

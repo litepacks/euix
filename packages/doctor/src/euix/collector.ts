@@ -11,6 +11,7 @@ import type {
     StateInfo,
     WatchInfo,
 } from "../ir/types.js";
+import { classifyHandlerKind, EVENT_CALLBACK_ATTRS, resolveActionName } from "./actionHandlers.js";
 import { analyzeActionBody, extractBindingsFromText, extractExpressionRefs, isEventAttribute, normalizeEventName } from "../parser/expressions.js";
 import {
     elementTextContent,
@@ -108,7 +109,7 @@ export function collectFromDocument(doc: ParsedDocument): CollectedEntities {
         collectApiEndpoints(doc, compEl, comp, apiCalls, actions);
         collectApiStreams(doc, compEl, comp, apiCalls, actions);
         collectDeclarativeEvents(doc, compEl, comp, events, actions);
-        collectEventsAndBindings(doc, compEl, comp, events, bindings);
+        collectEventsAndBindings(doc, compEl, comp, actions, events, bindings);
         collectChildComponents(doc, compEl, comp);
 
         components.push(comp);
@@ -158,7 +159,7 @@ function collectLooseDocument(
     collectApiEndpoints(doc, virtualRoot, comp, out.apiCalls, out.actions);
     collectApiStreams(doc, virtualRoot, comp, out.apiCalls, out.actions);
     collectDeclarativeEvents(doc, virtualRoot, comp, out.events, out.actions);
-    collectEventsAndBindings(doc, virtualRoot, comp, out.events, out.bindings);
+    collectEventsAndBindings(doc, virtualRoot, comp, out.actions, out.events, out.bindings);
     out.components.push(comp);
 }
 
@@ -225,6 +226,7 @@ function collectWatchers(doc: ParsedDocument, scope: ParsedElement, comp: Compon
             id: watchId,
             name,
             path,
+            action: el.attributes.action ?? null,
             file: doc.file,
             componentId: comp.id,
             componentName: comp.name,
@@ -480,12 +482,7 @@ function collectDeclarativeEvents(
         if (!handler) return;
         const target = parent?.tagName ?? "unknown";
         const eventId = id("event", comp.id, target, eventType, handler);
-        const actionExists = actions.some(
-            (a) =>
-                a.componentId === comp.id &&
-                (a.name === handler || a.name === `__api__${handler}` || handler === "REVALIDATE_API"),
-        );
-        events.push({
+        const eventDraft: EventInfo = {
             id: eventId,
             name: `${target}@${eventType}`,
             eventType,
@@ -494,11 +491,45 @@ function collectDeclarativeEvents(
             componentName: comp.name,
             target,
             handler,
-            handlerKind: actionExists || handler.startsWith("SET_STATE") || handler === "REVALIDATE_API" ? "action" : "unknown",
+            handlerKind: "unknown",
             location: makeLocation(doc.file, doc.source, el.start, el.end),
-        });
+        };
+        eventDraft.handlerKind = classifyHandlerKind(eventDraft, actions);
+        events.push(eventDraft);
         comp.eventIds.push(eventId);
+
+        collectEventCallbackRefs(doc, el, comp, eventType, target, actions, events);
     });
+}
+
+function collectEventCallbackRefs(
+    doc: ParsedDocument,
+    el: ParsedElement,
+    comp: ComponentInfo,
+    eventType: string,
+    target: string,
+    actions: ActionInfo[],
+    events: EventInfo[],
+): void {
+    for (const [attr, value] of Object.entries(el.attributes)) {
+        if (!EVENT_CALLBACK_ATTRS.has(attr.toLowerCase()) || !value.trim()) continue;
+        const cbType = attr.toLowerCase().replace(/^on_/, "");
+        const handler = value.trim();
+        const cbEvent: EventInfo = {
+            id: id("event", comp.id, target, `${eventType}:callback:${cbType}`, handler),
+            name: `${target}@${eventType}:callback:${cbType}`,
+            eventType: `${eventType}:callback:${cbType}`,
+            file: doc.file,
+            componentId: comp.id,
+            componentName: comp.name,
+            target,
+            handler,
+            handlerKind: resolveActionName(actions, handler).resolved ? "action" : "unknown",
+            location: makeLocation(doc.file, doc.source, el.start, el.end),
+        };
+        events.push(cbEvent);
+        comp.eventIds.push(cbEvent.id);
+    }
 }
 
 function collectRoutes(doc: ParsedDocument, scope: ParsedElement, routes: RouteInfo[]): void {
@@ -520,6 +551,7 @@ function collectEventsAndBindings(
     doc: ParsedDocument,
     scope: ParsedElement,
     comp: ComponentInfo,
+    actions: ActionInfo[],
     events: EventInfo[],
     bindings: BindingInfo[],
 ): void {
@@ -527,10 +559,10 @@ function collectEventsAndBindings(
         const target = el.tagName;
 
         for (const [attr, value] of Object.entries(el.attributes)) {
-            if (isEventAttribute(attr)) {
+            if (isEventAttribute(attr, el.tagName)) {
                 const eventType = normalizeEventName(attr);
                 const eventId = id("event", comp.id, target, eventType, value);
-                events.push({
+                const attrEvent: EventInfo = {
                     id: eventId,
                     name: `${target}@${eventType}`,
                     eventType,
@@ -539,9 +571,11 @@ function collectEventsAndBindings(
                     componentName: comp.name,
                     target,
                     handler: value,
-                    handlerKind: comp.actionIds.some((a) => a.endsWith(`:${value}`)) ? "action" : "unknown",
+                    handlerKind: "unknown",
                     location: makeLocation(doc.file, doc.source, el.start, el.end),
-                });
+                };
+                attrEvent.handlerKind = classifyHandlerKind(attrEvent, actions);
+                events.push(attrEvent);
                 comp.eventIds.push(eventId);
             }
 

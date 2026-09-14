@@ -1,0 +1,12 @@
+<uid_spec>
+  <data_model>
+    <state id="value" type="string"></state>
+  </data_model>
+
+  <button>
+    <on_click action="STREAM_SEND" stream="orphan_stream">
+      <payload>{data.value}</payload>
+    </on_click>
+    Send
+  </button>
+</uid_spec>

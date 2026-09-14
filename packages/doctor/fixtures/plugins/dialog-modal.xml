@@ -1,4 +1,8 @@
 <uid_spec>
+  <imports>
+    <import name="shared-actions" src="./SharedActions.xml" />
+  </imports>
+
   <data_model>
     <state id="showModal" type="boolean">false</state>
     <state id="confirmText" type="string">Are you sure?</state>

@@ -152,3 +152,6 @@ reports
 .docboot/
 .docup/
 dist-docs/
+
+# Kiremit cache
+.kiremit/

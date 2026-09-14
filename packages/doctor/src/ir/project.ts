@@ -1,5 +1,6 @@
 import { collectFromDocument } from "../euix/collector.js";
 import { expandComposition, finalizeCompositionRefs } from "../euix/composition.js";
+import { inferProjectPlugins } from "../euix/pluginContext.js";
 import { parseJsFile } from "../parser/oxc.js";
 import { parseHtmlDocument, parseXmlDocument } from "../parser/xml.js";
 import { scanProject } from "../scanner/index.js";
@@ -39,6 +40,7 @@ export async function buildProject(root: string, target?: string): Promise<EuixP
 
     expandComposition(project);
     finalizeCompositionRefs(project);
+    project.activePlugins = [...inferProjectPlugins(project)];
 
     return project;
 }

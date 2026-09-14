@@ -92,6 +92,7 @@ export interface WatchInfo {
     id: string;
     name: string;
     path: string;
+    action: string | null;
     file: string;
     componentId: string;
     componentName: string;
@@ -364,9 +365,28 @@ export interface DoctorResult {
     durationMs: number;
 }
 
+export type EuixPluginId =
+    | "core"
+    | "composer"
+    | "api"
+    | "router"
+    | "stream"
+    | "date"
+    | "validation"
+    | "chart"
+    | "map"
+    | "navigator"
+    | "animation"
+    | "resilience"
+    | "a11y"
+    | "storage"
+    | "webmcp"
+    | "inspector";
+
 export interface EuixProject {
     root: string;
     files: EuixFile[];
+    activePlugins?: EuixPluginId[];
     components: Map<string, ComponentInfo>;
     states: Map<string, StateInfo>;
     computed: Map<string, ComputedInfo>;
