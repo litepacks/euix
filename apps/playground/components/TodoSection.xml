@@ -1,4 +1,16 @@
 <component_def name="todo-section">
+    <data_model>
+        <state id="new_todo_input" type="string"></state>
+        <state id="edit_todo_input" type="string"></state>
+        <state id="editing_id" type="string"></state>
+        <state id="todos_open" type="boolean">true</state>
+        <state id="todos" type="array">
+            <item id="1" text="Explore EUIX Engine Core" completed="true" />
+            <item id="2" text="Test Reactive Fine-Grained Signals" completed="true" />
+            <item id="3" text="Integrate Modular Plugins" completed="false" />
+            <item id="4" text="Build Declarative XML Interfaces" completed="false" />
+        </state>
+    </data_model>
     <constants>
         <const id="quick_btn">px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-colors cursor-pointer border border-slate-700</const>
         <const id="btn_primary">px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer shadow-lg shadow-indigo-600/20 shrink-0</const>
@@ -122,7 +134,7 @@
                                     <button class="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold rounded-lg text-xs transition-colors cursor-pointer border border-rose-500/20">
                                         Delete
                                         <on_click action="SET_STATE">
-                                            <path>data.selected_todo_id</path>
+                                            <path>data.deleting_todo_id</path>
                                             <value>{todo.id}</value>
                                         </on_click>
                                         <on_click action="SET_STATE">

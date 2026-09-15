@@ -1208,8 +1208,29 @@
       </uid_spec>
     </script>
 
-  <!-- Load Full EUIX Engine (includes EUIXLeafletPlugin automatically) -->
-  <script src="../../packages/core/dist/EUIXEngine.umd.js?v=0.3.3" onerror="this.onerror=null;this.src='https://unpkg.com/euixjs/dist/EUIXEngine.umd.js'"></script>
+  <!-- Load Full EUIX Engine -->
+  <script type="module">
+    import EUIXEngine from '../../packages/core/src/EUIXEngine.js';
+
+    function initApp() {
+      const specEl = document.querySelector('script[type="application/euix"]');
+      if (specEl) {
+        const target = specEl.getAttribute('target') || '#app';
+        const container = document.querySelector(target);
+        if (container && !container._euixMounted) {
+          container._euixMounted = true;
+          const engine = EUIXEngine.mount(specEl.textContent, container);
+          window.EUIXEngine = { instance: engine };
+        }
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+      initApp();
+    }
+  </script>
 </body>
 
 </html>

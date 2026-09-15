@@ -1,6 +1,7 @@
 <component_def name="playground-section">
     <data_model>
         <state id="counter_value" type="number">0</state>
+        <state id="counter_open" type="boolean">true</state>
         <state id="confirm_modal_open" type="boolean">false</state>
         <state id="delete_modal_open" type="boolean">false</state>
         <state id="deleting_todo_id" type="string"></state>

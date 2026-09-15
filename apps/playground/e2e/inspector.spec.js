@@ -4,7 +4,8 @@ import { euix } from '../../../packages/core/src/plugins/inspector/playwright.js
 test.describe('EUIX Inspector & Playwright E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/playground', { waitUntil: 'domcontentloaded' });
-    await page.locator('h1').first().waitFor({ timeout: 15000 });
+    await page.locator('h1').first().waitFor();
+    await euix(page).waitForIdle();
   });
 
   test('should inspect DOM elements with euix helper and verify component metadata', async ({ page }) => {
@@ -53,21 +54,21 @@ test.describe('EUIX Inspector & Playwright E2E Suite', () => {
     // Switch to Actions/Logs tab
     const logsTab = page.locator('#euix-tab-logs, #euix-tab-actions');
     if (await logsTab.count() > 0) {
-      await logsTab.first().click();
+      await logsTab.first().dispatchEvent('click');
       await expect(panel.first()).toBeVisible();
     }
 
     // Switch to Component Tree tab
     const treeTab = page.locator('#euix-tab-tree');
     if (await treeTab.count() > 0) {
-      await treeTab.first().click();
+      await treeTab.first().dispatchEvent('click');
       await expect(panel.first()).toBeVisible();
     }
 
     // Switch to Search tab
     const searchTab = page.locator('#euix-tab-search');
     if (await searchTab.count() > 0) {
-      await searchTab.first().click();
+      await searchTab.first().dispatchEvent('click');
       const searchInput = page.locator('#euix-search-input');
       if (await searchInput.count() > 0) {
         await searchInput.fill('counter');

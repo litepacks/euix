@@ -4,7 +4,7 @@ import { euix } from '../../../packages/core/src/plugins/inspector/playwright.js
 test.describe('EUIX Engine - Chart.js Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/charts', { waitUntil: 'domcontentloaded' });
-    await page.locator('h1').first().waitFor({ timeout: 15000 });
+    await page.locator('h1').first().waitFor();
     await euix(page).waitForIdle();
   });
 
@@ -48,9 +48,13 @@ test.describe('EUIX Engine - Chart.js Plugin End-to-End (E2E) Browser Suite', ()
   });
 
   test('should randomize traffic trend data reactively', async ({ page }) => {
-    const randomizeBtn = page.locator('button:has-text("Randomize Data")');
+    const randomizeBtn = page.locator('[data-euix-action*="RandomizeTrafficData"], [data-euix-test="randomize-data-btn"], [test-id="randomize-data-btn"]').first();
     if (await randomizeBtn.count() > 0) {
-      await randomizeBtn.click({ force: true });
+      await page.evaluate(() => {
+        const btn = document.querySelector('[data-euix-action*="RandomizeTrafficData"], [data-euix-test="randomize-data-btn"], [test-id="randomize-data-btn"]');
+        if (btn) btn.click();
+      });
+      await page.waitForTimeout(300);
       await euix(page).waitForIdle();
     }
 

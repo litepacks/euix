@@ -87,7 +87,7 @@ import {
 } from "./parser/AstParser.js";
 import { EUIXExpressionParser } from "./parser/ExpressionParser.js";
 import { EUIXStructuredError, EUIXXMLParseError } from "./parser/errors.js";
-import { _getTestStats, enableDevTools, getBindingsStats, getPerformanceMetrics } from "./profiler/Profiler.js";
+import { _getTestStats, enableDevTools, getBindingsStats, getPerformanceMetrics, updateDevToolsStatus } from "./profiler/Profiler.js";
 import {
     _createHTMLElementInternal,
     appendChildren,
@@ -299,6 +299,15 @@ class EUIXEngineCore {
         }
         return null;
     }
+
+    _updateDevToolsStatus(key, deltaOrValue) {
+        return updateDevToolsStatus(this, key, deltaOrValue);
+    }
+
+    static updateDevToolsStatus(engine, key, deltaOrValue) {
+        return updateDevToolsStatus(engine, key, deltaOrValue);
+    }
+
 
     reportError(error, contextInfo = "") {
         return reportError(this, error, contextInfo);

@@ -3,8 +3,7 @@ import { euix } from '../../../packages/core/src/plugins/inspector/playwright.js
 
 test.describe('EUIX Engine - Leaflet Maps Plugin End-to-End (E2E) Browser Suite', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/map_demo.html');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/map_demo.html', { waitUntil: 'domcontentloaded' });
   });
 
   test('should mount Leaflet map and render spatial analytics dashboard', async ({ page }) => {

@@ -467,16 +467,23 @@ export const EUIXChartPlugin = {
 
             // Auto-resize and deterministic layout sync when container becomes visible in DOM
             let resizeObserver = null;
+            let lastObservedW = 0;
+            let lastObservedH = 0;
             if (typeof ResizeObserver !== "undefined") {
                 resizeObserver = new ResizeObserver((entries) => {
                     for (const entry of entries) {
-                        if (entry.contentRect.width > 0 && entry.contentRect.height > 0) {
-                            if (currentChart) {
-                                try {
-                                    currentChart.resize();
-                                } catch (_) {}
-                            } else {
-                                initOrUpdateChart();
+                        const { width, height } = entry.contentRect;
+                        if (width > 0 && height > 0) {
+                            if (Math.abs(width - lastObservedW) >= 2 || Math.abs(height - lastObservedH) >= 2) {
+                                lastObservedW = width;
+                                lastObservedH = height;
+                                if (currentChart) {
+                                    try {
+                                        currentChart.resize();
+                                    } catch (_) {}
+                                } else {
+                                    initOrUpdateChart();
+                                }
                             }
                         }
                     }
@@ -486,12 +493,8 @@ export const EUIXChartPlugin = {
 
             if (typeof requestAnimationFrame !== "undefined") {
                 requestAnimationFrame(() => {
-                    initOrUpdateChart();
-                    if (currentChart) {
-                        try {
-                            currentChart.resize();
-                            currentChart.update();
-                        } catch (_) {}
+                    if (!currentChart) {
+                        initOrUpdateChart();
                     }
                 });
             }

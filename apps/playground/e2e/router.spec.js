@@ -4,7 +4,7 @@ import { euix } from '../../../packages/core/src/plugins/inspector/playwright.js
 test.describe('EUIX Web Router E2E Browser Test Suite', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/#/router-showcase', { waitUntil: 'domcontentloaded' });
-        await page.locator('h1').first().waitFor({ timeout: 15000 });
+        await page.locator('h1').first().waitFor();
         await euix(page).waitForIdle();
     });
 
@@ -67,7 +67,7 @@ test.describe('EUIX Web Router E2E Browser Test Suite', () => {
     });
 
     test('should navigate to homepage when clicking the header logo', async ({ page }) => {
-        await page.goto('/#/navigator');
+        await page.goto('/#/navigator', { waitUntil: 'domcontentloaded' });
         await euix(page).waitForIdle();
 
         // Click header logo link

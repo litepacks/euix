@@ -62,7 +62,7 @@
                 <tbody>
                     <for_each items="{data.employees}" var="emp">
                         <tr class="hover:bg-slate-800/60 transition-colors">
-                            <td class="{const.table_td} font-mono font-bold text-slate-500">#{emp._index + 1}</td>
+                            <td class="{const.table_td} font-mono font-bold text-slate-500">#{$index + 1}</td>
                             <td class="{const.table_td} font-bold text-white">{emp.name}</td>
                             <td class="{const.table_td} text-slate-300">{emp.role}</td>
                             <td class="{const.table_td}"><span class="px-2 py-0.5 bg-slate-800 text-slate-300 rounded-lg text-[11px] font-semibold border border-slate-700">{emp.dept}</span></td>
@@ -78,7 +78,7 @@
                                 <button class="px-2.5 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-bold text-[11px] rounded-lg transition-colors cursor-pointer border border-rose-500/20">
                                     <on_click action="MUTATE_STATE" operation="REMOVE">
                                         <path>data.employees</path>
-                                        <index>{emp._index}</index>
+                                        <index>{$index}</index>
                                     </on_click>
                                     Remove
                                 </button>

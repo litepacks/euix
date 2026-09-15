@@ -33,6 +33,7 @@
                 "options": {
                     "responsive": true,
                     "maintainAspectRatio": false,
+                    "animation": { "duration": 150 },
                     "plugins": {
                         "legend": { "labels": { "color": "#94a3b8" } }
                     },
@@ -67,6 +68,7 @@
                 "options": {
                     "responsive": true,
                     "maintainAspectRatio": false,
+                    "animation": { "duration": 150 },
                     "plugins": {
                         "legend": { "position": "bottom", "labels": { "color": "#94a3b8" } }
                     }
@@ -96,6 +98,7 @@
                 "options": {
                     "responsive": true,
                     "maintainAspectRatio": false,
+                    "animation": { "duration": 150 },
                     "plugins": {
                         "legend": { "labels": { "color": "#94a3b8" } }
                     },
@@ -107,7 +110,28 @@
             }
         </state>
         <state id="type" type="string"></state>
-</data_model>
+    </data_model>
+
+    <actions>
+        <action_def name="RandomizeTrafficData">
+            <step action="RUN_SCRIPT"><![CDATA[
+                const current = $data.traffic_chart || {};
+                const dsets = current.data && current.data.datasets ? current.data.datasets : [];
+                if (dsets.length > 0 && Array.isArray(dsets[0].data)) {
+                    const newValues = dsets[0].data.map(() => Math.floor(Math.random() * 4000) + 1000);
+                    $data.traffic_chart = {
+                        ...current,
+                        data: {
+                            ...current.data,
+                            datasets: [
+                                { ...dsets[0], data: newValues }
+                            ]
+                        }
+                    };
+                }
+            ]]></step>
+        </action_def>
+    </actions>
 
     <flex direction="column" gap="24" class="w-full">
         <!-- Hero Header -->
@@ -221,12 +245,8 @@
                             <on_click action="CHART_EXPORT" chart="traffic_trend_chart" target="data.exported_image" />
                             📸 Export Traffic PNG
                         </button>
-                        <button class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
-                            <on_click action="RUN_SCRIPT">
-                                const newData = $data.traffic_chart.data.datasets[0].data.map(() => Math.floor(Math.random() * 4000) + 1000);
-                                $data.traffic_chart.data.datasets[0].data = newData;
-                                $data.traffic_chart = { ...$data.traffic_chart };
-                            </on_click>
+                        <button type="button" test-id="randomize-data-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold rounded-xl text-xs transition-all cursor-pointer border border-slate-700">
+                            <on_click action="RandomizeTrafficData" />
                             🎲 Randomize Data
                         </button>
                     </flex>

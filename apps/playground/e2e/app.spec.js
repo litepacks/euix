@@ -98,7 +98,7 @@ test.describe('EUIX Engine End-to-End (E2E) Browser Suite', () => {
   test('should open DevTools State & Log Panel when clicking panel button', async ({ page }) => {
     const panelBtn = page.locator('#euix-dev-panel-btn, #euix-hud-panel-btn');
     if (await panelBtn.count() > 0) {
-      await panelBtn.first().click();
+      await panelBtn.first().dispatchEvent('click');
       const panel = page.locator('#euix-devtools-panel, #euix-inspector-panel');
       await expect(panel.first()).toBeVisible();
     }

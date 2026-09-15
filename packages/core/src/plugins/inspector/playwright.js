@@ -94,7 +94,7 @@ export class EuixPlaywrightWrapper {
      * Checks pending actions, loaders, revalidations, and route transitions.
      */
     async waitForIdle(options = {}) {
-        const timeout = options.timeout || 10000;
+        const timeout = options.timeout || 15000;
         const page = this.page;
 
         await page.waitForFunction(

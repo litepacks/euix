@@ -281,7 +281,7 @@
             }, 100);
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        function initPlaygroundApp() {
             renderIconsSafely();
 
             // Mount Single XML Spec Instance
@@ -329,7 +329,13 @@
             window.addEventListener('hashchange', () => {
                 setTimeout(renderIconsSafely, 50);
             });
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPlaygroundApp);
+        } else {
+            initPlaygroundApp();
+        }
     </script>
 </body>
 
