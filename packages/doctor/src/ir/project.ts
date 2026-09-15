@@ -61,15 +61,16 @@ export function ingestFile(project: EuixProject, file: EuixFile): void {
     }
 
     if (file.kind === "html") {
-        const doc = parseHtmlDocument(file.path, file.source);
-        mergeCollected(project, collectFromDocument(doc));
+        const hasEuixScripts = /<script[^>]*type=["']application\/euix["']/i.test(file.source);
+        if (!hasEuixScripts) {
+            const doc = parseHtmlDocument(file.path, file.source);
+            mergeCollected(project, collectFromDocument(doc));
+        }
 
-        if (file.kind === "html") {
-            for (const m of file.source.matchAll(/<script[^>]*type=["']application\/euix["'][^>]*>([\s\S]*?)<\/script>/gi)) {
-                if (m[1]) {
-                    const embedded = parseXmlDocument(`${file.path}#euix-script`, m[1]);
-                    mergeCollected(project, collectFromDocument(embedded));
-                }
+        for (const m of file.source.matchAll(/<script[^>]*type=["']application\/euix["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+            if (m[1]) {
+                const embedded = parseXmlDocument(`${file.path}#euix-script`, m[1]);
+                mergeCollected(project, collectFromDocument(embedded));
             }
         }
 

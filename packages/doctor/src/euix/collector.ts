@@ -306,10 +306,60 @@ function collectActions(
     for (const el of findElements(scope, ACTION_TAGS)) {
         const name = el.attributes.name ?? el.attributes.id;
         if (!name) continue;
-        const stepBodies = findElements(el, new Set(["step"]))
-            .map((step) => `${step.attributes.action ?? "STEP"} ${elementTextContent(step)}`)
-            .join("\n");
-        const body = stepBodies || elementTextContent(el);
+        const stepElements = findElements(el, new Set(["step"]));
+        let body = "";
+        if (stepElements.length > 0) {
+            body = stepElements
+                .map((step) => {
+                    const actionType = (step.attributes.action ?? "").toUpperCase();
+                    if (actionType === "RUN_SCRIPT" || !step.attributes.action) {
+                        return elementTextContent(step);
+                    }
+                    if (actionType === "SET_STATE") {
+                        const pathEl = findElements(step, new Set(["path"]))[0];
+                        const valEl = findElements(step, new Set(["value"]))[0];
+                        const pathText = pathEl ? elementTextContent(pathEl).trim() : (step.attributes.path ?? "");
+                        const valText = valEl ? elementTextContent(valEl).trim() : (step.attributes.value ?? "");
+                        const cleanPath = pathText.replace(/^data\./, "");
+                        if (!cleanPath) return "";
+                        if (valText.includes("{")) {
+                            const exprs = extractBindingsFromText(valText);
+                            return `$data.${cleanPath} = ${exprs.join(" + ") || "null"};`;
+                        }
+                        if (valText === "true" || valText === "false" || (valText !== "" && !Number.isNaN(Number(valText)))) {
+                            return `$data.${cleanPath} = ${valText};`;
+                        }
+                        return `$data.${cleanPath} = ${JSON.stringify(valText)};`;
+                    }
+                    if (actionType === "REVALIDATE_API") {
+                        const tag = step.attributes.tag ?? elementTextContent(step).trim();
+                        return `$engine.revalidateApi('${tag}');`;
+                    }
+                    const exprs: string[] = [];
+                    for (const [, val] of Object.entries(step.attributes)) {
+                        if (val.includes("{")) {
+                            for (const m of extractBindingsFromText(val)) {
+                                exprs.push(m);
+                            }
+                        }
+                    }
+                    for (const child of step.children) {
+                        if (child.type === "element") {
+                            const childText = elementTextContent(child);
+                            if (childText.includes("{")) {
+                                for (const m of extractBindingsFromText(childText)) {
+                                    exprs.push(m);
+                                }
+                            }
+                        }
+                    }
+                    return exprs.join(";\n");
+                })
+                .filter(Boolean)
+                .join("\n");
+        } else {
+            body = elementTextContent(el);
+        }
         const parameters = findElements(el, new Set(["param"]))
             .map((p) => p.attributes.name)
             .filter((n): n is string => !!n);
@@ -326,7 +376,7 @@ function collectActions(
             reads: analysis.reads,
             writes: analysis.writes,
             calls: analysis.calls,
-            branches: analysis.branches + (stepBodies ? findElements(el, new Set(["step"])).length : 0),
+            branches: analysis.branches + stepElements.length,
             loops: analysis.loops,
             awaits: analysis.awaits,
             returns: analysis.returns || !!findElements(el, new Set(["return"])).length,
@@ -722,6 +772,9 @@ function collectEventsAndBindings(
                     location: makeLocation(doc.file, doc.source, el.start, el.end),
                 });
             } else if (value.includes("{")) {
+                if (el.tagName === "tile_layer" && attr === "url") {
+                    continue;
+                }
                 const exprs = extractBindingsFromText(value);
                 for (const expr of exprs) {
                     const bindingId = id("binding", comp.id, target, attr, expr, String(el.start));
