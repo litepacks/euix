@@ -46,7 +46,7 @@ export function printDoctorReport(result: DoctorResult, options: DoctorOptions, 
     if (project.diagnostics.length > 0) {
         printDiagnosticSummary(project.diagnostics);
         console.log("");
-        printDiagnosticList(project.diagnostics, 25);
+        printDiagnosticList(project.diagnostics, project, 25);
         console.log("");
     } else {
         console.log("No issues found.\n");
@@ -100,17 +100,63 @@ function printDiagnosticSummary(diagnostics: Diagnostic[]): void {
     console.log(`By rule: ${parts.join("  ·  ")}`);
 }
 
-function printDiagnosticList(diagnostics: Diagnostic[], limit: number): void {
+function printDiagnosticList(diagnostics: Diagnostic[], project: EuixProject, limit: number): void {
     const sorted = [...diagnostics].sort((a, b) => severityRank(a.severity) - severityRank(b.severity));
+    const fileSources = new Map(project.files.map((f) => [f.path, f.source]));
+
     for (const d of sorted.slice(0, limit)) {
-        const loc = formatLocation(d.file, d.line);
-        console.log(`[${d.rule}] ${SEVERITY_LABEL[d.severity]}  ${d.message}`);
+        const loc = formatLocation(d.file, d.line, d.column);
+        const category = d.category ? ` [${d.category.toUpperCase()}]` : "";
+        console.log(`[${d.rule}] ${SEVERITY_LABEL[d.severity]}${category}  ${d.message}`);
         console.log(`         at ${loc}${d.confidence !== "confirmed" ? ` (${d.confidence})` : ""}`);
-        if (d.hint) console.log(`         → ${d.hint}`);
+
+        const source = fileSources.get(d.file);
+        if (source) {
+            const frame = renderCodeFrame(source, d.line, d.column);
+            if (frame) {
+                console.log(frame);
+            }
+        }
+
+        if (d.hint) {
+            console.log(`         💡 Fix: ${d.hint}`);
+        }
+        if (d.fix) {
+            console.log(`         🔧 Auto-fix available (run with --fix)`);
+        }
+        console.log("");
     }
     if (sorted.length > limit) {
-        console.log(`... +${sorted.length - limit} more (use --json for full export)`);
+        console.log(`... +${sorted.length - limit} more (use --json for full export, --html for interactive dashboard)`);
     }
+}
+
+export function renderCodeFrame(source: string, targetLine: number, targetCol: number, context = 1): string | null {
+    const lines = source.split("\n");
+    if (targetLine < 1 || targetLine > lines.length) return null;
+
+    const start = Math.max(0, targetLine - 1 - context);
+    const end = Math.min(lines.length, targetLine + context);
+    const output: string[] = [];
+
+    const lineNumWidth = String(end).length;
+
+    for (let i = start; i < end; i++) {
+        const currentLineNum = i + 1;
+        const lineContent = lines[i] ?? "";
+        const isTarget = currentLineNum === targetLine;
+        const prefix = isTarget ? " > " : "   ";
+        const paddedNum = String(currentLineNum).padStart(lineNumWidth, " ");
+        output.push(`         ${prefix}${paddedNum} | ${lineContent}`);
+
+        if (isTarget) {
+            const indent = " ".repeat(lineNumWidth);
+            const colPointer = " ".repeat(Math.max(0, targetCol - 1)) + "^";
+            output.push(`         ${indent}   | ${colPointer}`);
+        }
+    }
+
+    return output.join("\n");
 }
 
 function severityRank(severity: Diagnostic["severity"]): number {
@@ -119,8 +165,9 @@ function severityRank(severity: Diagnostic["severity"]): number {
     return 2;
 }
 
-function formatLocation(file: string, line: number): string {
-    return `${path.basename(file)}:${line}`;
+function formatLocation(file: string, line: number, column?: number): string {
+    const base = path.basename(file);
+    return column ? `${base}:${line}:${column}` : `${base}:${line}`;
 }
 
 export function printInspectReport(project: EuixProject, componentName: string): void {

@@ -2,7 +2,6 @@
     <data_model>
         <state id="anim_open" type="string">true</state>
         <state id="show_card" type="string">true</state>
-        <state id="selected_leave_anim" type="string">fade-out</state>
     </data_model>
 
     <animations>

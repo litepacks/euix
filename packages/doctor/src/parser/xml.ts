@@ -122,7 +122,7 @@ export function parseHtmlDocument(file: string, source: string): ParsedDocument 
 
 export function elementTextContent(node: ParsedElement): string {
     return node.children
-        .map((child) => (child.type === "text" ? child.data : child.type === "element" ? elementTextContent(child) : ""))
+        .map((child) => (child.type === "text" ? child.data : child.type === "element" ? " " + elementTextContent(child) + " " : ""))
         .join("")
         .trim();
 }

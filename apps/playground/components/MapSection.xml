@@ -5,9 +5,6 @@
         ]</state>
         <state id="status">Focused on Istanbul, Turkey. Use polygon tool to measure.</state>
         <state id="active_country">TR</state>
-        <state id="selected_id"></state>
-        <state id="toast_msg"></state>
-        <state id="toast_visible">false</state>
     </data_model>
 
     <actions>

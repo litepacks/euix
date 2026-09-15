@@ -3,7 +3,6 @@
         <state id="selected_label">None</state>
         <state id="selected_value">None</state>
         <state id="selected_chart">None</state>
-        <state id="chart_type">bar</state>
         <state id="exported_image"></state>
 
         <!-- Multi-Dataset Revenue & Expenses Chart Config -->
@@ -107,7 +106,8 @@
                 }
             }
         </state>
-    </data_model>
+        <state id="type" type="string"></state>
+</data_model>
 
     <flex direction="column" gap="24" class="w-full">
         <!-- Hero Header -->
@@ -238,13 +238,14 @@
                     height="260"
                     class="w-full"
                 >
-                    <on_chart_click action="RUN_SCRIPT">
-                        if ($evt.detail &amp;&amp; $evt.detail.value != null) {
+                    <on_chart_click action="RUN_SCRIPT"><![CDATA[
+                        if ($evt.detail && $evt.detail.value != null) {
                             $data.selected_chart = "Traffic Area";
                             $data.selected_label = $evt.detail.label || "N/A";
                             $data.selected_value = $evt.detail.value + " users";
                         }
-                    </on_chart_click>
+                    
+]]></on_chart_click>
                 </chart>
             </flex>
 

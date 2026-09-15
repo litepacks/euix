@@ -10,7 +10,8 @@
         <state id="api_users" type="array"></state>
         <state id="api_loading">false</state>
         <state id="api_error"></state>
-    </data_model>
+        <state id="user" type="string"></state>
+</data_model>
 
     <flex direction="column" gap="16" class="w-full bg-slate-900/90 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl mb-6">
         <flex class="border-b border-slate-800 pb-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between w-full min-w-0">

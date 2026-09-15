@@ -1,5 +1,5 @@
 import type { Diagnostic, EuixProject } from "../ir/types.js";
-import { ruleHint } from "../diagnostics/messages.js";
+import { getRuleCategory, getRuleExplanation, ruleHint } from "../diagnostics/messages.js";
 import {
     findElements,
     makeLocation,
@@ -12,18 +12,6 @@ import {
 /** Tags whose body must be plain text/JS — no nested XML elements (except whitelisted). */
 const INLINE_JS_TAGS = new Set(["computed"]);
 
-const SCRIPT_STEP_ALLOWED = new Set([
-    "path",
-    "value",
-    "operation",
-    "arg",
-    "tag",
-    "body",
-    "where",
-    "fields",
-    "param",
-    "return",
-]);
 
 const SCRIPT_EVENT_TAGS = new Set([
     "on_click",
@@ -77,14 +65,15 @@ function validateDocumentScriptBlocks(doc: ParsedDocument): Diagnostic[] {
     }
 
     for (const el of findElements(doc.root, new Set(["step"]))) {
+        const action = el.attributes.action?.toUpperCase() ?? "";
+        if (action !== "RUN_SCRIPT") continue;
         for (const child of el.children) {
             if (child.type !== "element") continue;
-            if (SCRIPT_STEP_ALLOWED.has(child.tagName)) continue;
             out.push(
                 xmlScriptDiag(
                     doc,
                     el,
-                    `Unexpected <${child.tagName}> inside <step> — wrap RUN_SCRIPT bodies in <![CDATA[ ... ]]>.`,
+                    `Unexpected <${child.tagName}> inside <step action="RUN_SCRIPT"> — wrap script bodies in <![CDATA[ ... ]]>.`,
                 ),
             );
         }
@@ -92,15 +81,14 @@ function validateDocumentScriptBlocks(doc: ParsedDocument): Diagnostic[] {
 
     for (const el of findElements(doc.root, SCRIPT_EVENT_TAGS)) {
         const action = el.attributes.action?.toUpperCase() ?? "";
-        if (action && action !== "RUN_SCRIPT" && action !== "SET_STATE" && action !== "RB") continue;
+        if (action !== "RUN_SCRIPT") continue;
         for (const child of el.children) {
             if (child.type !== "element") continue;
-            if (SCRIPT_STEP_ALLOWED.has(child.tagName)) continue;
             out.push(
                 xmlScriptDiag(
                     doc,
                     el,
-                    `Unexpected <${child.tagName}> inside <${el.tagName}> — wrap inline script in <![CDATA[ ... ]]>.`,
+                    `Unexpected <${child.tagName}> inside <${el.tagName} action="RUN_SCRIPT"> — wrap inline script in <![CDATA[ ... ]]>.`,
                 ),
             );
         }
@@ -117,6 +105,9 @@ function scanRawScriptTokens(source: string, file: string): Diagnostic[] {
         const openTag = match[1] ?? "";
         const tagName = (match[2] ?? "").toLowerCase();
         const body = match[3] ?? "";
+
+        // Only scan script blocks (computed, RUN_SCRIPT)
+        if (tagName !== "computed" && !/action=["']RUN_SCRIPT["']/i.test(openTag)) continue;
         if (/^\s*<!\[CDATA\[/m.test(body.trim())) continue;
 
         let unsafeHit: { token: string; index: number } | undefined;
@@ -192,11 +183,13 @@ function xmlUnsafeScriptDiag(
     return {
         id: `EUIX0001:${file}:${line}:${column}`,
         rule: "EUIX0001",
+        category: getRuleCategory("EUIX0001"),
         severity: "error",
         message:
             `XML-unsafe '${token}' in <${tagName}> body — EUIXEngine will fail to parse this file. ` +
             `Wrap the script in <![CDATA[ ... ]]> instead of escaping operators in JavaScript.`,
         hint: ruleHint("EUIX0001"),
+        explanation: getRuleExplanation("EUIX0001"),
         file,
         line,
         column,
@@ -217,11 +210,13 @@ function xmlMissingCdataDiag(
     return {
         id: `EUIX0001:${file}:${line}:${column}`,
         rule: "EUIX0001",
+        category: getRuleCategory("EUIX0001"),
         severity: "warning",
         message:
             `Inline JavaScript in <${tagName}> without CDATA — wrap the script in <![CDATA[ ... ]]> ` +
             `so future operators like '<=' or '&&' do not break XML parsing.`,
         hint: ruleHint("EUIX0001"),
+        explanation: getRuleExplanation("EUIX0001"),
         file,
         line,
         column,
@@ -242,9 +237,11 @@ function xmlScriptDiag(doc: ParsedDocument, el: ParsedElement, message: string):
     return {
         id: `EUIX0001:${doc.file}:${loc.line}:${loc.column}`,
         rule: "EUIX0001",
+        category: getRuleCategory("EUIX0001"),
         severity: "error",
         message,
         hint: ruleHint("EUIX0001"),
+        explanation: getRuleExplanation("EUIX0001"),
         file: doc.file,
         line: loc.line,
         column: loc.column,

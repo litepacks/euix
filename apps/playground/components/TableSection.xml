@@ -9,7 +9,8 @@
             <item name="Zeynep Kaya" role="UI Engineer" dept="Component DSL" status="Active" />
             <item name="Can Demir" role="QA Specialist" dept="Performance" status="Offline" />
         </state>
-    </data_model>
+        <state id="emp" type="string"></state>
+</data_model>
 
     <constants>
         <const id="table_th">px-4 py-3.5 text-left text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-950 border-b border-slate-800</const>

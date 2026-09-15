@@ -5,7 +5,6 @@
     
     <data_model>
         <state id="persistent_notes">This note persists across browser refresh!</state>
-        <state id="session_token" persist="session">active_session_abc123</state>
         <state id="persisted_counter" persist="local">0</state>
     </data_model>
 

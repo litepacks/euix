@@ -1,11 +1,9 @@
 <component_def name="webmcp-section">
     <data_model>
-        <state id="webmcp_open">true</state>
         <state id="task_title_input"></state>
         <state id="task_priority_input">Normal</state>
         <state id="task_category_input">Development</state>
         <state id="filter_query"></state>
-        <state id="simulated_agent_active" type="boolean">false</state>
         <state id="simulated_tool_selected">create_ticket</state>
         <state id="simulated_tool_payload">{"title": "Implement WebMCP Agent Integration", "priority": "High", "category": "Development"}</state>
         <state id="simulation_log">Agent simulation ready. Run a simulated browser AI tool call below.</state>
@@ -48,7 +46,7 @@
         <action_def name="ticket.toggle">
             <param name="id" required="true" />
 
-            <step action="RUN_SCRIPT">
+            <step action="RUN_SCRIPT"><![CDATA[
                 const tickets = $data.tickets || [];
                 const target = tickets.find(t => String(t.id) === String('{args.id}'));
                 if (target) {
@@ -56,7 +54,8 @@
                     $engine.setState('tickets', [...tickets]);
                     $data.simulation_log = `Toggled ticket '${target.title}' -> ${target.completed ? 'Completed' : 'Pending'}`;
                 }
-            </step>
+            
+]]></step>
 
             <return>{"success": true, "ticketId": "{args.id}"}</return>
         </action_def>
@@ -263,17 +262,17 @@
                     ></textarea>
 
                     <button class="mt-2 w-full py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
-                        <on_click action="RUN_SCRIPT">
+                        <on_click action="RUN_SCRIPT"><![CDATA[
                             try {
                                 const toolName = $data.simulated_tool_selected;
                                 const rawPayload = $data.simulated_tool_payload;
-                                const parsedArgs = rawPayload &amp;&amp; rawPayload.trim() ? JSON.parse(rawPayload) : {};
+                                const parsedArgs = rawPayload && rawPayload.trim() ? JSON.parse(rawPayload) : {};
                                 
                                 $data.simulation_log = `AI Agent executing '${toolName}'...`;
                                 
                                 if ($engine.webmcp) {
                                     const nativeCtx = $engine.webmcp.getNativeContext() || window._mockWebMCP;
-                                    if (nativeCtx &amp;&amp; typeof nativeCtx.executeTool === 'function') {
+                                    if (nativeCtx && typeof nativeCtx.executeTool === 'function') {
                                         nativeCtx.executeTool(toolName, parsedArgs)
                                             .then(res => {
                                                 $engine.setState('simulation_log', `✓ Success: ${JSON.stringify(res)}`);
@@ -298,7 +297,8 @@
                             } catch (e) {
                                 $data.simulation_log = `Error parsing JSON args: ${e.message}`;
                             }
-                        </on_click>
+                        
+]]></on_click>
                         <span>⚡ Dispatch Agent Tool Call</span>
                     </button>
                 </flex>

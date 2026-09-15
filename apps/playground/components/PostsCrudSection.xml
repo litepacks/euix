@@ -1,4 +1,12 @@
 <component_def name="posts-crud-section">
+    <data_model>
+        <state id="posts_open" type="boolean">true</state>
+        <state id="posts" type="array"></state>
+        <state id="posts_loading" type="boolean">false</state>
+        <state id="posts_error" type="string"></state>
+        <state id="new_post_title" type="string"></state>
+        <state id="new_post_body" type="string"></state>
+    </data_model>
     <collapse bind="data.posts_open" title="📡 Declarative Posts CRUD (JSONPlaceholder REST API)" class="border border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-slate-950/80 mb-6" header_class="w-full flex items-center justify-between p-4 bg-slate-900 border-none font-bold text-white hover:bg-slate-800/80 cursor-pointer text-sm" body_class="p-4 sm:p-5 flex flex-col gap-4">
         
         <!-- Header & Action Info -->

@@ -10,6 +10,7 @@ import { applyBaseline, loadBaseline, saveBaseline } from "../reporters/baseline
 import { diffAgainstBaseline, printBaselineDiff } from "../reporters/baselineDiff.js";
 import { doctorResultToJson } from "../reporters/json.js";
 import { doctorResultToSarif } from "../reporters/sarif.js";
+import { generateHtmlReport } from "../reporters/html.js";
 import { printDoctorReport, printInspectReport } from "../reporters/terminal.js";
 
 function printHelp(): void {
@@ -28,6 +29,9 @@ Options:
   --fuzz           Enable semantic fuzzing (requires --test)
   --json           JSON output
   --sarif          SARIF 2.1.0 output (CI / GitHub Code Scanning)
+  --html[=FILE]    Generate standalone interactive HTML report (default: doctor-report.html)
+  --report[=FILE]  Alias for --html
+  --open           Open generated HTML report in default browser
   --baseline=FILE  Suppress known diagnostics listed in baseline file
   --update-baseline  Write current diagnostics to baseline file (with --baseline)
   --fix            Apply auto-fixes (EUIX0001, EUIX1110/EUIX1102, EUIX1701)
@@ -41,6 +45,8 @@ Options:
 
 Examples:
   euix doctor
+  euix doctor --html
+  euix doctor --report=my-report.html --open
   euix doctor apps/playground/components
   euix doctor --test --graph
   euix doctor inspect fixtures/simple-component.xml
@@ -67,11 +73,20 @@ export function parseDoctorArgs(argv: string[], cwd = process.cwd()): DoctorOpti
     const fixArg = args.find((a) => a.startsWith("--fix="));
     const fixEnabled = args.includes("--fix") || Boolean(fixArg);
 
+    const htmlArg = args.find((a) => a.startsWith("--html="));
+    const reportArg = args.find((a) => a.startsWith("--report="));
+    const hasHtml = args.includes("--html") || args.includes("--report") || Boolean(htmlArg) || Boolean(reportArg);
+    const htmlVal = hasHtml
+        ? (htmlArg ? htmlArg.split("=")[1] : reportArg ? reportArg.split("=")[1] : true)
+        : undefined;
+
     return {
         root: cwd,
         target,
         json: args.includes("--json"),
         sarif: args.includes("--sarif"),
+        html: htmlVal,
+        openReport: args.includes("--open"),
         test: args.includes("--test"),
         flows: args.includes("--flows"),
         graph: args.includes("--graph"),
@@ -169,11 +184,35 @@ export async function runDoctorCli(argv: string[], cwd = process.cwd()): Promise
             suppressed = filtered.suppressed;
         }
 
+        if (options.html) {
+            const htmlContent = generateHtmlReport(result);
+            const reportPath =
+                typeof options.html === "string"
+                    ? path.resolve(cwd, options.html)
+                    : path.resolve(cwd, "doctor-report.html");
+            const dir = path.dirname(reportPath);
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(reportPath, htmlContent, "utf8");
+            console.log(`\n✨ HTML Report generated: ${reportPath}`);
+
+            if (options.openReport) {
+                const openCmd =
+                    process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+                try {
+                    import("node:child_process").then(({ exec }) => {
+                        exec(`${openCmd} "${reportPath}"`);
+                    });
+                } catch {
+                    // ignore failure to open
+                }
+            }
+        }
+
         if (options.sarif) {
             console.log(doctorResultToSarif(result));
         } else if (options.json) {
             console.log(doctorResultToJson(result));
-        } else {
+        } else if (!options.html) {
             printDoctorReport(result, options, suppressed);
         }
 

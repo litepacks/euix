@@ -27,6 +27,7 @@
     "lint:fix": "npm run lint:fix -w euixjs",
     "format": "npm run format -w euixjs",
     "doctor": "npm run build -w @euix/doctor && node packages/core/bin/euix.js doctor",
+    "doctor:report": "npm run build -w @euix/doctor && node packages/core/bin/euix.js doctor --html",
     "doctor:build": "npm run build -w @euix/doctor",
     "doctor:test": "npm run test -w @euix/doctor",
     "doctor:pre-commit": "node packages/doctor/bin/euix-doctor-pre-commit.js",

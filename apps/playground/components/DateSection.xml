@@ -1,15 +1,8 @@
 <component_def name="date-section">
     <data_model>
         <state id="sampleDate">2026-08-20T14:30:00Z</state>
-        <state id="startDate">2026-08-01</state>
-        <state id="endDate">2026-08-20</state>
         <state id="currentLocale">en-US</state>
         <state id="currentTimeZone">UTC</state>
-        <state id="calcResult">2026-08-20T14:30:00Z</state>
-        <state id="customFormatPattern">DD/MM/YYYY HH:mm</state>
-        <state id="logs" type="array">[
-            {"id": "1", "msg": "Intl & Date Suite initialized", "time": "2026-08-20T14:30:00Z"}
-        ]</state>
     </data_model>
 
     <flex direction="column" gap="24" class="w-full">
@@ -68,15 +61,17 @@
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Presets</span>
                 <flex direction="row" gap="4">
                     <button class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-slate-700">
-                        <on_click action="RUN_SCRIPT">
+                        <on_click action="RUN_SCRIPT"><![CDATA[
                             $data.sampleDate = new Date().toISOString();
-                        </on_click>
+                        
+]]></on_click>
                         Now
                     </button>
                     <button class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-slate-700">
-                        <on_click action="RUN_SCRIPT">
+                        <on_click action="RUN_SCRIPT"><![CDATA[
                             $data.sampleDate = "2026-01-01T00:00:00Z";
-                        </on_click>
+                        
+]]></on_click>
                         New Year
                     </button>
                 </flex>
@@ -87,15 +82,17 @@
                 <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Add Days</span>
                 <flex direction="row" gap="4">
                     <button class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-emerald-500">
-                        <on_click action="RUN_SCRIPT">
+                        <on_click action="RUN_SCRIPT"><![CDATA[
                             $data.sampleDate = $date.add($data.sampleDate, 7, 'day').toISOString();
-                        </on_click>
+                        
+]]></on_click>
                         +7 Days
                     </button>
                     <button class="flex-1 py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white text-xs font-bold rounded-xl transition cursor-pointer border border-rose-500">
-                        <on_click action="RUN_SCRIPT">
+                        <on_click action="RUN_SCRIPT"><![CDATA[
                             $data.sampleDate = $date.subtract($data.sampleDate, 7, 'day').toISOString();
-                        </on_click>
+                        
+]]></on_click>
                         -7 Days
                     </button>
                 </flex>

@@ -22,6 +22,14 @@ const IGNORED_DIRS = new Set([
     ".git",
     ".next",
     ".cache",
+    ".docboot",
+    ".docup",
+    "dist-docs",
+    "playwright-report",
+    "test-results",
+    ".vscode",
+    ".vscode-test",
+    "scratch",
 ]);
 
 export function fileKind(ext: string): EuixFile["kind"] | null {

@@ -52,7 +52,7 @@
                 <flex direction="row" align="center" justify="between" wrap="true" gap="10" class="w-full">
                     <flex direction="row" align="center" gap="8" wrap="true">
                         <button class="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-purple-600/20 cursor-pointer flex items-center gap-1.5">
-                            <on_click action="RUN_SCRIPT">
+                            <on_click action="RUN_SCRIPT"><![CDATA[
                                 const t0 = performance.now();
                                 const items = Array.from({ length: 1000 }, (_, i) => ({
                                     id: `item-${i + 1}`,
@@ -64,12 +64,13 @@
                                 }));
                                 $data.virtual_items = items;
                                 $data.virtual_render_time = (performance.now() - t0).toFixed(2);
-                            </on_click>
+                            
+]]></on_click>
                             🚀 Load 1,000 Items
                         </button>
 
                         <button class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-600/20 cursor-pointer flex items-center gap-1.5">
-                            <on_click action="RUN_SCRIPT">
+                            <on_click action="RUN_SCRIPT"><![CDATA[
                                 const t0 = performance.now();
                                 const items = Array.from({ length: 5000 }, (_, i) => ({
                                     id: `item-${i + 1}`,
@@ -81,12 +82,13 @@
                                 }));
                                 $data.virtual_items = items;
                                 $data.virtual_render_time = (performance.now() - t0).toFixed(2);
-                            </on_click>
+                            
+]]></on_click>
                             ⚡ Load 5,000 Items
                         </button>
 
                         <button class="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-pink-600/20 cursor-pointer flex items-center gap-1.5">
-                            <on_click action="RUN_SCRIPT">
+                            <on_click action="RUN_SCRIPT"><![CDATA[
                                 const t0 = performance.now();
                                 const items = Array.from({ length: 10000 }, (_, i) => ({
                                     id: `item-${i + 1}`,
@@ -98,7 +100,8 @@
                                 }));
                                 $data.virtual_items = items;
                                 $data.virtual_render_time = (performance.now() - t0).toFixed(2);
-                            </on_click>
+                            
+]]></on_click>
                             🔥 Load 10,000 Items
                         </button>
 

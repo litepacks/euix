@@ -34,6 +34,8 @@ import {
     formatReadonlyStateMessage,
     formatUnresolvedComponentMessage,
     formatUnusedStateMessage,
+    getRuleCategory,
+    getRuleExplanation,
     ruleHint,
 } from "./messages.js";
 
@@ -446,9 +448,11 @@ function diag(
     return {
         id: `${rule}:${file}:${line}:${column}`,
         rule,
+        category: getRuleCategory(rule),
         severity,
         message,
-        hint,
+        hint: hint ?? ruleHint(rule),
+        explanation: getRuleExplanation(rule),
         file,
         line,
         column,

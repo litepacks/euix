@@ -1,4 +1,10 @@
 <component_def name="code-viewer-modal">
+    <data_model>
+        <state id="code_modal_open" type="boolean">false</state>
+        <state id="code_modal_title" type="string"></state>
+        <state id="code_modal_lines" type="string"></state>
+        <state id="code_modal_content" type="string"></state>
+    </data_model>
     <!-- Declarative External JS & CSS Loaders for Highlight.js -->
     <use_script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" />
     <use_style src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" />
@@ -37,7 +43,11 @@
                         <pre id="code_line_numbers" class="text-right text-slate-500 select-none border-r border-slate-700/50 pr-3 font-mono text-xs leading-relaxed shrink-0 min-w-[32px] whitespace-pre">1</pre>
 
                         <!-- Code Pre/Code Area -->
-                        <pre class="whitespace-pre-wrap break-words leading-relaxed select-all w-full min-w-0"><code class="language-xml"><on_state_change watch="data.code_modal_content" action="RUN_SCRIPT">const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }</on_state_change><on_mount action="RUN_SCRIPT">const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }</on_mount>{data.code_modal_content}</code></pre>
+                        <pre class="whitespace-pre-wrap break-words leading-relaxed select-all w-full min-w-0"><code class="language-xml"><on_state_change watch="data.code_modal_content" action="RUN_SCRIPT"><![CDATA[
+const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }
+]]></on_state_change><on_mount action="RUN_SCRIPT"><![CDATA[
+const runHljs = () => { if (!window.hljs || !$el) return false; delete $el.dataset.highlighted; const raw = $data.code_modal_content || ""; $el.textContent = raw; window.hljs.highlightElement($el); const lines = raw.split('\n').length; const nEl = document.getElementById('code_line_numbers'); if (nEl) nEl.textContent = Array.from({length: lines}, (_, i) => i + 1).join('\n'); return true; }; if (!runHljs()) { let tries = 0; const t = setInterval(() => { tries++; if (runHljs() || tries > 40) clearInterval(t); }, 50); }
+]]></on_mount>{data.code_modal_content}</code></pre>
                     </div>
 
                     <!-- Footer -->

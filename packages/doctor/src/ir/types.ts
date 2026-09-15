@@ -283,6 +283,10 @@ export interface Diagnostic {
     message: string;
     /** Actionable fix suggestion shown below the message in CLI output. */
     hint?: string;
+    /** In-depth explanation of why the diagnostic triggered and potential runtime risks. */
+    explanation?: string;
+    /** Logical category of the rule (e.g., state, reactivity, action, composition, api, router). */
+    category?: string;
     /** Auto-fix edits when the rule supports deterministic repair. */
     fix?: DiagnosticFix;
     file: string;
@@ -459,6 +463,10 @@ export interface DoctorOptions {
     target?: string;
     json?: boolean;
     sarif?: boolean;
+    /** Output interactive standalone HTML report (path string or boolean for default ./doctor-report.html). */
+    html?: boolean | string;
+    /** Automatically open generated HTML report in the system default browser. */
+    openReport?: boolean;
     test?: boolean;
     flows?: boolean;
     graph?: boolean;

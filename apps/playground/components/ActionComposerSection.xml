@@ -1,6 +1,5 @@
 <component_def name="action-composer-section">
     <data_model>
-        <state id="composer_open">true</state>
         <state id="composer_status">Ready</state>
         <state id="composer_tasks" type="array"></state>
         <state id="action_logs" type="array"></state>
@@ -121,10 +120,11 @@
                 <button class="px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 active:scale-95 text-rose-400 font-bold text-xs rounded-xl transition cursor-pointer border border-rose-500/20 flex items-center gap-2 ml-auto">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                     <span>Clear Logs</span>
-                    <on_click action="RUN_SCRIPT">
+                    <on_click action="RUN_SCRIPT"><![CDATA[
                         $data.action_logs = [];
                         $data.last_notification = "Cleared";
-                    </on_click>
+                    
+]]></on_click>
                 </button>
             </flex>
         </flex>

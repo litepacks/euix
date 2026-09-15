@@ -67,11 +67,16 @@ export function expandComposition(project: EuixProject): void {
     linkComposition(project);
 }
 
+function normalizeCompName(name: string): string {
+    return name.toLowerCase().replace(/[-_]/g, "");
+}
+
 function buildRegistry(project: EuixProject): ComponentRegistry {
     const byName = new Map<string, ComponentInfo>();
     const byFile = new Map<string, ComponentInfo>();
     for (const comp of project.components.values()) {
         byName.set(comp.name.toLowerCase(), comp);
+        byName.set(normalizeCompName(comp.name), comp);
         byFile.set(canonicalFilePath(comp.file), comp);
     }
     return { byName, byFile };
@@ -327,7 +332,8 @@ function resolveReference(input: {
     loc: ComponentReference["location"];
 }): ComponentReference {
     const { doc, owner, registry, kind, refName, srcRaw, el, loc } = input;
-    const srcPath = srcRaw ? resolveImportPath(doc.file, srcRaw) : null;
+    const isExternal = srcRaw ? /^(?:https?:)?\/\/|^(?:data|blob):/i.test(srcRaw) : false;
+    const srcPath = srcRaw && !isExternal ? resolveImportPath(doc.file, srcRaw) : null;
     const propsPassed = collectPassedProps(el);
     const propValues = collectPassedPropValues(el);
 
@@ -336,7 +342,7 @@ function resolveReference(input: {
         resolved = registry.byFile.get(canonicalFilePath(srcPath)) ?? null;
     }
     if (!resolved && refName) {
-        resolved = registry.byName.get(refName.toLowerCase()) ?? null;
+        resolved = registry.byName.get(refName.toLowerCase()) ?? registry.byName.get(normalizeCompName(refName)) ?? null;
     }
 
     const refId = id("compref", owner.id, kind, refName ?? tagLabel(el), String(el.start));
@@ -349,7 +355,7 @@ function resolveReference(input: {
         srcPath,
         resolvedComponentId: resolved?.id ?? null,
         resolvedComponentName: resolved?.name ?? null,
-        resolvedFile: resolved?.file ?? srcPath,
+        resolvedFile: resolved?.file ?? (isExternal ? srcRaw : srcPath),
         propsPassed,
         propValues,
         missingRequiredProps: [],
@@ -393,16 +399,30 @@ function findMissingRequiredPropsForProject(
 
 function inferNameFromSrc(src?: string): string | null {
     if (!src) return null;
+    if (/^(?:https?:)?\/\/|^(?:data|blob):/i.test(src)) return null;
     const base = path.basename(src, path.extname(src));
     return base || null;
 }
 
 export function resolveImportPath(fromFile: string, src: string): string {
+    if (/^(?:https?:)?\/\/|^(?:data|blob):/i.test(src)) return src;
     if (src.startsWith("/")) return path.normalize(src);
-    return path.normalize(path.join(path.dirname(fromFile), src));
+
+    const dir = path.dirname(fromFile);
+    const candidate1 = path.normalize(path.join(dir, src));
+    if (fs.existsSync(candidate1)) return candidate1;
+
+    const candidate2 = path.normalize(path.join(dir, path.basename(src)));
+    if (fs.existsSync(candidate2)) return candidate2;
+
+    const candidate3 = path.normalize(path.join(path.dirname(dir), src));
+    if (fs.existsSync(candidate3)) return candidate3;
+
+    return candidate1;
 }
 
 function ingestDiscoveredFile(project: EuixProject, filePath: string): boolean {
+    if (/^(?:https?:)?\/\/|^(?:data|blob):/i.test(filePath)) return false;
     const normalized = path.normalize(filePath);
     if (!fs.existsSync(normalized)) return false;
     const canonical = canonicalFilePath(normalized);
@@ -448,6 +468,7 @@ function mergeCollected(project: EuixProject, collected: ReturnType<typeof colle
 export function finalizeCompositionRefs(project: EuixProject): void {
     for (const ref of project.componentRefs.values()) {
         if (!ref.resolvedComponentId) continue;
+        if (ref.kind === "import-tag") continue;
         const child = project.components.get(ref.resolvedComponentId);
         if (!child) continue;
         ref.missingRequiredProps = findMissingRequiredPropsForProject(project, child, ref.propsPassed);

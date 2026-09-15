@@ -27,9 +27,10 @@
             </flex>
             <flex direction="row" align="center" gap="8" class="flex-wrap">
                 <button type="button" class="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-all shadow-sm flex items-center gap-1">
-                    <on_click action="RUN_SCRIPT">
+                    <on_click action="RUN_SCRIPT"><![CDATA[
                         if (window.confetti) window.confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
-                    </on_click>
+                    
+]]></on_click>
                     🎉 Celebrate Sprint
                 </button>
                 <span class="px-2.5 py-1 bg-purple-500/20 text-purple-300 font-extrabold text-xs rounded-xl border border-purple-500/30 hidden sm:inline-block">📄 295 Lines XML</span>

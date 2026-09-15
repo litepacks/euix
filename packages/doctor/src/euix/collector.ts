@@ -34,7 +34,7 @@ import { id } from "../utils/location.js";
 const COMPONENT_TAGS = new Set(["component", "component_def"]);
 const STATE_TAGS = new Set(["state"]);
 const COMPUTED_TAGS = new Set(["computed"]);
-const WATCH_TAGS = new Set(["watch"]);
+const WATCH_TAGS = new Set(["watch", "on_state_change"]);
 const ACTION_TAGS = new Set(["action", "action_def"]);
 const ROUTE_TAGS = new Set(["route"]);
 const SLOT_TAGS = new Set(["slot"]);
@@ -270,7 +270,7 @@ function collectComputed(doc: ParsedDocument, scope: ParsedElement, comp: Compon
 
 function collectWatchers(doc: ParsedDocument, scope: ParsedElement, comp: ComponentInfo, watchers: WatchInfo[]): void {
     for (const el of findElements(scope, WATCH_TAGS)) {
-        const path = el.attributes.path ?? el.attributes.key ?? el.attributes.name ?? el.attributes.id ?? "";
+        const path = el.attributes.watch ?? el.attributes.path ?? el.attributes.key ?? el.attributes.name ?? el.attributes.id ?? "";
         const name = path || `watch_${watchers.length}`;
         const steps = findElements(el, new Set(["step"]));
         const body = steps.length
@@ -367,41 +367,52 @@ function collectPropsAndSlots(
     props: PropInfo[],
     slots: SlotInfo[],
 ): void {
-    for (const el of findElements(scope, new Set(["param", "prop"]))) {
-        const name = el.attributes.name ?? el.attributes.id;
-        if (!name) continue;
-        const propId = id("prop", comp.id, name);
-        const enumRaw = el.attributes.enum;
-        props.push({
-            id: propId,
-            name,
-            file: doc.file,
-            componentId: comp.id,
-            componentName: comp.name,
-            required: el.attributes.required === "true",
-            type: el.attributes.type ?? null,
-            enumValues: enumRaw ? enumRaw.split(",").map((v) => v.trim()).filter(Boolean) : null,
-            defaultValue: el.attributes.default ?? null,
-            consumers: [],
-            passedFrom: [],
-        });
-        comp.props.push(name);
-    }
-
-    for (const el of findElements(scope, SLOT_TAGS)) {
-        const name = el.attributes.name ?? "default";
-        const slotId = id("slot", comp.id, name);
-        const slot: SlotInfo = {
-            id: slotId,
-            name,
-            file: doc.file,
-            componentId: comp.id,
-            componentName: comp.name,
-            used: false,
-        };
-        slots.push(slot);
-        comp.slots.push(slot);
-    }
+    walkElements(scope, (el, parent) => {
+        if (el.tagName === "param" || el.tagName === "prop") {
+            const parentTag = parent?.tagName?.toLowerCase();
+            if (
+                parentTag === "action_def" ||
+                parentTag === "action" ||
+                parentTag === "actions" ||
+                parentTag === "tool" ||
+                parentTag === "webmcp" ||
+                parentTag === "step"
+            ) {
+                return;
+            }
+            const name = el.attributes.name ?? el.attributes.id;
+            if (!name) return;
+            const propId = id("prop", comp.id, name);
+            const enumRaw = el.attributes.enum;
+            props.push({
+                id: propId,
+                name,
+                file: doc.file,
+                componentId: comp.id,
+                componentName: comp.name,
+                required: el.attributes.required === "true",
+                type: el.attributes.type ?? null,
+                enumValues: enumRaw ? enumRaw.split(",").map((v) => v.trim()).filter(Boolean) : null,
+                defaultValue: el.attributes.default ?? null,
+                consumers: [],
+                passedFrom: [],
+            });
+            comp.props.push(name);
+        } else if (SLOT_TAGS.has(el.tagName)) {
+            const name = el.attributes.name ?? "default";
+            const slotId = id("slot", comp.id, name);
+            const slot: SlotInfo = {
+                id: slotId,
+                name,
+                file: doc.file,
+                componentId: comp.id,
+                componentName: comp.name,
+                used: false,
+            };
+            slots.push(slot);
+            comp.slots.push(slot);
+        }
+    });
 }
 
 function collectApiEndpoints(
@@ -693,8 +704,11 @@ function collectEventsAndBindings(
                 comp.eventIds.push(eventId);
             }
 
-            if (attr === "bind" || attr.startsWith("bind.")) {
-                const bindingId = id("binding", comp.id, target, attr);
+            if (attr === "bind" || attr.startsWith("bind.") || attr.startsWith("bind:")) {
+                const bindingId = id("binding", comp.id, target, attr, value, String(el.start));
+                const rawName = value.replace(/^data\./, "").trim();
+                const deps = extractExpressionRefs(value);
+                if (rawName && !deps.includes(rawName)) deps.push(rawName);
                 bindings.push({
                     id: bindingId,
                     kind: "attribute",
@@ -704,35 +718,34 @@ function collectEventsAndBindings(
                     file: doc.file,
                     componentId: comp.id,
                     componentName: comp.name,
-                    dependencies: extractExpressionRefs(value),
+                    dependencies: deps,
                     location: makeLocation(doc.file, doc.source, el.start, el.end),
                 });
-            }
-
-            if (attr === "if" || attr === "show" || attr === "unless" || attr === "each") {
-                const bindingId = id("binding", comp.id, target, attr);
+            } else if (value.includes("{")) {
+                const exprs = extractBindingsFromText(value);
+                for (const expr of exprs) {
+                    const bindingId = id("binding", comp.id, target, attr, expr, String(el.start));
+                    bindings.push({
+                        id: bindingId,
+                        kind: "attribute",
+                        expression: expr,
+                        sourceId: expr,
+                        target: `${target}[${attr}]`,
+                        file: doc.file,
+                        componentId: comp.id,
+                        componentName: comp.name,
+                        dependencies: extractExpressionRefs(expr),
+                        location: makeLocation(doc.file, doc.source, el.start, el.end),
+                    });
+                }
+            } else if (attr === "if" || attr === "show" || attr === "unless" || attr === "each" || attr === "condition") {
+                const bindingId = id("binding", comp.id, target, attr, value, String(el.start));
                 bindings.push({
                     id: bindingId,
                     kind: "attribute",
                     expression: value,
                     sourceId: value,
                     target: `${target}[${attr}]`,
-                    file: doc.file,
-                    componentId: comp.id,
-                    componentName: comp.name,
-                    dependencies: extractExpressionRefs(value),
-                    location: makeLocation(doc.file, doc.source, el.start, el.end),
-                });
-            }
-
-            if (attr === "condition" && (target === "if" || target === "show" || target === "unless")) {
-                const bindingId = id("binding", comp.id, target, "condition");
-                bindings.push({
-                    id: bindingId,
-                    kind: "attribute",
-                    expression: value,
-                    sourceId: value,
-                    target: `${target}[condition]`,
                     file: doc.file,
                     componentId: comp.id,
                     componentName: comp.name,
@@ -742,10 +755,24 @@ function collectEventsAndBindings(
             }
         }
 
+        if (
+            el.tagName === "state" ||
+            el.tagName === "computed" ||
+            el.tagName === "code" ||
+            el.tagName === "pre" ||
+            el.tagName.startsWith("on_") ||
+            el.tagName === "script" ||
+            el.tagName === "style" ||
+            (el.tagName === "step" && el.attributes.action?.toUpperCase() === "RUN_SCRIPT") ||
+            (el.tagName === "field" && el.attributes.template !== undefined)
+        ) {
+            return;
+        }
+
         for (const child of el.children) {
             if (child.type !== "text") continue;
             for (const expr of extractBindingsFromText(child.data)) {
-                const bindingId = id("binding", comp.id, target, "text", expr);
+                const bindingId = id("binding", comp.id, target, "text", expr, String(el.start));
                 bindings.push({
                     id: bindingId,
                     kind: "text",

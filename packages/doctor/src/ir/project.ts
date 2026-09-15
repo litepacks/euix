@@ -64,6 +64,15 @@ export function ingestFile(project: EuixProject, file: EuixFile): void {
         const doc = parseHtmlDocument(file.path, file.source);
         mergeCollected(project, collectFromDocument(doc));
 
+        if (file.kind === "html") {
+            for (const m of file.source.matchAll(/<script[^>]*type=["']application\/euix["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+                if (m[1]) {
+                    const embedded = parseXmlDocument(`${file.path}#euix-script`, m[1]);
+                    mergeCollected(project, collectFromDocument(embedded));
+                }
+            }
+        }
+
         const js = parseJsFile(file.path, file.source);
         for (const tpl of js.templateLiterals.filter((t) => t.isEuix)) {
             const embedded = parseXmlDocument(`${file.path}#tpl@${tpl.start}`, tpl.source);
@@ -80,12 +89,19 @@ export function ingestFile(project: EuixProject, file: EuixFile): void {
 }
 
 function ingestCompanionJsFiles(project: EuixProject, absTarget: string): void {
-    if (!fs.existsSync(absTarget) || !fs.statSync(absTarget).isFile()) return;
+    if (absTarget.includes("fixtures")) return;
 
     const dirs = new Set<string>();
-    const xmlDir = path.dirname(absTarget);
-    dirs.add(path.join(xmlDir, "..", "client"));
-    dirs.add(path.join(xmlDir, "..", "js"));
+    const baseDir = fs.existsSync(absTarget) && fs.statSync(absTarget).isFile()
+        ? path.dirname(absTarget)
+        : absTarget;
+
+    if (path.basename(baseDir).toLowerCase() === "components") {
+        dirs.add(path.join(baseDir, "..", "client"));
+        dirs.add(path.join(baseDir, "..", "js"));
+        dirs.add(path.join(baseDir, "..", "src", "client"));
+        dirs.add(path.join(baseDir, "..", "src"));
+    }
     dirs.add(path.join(project.root, "src", "client"));
     dirs.add(path.join(project.root, "src"));
 
@@ -103,7 +119,7 @@ function ingestCompanionJsFiles(project: EuixProject, absTarget: string): void {
             if (!entry.isFile()) continue;
             const ext = path.extname(entry.name).toLowerCase();
             const kind = fileKind(ext);
-            if (!kind || kind === "xml" || kind === "html") continue;
+            if (!kind || kind === "html" || kind === "xml") continue;
             const full = path.normalize(path.join(dir, entry.name));
             if (known.has(canonicalFilePath(full))) continue;
             const source = fs.readFileSync(full, "utf8");

@@ -20,7 +20,7 @@
                         <on_click action="MUTATE_STATE">
                             <path>data.todos</path>
                             <operation>REMOVE</operation>
-                            <where field="id" equals="{data.selected_todo_id}" />
+                            <where field="id" equals="{data.deleting_todo_id}" />
                         </on_click>
                     </button>
                     <else>

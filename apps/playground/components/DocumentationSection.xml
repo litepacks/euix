@@ -5,8 +5,6 @@
 
     <data_model>
         <state id="active_doc_topic" type="string">getting_started</state>
-        <state id="doc_search" type="string"></state>
-        <state id="copy_code_status" type="string">Copy Code</state>
     </data_model>
 
     <flex direction="column" gap="16" class="w-full">
@@ -210,7 +208,7 @@
 
             <!-- Right Detail View (Dynamic Topic Reader) -->
             <flex direction="column" gap="16" class="flex-1 min-w-0 w-full p-6 sm:p-8 bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-800 shadow-xl text-slate-100">
-                <on_mount action="RUN_SCRIPT">
+                <on_mount action="RUN_SCRIPT"><![CDATA[
                     const hl = () => {
                         if (typeof window === "undefined" || typeof document === "undefined" || !$el) return true;
                         if (!window.hljs) return false;
@@ -224,21 +222,23 @@
                         var _hl_attempts = 0;
                         var _hl_timer = setInterval(function() {
                             _hl_attempts = _hl_attempts + 1;
-                            if (hl() || _hl_attempts &gt; 40) clearInterval(_hl_timer);
+                            if (hl() || _hl_attempts > 40) clearInterval(_hl_timer);
                         }, 50);
                     }
-                </on_mount>
+                
+]]></on_mount>
 
-                <on_state_change watch="data.active_doc_topic" action="RUN_SCRIPT">
+                <on_state_change watch="data.active_doc_topic" action="RUN_SCRIPT"><![CDATA[
                     setTimeout(() => {
-                        if (window.hljs &amp;&amp; $el) {
+                        if (window.hljs && $el) {
                             $el.querySelectorAll('pre code').forEach((b) => {
                                 delete b.dataset.highlighted;
                                 window.hljs.highlightElement(b);
                             });
                         }
                     }, 30);
-                </on_state_change>
+                
+]]></on_state_change>
 
                 <!-- TOPIC 1: Getting Started -->
                 <if condition="{data.active_doc_topic} == 'getting_started'">

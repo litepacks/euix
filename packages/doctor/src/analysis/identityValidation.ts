@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import type { Diagnostic, EuixFile, EuixProject } from "../ir/types.js";
-import { ruleHint } from "../diagnostics/messages.js";
+import { getRuleCategory, getRuleExplanation, ruleHint } from "../diagnostics/messages.js";
 import { findElements, makeLocation, parseHtmlDocument, parseXmlDocument, type ParsedDocument, type ParsedElement } from "../parser/xml.js";
 import { canonicalFilePath } from "../utils/paths.js";
 
@@ -73,9 +73,11 @@ export function validateDuplicateApiTags(project: EuixProject): Diagnostic[] {
             diagnostics.push({
                 id: `EUIX1703:${entry.file}:${entry.line}:${entry.column}`,
                 rule: "EUIX1703",
+                category: getRuleCategory("EUIX1703"),
                 severity: "error",
                 message: `Duplicate api_endpoint tag '${tag}' — tags must be unique per project scope.`,
                 hint: ruleHint("EUIX1703"),
+                explanation: getRuleExplanation("EUIX1703"),
                 file: entry.file,
                 line: entry.line,
                 column: entry.column,
@@ -92,15 +94,18 @@ export function validateComponentSrcPaths(project: EuixProject): Diagnostic[] {
 
     for (const ref of project.componentRefs.values()) {
         if (!ref.srcPath) continue;
+        if (/^(?:https?:)?\/\/|^(?:data|blob):/i.test(ref.srcPath)) continue;
 
         const abs = canonicalFilePath(ref.srcPath);
         if (!fs.existsSync(abs)) {
             diagnostics.push({
                 id: `EUIX1404:${ref.file}:${ref.location.line}:${ref.location.column}`,
                 rule: "EUIX1404",
+                category: getRuleCategory("EUIX1404"),
                 severity: "error",
                 message: `Component src '${displaySrc(ref.srcPath)}' not found (referenced from '${ref.parentComponentName}').`,
                 hint: ruleHint("EUIX1404"),
+                explanation: getRuleExplanation("EUIX1404"),
                 file: ref.file,
                 line: ref.location.line,
                 column: ref.location.column,
@@ -115,9 +120,11 @@ export function validateComponentSrcPaths(project: EuixProject): Diagnostic[] {
             diagnostics.push({
                 id: `EUIX1404:${ref.file}:${ref.location.line}:${ref.location.column}`,
                 rule: "EUIX1404",
+                category: getRuleCategory("EUIX1404"),
                 severity: "error",
                 message: `Component src '${displaySrc(ref.srcPath)}' exists but defines no EUIX component.`,
                 hint: ruleHint("EUIX1404"),
+                explanation: getRuleExplanation("EUIX1404"),
                 file: ref.file,
                 line: ref.location.line,
                 column: ref.location.column,
@@ -190,9 +197,11 @@ function checkDuplicateElements(
         diagnostics.push({
             id: `${rule}:${doc.file}:${loc.line}:${loc.column}`,
             rule,
+            category: getRuleCategory(rule),
             severity: "error",
             message: `Duplicate ${kind} id '${name}' in component '${componentName}'.`,
             hint: ruleHint(rule),
+            explanation: getRuleExplanation(rule),
             file: doc.file,
             line: loc.line,
             column: loc.column,

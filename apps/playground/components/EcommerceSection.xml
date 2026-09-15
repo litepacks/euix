@@ -4,12 +4,9 @@
 
     <data_model>
         <state id="ecommerce_products" type="array"></state>
-        <state id="ecommerce_loading" type="string">false</state>
-        <state id="ecommerce_error" type="string"></state>
+        <state id="ecommerce_loading" type="boolean">false</state>
         <state id="cart_items" type="array"></state>
-        <state id="cart_open" type="string">true</state>
-        <state id="search_keyword" type="string"></state>
-        <state id="selected_category" type="string">all</state>
+        <state id="cart_open" type="boolean">true</state>
     </data_model>
 
     <!-- XHR Data Hydration Hook -->
@@ -128,9 +125,10 @@
                             🧹 Clear Cart
                         </button>
                         <button type="button" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer transition-colors shadow-sm">
-                            <on_click action="RUN_SCRIPT">
+                            <on_click action="RUN_SCRIPT"><![CDATA[
                                 if (window.confetti) window.confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-                            </on_click>
+                            
+]]></on_click>
                             <on_click action="MUTATE_STATE" operation="CLEAR">
                                 <path>data.cart_items</path>
                             </on_click>

@@ -12,11 +12,15 @@ export function findStateInScope(
     if (exact) return exact;
 
     const component = project.components.get(componentId);
-    if (!component) return undefined;
+    if (component) {
+        const sameFile = [...project.states.values()].find(
+            (s) => isSameFile(s.file, component.file) && s.name === stateName,
+        );
+        if (sameFile) return sameFile;
+    }
 
-    return [...project.states.values()].find(
-        (s) => isSameFile(s.file, component.file) && s.name === stateName,
-    );
+    // Fallback: resolve from shared root or project states
+    return [...project.states.values()].find((s) => s.name === stateName);
 }
 
 export function resolveStateId(
