@@ -23,6 +23,12 @@ export class InspectorPanel {
     initDOM() {
         if (typeof document === "undefined") return;
 
+        // Clean up any existing HUD or panel elements to guarantee DOM singleton
+        const existingHud = document.getElementById("euix-inspector-hud");
+        if (existingHud && existingHud.parentNode) existingHud.parentNode.removeChild(existingHud);
+        const existingPanel = document.getElementById("euix-devtools-panel");
+        if (existingPanel && existingPanel.parentNode) existingPanel.parentNode.removeChild(existingPanel);
+
         // 1. DevTools Bottom HUD Bar (Compact Floating Card)
         this.hudEl = document.createElement("div");
         this.hudEl.id = "euix-inspector-hud";

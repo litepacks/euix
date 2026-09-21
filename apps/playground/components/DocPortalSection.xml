@@ -6,7 +6,7 @@
     <data_model>
         <state id="active_tab" type="string">overview</state>
         <state id="active_doc_topic" type="string">getting_started</state>
-        <state id="counter_value" type="string">0</state>
+        <state id="counter_value" type="number">0</state>
         <computed id="doubled_counter" deps="counter_value">
             return (parseInt($data.counter_value || 0, 10) * 2);
         </computed>

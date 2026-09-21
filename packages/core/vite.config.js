@@ -51,7 +51,7 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
-    bail: 0,
+    bail: 1,
     testTimeout: 30000,
     teardownTimeout: 2000,
     fileParallelism: true,

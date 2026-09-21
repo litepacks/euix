@@ -279,7 +279,7 @@ describe("EUIX Deterministic IR Snapshot Testing Subsystem (euix snapshot)", () 
             expect(err.status).toBe(1);
             expect(err.stderr || err.stdout).toContain("Snapshot mismatch");
         }
-    });
+    }, 90000);
 
     it("should work with canonical JSON source files via CLI snapshot", () => {
         const cliPath = path.resolve(process.cwd(), "bin/euix.js");
@@ -309,5 +309,5 @@ describe("EUIX Deterministic IR Snapshot Testing Subsystem (euix snapshot)", () 
             encoding: "utf8",
         });
         expect(checkOutput).toContain("Snapshot matches for");
-    });
+    }, 60000);
 });

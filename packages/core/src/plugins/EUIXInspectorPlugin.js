@@ -43,7 +43,7 @@ export class EUIXInspector {
     init() {
         if (typeof document === "undefined") return;
 
-        this.enabled = true;
+        this.enabled = Boolean(this.options.autoOpen || this.options.active);
         this.history = new EUIXStateHistoryManager(this.engine, this.options);
         this.overlay = new OverlayManager();
         this.panel = new InspectorPanel(this);
