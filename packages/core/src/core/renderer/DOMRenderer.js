@@ -1423,6 +1423,14 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
     }
 
     if (isTxtNode(xmlNode)) {
+        const txt = xmlNode.textContent;
+        if (!txt || txt.trim() === "") return null;
+
+        // Fast-path: Static text without dynamic expressions
+        if (txt.indexOf("{") === -1) {
+            return document.createTextNode(txt);
+        }
+
         let parent = xmlNode.parentNode;
         let isCodeBlock = false;
         while (parent) {
@@ -1435,11 +1443,9 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             }
             parent = parent.parentNode;
         }
-        const txt = xmlNode.textContent;
-        if (isCodeBlock && (!txt?.includes("{") || !txt.includes("}"))) {
-            return txt ? document.createTextNode(txt) : null;
+        if (isCodeBlock && (!txt.includes("{") || !txt.includes("}"))) {
+            return document.createTextNode(txt);
         }
-        if (!txt || txt.trim() === "") return null;
         const textNode = document.createTextNode(engine.interpolate(txt, context));
 
         registerScopedBinding(
@@ -2436,14 +2442,34 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
     }
     const scopedTemplate = cleanCss;
 
+    const cssSegments = [];
+    const cssExtractors = [];
+    let lastIndex = 0;
+    const cssRegex = /\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g;
+    let m;
+    while ((m = cssRegex.exec(scopedTemplate)) !== null) {
+        cssSegments.push(scopedTemplate.slice(lastIndex, m.index));
+        cssExtractors.push(`{${m[1]}}`);
+        lastIndex = cssRegex.lastIndex;
+    }
+    cssSegments.push(scopedTemplate.slice(lastIndex));
+
+    const hasDyn = cssExtractors.length > 0;
+    const numExtr = cssExtractors.length;
+
     const renderCss = () => {
-        let css = scopedTemplate;
-        css = css.replace(
-            /\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g,
-            (match, expr) => {
-                return engine.interpolate(`{${expr}}`, context);
-            },
-        );
+        let css;
+        if (!hasDyn) {
+            css = scopedTemplate;
+        } else if (numExtr === 1) {
+            css = cssSegments[0] + engine.interpolate(cssExtractors[0], context) + cssSegments[1];
+        } else {
+            let out = cssSegments[0];
+            for (let i = 0; i < numExtr; i++) {
+                out += engine.interpolate(cssExtractors[i], context) + cssSegments[i + 1];
+            }
+            css = out;
+        }
         if (styleEl.textContent !== css) {
             styleEl.textContent = css;
         }
@@ -2456,10 +2482,11 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
     }
     engine._injectedStyles.add(styleEl);
 
-    // Dynamic state expressions in CSS
+    // Dynamic state expressions in CSS (deduplicated per bindKey)
     const exprMatches =
         rawCss.match(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g) || [];
     if (exprMatches.length > 0) {
+        const registeredKeys = new Set();
         exprMatches.forEach((match) => {
             const rawExpr = match.slice(1, -1).trim();
             const keys = rawExpr.match(/(?:data\.|local\.|computed\.)?[a-zA-Z0-9_.]+/g) || [];
@@ -2470,9 +2497,12 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
                         key.startsWith("local.") && context._instanceId
                             ? `${context._instanceId}:${cleanKey}`
                             : cleanKey;
-                    engine.registerBinding(bindKey, styleEl, "style_tag", () => {
-                        renderCss();
-                    });
+                    if (!registeredKeys.has(bindKey)) {
+                        registeredKeys.add(bindKey);
+                        engine.registerBinding(bindKey, styleEl, "style_tag", () => {
+                            renderCss();
+                        });
+                    }
                 }
             });
         });

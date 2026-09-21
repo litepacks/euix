@@ -41,7 +41,7 @@ export function mount(engine, appXmlString, options = {}) {
         return engine;
     }
 
-    const defNodes = Array.from(engine.xmlDoc.querySelectorAll("component_def"));
+    const defNodes = engine.xmlDoc._cachedDefNodes || (engine.xmlDoc._cachedDefNodes = Array.from(engine.xmlDoc.querySelectorAll("component_def")));
     defNodes.forEach((def) => {
         const name = def.getAttribute("name") || def.getAttribute("id");
         if (name) {
@@ -54,7 +54,7 @@ export function mount(engine, appXmlString, options = {}) {
     engine.initDataModel();
     if (isFn(engine.initActionRegistry)) engine.initActionRegistry();
 
-    const importNodes = Array.from(engine.xmlDoc.querySelectorAll("import"));
+    const importNodes = engine.xmlDoc._cachedImportNodes || (engine.xmlDoc._cachedImportNodes = Array.from(engine.xmlDoc.querySelectorAll("import")));
     if (importNodes.length > 0 && typeof fetch !== "undefined") {
         importNodes.forEach((imp) => {
             const src = imp.getAttribute("src");
@@ -136,64 +136,103 @@ export function runMountActions(engine) {
 
 export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
     if (!xmlNode || !isElem(domEl)) return;
+
+    const rawChildren = xmlNode.children || xmlNode.childNodes;
+    if (!rawChildren || rawChildren.length === 0) return;
+
+    let onChangeNodes = null;
+    let onMountNodes = null;
+    let onIntervalNodes = null;
+    let onVisibleNodes = null;
+    let onUnmountNodes = null;
+
+    const len = rawChildren.length;
+    let hasHooks = false;
+
+    for (let i = 0; i < len; i++) {
+        const child = rawChildren[i];
+        if (child.nodeType !== 1) continue;
+        const tag = (child.tagName || "").toLowerCase();
+        if (tag === "on_state_change" || tag === "on_change" || tag === "on_update" || tag === "watch") {
+            if (!onChangeNodes) onChangeNodes = [];
+            onChangeNodes.push(child);
+            hasHooks = true;
+        } else if (tag === "on_mount") {
+            if (!onMountNodes) onMountNodes = [];
+            onMountNodes.push(child);
+            hasHooks = true;
+        } else if (tag === "on_interval" || tag === "on_timer") {
+            if (!onIntervalNodes) onIntervalNodes = [];
+            onIntervalNodes.push(child);
+            hasHooks = true;
+        } else if (tag === "on_visible") {
+            if (!onVisibleNodes) onVisibleNodes = [];
+            onVisibleNodes.push(child);
+            hasHooks = true;
+        } else if (tag === "on_unmount" || tag === "on_destroy") {
+            if (!onUnmountNodes) onUnmountNodes = [];
+            onUnmountNodes.push(child);
+            hasHooks = true;
+        }
+    }
+
+    if (!hasHooks) return;
+
     const contextWithEl = { ...context, _targetEl: domEl };
 
     // 1. <on_state_change watch="..."> / <on_change watch="..."> / <watch path="...">
-    const onChangeNodes = [
-        ...engine.getChildren(xmlNode, "on_state_change"),
-        ...engine.getChildren(xmlNode, "on_change"),
-        ...engine.getChildren(xmlNode, "on_update"),
-        ...engine.getChildren(xmlNode, "watch"),
-    ];
-    onChangeNodes.forEach((node) => {
-        const rawWatch =
-            node.getAttribute("watch") ||
-            node.getAttribute("path") ||
-            node.getAttribute("key") ||
-            node.getAttribute("bind");
-        const watchPath = rawWatch ? engine.parseBindPath(rawWatch) : null;
-        if (watchPath) {
-            const unwatch = engine.watch(watchPath, (newValue, oldValue) => {
-                if (typeof document !== "undefined" && !document.body.contains(domEl)) {
-                    unwatch();
-                    return;
-                }
-                engine.handleAction(node, { ...contextWithEl, newValue, oldValue });
-            });
-        }
-    });
+    if (onChangeNodes) {
+        onChangeNodes.forEach((node) => {
+            const rawWatch =
+                node.getAttribute("watch") ||
+                node.getAttribute("path") ||
+                node.getAttribute("key") ||
+                node.getAttribute("bind");
+            const watchPath = rawWatch ? engine.parseBindPath(rawWatch) : null;
+            if (watchPath) {
+                const unwatch = engine.watch(watchPath, (newValue, oldValue) => {
+                    if (typeof document !== "undefined" && !document.body.contains(domEl)) {
+                        unwatch();
+                        return;
+                    }
+                    engine.handleAction(node, { ...contextWithEl, newValue, oldValue });
+                });
+            }
+        });
+    }
 
     // 2. <on_mount>
-    const onMountNodes = engine.getChildren(xmlNode, "on_mount");
-    onMountNodes.forEach((node) => {
-        engine.handleAction(node, contextWithEl);
-    });
+    if (onMountNodes) {
+        onMountNodes.forEach((node) => {
+            engine.handleAction(node, contextWithEl);
+        });
+    }
 
     // 3. <on_interval ms="5000"> / <on_timer ms="1000">
-    const onIntervalNodes = [...engine.getChildren(xmlNode, "on_interval"), ...engine.getChildren(xmlNode, "on_timer")];
-    onIntervalNodes.forEach((node) => {
-        const ms = parseInt(node.getAttribute("ms") || node.getAttribute("delay") || "5000", 10);
-        if (ms > 0) {
-            const intervalId = setInterval(() => {
-                if (typeof document !== "undefined" && !document.body.contains(domEl)) {
-                    clearInterval(intervalId);
-                    return;
-                }
-                const condAttr = node.getAttribute("if") || node.getAttribute("when") || node.getAttribute("condition");
-                if (condAttr) {
-                    const evalCond = engine.evalCondition(condAttr, context);
-                    if (!evalCond) return;
-                }
-                engine.handleAction(node, context);
-            }, ms);
-            if (engine._activeIntervals) engine._activeIntervals.push(intervalId);
-            domEl.dataset.euixInterval = String(intervalId);
-        }
-    });
+    if (onIntervalNodes) {
+        onIntervalNodes.forEach((node) => {
+            const ms = parseInt(node.getAttribute("ms") || node.getAttribute("delay") || "5000", 10);
+            if (ms > 0) {
+                const intervalId = setInterval(() => {
+                    if (typeof document !== "undefined" && !document.body.contains(domEl)) {
+                        clearInterval(intervalId);
+                        return;
+                    }
+                    const condAttr = node.getAttribute("if") || node.getAttribute("when") || node.getAttribute("condition");
+                    if (condAttr) {
+                        const evalCond = engine.evalCondition(condAttr, context);
+                        if (!evalCond) return;
+                    }
+                    engine.handleAction(node, context);
+                }, ms);
+                if (engine._activeIntervals) engine._activeIntervals.push(intervalId);
+                domEl.dataset.euixInterval = String(intervalId);
+            }
+        });
+    }
 
     // 4. <on_visible> (IntersectionObserver)
-    const onVisibleNodes = engine.getChildren(xmlNode, "on_visible");
-    if (onVisibleNodes.length && typeof IntersectionObserver !== "undefined") {
+    if (onVisibleNodes && typeof IntersectionObserver !== "undefined") {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
@@ -208,8 +247,7 @@ export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
     }
 
     // 5. <on_unmount> / <on_destroy> (Shared MutationObserver to prevent N observers on document.body)
-    const onUnmountNodes = [...engine.getChildren(xmlNode, "on_unmount"), ...engine.getChildren(xmlNode, "on_destroy")];
-    if (onUnmountNodes.length && typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
+    if (onUnmountNodes && typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
         registerUnmountCallback(engine, domEl, onUnmountNodes, context);
     }
 }
@@ -247,6 +285,13 @@ export function initConstants(engine) {
     if (!engine.constants) engine.constants = new Map();
     if (!engine.xmlDoc) return;
 
+    if (engine.xmlDoc._cachedConstantsMap) {
+        for (const [k, v] of engine.xmlDoc._cachedConstantsMap) {
+            engine.constants.set(k, v);
+        }
+        return;
+    }
+
     const containers = Array.from(engine.xmlDoc.querySelectorAll("constants, vars, variables"));
     containers.forEach((container) => {
         const src = container.getAttribute("src") || container.getAttribute("url");
@@ -277,6 +322,8 @@ export function initConstants(engine) {
             engine.constants.set(id, node.textContent.trim());
         }
     });
+
+    engine.xmlDoc._cachedConstantsMap = new Map(engine.constants);
 }
 
 export function initDataModel(engine) {
@@ -297,6 +344,26 @@ export function initDataModel(engine) {
         }
 
         const isDocIsolated = !isMainDoc && (isScoped(doc) || isScoped(dataModelNode));
+
+        if (!isDocIsolated && !isMainDoc && doc._cachedStateModel) {
+            const cached = doc._cachedStateModel;
+            for (const key in cached.rawState) {
+                const val = cached.rawState[key];
+                rawState[key] = Array.isArray(val) ? [...val] : (val && typeof val === "object") ? { ...val } : val;
+            }
+            if (cached.persistence) {
+                for (const [id, cfg] of cached.persistence) {
+                    engine._persistenceConfig.set(id, cfg);
+                }
+            }
+            if (cached.pendingEndpoints) {
+                pendingEndpoints.push(...cached.pendingEndpoints);
+            }
+            if (engine.constructor?.hooks && isFn(engine.constructor.hooks.emit)) {
+                engine.constructor.hooks.emit("lifecycle:datamodel", { engine, doc, isMainDoc, rawState, pendingEndpoints });
+            }
+            return;
+        }
 
         const stateNodes = dataModelNode
             ? engine.getChildren(dataModelNode, "state")
@@ -499,6 +566,14 @@ export function initDataModel(engine) {
             const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
             if (href) engine.loadStyle(href);
         });
+
+        if (!isDocIsolated && !isMainDoc && !doc._cachedStateModel) {
+            doc._cachedStateModel = {
+                rawState: { ...rawState },
+                persistence: new Map(engine._persistenceConfig),
+                pendingEndpoints: [...pendingEndpoints],
+            };
+        }
     };
 
     if (engine.constructor._globalComponentSpecs) {

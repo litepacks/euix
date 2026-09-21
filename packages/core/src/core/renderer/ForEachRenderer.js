@@ -26,26 +26,37 @@ export function _isVisualXmlChild(n) {
 
 export function _setItemIndex(item, idx) {
     if (item && typeof item === "object" && Object.isExtensible(item)) {
-        try {
-            if (item._index !== idx) {
-                Object.defineProperty(item, "_index", {
-                    value: idx,
-                    writable: true,
-                    configurable: true,
-                    enumerable: false,
-                });
+        if (item._index !== idx) {
+            if ("_index" in item) {
+                item._index = idx;
+            } else {
+                try {
+                    Object.defineProperty(item, "_index", {
+                        value: idx,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false,
+                    });
+                } catch {
+                    item._index = idx;
+                }
             }
-            if (item.index !== idx) {
-                Object.defineProperty(item, "index", {
-                    value: idx,
-                    writable: true,
-                    configurable: true,
-                    enumerable: false,
-                });
+        }
+        if (item.index !== idx) {
+            if ("index" in item) {
+                item.index = idx;
+            } else {
+                try {
+                    Object.defineProperty(item, "index", {
+                        value: idx,
+                        writable: true,
+                        configurable: true,
+                        enumerable: false,
+                    });
+                } catch {
+                    item.index = idx;
+                }
             }
-        } catch {
-            item._index = idx;
-            item.index = idx;
         }
     }
 }
@@ -62,22 +73,48 @@ export function _extractExternalKeysFromExpr(expr, varName, targetSet) {
     }
 }
 
+let _sharedP = null;
+let _sharedResult = null;
+
+function _getPBuffer(len) {
+    if (!_sharedP || _sharedP.length < len) {
+        _sharedP = new Int32Array(Math.max(len, 1024));
+    }
+    return _sharedP;
+}
+
+function _getResultBuffer(len) {
+    if (!_sharedResult || _sharedResult.length < len) {
+        _sharedResult = new Int32Array(Math.max(len, 1024));
+    }
+    return _sharedResult;
+}
+
 export function _getLongestIncreasingSubsequence(arr) {
-    const p = Array.from(arr);
-    const result = [0];
-    let i, j, u, v, c;
     const len = arr.length;
+    if (len === 0) return [0];
+
+    const p = _getPBuffer(len);
+    const result = _getResultBuffer(len);
+    let resultLen = 0;
+
+    let i, j, u, v, c;
     for (i = 0; i < len; i++) {
         const arrI = arr[i];
         if (arrI !== -1) {
-            j = result[result.length - 1];
+            if (resultLen === 0) {
+                result[0] = i;
+                resultLen = 1;
+                continue;
+            }
+            j = result[resultLen - 1];
             if (arr[j] < arrI) {
                 p[i] = j;
-                result.push(i);
+                result[resultLen++] = i;
                 continue;
             }
             u = 0;
-            v = result.length - 1;
+            v = resultLen - 1;
             while (u < v) {
                 c = (u + v) >> 1;
                 if (arr[result[c]] < arrI) {
@@ -94,13 +131,17 @@ export function _getLongestIncreasingSubsequence(arr) {
             }
         }
     }
-    u = result.length;
-    v = result[u - 1];
+
+    if (resultLen === 0) return [0];
+
+    const res = new Array(resultLen);
+    u = resultLen;
+    v = result[resultLen - 1];
     while (u-- > 0) {
-        result[u] = v;
+        res[u] = v;
         v = p[v];
     }
-    return result;
+    return res;
 }
 
 export function _reconcileKeyedDOM(container, oldKeyedMap, newKeyedMap, oldKeys, newKeys) {
@@ -189,11 +230,10 @@ export function _reconcileKeyedDOM(container, oldKeyedMap, newKeyedMap, oldKeys,
         }
     }
 
-    // 3. Remove deleted old nodes
-    const activeNewKeys = new Set(newKeys);
+    // 3. Remove deleted old nodes (Zero Set allocation: direct newKeyedMap.has)
     for (let i = start; i <= oldEnd; i++) {
         const oldKey = oldKeys[i];
-        if (!activeNewKeys.has(oldKey)) {
+        if (!newKeyedMap.has(oldKey)) {
             const oldEntry = oldKeyedMap.get(oldKey);
             if (oldEntry?.nodes) {
                 const nodes = oldEntry.nodes;
@@ -235,34 +275,87 @@ export function _reconcileKeyedDOM(container, oldKeyedMap, newKeyedMap, oldKeys,
         return;
     }
 
+    const count = newEnd - start + 1;
+    const oldCount = oldEnd - start + 1;
+
+    // 5.5 Fast Path: Full or Sub-array Reverse (DocumentFragment batch move)
+    if (count === oldCount && count > 2) {
+        let isReverse = true;
+        for (let i = 0; i < count; i++) {
+            if (oldKeys[start + i] !== newKeys[newEnd - i]) {
+                isReverse = false;
+                break;
+            }
+        }
+        if (isReverse) {
+            const anchorKey = newEnd + 1 < newLen ? newKeys[newEnd + 1] : null;
+            const anchorEntry = anchorKey ? newKeyedMap.get(anchorKey) : null;
+            const anchorNode = anchorEntry?.nodes?.[0] || null;
+            const fragment = typeof document !== "undefined" ? document.createDocumentFragment() : null;
+            for (let i = start; i <= newEnd; i++) {
+                const entry = newKeyedMap.get(newKeys[i]);
+                if (entry?.nodes) {
+                    for (let n = 0; n < entry.nodes.length; n++) {
+                        if (fragment) fragment.appendChild(entry.nodes[n]);
+                        else container.appendChild(entry.nodes[n]);
+                    }
+                }
+            }
+            if (fragment) {
+                if (anchorNode && anchorNode.parentNode === container) {
+                    container.insertBefore(fragment, anchorNode);
+                } else {
+                    container.appendChild(fragment);
+                }
+            }
+            return;
+        }
+    }
+
     // 6. Middle sub-array reordering (LIS / Minimal insertBefore)
     const oldKeyToIndex = new Map();
     for (let i = start; i <= oldEnd; i++) {
         oldKeyToIndex.set(oldKeys[i], i);
     }
 
-    const count = newEnd - start + 1;
     const sourceIndices = new Int32Array(count);
     sourceIndices.fill(-1);
+
+    let moved = false;
+    let maxNewIndexSoFar = 0;
 
     for (let i = 0; i < count; i++) {
         const newIndex = start + i;
         const newKey = newKeys[newIndex];
-        if (oldKeyToIndex.has(newKey)) {
-            sourceIndices[i] = oldKeyToIndex.get(newKey);
+        const oldIdx = oldKeyToIndex.get(newKey);
+        if (oldIdx !== undefined) {
+            sourceIndices[i] = oldIdx;
+            if (oldIdx < maxNewIndexSoFar) {
+                moved = true;
+            } else {
+                maxNewIndexSoFar = oldIdx;
+            }
+        } else {
+            moved = true;
         }
+    }
+
+    // Fast-path: If relative order didn't change and no moves needed, return immediately!
+    if (!moved) {
+        return;
     }
 
     const lis = _getLongestIncreasingSubsequence(sourceIndices);
     let lisIdx = lis.length - 1;
 
+    let anchorKey = newEnd + 1 < newLen ? newKeys[newEnd + 1] : null;
+    let anchorEntry = anchorKey ? newKeyedMap.get(anchorKey) : null;
+    let anchorNode = anchorEntry?.nodes?.[0] || null;
+
     for (let i = count - 1; i >= 0; i--) {
         const newIndex = start + i;
         const newKey = newKeys[newIndex];
         const entry = newKeyedMap.get(newKey);
-        const anchorKey = newIndex + 1 < newLen ? newKeys[newIndex + 1] : null;
-        const anchorEntry = anchorKey ? newKeyedMap.get(anchorKey) : null;
-        const anchorNode = anchorEntry?.nodes?.[0] || null;
 
         if (sourceIndices[i] === -1 || lisIdx < 0 || i !== lis[lisIdx]) {
             if (entry?.nodes) {
@@ -276,6 +369,11 @@ export function _reconcileKeyedDOM(container, oldKeyedMap, newKeyedMap, oldKeys,
             }
         } else {
             lisIdx--;
+        }
+
+        // Propagate anchor: the node we just verified/moved is the anchor for preceding items
+        if (entry?.nodes?.[0]) {
+            anchorNode = entry.nodes[0];
         }
     }
 }
@@ -589,7 +687,10 @@ export function _applyForEachSlots(engine, nodes, compiled, item, childContext, 
             if (targetNode.nodeType === 3) {
                 if (targetNode.data !== txt) targetNode.data = txt;
             } else {
-                if (targetNode.textContent !== txt) targetNode.textContent = txt;
+                if (targetNode._euixText !== txt) {
+                    targetNode._euixText = txt;
+                    targetNode.textContent = txt;
+                }
             }
         } else if (slot.type === "attr") {
             const val = slot.getter ? slot.getter(item, childContext) : engine.interpolate(slot.rawExpr, childContext);

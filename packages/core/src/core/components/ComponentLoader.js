@@ -176,6 +176,8 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
 
 export function initComponentSchema(engine, specNode, context = {}) {
     if (!engine || !specNode) return;
+    if (specNode._schemaEngine === engine) return;
+    specNode._schemaEngine = engine;
 
     // 1. Action / Workflow definitions
     if (isFn(engine.constructor.registerActionDef)) {
@@ -330,17 +332,21 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         }
     }
 
-    const compConstants = {};
-    const constsNodes = specNode.querySelectorAll
-        ? specNode.querySelectorAll("constants > const, constants > constant, vars > var, variables > variable")
-        : null;
-    if (constsNodes) {
-        const cnLen = constsNodes.length;
-        for (let i = 0; i < cnLen; i++) {
-            const node = constsNodes[i];
-            const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
-            if (id) compConstants[id] = node.textContent.trim();
+    let compConstants = specNode._cachedConstants;
+    if (!compConstants) {
+        compConstants = {};
+        const constsNodes = specNode.querySelectorAll
+            ? specNode.querySelectorAll("constants > const, constants > constant, vars > var, variables > variable")
+            : null;
+        if (constsNodes) {
+            const cnLen = constsNodes.length;
+            for (let i = 0; i < cnLen; i++) {
+                const node = constsNodes[i];
+                const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
+                if (id) compConstants[id] = node.textContent.trim();
+            }
         }
+        specNode._cachedConstants = compConstants;
     }
 
     const compDepth = (context._compDepth || 0) + 1;
@@ -358,7 +364,9 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     }
 
     let componentApiConfig = context._componentApiConfig ? { ...context._componentApiConfig } : null;
-    const apiNode = engine.getChild(specNode, "api_config") || specNode.querySelector("api_config, api_client, api");
+    const apiNode = specNode._cachedApiNode !== undefined
+        ? specNode._cachedApiNode
+        : (specNode._cachedApiNode = (engine.getChild(specNode, "api_config") || (specNode.querySelector ? specNode.querySelector("api_config, api_client, api") : null)));
     if (apiNode) {
         const baseUrl = getAttr(apiNode, "base_url", "baseUrl", "url");
         const credentials = apiNode.getAttribute("credentials") || undefined;
@@ -376,7 +384,9 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         componentApiConfig = { baseUrl, credentials, timeout, headers };
     }
 
-    const dataModelNode = engine.getChild(specNode, "data_model") || specNode.querySelector("data_model");
+    const dataModelNode = specNode._cachedDataModelNode !== undefined
+        ? specNode._cachedDataModelNode
+        : (specNode._cachedDataModelNode = (engine.getChild(specNode, "data_model") || (specNode.querySelector ? specNode.querySelector("data_model") : null)));
     const isIsolated = isScoped(usageNode) || isScoped(specNode) || isScoped(dataModelNode);
 
     const localRawState = {};
@@ -529,35 +539,39 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     ];
 
     // Trigger external script loaders declared inside component
-    const compScripts = Array.from(
+    const compScripts = specNode._cachedCompScripts || (specNode._cachedCompScripts = Array.from(
         specNode.querySelectorAll ? specNode.querySelectorAll("use_script, script_loader, load_script") : [],
-    );
+    ));
     compScripts.forEach((node) => {
         const src = node.getAttribute("src") || node.getAttribute("url");
         if (src) engine.loadScript(src, { async: node.getAttribute("async") !== "false" });
     });
 
-    const specChildElems =
-        specNode.children && specNode.children.length > 0
-            ? Array.from(specNode.children)
-            : getChildNodes(specNode).filter(isElem);
+    let templateNode = specNode._cachedTemplateNode;
+    if (!templateNode) {
+        const specChildElems =
+            specNode.children && specNode.children.length > 0
+                ? Array.from(specNode.children)
+                : getChildNodes(specNode).filter(isElem);
 
-    const templateNode =
-        engine.getChild(specNode, "template") ||
-        engine.getChild(specNode, "flex") ||
-        engine.getChild(specNode, "grid") ||
-        engine.getChild(specNode, "layout") ||
-        engine.getChild(specNode, "collapse") ||
-        engine.getChild(specNode, "dialog") ||
-        specChildElems.find((c) => isElem(c) && !metadataTags.includes(getTagName(c))) ||
-        specNode;
+        templateNode =
+            engine.getChild(specNode, "template") ||
+            engine.getChild(specNode, "flex") ||
+            engine.getChild(specNode, "grid") ||
+            engine.getChild(specNode, "layout") ||
+            engine.getChild(specNode, "collapse") ||
+            engine.getChild(specNode, "dialog") ||
+            specChildElems.find((c) => isElem(c) && !metadataTags.includes(getTagName(c))) ||
+            specNode;
+        specNode._cachedTemplateNode = templateNode;
+    }
 
     const rendered = engine.createHTMLElement(templateNode, childContext);
 
     // Process style and use_style loaders declared inside component
-    const compStyles = Array.from(
+    const compStyles = specNode._cachedCompStyles || (specNode._cachedCompStyles = Array.from(
         specNode.querySelectorAll ? specNode.querySelectorAll("use_style, style_loader, load_style, style") : [],
-    );
+    ));
     compStyles.forEach((node) => {
         const tag = (node.tagName || "").toLowerCase();
         if (tag === "style") {

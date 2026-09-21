@@ -282,7 +282,7 @@ export function EUIXLazyPlugin(EngineClass) {
     // Intercept createHTMLElement to handle lazy component placeholders, CLS, abort controllers & hydration
     const originalCreateHTMLElement = EngineClass.prototype.createHTMLElement;
     EngineClass.prototype.createHTMLElement = function (xmlNode, context = {}) {
-        if (!xmlNode || xmlNode.nodeType !== 1) {
+        if (!xmlNode || xmlNode.nodeType !== 1 || !EngineClass._lazyRegistry || EngineClass._lazyRegistry.size === 0) {
             return originalCreateHTMLElement.call(this, xmlNode, context);
         }
 

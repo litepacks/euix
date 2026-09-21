@@ -56,6 +56,16 @@ export function generateCodeFrame(source, line = 1, col = 1, windowSize = 2) {
 export function parseXmlToAst(xmlString, options = {}) {
     if (!xmlString || typeof xmlString !== "string") return null;
 
+    const bypassCache = options && options.bypassCache === true;
+    if (!bypassCache && _astCache.has(xmlString)) {
+        _astCacheStats.hits++;
+        const cachedDoc = _astCache.get(xmlString);
+        // Refresh LRU position (delete and re-insert)
+        _astCache.delete(xmlString);
+        _astCache.set(xmlString, cachedDoc);
+        return options && options.clone === true ? _cloneDocument(cachedDoc) : cachedDoc;
+    }
+
     // 1. Decode HTML named entities dynamically using native DOMParser text/html (zero dictionary / zero bundle bloat)
     let processedXml = xmlString;
     const entityMatches = Array.from(new Set(xmlString.match(/&([a-zA-Z0-9]+);/g) || []));
@@ -205,15 +215,16 @@ export function parseXmlToAst(xmlString, options = {}) {
         }
     }
 
-    const bypassCache = options && options.bypassCache === true;
-
     if (!bypassCache && _astCache.has(sanitizedXml)) {
         _astCacheStats.hits++;
         const cachedDoc = _astCache.get(sanitizedXml);
         // Refresh LRU position (delete and re-insert)
         _astCache.delete(sanitizedXml);
         _astCache.set(sanitizedXml, cachedDoc);
-        return _cloneDocument(cachedDoc);
+        if (xmlString && !_astCache.has(xmlString)) {
+            _astCache.set(xmlString, cachedDoc);
+        }
+        return options && options.clone === true ? _cloneDocument(cachedDoc) : cachedDoc;
     }
 
     _astCacheStats.misses++;
@@ -245,9 +256,12 @@ export function parseXmlToAst(xmlString, options = {}) {
             }
         }
         _astCache.set(sanitizedXml, doc);
+        if (xmlString && xmlString !== sanitizedXml) {
+            _astCache.set(xmlString, doc);
+        }
     }
 
-    return _cloneDocument(doc);
+    return options && options.clone === true ? _cloneDocument(doc) : doc;
 }
 
 export function serializeAst(docOrXml) {

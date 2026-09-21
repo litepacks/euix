@@ -712,11 +712,32 @@ export const EUIXDatePlugin = {
                 weekOfYear: (v) => this._dateFormatter.weekOfYear(v),
             };
 
+            this._dateHelper = helper;
             this.$date = helper;
             this.date = helper;
-            this.setState("$date", helper);
-            this.setState("date", helper);
+            if (this._rawState) {
+                this._rawState.$date = helper;
+                this._rawState.date = helper;
+            } else {
+                this.setState("$date", helper);
+                this.setState("date", helper);
+            }
         };
+
+        if (!Object.getOwnPropertyDescriptor(proto, "$date")) {
+            Object.defineProperty(proto, "$date", {
+                configurable: true,
+                get() {
+                    if (!this._dateHelper) {
+                        this._syncDateContext();
+                    }
+                    return this._dateHelper;
+                },
+                set(val) {
+                    this._dateHelper = val;
+                },
+            });
+        }
 
         // Hook initDataModel to pre-process <date_config> and initialize $date helper
         const originalInitDataModel = proto.initDataModel;
@@ -733,9 +754,13 @@ export const EUIXDatePlugin = {
                           : null;
                     if (cfgTag) {
                         this._processDateConfigTag(cfgTag);
+                    } else {
+                        const raw = typeof this._rawXml === "string" ? this._rawXml : "";
+                        if (raw.includes("date") || raw.includes("time")) {
+                            this._syncDateContext();
+                        }
                     }
                 }
-                this._syncDateContext();
                 return res;
             };
         }

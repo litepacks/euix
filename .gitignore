@@ -161,3 +161,8 @@ public/
 
 # Kiremit cache
 .kiremit/
+
+# EUIX Doctor reports and history
+doctor.html
+.vitest-doctor/
+.vitest-doctor
