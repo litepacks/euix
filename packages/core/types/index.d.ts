@@ -7,6 +7,7 @@ import { EUIXEngineCore } from './core';
 
 export * from './core';
 export * from './plugins';
+export * from './prepare';
 
 export class EUIXEngine<TState extends Record<string, any> = Record<string, any>> extends EUIXEngineCore<TState> {
     static mount<T extends Record<string, any> = Record<string, any>>(

@@ -859,6 +859,47 @@ engine.mutateState('todos', 'PUSH', { id: 1, title: 'Build UI' });
 
 ---
 
+## 🤖 EUIX CLI & AI/LLM Tooling Subsystem (`euixjs/prepare`)
+
+EUIX includes a built-in CLI (`bin/euix.js`) and a dedicated Node.js subpath (`euixjs/prepare`) designed specifically for AI-agent pair programming, CI regression prevention, and buildless developer productivity.
+
+> 💡 **Zero-Bloat Guarantee:** All CLI, AST conversion, auto-fixing, and snapshot testing logic is isolated strictly to Node.js and the `euixjs/prepare` subpath. It adds **0 bytes** to the browser runtime bundles (`euixjs/core` and `euixjs`).
+
+### CLI Commands Reference
+
+```bash
+# Run via npx without global installation
+npx euix <command> [options]
+```
+
+| Command | Description | Example |
+| :--- | :--- | :--- |
+| **`context`** | Extracts compact project blueprints (components, props, routes, actions, states) for LLM prompt injection. | `npx euix context ./src --json` |
+| **`convert`** | Bi-directional lossless conversion between EUIX XML (`<uid_spec>`) and Canonical JSON (`.euix.json`). | `npx euix convert src/App.xml -o src/App.euix.json` |
+| **`check --fix` / `fix`** | Detects unknown states, missing actions, and typos using Levenshtein distance, auto-fixing them in place. | `npx euix check src/ --fix` |
+| **`schema`** | Generates Draft-07 JSON Schema for `.euix.json` and auto-configures VS Code / Cursor autocomplete. | `npx euix schema --vscode` |
+| **`render`** | Server-Side Renders (SSR) template/IR to HTML string without JSDOM or browser window globals. | `npx euix render src/App.xml -o dist/index.html` |
+| **`snapshot`** | Verifies or updates deterministic Runtime IR snapshots to prevent structural regressions in CI. | `npx euix snapshot src/components/ -u` |
+| **`doctor`** | Comprehensive static analysis: event-action graphs, computed cycles, multi-component prop contracts. | `npx euix doctor apps/playground/components` |
+
+### Programmatic Usage (`euixjs/prepare`)
+
+```javascript
+import { prepare, createSnapshot, verifySnapshot, renderToString } from 'euixjs/prepare';
+
+// Prepare XML or JSON source into a deterministic Runtime IR
+const app = await prepare(sourceContent);
+
+// Server-side render to static HTML
+const html = app.renderToString({ user: 'Alice' });
+
+// Create or verify deterministic regression snapshots
+const snapshot = await app.createSnapshot();
+const { match, diffs } = await app.verifySnapshot(snapshot);
+```
+
+---
+
 ## 🛡️ Battle-Testing & Release Verification Suite
 
 EUIX Engine is systematically battle-tested under malformed input, concurrency, cancellation, long-running workloads, and complex execution combinations.

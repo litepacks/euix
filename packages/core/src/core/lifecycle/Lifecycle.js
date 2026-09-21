@@ -4,12 +4,16 @@
  */
 
 import { getNow, isElem, isFn, isScoped } from "../utils/constants.js";
+import { irToXmlSpec } from "../../prepare/runtime/adapter.js";
 
 export function mount(engine, appXmlString, options = {}) {
     const mountStart = getNow();
     if (typeof appXmlString === "object" && appXmlString !== null) {
         if (appXmlString.nodeType) {
             engine.xmlDoc = appXmlString;
+        } else if (appXmlString.irVersion || appXmlString.ir) {
+            const xmlStr = irToXmlSpec(appXmlString.ir || appXmlString);
+            engine.xmlDoc = engine.constructor.parseXmlToAst(xmlStr, { ...options, silent: true });
         } else if (isFn(engine.constructor.deserializeAst)) {
             engine.xmlDoc = engine.constructor.deserializeAst(appXmlString);
         } else {

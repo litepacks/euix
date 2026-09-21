@@ -4,15 +4,27 @@
  */
 
 import { compileXmlToAst } from "../compiler/index.js";
+import { renderToString as renderIrToString } from "../prepare/runtime/ssr.js";
 
 /**
- * Renders an EUIX XML string or AST tree into a static HTML string on the server without DOM/JSDOM.
+ * Renders an EUIX XML string, AST tree, PreparedApp, Runtime IR, or Source JSON into a static HTML string.
  * @param {string|object} xmlOrAst
  * @param {object} initialData
  * @param {object} options
  * @returns {string} Server-rendered HTML string
  */
 export function renderToString(xmlOrAst, initialData = {}, options = {}) {
+    if (!xmlOrAst) return "";
+
+    // Support PreparedApp, Runtime IR, or Source JSON directly
+    if (typeof xmlOrAst === "object" && (xmlOrAst.ir || xmlOrAst.irVersion || xmlOrAst.view)) {
+        return renderIrToString(xmlOrAst, initialData, options);
+    }
+
+    if (typeof xmlOrAst === "string" && xmlOrAst.trim().startsWith("{")) {
+        return renderIrToString(xmlOrAst, initialData, options);
+    }
+
     const ast = typeof xmlOrAst === "string" ? compileXmlToAst(xmlOrAst) : xmlOrAst;
     if (!ast) return "";
 

@@ -133,6 +133,10 @@
     "./stream": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXStreamPlugin.es.js"
+    },
+    "./prepare": {
+      "types": "./types/prepare.d.ts",
+      "import": "./src/prepare/index.js"
     }
   },
   "files": [

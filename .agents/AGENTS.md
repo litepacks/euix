@@ -139,6 +139,36 @@ Doctor is integrated into the EUIX CLI via `euix doctor`. It does **not** depend
 
 ---
 
+## 🛠️ 1.6. EUIX CLI & Prepare Subsystem for Agents (`euixjs/prepare`)
+
+EUIX provides an automated CLI (`bin/euix.js`) and a Node.js prepare subsystem (`euixjs/prepare`) for AI agents and developer tooling:
+
+| Command | Purpose for Agents |
+| :--- | :--- |
+| **`euix context <path> [--json]`** | Generate compact project summary (components, props, routes, actions, states) to inject into prompt context. |
+| **`euix convert <file>`** | Losslessly convert between EUIX XML (`<uid_spec>`) and Canonical JSON (`.euix.json`). |
+| **`euix check <path> --fix`** | Auto-correct typos, misspelled states, and invalid routes using Levenshtein distance matching. |
+| **`euix schema [--vscode]`** | Generate IDE Draft-07 JSON Schema for `.euix.json` and configure VS Code / Cursor settings automatically. |
+| **`euix render <file>`** | Zero-DOM server-side render (SSR) template/IR directly to HTML string without browser globals. |
+| **`euix snapshot <file> [-u]`** | Verify or update deterministic Runtime IR snapshots to catch accidental structural regressions in CI. |
+
+### Programmatic Prepare API
+```js
+import { prepare, createSnapshot, verifySnapshot, renderToString } from 'euixjs/prepare';
+
+// Parse, validate, and normalize source into deterministic Runtime IR
+const app = await prepare(sourceContent);
+
+// Server-render static HTML
+const html = app.renderToString({ counter: 10 });
+
+// Regression snapshot testing
+const snapshot = await app.createSnapshot();
+const result = await app.verifySnapshot(snapshot);
+```
+
+---
+
 ## 🚀 2. Import & Mounting
 
 ### ESM (Bundlers / Node)
