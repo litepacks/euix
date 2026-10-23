@@ -5,6 +5,10 @@
 
 import { isElem, getAttr } from "../utils/constants.js";
 
+const _DIGIT_RE = /^\d+$/;
+export const toPx = (v) => (_DIGIT_RE.test(v) ? `${v}px` : v);
+export const toRepeatGrid = (v) => (_DIGIT_RE.test(v) ? `repeat(${v}, minmax(0, 1fr))` : v);
+
 /**
  * Applies layout styles (flex/grid/alignment/gaps) to a DOM element based on XML attributes or pre-computed static style cache.
  *
@@ -109,9 +113,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (gap.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(gap, context).trim();
-            el.style.gap = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.gap = toPx(val);
         } else {
-            const v = /^\d+$/.test(gap) ? `${gap}px` : gap;
+            const v = toPx(gap);
             el.style.gap = v;
             staticStyle.gap = v;
         }
@@ -122,9 +126,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (gapX.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(gapX, context).trim();
-            el.style.columnGap = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.columnGap = toPx(val);
         } else {
-            const v = /^\d+$/.test(gapX) ? `${gapX}px` : gapX;
+            const v = toPx(gapX);
             el.style.columnGap = v;
             staticStyle.columnGap = v;
         }
@@ -135,9 +139,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (gapY.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(gapY, context).trim();
-            el.style.rowGap = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.rowGap = toPx(val);
         } else {
-            const v = /^\d+$/.test(gapY) ? `${gapY}px` : gapY;
+            const v = toPx(gapY);
             el.style.rowGap = v;
             staticStyle.rowGap = v;
         }
@@ -165,9 +169,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (cols.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(cols, context).trim();
-            el.style.gridTemplateColumns = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
+            el.style.gridTemplateColumns = toRepeatGrid(val);
         } else {
-            const v = /^\d+$/.test(cols) ? `repeat(${cols}, minmax(0, 1fr))` : cols;
+            const v = toRepeatGrid(cols);
             el.style.gridTemplateColumns = v;
             staticStyle.gridTemplateColumns = v;
         }
@@ -178,9 +182,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (rows.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(rows, context).trim();
-            el.style.gridTemplateRows = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
+            el.style.gridTemplateRows = toRepeatGrid(val);
         } else {
-            const v = /^\d+$/.test(rows) ? `repeat(${rows}, minmax(0, 1fr))` : rows;
+            const v = toRepeatGrid(rows);
             el.style.gridTemplateRows = v;
             staticStyle.gridTemplateRows = v;
         }
@@ -191,9 +195,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (padding.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(padding, context).trim();
-            el.style.padding = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.padding = toPx(val);
         } else {
-            const v = /^\d+$/.test(padding) ? `${padding}px` : padding;
+            const v = toPx(padding);
             el.style.padding = v;
             staticStyle.padding = v;
         }
@@ -205,9 +209,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (radius.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(radius, context).trim();
-            el.style.borderRadius = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.borderRadius = toPx(val);
         } else {
-            const v = /^\d+$/.test(radius) ? `${radius}px` : radius;
+            const v = toPx(radius);
             el.style.borderRadius = v;
             staticStyle.borderRadius = v;
         }
@@ -218,9 +222,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (margin.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(margin, context).trim();
-            el.style.margin = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.margin = toPx(val);
         } else {
-            const v = /^\d+$/.test(margin) ? `${margin}px` : margin;
+            const v = toPx(margin);
             el.style.margin = v;
             staticStyle.margin = v;
         }
@@ -242,9 +246,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (width.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(width, context).trim();
-            el.style.width = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.width = toPx(val);
         } else {
-            const v = /^\d+$/.test(width) ? `${width}px` : width;
+            const v = toPx(width);
             el.style.width = v;
             staticStyle.width = v;
         }
@@ -255,9 +259,9 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         if (height.includes("{")) {
             isDynamic = true;
             const val = engine.interpolate(height, context).trim();
-            el.style.height = /^\d+$/.test(val) ? `${val}px` : val;
+            el.style.height = toPx(val);
         } else {
-            const v = /^\d+$/.test(height) ? `${height}px` : height;
+            const v = toPx(height);
             el.style.height = v;
             staticStyle.height = v;
         }
