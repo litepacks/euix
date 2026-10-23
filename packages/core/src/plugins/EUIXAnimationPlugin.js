@@ -342,8 +342,8 @@ export const EUIXAnimationPlugin = {
             }
 
             // Parse & validate numeric timing options
-            let duration = animOptions.duration !== undefined ? toInt(animOptions.duration, 300) : 300;
-            let delay = animOptions.delay !== undefined ? toInt(animOptions.delay, 0) : 0;
+            let duration = animOptions.duration !== undefined ? toInt(animOptions.duration, Number.NaN) : 300;
+            let delay = animOptions.delay !== undefined ? toInt(animOptions.delay, Number.NaN) : 0;
             const easing = animOptions.easing || "ease";
             const fill = animOptions.fill || "both";
             const iterations = animOptions.iterations || animOptions.iteration_count || 1;
