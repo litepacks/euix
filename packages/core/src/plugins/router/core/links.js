@@ -4,6 +4,7 @@
  */
 
 import { generatePath, normalizePath, resolvePath } from "./utils.js";
+import { safeParse } from "../../../core/utils/constants.js";
 
 /**
  * Creates the RouteLink renderer function.
@@ -49,14 +50,11 @@ export function createLinkRenderer(engine, routerInstance) {
                 if (namedPattern) {
                     let parsedParams = {};
                     if (paramsAttr) {
-                        try {
-                            parsedParams = JSON.parse(paramsAttr);
-                        } catch (_) {
-                            try {
-                                const interpolated = engine.interpolate(paramsAttr, context);
-                                parsedParams =
-                                    typeof interpolated === "object" ? interpolated : JSON.parse(interpolated);
-                            } catch (_) {}
+                        parsedParams = safeParse(paramsAttr);
+                        if (!parsedParams) {
+                            const interpolated = engine.interpolate(paramsAttr, context);
+                            parsedParams =
+                                typeof interpolated === "object" ? interpolated : safeParse(interpolated, {});
                         }
                     }
                     return generatePath(namedPattern, parsedParams);

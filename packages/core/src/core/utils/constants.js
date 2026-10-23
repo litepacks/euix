@@ -50,6 +50,15 @@ export function safeStringify(val, space) {
         }
     }
 }
+export function safeParse(str, fallback = null) {
+    if (str === null || str === undefined || str === "") return fallback;
+    if (typeof str !== "string") return isObj(str) ? str : fallback;
+    try {
+        return JSON.parse(str);
+    } catch (_) {
+        return fallback;
+    }
+}
 export const trimStr = (s) => (typeof s === "string" ? s.trim() : s?.textContent ? s.textContent.trim() : "");
 export const splitPath = (p) =>
     p

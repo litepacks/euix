@@ -9,6 +9,7 @@ import {
     isFn,
     isObj,
     isStr,
+    safeParse,
 } from "../utils/constants.js";
 import {
     extractBindModifiers,
@@ -140,19 +141,17 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
                 interpolatedVal.trim().startsWith("{") &&
                 interpolatedVal.trim().endsWith("}")
             ) {
-                try {
-                    const parsed = JSON.parse(interpolatedVal);
-                    if (isObj(parsed)) {
-                        interpolatedVal = Object.entries(parsed)
-                            .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                            .map(
-                                ([k, v]) =>
-                                    `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
-                            )
-                            .join(" ");
-                    }
-                } catch (_) {}
-            } else if (interpolatedVal && typeof interpolatedVal === "object") {
+                const parsed = safeParse(interpolatedVal);
+                if (isObj(parsed)) {
+                    interpolatedVal = Object.entries(parsed)
+                        .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
+                        .map(
+                            ([k, v]) =>
+                                `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
+                        )
+                        .join(" ");
+                }
+            } else if (isObj(interpolatedVal)) {
                 interpolatedVal = Object.entries(interpolatedVal)
                     .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
                     .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
@@ -234,18 +233,16 @@ export function updateAttributeBinding(engine, el, attrName, template, context =
     } else if (attrName === "style") {
         let styleVal = newAttrVal;
         if (isStr(styleVal) && styleVal.trim().startsWith("{") && styleVal.trim().endsWith("}")) {
-            try {
-                const parsed = JSON.parse(styleVal);
-                if (isObj(parsed)) {
-                    styleVal = Object.entries(parsed)
-                        .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                        .map(
-                            ([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
-                        )
-                        .join(" ");
-                }
-            } catch (_) {}
-        } else if (styleVal && typeof styleVal === "object") {
+            const parsed = safeParse(styleVal);
+            if (isObj(parsed)) {
+                styleVal = Object.entries(parsed)
+                    .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
+                    .map(
+                        ([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
+                    )
+                    .join(" ");
+            }
+        } else if (isObj(styleVal)) {
             styleVal = Object.entries(styleVal)
                 .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
                 .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)

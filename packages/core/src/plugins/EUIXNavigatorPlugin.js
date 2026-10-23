@@ -1,4 +1,4 @@
-import { isBool, isFn } from "../core/utils/constants.js";
+import { isBool, isFn, safeParse } from "../core/utils/constants.js";
 /**
  * EUIXNavigatorPlugin.js
  * Browser Navigator & Device Capabilities Plugin for EUIX Engine.
@@ -347,12 +347,7 @@ export const EUIXNavigatorPlugin = {
                 ? this.interpolate(patternNode.textContent, context)
                 : this.interpolate(rawPattern, context);
 
-            let pattern;
-            try {
-                pattern = JSON.parse(patternStr);
-            } catch (_) {
-                pattern = parseInt(patternStr, 10) || 50;
-            }
+            const pattern = safeParse(patternStr, parseInt(patternStr, 10) || 50);
 
             if (typeof navigator !== "undefined" && isFn(navigator.vibrate)) {
                 navigator.vibrate(pattern);

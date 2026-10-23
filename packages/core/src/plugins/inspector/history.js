@@ -3,6 +3,7 @@
  * Time-Travel Debugging, State Snapshots, Undo/Redo & Diff Engine for EUIX Inspector / DevTools.
  */
 
+import { safeParse } from "../../core/utils/constants.js";
 function safeClone(obj) {
     if (obj === null || typeof obj !== "object") return obj;
     try {
@@ -254,8 +255,8 @@ export class EUIXStateHistoryManager {
 
     importHistory(jsonString) {
         try {
-            const data = typeof jsonString === "string" ? JSON.parse(jsonString) : jsonString;
-            if (Array.isArray(data.snapshots) && data.snapshots.length > 0) {
+            const data = typeof jsonString === "string" ? safeParse(jsonString) : jsonString;
+            if (data && Array.isArray(data.snapshots) && data.snapshots.length > 0) {
                 this.snapshots = data.snapshots;
                 const idx = typeof data.currentIndex === "number" ? data.currentIndex : this.snapshots.length - 1;
                 this.timeTravelTo(Math.min(idx, this.snapshots.length - 1));

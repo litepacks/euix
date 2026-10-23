@@ -1,4 +1,4 @@
-import { isObj, isStr, isFn } from "../core/utils/constants.js";
+import { isObj, isStr, isFn, safeParse } from "../core/utils/constants.js";
 /**
  * EUIXChartPlugin.js
  * Declarative Chart.js (v4.x) Integration Plugin for EUIX Engine.
@@ -74,11 +74,7 @@ function resolveConfig(engine, rawConfig, context = {}) {
     if (stateVal !== undefined) return stateVal;
 
     // Try parsing as JSON string
-    try {
-        return JSON.parse(clean);
-    } catch (_) {
-        return null;
-    }
+    return safeParse(clean, null);
 }
 
 /**

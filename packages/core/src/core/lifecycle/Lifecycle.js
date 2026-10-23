@@ -14,6 +14,7 @@ import {
     hasDoc,
     hasWindow,
     queryAll,
+    safeParse,
 } from "../utils/constants.js";
 import { toonToJson } from "../parser/toon.js";
 import { autoInit as declarativeAutoInit } from "./DeclarativeLoader.js";
@@ -458,11 +459,7 @@ export function initDataModel(engine) {
                             rawState[id] = parsed ? [parsed] : [];
                         }
                     } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
-                        try {
-                            rawState[id] = JSON.parse(txt);
-                        } catch (_) {
-                            rawState[id] = [];
-                        }
+                        rawState[id] = safeParse(txt, []);
                     } else {
                         rawState[id] = [];
                     }
@@ -480,11 +477,7 @@ export function initDataModel(engine) {
                     const parsed = toonToJson(txt);
                     rawState[id] = isObj(parsed) ? parsed : {};
                 } else {
-                    try {
-                        rawState[id] = txt ? JSON.parse(txt) : {};
-                    } catch (_) {
-                        rawState[id] = {};
-                    }
+                    rawState[id] = safeParse(txt, {});
                 }
             } else if (type === "html" || (node.children && node.children.length > 0)) {
                 rawState[id] = node.innerHTML.trim();
@@ -643,11 +636,7 @@ export function initDataModel(engine) {
         if (store) {
             const storedVal = store.getItem(config.storageKey);
             if (storedVal !== null) {
-                try {
-                    rawState[key] = JSON.parse(storedVal);
-                } catch (_) {
-                    rawState[key] = storedVal;
-                }
+                rawState[key] = safeParse(storedVal, storedVal);
             } else if (rawState[key] !== undefined) {
                 if (isFn(engine._savePersistedState)) engine._savePersistedState(key, rawState[key]);
             }

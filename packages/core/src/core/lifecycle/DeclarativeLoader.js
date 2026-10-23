@@ -18,7 +18,7 @@
  * - Global window.euix namespace for clean developer ergonomics
  */
 
-import { isFn, isStr, getAttr, queryAll } from "../utils/constants.js";
+import { isFn, isStr, isObj, getAttr, queryAll, safeParse } from "../utils/constants.js";
 
 /**
  * Safely coerce attribute string value into appropriate JS primitive or object.
@@ -41,11 +41,7 @@ export function coerceAttributeValue(val) {
         (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
         (trimmed.startsWith("[") && trimmed.endsWith("]"))
     ) {
-        try {
-            return JSON.parse(trimmed);
-        } catch (_) {
-            return val;
-        }
+        return safeParse(trimmed, val);
     }
 
     return val;
@@ -64,26 +60,16 @@ export function extractPropsAndState(element) {
 
     // 1. JSON blobs
     if (element.hasAttribute("data-props")) {
-        try {
-            const raw = element.getAttribute("data-props");
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === "object") {
-                Object.assign(props, parsed);
-            }
-        } catch (e) {
-            console.warn("[EUIX Declarative] Failed to parse data-props JSON:", e);
+        const parsed = safeParse(element.getAttribute("data-props"));
+        if (isObj(parsed)) {
+            Object.assign(props, parsed);
         }
     }
 
     if (element.hasAttribute("data-state")) {
-        try {
-            const raw = element.getAttribute("data-state");
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === "object") {
-                Object.assign(state, parsed);
-            }
-        } catch (e) {
-            console.warn("[EUIX Declarative] Failed to parse data-state JSON:", e);
+        const parsed = safeParse(element.getAttribute("data-state"));
+        if (isObj(parsed)) {
+            Object.assign(state, parsed);
         }
     }
 

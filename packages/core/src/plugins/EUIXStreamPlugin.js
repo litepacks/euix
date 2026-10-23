@@ -1,4 +1,4 @@
-import { isObj, isStr, isFn } from "../core/utils/constants.js";
+import { isObj, isStr, isFn, safeParse } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXStreamPlugin.js
  * Declarative WebSocket & Server-Sent Events (SSE) Real-Time Streaming Engine for EUIX Engine.
@@ -263,12 +263,7 @@ export const EUIXStreamPlugin = {
         };
 
         proto._handleIncomingStreamMessage = function (streamId, rawData, config, rawEvt) {
-            let parsedData = rawData;
-            if (isStr(rawData)) {
-                try {
-                    parsedData = JSON.parse(rawData);
-                } catch (_) {}
-            }
+            const parsedData = isStr(rawData) ? safeParse(rawData, rawData) : rawData;
 
             this._updateStreamStatus(streamId, {
                 lastMessage: parsedData,

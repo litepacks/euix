@@ -11,6 +11,7 @@
  * - Declarative Actions: FLY_TO, PAN_TO, SET_VIEW, FIT_BOUNDS, CLEAR_MAP, REMOVE_LAYER, INVALIDATE_MAP_SIZE, ADD_MARKER
  */
 
+import { safeParse } from "../core/utils/constants.js";
 /**
  * Geodesic Polygon Area Calculation in square meters (m²)
  */
@@ -287,9 +288,7 @@ export const EUIXLeafletPlugin = {
                         const rawPoints = item.points || item.latlngs || item.latLngs || item.coordinates;
                         let points = null;
                         if (typeof rawPoints === "string") {
-                            try {
-                                points = JSON.parse(rawPoints);
-                            } catch (_) {}
+                            points = safeParse(rawPoints);
                         } else if (Array.isArray(rawPoints)) {
                             if (Array.isArray(rawPoints[0])) {
                                 points = rawPoints;
@@ -681,9 +680,7 @@ export const EUIXLeafletPlugin = {
                             const raw = item.points || item.latlngs || item.latLngs || item.coordinates;
                             let pts = null;
                             if (typeof raw === "string") {
-                                try {
-                                    pts = JSON.parse(raw);
-                                } catch (_) {}
+                                pts = safeParse(raw);
                             } else if (Array.isArray(raw)) pts = raw;
                             if (pts && pts.length >= 3 && map.fitBounds) {
                                 const latlngs = pts.map((p) => (Array.isArray(p) ? p : [p.lat, p.lng]));

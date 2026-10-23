@@ -19,6 +19,7 @@ import {
     isObj,
     isStr,
     queryAll,
+    safeParse,
 } from "../utils/constants.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
@@ -425,11 +426,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
                         parsedValue = parsed ? [parsed] : [];
                     }
                 } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
-                    try {
-                        parsedValue = JSON.parse(txt);
-                    } catch (_) {
-                        parsedValue = [];
-                    }
+                    parsedValue = safeParse(txt, []);
                 } else {
                     parsedValue = [];
                 }
@@ -447,11 +444,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
                 const parsed = toonToJson(txt);
                 parsedValue = isObj(parsed) ? parsed : {};
             } else {
-                try {
-                    parsedValue = txt ? JSON.parse(txt) : {};
-                } catch (_) {
-                    parsedValue = {};
-                }
+                parsedValue = safeParse(txt, {});
             }
         } else {
             parsedValue = node.textContent.trim() || "";

@@ -5,6 +5,7 @@
 
 import { compileXmlToAst } from "../compiler/index.js";
 import { renderToString as renderIrToString } from "../prepare/runtime/ssr.js";
+import { safeParse } from "../core/utils/constants.js";
 
 /**
  * Renders an EUIX XML string, AST tree, PreparedApp, Runtime IR, or Source JSON into a static HTML string.
@@ -85,17 +86,9 @@ function _extractDataModel(node, state) {
                     } else if (type === "boolean") {
                         state[key] = rawContent === "true";
                     } else if (type === "array") {
-                        try {
-                            state[key] = JSON.parse(rawContent || "[]");
-                        } catch (_) {
-                            state[key] = [];
-                        }
+                        state[key] = safeParse(rawContent, []);
                     } else if (type === "object") {
-                        try {
-                            state[key] = JSON.parse(rawContent || "{}");
-                        } catch (_) {
-                            state[key] = {};
-                        }
+                        state[key] = safeParse(rawContent, {});
                     } else {
                         state[key] = rawContent;
                     }

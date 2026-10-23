@@ -3,6 +3,7 @@
  * Automatic scroll restoration and position history persistence for EUIX Web Router.
  */
 
+import { safeParse } from "../../../core/utils/constants.js";
 export class ScrollRestorationManager {
     constructor({ enabled = true, storageKey = "euix_router_scroll" } = {}) {
         this.enabled = enabled;
@@ -13,13 +14,10 @@ export class ScrollRestorationManager {
 
     _loadFromStorage() {
         if (typeof window !== "undefined" && typeof sessionStorage !== "undefined") {
-            try {
-                const stored = sessionStorage.getItem(this.storageKey);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    Object.entries(parsed).forEach(([k, v]) => this._positions.set(k, v));
-                }
-            } catch (_) {}
+            const parsed = safeParse(sessionStorage.getItem(this.storageKey));
+            if (parsed) {
+                Object.entries(parsed).forEach(([k, v]) => this._positions.set(k, v));
+            }
         }
     }
 

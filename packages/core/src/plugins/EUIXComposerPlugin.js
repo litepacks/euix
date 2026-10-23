@@ -1,4 +1,4 @@
-import { getNow } from "../core/utils/constants.js";
+import { getNow, safeParse } from "../core/utils/constants.js";
 /**
  * EUIXComposerPlugin.js
  * Action Composer Subroutines & Workflow System Plugin for EUIX Engine.
@@ -220,21 +220,12 @@ function coerceComposerType(val, type) {
         return val === true || val === "true" || val === 1 || val === "1";
     }
     if (lowerType === "object" || lowerType === "json") {
-        if (typeof val === "string") {
-            try {
-                return JSON.parse(val);
-            } catch (_) {
-                return val;
-            }
-        }
-        return val;
+        return typeof val === "string" ? safeParse(val, val) : val;
     }
     if (lowerType === "array") {
         if (typeof val === "string") {
-            try {
-                const arr = JSON.parse(val);
-                if (Array.isArray(arr)) return arr;
-            } catch (_) {}
+            const arr = safeParse(val);
+            if (Array.isArray(arr)) return arr;
         }
         return Array.isArray(val) ? val : [val];
     }
@@ -371,11 +362,7 @@ export class EUIXActionComposer {
                     // Preserve original exact type of step result
                 } else {
                     const evaluatedReturn = engine.interpolate(actionDef.returnExpr, mergedContext);
-                    try {
-                        invocationCtx.result = JSON.parse(evaluatedReturn);
-                    } catch (_) {
-                        invocationCtx.result = evaluatedReturn;
-                    }
+                    invocationCtx.result = safeParse(evaluatedReturn, evaluatedReturn);
                 }
             }
         } catch (err) {

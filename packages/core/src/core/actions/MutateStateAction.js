@@ -3,7 +3,7 @@
  * Declarative state mutation query engine (PUSH, REMOVE, UPDATE, SWAP, SORT, etc.) for EUIX Engine.
  */
 
-import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr } from "../utils/constants.js";
+import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr, safeParse } from "../utils/constants.js";
 
 export function interpolateObjectProperties(engine, obj, context) {
     if (!obj || typeof obj !== "object" || !engine) return obj;
@@ -22,24 +22,20 @@ export function evaluateObjectExpression(engine, expr, context = {}) {
     const trimmed = expr.trim();
     if (!trimmed) return null;
 
-    try {
-        const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === "object") {
-            return interpolateObjectProperties(engine, parsed, context);
-        }
-    } catch (_) {}
+    const parsed = safeParse(trimmed);
+    if (parsed && typeof parsed === "object") {
+        return interpolateObjectProperties(engine, parsed, context);
+    }
 
     const sanitized = trimmed.replace(/\{([a-zA-Z_$][a-zA-Z0-9_.]*)\}/g, (match, p1) => {
         const val = engine && isFn(engine.resolveValueFromPath) ? engine.resolveValueFromPath(p1, context) : undefined;
         return val !== undefined ? JSON.stringify(val) : p1;
     });
 
-    try {
-        const parsed = JSON.parse(sanitized);
-        if (parsed && typeof parsed === "object") {
-            return interpolateObjectProperties(engine, parsed, context);
-        }
-    } catch (_) {}
+    const parsedSanitized = safeParse(sanitized);
+    if (parsedSanitized && typeof parsedSanitized === "object") {
+        return interpolateObjectProperties(engine, parsedSanitized, context);
+    }
 
     try {
         const itemVal =

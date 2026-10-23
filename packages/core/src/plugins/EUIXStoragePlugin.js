@@ -1,4 +1,4 @@
-import { isFn } from "../core/utils/constants.js";
+import { isFn, safeParse } from "../core/utils/constants.js";
 /**
  * EUIXStoragePlugin.js
  * State Persistence & Storage Plugin for EUIX Engine.
@@ -33,12 +33,8 @@ export const EUIXStoragePlugin = {
                 if (!event.key || !this._rawState || !this._persistenceConfig) return;
                 for (const [stateKey, config] of this._persistenceConfig.entries()) {
                     if (config.storage === "local" && config.storageKey === event.key) {
-                        try {
-                            const parsed = event.newValue !== null ? JSON.parse(event.newValue) : "";
-                            this.setState(stateKey, parsed, { silent: false });
-                        } catch (_) {
-                            this.setState(stateKey, event.newValue || "", { silent: false });
-                        }
+                        const parsed = event.newValue !== null ? safeParse(event.newValue, event.newValue || "") : "";
+                        this.setState(stateKey, parsed, { silent: false });
                     }
                 }
             };
@@ -70,11 +66,7 @@ export const EUIXStoragePlugin = {
             if (store && this._rawState) {
                 const existing = store.getItem(storageKey);
                 if (existing !== null) {
-                    try {
-                        this._rawState[parsedKey] = JSON.parse(existing);
-                    } catch (_) {
-                        this._rawState[parsedKey] = existing;
-                    }
+                    this._rawState[parsedKey] = safeParse(existing, existing);
                     this.syncBindings(parsedKey, this._rawState[parsedKey]);
                 } else if (this._rawState[parsedKey] !== undefined) {
                     this._savePersistedState(parsedKey, this._rawState[parsedKey]);

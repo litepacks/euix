@@ -1,3 +1,4 @@
+import { safeParse } from "../core/utils/constants.js";
 const getApiStore = (type) => {
     const s = String(type || "").toLowerCase();
     if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
@@ -74,18 +75,14 @@ export const EUIXApiPlugin = {
         proto._readPersistentApiCache = (storageKey, storageType, ttlMs) => {
             const store = getApiStore(storageType);
             if (!store) return null;
-            try {
-                const raw = store.getItem(storageKey);
-                if (!raw) return null;
-                const entry = JSON.parse(raw);
-                if (entry && entry.timestamp) {
-                    if (ttlMs > 0 && Date.now() - entry.timestamp > ttlMs) {
-                        store.removeItem(storageKey);
-                        return null;
-                    }
-                    return entry;
+            const entry = safeParse(store.getItem(storageKey));
+            if (entry && entry.timestamp) {
+                if (ttlMs > 0 && Date.now() - entry.timestamp > ttlMs) {
+                    store.removeItem(storageKey);
+                    return null;
                 }
-            } catch (_) {}
+                return entry;
+            }
             return null;
         };
 
@@ -111,8 +108,7 @@ export const EUIXApiPlugin = {
             const store = typeof localStorage !== "undefined" ? localStorage : null;
             if (!store) return;
             try {
-                const raw = store.getItem(queueKey);
-                const queue = raw ? JSON.parse(raw) : [];
+                const queue = safeParse(store.getItem(queueKey), []);
                 let plainHeaders = mutationOptions.headers;
                 if (typeof Headers !== "undefined" && plainHeaders instanceof Headers) {
                     plainHeaders = Object.fromEntries(plainHeaders.entries());
@@ -135,9 +131,8 @@ export const EUIXApiPlugin = {
             const store = typeof localStorage !== "undefined" ? localStorage : null;
             if (!store) return [];
             try {
-                const raw = store.getItem(queueKey);
-                if (!raw) return [];
-                const queue = JSON.parse(raw);
+                const queue = safeParse(store.getItem(queueKey), []);
+                if (!queue || queue.length === 0) return [];
                 store.removeItem(queueKey);
                 const results = [];
                 for (const item of queue) {
@@ -657,19 +652,11 @@ export const EUIXApiPlugin = {
                             data = await response.json();
                         } catch (_) {
                             const textData = typeof response.text === "function" ? await response.text() : "";
-                            try {
-                                data = JSON.parse(textData);
-                            } catch (_) {
-                                data = textData;
-                            }
+                            data = safeParse(textData, textData);
                         }
                     } else {
                         const textData = typeof response.text === "function" ? await response.text() : "";
-                        try {
-                            data = JSON.parse(textData);
-                        } catch (_) {
-                            data = textData;
-                        }
+                        data = safeParse(textData, textData);
                     }
                     return data;
                 })
