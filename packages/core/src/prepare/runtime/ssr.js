@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/runtime/ssr.js
  * Zero-DOM Server-Side Rendering (SSR) engine for EUIX Runtime IR & Prepared Applications.
@@ -402,11 +403,10 @@ export function renderToString(appOrIrOrSource, initialData = {}, options = {}) 
         if (trimmed.startsWith("<")) {
             return renderXmlToString(appOrIrOrSource, initialData, options);
         }
-        try {
-            appOrIrOrSource = JSON.parse(appOrIrOrSource);
-        } catch (_) {
+        appOrIrOrSource = safeParse(appOrIrOrSource, null);
+
+        if (!appOrIrOrSource)
             return "";
-        }
     }
 
     // 2. Extract IR from PreparedApp or directly

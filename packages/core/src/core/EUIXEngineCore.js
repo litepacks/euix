@@ -130,7 +130,7 @@ import {
     toggleState,
 } from "./state/ReactiveStore.js";
 import { onStateChange, triggerStateWatchers, watch } from "./state/Watchers.js";
-import { isFn, isStr, registerActionDispatch, registerMetadataTag, DEFAULT_TIMEOUTS, createTimeoutSignal, safeFetchWithTimeout } from "./utils/constants.js";
+import { isFn, isStr, registerActionDispatch, registerMetadataTag, DEFAULT_TIMEOUTS, createTimeoutSignal, safeFetchWithTimeout, safeParse } from "./utils/constants.js";
 import { getChild, getChildren, reportError } from "./utils/domHelpers.js";
 
 class EUIXEngineCore {
@@ -929,6 +929,7 @@ EUIXEngineCore.processStyleTag = processStyleTag;
 EUIXEngineCore.DEFAULT_TIMEOUTS = DEFAULT_TIMEOUTS;
 EUIXEngineCore.createTimeoutSignal = createTimeoutSignal;
 EUIXEngineCore.safeFetchWithTimeout = safeFetchWithTimeout;
+EUIXEngineCore.safeParse = safeParse;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
@@ -936,6 +937,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXXMLParseError = EUIXXMLParseError;
     window.EUIXEngineCore = EUIXEngineCore;
     window.DEFAULT_TIMEOUTS = DEFAULT_TIMEOUTS;
+    window.safeParse = safeParse;
     const scheduleCoreInit = () => {
         queueMicrotask(() => {
             if (window.EUIXEngine && isFn(window.EUIXEngine.autoInit)) {
@@ -968,5 +970,6 @@ export {
     DEFAULT_TIMEOUTS,
     createTimeoutSignal,
     safeFetchWithTimeout,
+    safeParse,
 };
 export default EUIXEngineCore;

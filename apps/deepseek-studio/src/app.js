@@ -4,7 +4,7 @@
  * Connects DeepSeek SSE token stream to EUIX streaming repair, reactive mounting, and Doctor verification.
  */
 
-import { EUIXEngine } from "euixjs";
+import { EUIXEngine, safeParse } from "euixjs";
 import {
     parseStreamingEuix,
     repairPartialJson,
@@ -698,9 +698,9 @@ function initStateEditorListeners() {
             if (type === "number") parsedVal = Number(rawVal) || 0;
             else if (type === "boolean") parsedVal = rawVal.toLowerCase() === "true" || rawVal === "1";
             else if (type === "array") {
-                try { parsedVal = rawVal ? JSON.parse(rawVal) : []; } catch (_) { parsedVal = []; }
+                parsedVal = safeParse(rawVal, []);
             } else if (type === "object") {
-                try { parsedVal = rawVal ? JSON.parse(rawVal) : {}; } catch (_) { parsedVal = {}; }
+                parsedVal = safeParse(rawVal, {});
             }
 
             updateStateValue(rawKey, parsedVal);

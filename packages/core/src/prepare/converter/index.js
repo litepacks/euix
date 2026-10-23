@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/converter/index.js
  * Bi-directional converter between EUIX XML (<uid_spec>) and EUIX Canonical JSON (.euix.json).
@@ -93,7 +94,12 @@ export function convert(source, options = {}) {
 
     if (isJson) {
         // JSON string input
-        const parsedJson = JSON.parse(trimmed);
+        const parsedJson = safeParse(trimmed, null);
+
+        if (!parsedJson) {
+            throw new Error("Failed to parse JSON input string.");
+        }
+
         if (targetFormat === "json") {
             return JSON.stringify(parsedJson, null, 2);
         }

@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/snapshot/index.js
  * Deterministic Runtime IR Snapshot Testing Subsystem for EUIX.
@@ -323,9 +324,7 @@ export async function updateSnapshotFile(sourceFilePath, options = {}) {
 
     let sourceParsed = content;
     if (absSource.endsWith(".json")) {
-        try {
-            sourceParsed = JSON.parse(content);
-        } catch (_) {}
+        sourceParsed = safeParse(content, content);
     }
 
     const snapshot = await createSnapshot(sourceParsed, {
@@ -380,13 +379,11 @@ export async function verifySnapshotFile(sourceFilePath, options = {}) {
     const content = fs.readFileSync(absSource, "utf8");
     let sourceParsed = content;
     if (absSource.endsWith(".json")) {
-        try {
-            sourceParsed = JSON.parse(content);
-        } catch (_) {}
+        sourceParsed = safeParse(content, content);
     }
 
     const snapshotRaw = fs.readFileSync(snapshotPath, "utf8");
-    const snapshot = JSON.parse(snapshotRaw);
+    const snapshot = safeParse(snapshotRaw, null);
 
     const result = await verifySnapshot(sourceParsed, snapshot, {
         ...options,

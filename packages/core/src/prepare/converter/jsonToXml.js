@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/converter/jsonToXml.js
  * Converts canonical EUIX Source JSON into cleanly formatted, idiomatic EUIX XML (<uid_spec>).
@@ -360,7 +361,7 @@ function viewNodeToXmlLines(node, depth = 1) {
  * @returns {string} XML string (<uid_spec>...)
  */
 export function jsonToXml(sourceJson, options = {}) {
-    const source = typeof sourceJson === "string" ? JSON.parse(sourceJson) : sourceJson;
+    const source = typeof sourceJson === "string" ? safeParse(sourceJson, null) : sourceJson;
     if (!source || typeof source !== "object") {
         throw new Error("Invalid source JSON: Root must be an object.");
     }

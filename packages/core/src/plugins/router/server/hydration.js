@@ -1,3 +1,4 @@
+import { safeParse } from "../../../core/utils/constants.js";
 /**
  * src/plugins/router/server/hydration.js
  * Hydration state serialization, XSS escaping, and client rehydration.
@@ -26,10 +27,5 @@ export function getHydrationData() {
     const scriptEl = document.getElementById("__EUIX_ROUTER_DATA__");
     if (!scriptEl) return null;
 
-    try {
-        return JSON.parse(scriptEl.textContent);
-    } catch (err) {
-        console.error("[EUIXRouter] Failed to parse hydration data:", err);
-        return null;
-    }
+    return safeParse(scriptEl.textContent, null);
 }

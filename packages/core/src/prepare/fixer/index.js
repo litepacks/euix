@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/fixer/index.js
  * Intelligent Auto-Fixer for EUIX Sources (JSON & XML).
@@ -581,14 +582,14 @@ export async function applyFixes(source, diagnostics = null, options = {}) {
         } else if (typeof currentSource === "string") {
             const trimmed = currentSource.trim();
             if (trimmed.startsWith("{")) {
-                try {
-                    const parsed = JSON.parse(currentSource);
-                    const { fixedObj, fixesApplied } = fixJsonObject(parsed, fixableDiags);
-                    currentSource = JSON.stringify(fixedObj, null, 2);
-                    passFixes = fixesApplied;
-                } catch {
+                const parsed = safeParse(currentSource, null);
+
+                if (!parsed)
                     break;
-                }
+
+                const { fixedObj, fixesApplied } = fixJsonObject(parsed, fixableDiags);
+                currentSource = JSON.stringify(fixedObj, null, 2);
+                passFixes = fixesApplied;
             } else {
                 const { fixedXml, fixesApplied } = fixXmlString(currentSource, fixableDiags);
                 currentSource = fixedXml;

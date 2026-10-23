@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * packages/core/src/prepare/parser/xmlToJson.js
  * Converts EUIX XML templates (<uid_spec>) into canonical EUIX Source JSON representation.
@@ -75,11 +76,7 @@ function parseStateValue(stateEl) {
     }
     if (type === "array" || type === "object") {
         if (!raw || raw === "null") return type === "array" ? [] : null;
-        try {
-            return JSON.parse(raw);
-        } catch (_) {
-            return type === "array" ? [] : {};
-        }
+        return safeParse(raw, type === "array" ? [] : {});
     }
     return raw;
 }

@@ -1,3 +1,4 @@
+import { safeParse } from "../../core/utils/constants.js";
 /**
  * src/plugins/inspector/panel.js
  * Interactive DevTools Drawer & Inspector Panel UI for EUIX Inspector.
@@ -881,11 +882,7 @@ export class InspectorPanel {
                 if (type === "number") v = parseFloat(v) || 0;
                 else if (type === "boolean") v = v === "true" || v === "1";
                 else if (type === "json") {
-                    try {
-                        v = JSON.parse(v);
-                    } catch (_) {
-                        v = {};
-                    }
+                    v = safeParse(v, {});
                 }
 
                 this.engine.setState(k, v);
