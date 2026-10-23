@@ -1,4 +1,4 @@
-import { isStr, isFn } from "../core/utils/constants.js";
+import { isStr, isFn, toInt } from "../core/utils/constants.js";
 /**
  * EUIXAnimationPlugin
  * Declarative Animation System for EUIX Engine.
@@ -254,8 +254,8 @@ export const EUIXAnimationPlugin = {
                     });
 
                     parsedDef = {
-                        duration: durationAttr ? parseInt(durationAttr, 10) : undefined,
-                        delay: delayAttr ? parseInt(delayAttr, 10) : undefined,
+                        duration: durationAttr ? toInt(durationAttr, undefined) : undefined,
+                        delay: delayAttr ? toInt(delayAttr, undefined) : undefined,
                         easing: easingAttr || undefined,
                         fill: fillAttr || undefined,
                         iterations: iterationsAttr
@@ -342,8 +342,8 @@ export const EUIXAnimationPlugin = {
             }
 
             // Parse & validate numeric timing options
-            let duration = animOptions.duration !== undefined ? parseInt(animOptions.duration, 10) : 300;
-            let delay = animOptions.delay !== undefined ? parseInt(animOptions.delay, 10) : 0;
+            let duration = animOptions.duration !== undefined ? toInt(animOptions.duration, 300) : 300;
+            let delay = animOptions.delay !== undefined ? toInt(animOptions.delay, 0) : 0;
             const easing = animOptions.easing || "ease";
             const fill = animOptions.fill || "both";
             const iterations = animOptions.iterations || animOptions.iteration_count || 1;

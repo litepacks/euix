@@ -109,6 +109,10 @@ export const toNum = (val, defaultVal = 0) => {
     const n = Number(val);
     return Number.isNaN(n) ? defaultVal : n;
 };
+export const toInt = (val, defaultVal = 0) => {
+    const n = parseInt(val, 10);
+    return Number.isNaN(n) ? defaultVal : n;
+};
 
 export const isCycleError = (err) => {
     const msg = err?.message ? err.message : "";

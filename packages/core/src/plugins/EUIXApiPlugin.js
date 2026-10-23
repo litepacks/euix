@@ -1,4 +1,4 @@
-import { safeParse } from "../core/utils/constants.js";
+import { safeParse, toInt } from "../core/utils/constants.js";
 const getApiStore = (type) => {
     const s = String(type || "").toLowerCase();
     if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
@@ -46,7 +46,7 @@ export const EUIXApiPlugin = {
                 this._apiConfig.revalidateOnline = Boolean(options.revalidateOnline);
             if (options.persist !== undefined) this._apiConfig.persist = options.persist;
             if (options.queueOffline !== undefined) this._apiConfig.queueOffline = Boolean(options.queueOffline);
-            if (options.timeout !== undefined) this._apiConfig.timeout = parseInt(options.timeout, 10) || 0;
+            if (options.timeout !== undefined) this._apiConfig.timeout = toInt(options.timeout, 0);
             if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
             if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
 
@@ -426,7 +426,7 @@ export const EUIXApiPlugin = {
                   actionNode.getAttribute("cache") ||
                   compApiConfig.cacheTtl ||
                   0;
-            const cacheTtlMs = parseInt(cacheTtlRaw, 10);
+            const cacheTtlMs = toInt(cacheTtlRaw, 0);
             const epId = idAttr || tagAttr;
             const persistAttr =
                 actionNode.getAttribute("persist") ||
@@ -603,13 +603,10 @@ export const EUIXApiPlugin = {
             }
 
             let timeoutId = null;
-            const timeoutMs = parseInt(
-                actionNode.getAttribute("timeout") ||
-                    compApiConfig.timeout ||
-                    (this._apiConfig && this._apiConfig.timeout) ||
-                    0,
-                10,
-            );
+            const timeoutMs = toInt(actionNode.getAttribute("timeout") ||
+                compApiConfig.timeout ||
+                (this._apiConfig && this._apiConfig.timeout) ||
+                0, 0);
             if (typeof AbortController !== "undefined") {
                 const controller = new AbortController();
                 fetchOptions.signal = controller.signal;
@@ -773,9 +770,7 @@ export const EUIXApiPlugin = {
                 .catch((err) => {
                     const status =
                         err.status ||
-                        (err.message && err.message.match(/HTTP (\d+)/)
-                            ? parseInt(err.message.match(/HTTP (\d+)/)[1], 10)
-                            : null);
+                        (err.message && err.message.match(/HTTP (\d+)/) ? toInt(err.message.match(/HTTP (\d+)/)[1], null) : null);
                     const isOfflineNow = (typeof navigator !== "undefined" && navigator.onLine === false) || !status;
                     if (isOfflineNow && queueOffline && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
                         this._enqueueOfflineMutation({ url: finalUrl, method, body, headers: headersObj });

@@ -32,7 +32,7 @@ export default defineConfig({
         keep_fargs: false,
         evaluate: true,
         hoist_funs: true,
-        pure_funcs: ['isObj', 'isFn', 'isStr', 'isBool', 'isElem', 'isTxtNode', 'trimStr', 'splitPath', 'getRootKey', 'getTagName', 'getAttr', 'getChildNodes', 'getChildrenList', 'isScoped', 'toNum', 'genId', 'getNow', 'safeParse']
+        pure_funcs: ['isObj', 'isFn', 'isStr', 'isBool', 'isElem', 'isTxtNode', 'trimStr', 'splitPath', 'getRootKey', 'getTagName', 'getAttr', 'getChildNodes', 'getChildrenList', 'isScoped', 'toNum', 'toInt', 'genId', 'getNow', 'safeParse']
       },
       mangle: {
         toplevel: true

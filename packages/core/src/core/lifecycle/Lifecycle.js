@@ -15,6 +15,7 @@ import {
     hasWindow,
     queryAll,
     safeParse,
+    toInt,
 } from "../utils/constants.js";
 import { toonToJson } from "../parser/toon.js";
 import { autoInit as declarativeAutoInit } from "./DeclarativeLoader.js";
@@ -56,8 +57,8 @@ export function mount(engine, appXmlString, options = {}) {
         const errorText = parserError.textContent.trim();
         const lineMatch = errorText.match(/line\s+(\d+)/i) || errorText.match(/:(\d+):/);
         const colMatch = errorText.match(/column\s+(\d+)/i) || errorText.match(/:(\d+):(\d+)/);
-        const line = lineMatch ? parseInt(lineMatch[1], 10) : 1;
-        const col = colMatch ? parseInt(colMatch[colMatch.length - 1], 10) : 1;
+        const line = lineMatch ? toInt(lineMatch[1], 1) : 1;
+        const col = colMatch ? toInt(colMatch[colMatch.length - 1], 1) : 1;
         const codeFrame = engine.constructor.generateCodeFrame(appXmlString, line, col);
         const errMsg = `[EUIX XML Parse Error] at line ${line}, column ${col}:\n${codeFrame || errorText}`;
         engine.reportError(errMsg, "XML Parse Error");
@@ -243,7 +244,7 @@ export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
     // 3. <on_interval ms="5000"> / <on_timer ms="1000">
     if (onIntervalNodes) {
         onIntervalNodes.forEach((node) => {
-            const ms = parseInt(node.getAttribute("ms") || node.getAttribute("delay") || "5000", 10);
+            const ms = toInt(node.getAttribute("ms") || node.getAttribute("delay") || "5000", 0);
             if (ms > 0) {
                 const intervalId = setInterval(() => {
                     if (typeof document !== "undefined" && !document.body.contains(domEl)) {
@@ -554,7 +555,7 @@ export function initDataModel(engine) {
                 engine.configureApi({
                     baseUrl: baseUrl ? baseUrl.trim() : undefined,
                     credentials: credentials ? credentials.trim() : undefined,
-                    timeout: timeout ? parseInt(timeout, 10) || 0 : undefined,
+                    timeout: timeout ? toInt(timeout, 0) : undefined,
                 });
             } else {
                 if (!engine._apiConfig) {
@@ -567,7 +568,7 @@ export function initDataModel(engine) {
                 }
                 if (baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
                 if (credentials) engine._apiConfig.credentials = credentials.trim();
-                if (timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
+                if (timeout) engine._apiConfig.timeout = toInt(timeout, 0);
             }
 
             const headerNodes = queryAll(apiConfigNode, "headers > header, header");

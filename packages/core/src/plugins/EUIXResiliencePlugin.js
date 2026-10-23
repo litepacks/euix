@@ -1,4 +1,4 @@
-import { getNow } from "../core/utils/constants.js";
+import { getNow, toInt } from "../core/utils/constants.js";
 import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
 
 const noop = () => {};
@@ -353,7 +353,7 @@ export const EUIXResiliencePlugin = {
                 actionNode.getAttribute("count") ||
                 this.getChild(actionNode, "attempts")?.textContent.trim();
             const attemptsStr = this.interpolate(attemptsAttr || "3", context);
-            const maxAttempts = parseInt(attemptsStr, 10);
+            const maxAttempts = toInt(attemptsStr, 0);
 
             if (Number.isNaN(maxAttempts) || maxAttempts <= 0) {
                 const err = new EUIXStructuredError({

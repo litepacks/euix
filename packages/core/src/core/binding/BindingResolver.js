@@ -3,7 +3,7 @@
  * Two-way data binding resolvers, path parsers, and mapping utilities for EUIX Engine.
  */
 
-import { getRootKey, isFn, isStr, isBool } from "../utils/constants.js";
+import { getRootKey, isFn, isStr, isBool, toInt } from "../utils/constants.js";
 
 export function parseBindPath(expr) {
     if (!expr) return "";
@@ -42,7 +42,7 @@ export function extractBindModifiers(xmlNode) {
             else if (mod === "lazy") modifiers.lazy = true;
             else if (mod.startsWith("debounce")) {
                 const parts = mod.split(/[-_.]/);
-                modifiers.debounce = parts[1] ? parseInt(parts[1], 10) : 300;
+                modifiers.debounce = parts[1] ? toInt(parts[1], 300) : 300;
             }
             if (!bindAttr) {
                 bindAttr = xmlNode.getAttribute(attr);
@@ -65,7 +65,7 @@ export function extractBindModifiers(xmlNode) {
 
     const debounceAttr = xmlNode.getAttribute("debounce");
     if (debounceAttr) {
-        modifiers.debounce = parseInt(debounceAttr, 10) || 300;
+        modifiers.debounce = toInt(debounceAttr, 300);
     }
 
     const lazyAttr = xmlNode.getAttribute("lazy");

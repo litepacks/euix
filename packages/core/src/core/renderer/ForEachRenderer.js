@@ -4,7 +4,13 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
-import { _getNodeAtPath, _getStaticNodeResolver, EMPTY_ARR, getForEachItemHash } from "../utils/constants.js";
+import {
+    _getNodeAtPath,
+    _getStaticNodeResolver,
+    EMPTY_ARR,
+    getForEachItemHash,
+    toInt,
+} from "../utils/constants.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 
@@ -439,9 +445,12 @@ export function renderForEach(engine, xmlNode, context = {}) {
     engine._setupContainerEventDelegation(listContainer);
 
     const isVirtual = xmlNode.getAttribute("virtual") === "true" || xmlNode.getAttribute("virtual_scroll") === "true";
-    const itemHeight = parseInt(xmlNode.getAttribute("item_height") || xmlNode.getAttribute("row_height") || "40", 10);
+    const itemHeight = toInt(
+        xmlNode.getAttribute("item_height") || xmlNode.getAttribute("row_height") || "40",
+        0
+    );
     const containerHeight = xmlNode.getAttribute("height") || xmlNode.getAttribute("max_height") || "400px";
-    const buffer = parseInt(xmlNode.getAttribute("buffer") || "4", 10);
+    const buffer = toInt(xmlNode.getAttribute("buffer") || "4", 0);
 
     let spacer = null;
     let contentWrapper = null;
@@ -591,7 +600,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
 
             const renderSlice = () => {
                 const scrollTop = listContainer.scrollTop || 0;
-                const clientHeight = listContainer.clientHeight || parseInt(containerHeight, 10) || 400;
+                const clientHeight = listContainer.clientHeight || toInt(containerHeight, 0) || 400;
                 const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - buffer);
                 const endIndex = Math.min(totalItems, Math.ceil((scrollTop + clientHeight) / itemHeight) + buffer);
 

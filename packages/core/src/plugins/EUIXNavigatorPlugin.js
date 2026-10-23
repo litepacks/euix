@@ -1,4 +1,4 @@
-import { isBool, isFn, safeParse } from "../core/utils/constants.js";
+import { isBool, isFn, safeParse, toInt } from "../core/utils/constants.js";
 /**
  * EUIXNavigatorPlugin.js
  * Browser Navigator & Device Capabilities Plugin for EUIX Engine.
@@ -347,7 +347,7 @@ export const EUIXNavigatorPlugin = {
                 ? this.interpolate(patternNode.textContent, context)
                 : this.interpolate(rawPattern, context);
 
-            const pattern = safeParse(patternStr, parseInt(patternStr, 10) || 50);
+            const pattern = safeParse(patternStr, toInt(patternStr, 50));
 
             if (typeof navigator !== "undefined" && isFn(navigator.vibrate)) {
                 navigator.vibrate(pattern);
@@ -394,7 +394,7 @@ export const EUIXNavigatorPlugin = {
             const rawVal = actionNode.getAttribute("value") || actionNode.getAttribute("count") || "";
             const valNode = this.getChild(actionNode, "value") || this.getChild(actionNode, "count");
             const valStr = valNode ? this.interpolate(valNode.textContent, context) : this.interpolate(rawVal, context);
-            const count = parseInt(valStr, 10);
+            const count = toInt(valStr, 0);
 
             if (typeof navigator !== "undefined" && isFn(navigator.setAppBadge)) {
                 if (!Number.isNaN(count) && count > 0) {

@@ -1,3 +1,4 @@
+import { toInt } from "../utils/constants.js";
 /**
  * src/core/parser/AstParser.js
  * High-performance XML parser and AST caching module for EUIX Engine.
@@ -279,8 +280,8 @@ export function parseXmlToAst(xmlString, options = {}) {
         const errorText = parseError.textContent || "";
         const lineMatch = errorText.match(/line\s+(\d+)/i) || errorText.match(/:(\d+):/);
         const colMatch = errorText.match(/column\s+(\d+)/i) || errorText.match(/:(\d+):(\d+)/);
-        const line = lineMatch ? parseInt(lineMatch[1], 10) : 1;
-        const col = colMatch ? parseInt(colMatch[colMatch.length - 1], 10) : 1;
+        const line = lineMatch ? toInt(lineMatch[1], 1) : 1;
+        const col = colMatch ? toInt(colMatch[colMatch.length - 1], 1) : 1;
         const codeFrame = generateCodeFrame(xmlString, line, col);
         const msg = `[EUIX XML Parse Error] at line ${line}, column ${col}:\n${codeFrame || errorText}`;
         const err = new EUIXXMLParseError(msg, line, col, codeFrame, xmlString);
