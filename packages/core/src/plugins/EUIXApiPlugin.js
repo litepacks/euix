@@ -603,10 +603,13 @@ export const EUIXApiPlugin = {
             }
 
             let timeoutId = null;
-            const timeoutMs = toInt(actionNode.getAttribute("timeout") ||
-                compApiConfig.timeout ||
-                (this._apiConfig && this._apiConfig.timeout) ||
-                0, 0);
+            const timeoutAttr = actionNode.getAttribute("timeout");
+            const configTimeout = compApiConfig.timeout || (this._apiConfig && this._apiConfig.timeout);
+            const timeoutMs = timeoutAttr !== null 
+                ? toInt(timeoutAttr, 0)
+                : configTimeout !== undefined
+                  ? toInt(configTimeout, 0)
+                  : 12000;
             if (typeof AbortController !== "undefined") {
                 const controller = new AbortController();
                 fetchOptions.signal = controller.signal;

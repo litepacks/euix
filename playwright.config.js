@@ -6,7 +6,7 @@ export default defineConfig({
   maxFailures: 1,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {

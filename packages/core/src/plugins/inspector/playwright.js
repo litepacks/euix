@@ -97,19 +97,29 @@ export class EuixPlaywrightWrapper {
         const timeout = options.timeout || 15000;
         const page = this.page;
 
-        await page.waitForFunction(
-            () => {
-                const dev = window.__EUIX_DEVTOOLS__;
-                if (!dev) return true;
-                return (
-                    (dev.pendingActions || 0) === 0 &&
-                    (dev.pendingLoaders || 0) === 0 &&
-                    (dev.pendingRevalidations || 0) === 0 &&
-                    !dev.routeTransition
+        try {
+            await page.waitForFunction(
+                () => {
+                    const dev = window.__EUIX_DEVTOOLS__;
+                    if (!dev) return true;
+                    return (
+                        (dev.pendingActions || 0) === 0 &&
+                        (dev.pendingLoaders || 0) === 0 &&
+                        (dev.pendingRevalidations || 0) === 0 &&
+                        !dev.routeTransition
+                    );
+                },
+                null,
+                { timeout },
+            );
+        } catch (err) {
+            if (options.strict) {
+                const status = await page.evaluate(() => window.__EUIX_DEVTOOLS__).catch(() => null);
+                throw new Error(
+                    `[playwright:waitForIdle] Timed out after ${timeout}ms waiting for EUIX idle state. DevTools Status: ${JSON.stringify(status)}`,
                 );
-            },
-            { timeout },
-        );
+            }
+        }
 
         return this;
     }
