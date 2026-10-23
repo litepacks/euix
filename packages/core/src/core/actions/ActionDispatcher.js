@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { ACTION_DISPATCH_TABLE, genId, getNow, isFn, isStr, getAttr } from "../utils/constants.js";
+import { ACTION_DISPATCH_TABLE, genId, getNow, isFn, isStr, getAttr, isCycleError } from "../utils/constants.js";
 
 export function _setScopedState(engine, rawPath, path, nextValue, context = {}) {
     if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
@@ -57,16 +57,8 @@ export function _handleActionError(engine, err, actionNode, context = {}) {
         component: context._componentName,
     });
     engine.reportError(structuredErr, `Action Execution Fallback (${actName})`);
-    const errMsg = err?.message ? err.message : "";
-    const isLoopGuard =
-        errMsg.includes("Infinite Loop Guard") ||
-        errMsg.includes("Cascade limit exceeded") ||
-        errMsg.includes("Maximum watcher reaction depth");
     if (
-        structuredErr.code === "WATCHER_CYCLE_ERROR" ||
-        structuredErr.code === "COMPUTED_CYCLE_ERROR" ||
-        isLoopGuard ||
-        (context && (context._inTryScope || context.rethrow))
+        isCycleError(structuredErr) || (isCycleError(err) || context && (context._inTryScope || context.rethrow))
     ) {
         throw structuredErr;
     }

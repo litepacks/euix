@@ -20,6 +20,7 @@ import {
     isStr,
     queryAll,
     safeParse,
+    isCycleError,
 } from "../utils/constants.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
@@ -103,7 +104,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
 
         return EngineClass.registerComponentSpec(name, doc, options);
     } catch (err) {
-        if (err.code === "CIRCULAR_LAZY_DEPENDENCY" || err.message?.includes("CIRCULAR_LAZY_DEPENDENCY")) {
+        if (isCycleError(err)) {
             throw err;
         }
         console.error(`[EUIXEngine] Failed to load component from file ('${name}' -> '${url}'):`, err);

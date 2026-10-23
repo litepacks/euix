@@ -120,6 +120,8 @@ export const isCycleError = (err) => {
     return (
         code === "WATCHER_CYCLE_ERROR" ||
         code === "COMPUTED_CYCLE_ERROR" ||
+        code === "CIRCULAR_LAZY_DEPENDENCY" ||
+        msg.includes("CIRCULAR_LAZY_DEPENDENCY") ||
         msg.includes("Infinite Loop Guard") ||
         msg.includes("Maximum watcher reaction depth") ||
         msg.includes("Cascade limit exceeded")

@@ -1,4 +1,4 @@
-import { isStr, isFn } from "../core/utils/constants.js";
+import { isStr, isFn, isCycleError } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXLazyPlugin.js
  * EUIX XML Component & Route Lazy Loading Plugin.
@@ -188,7 +188,7 @@ export function EUIXLazyPlugin(EngineClass) {
                     break;
                 } catch (err) {
                     lastError = err;
-                    if (err.code === "CIRCULAR_LAZY_DEPENDENCY" || err.message?.includes("CIRCULAR_LAZY_DEPENDENCY")) {
+                    if (isCycleError(err)) {
                         break;
                     }
                     if (attempt < maxRetries) {
