@@ -57,7 +57,62 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
 
 ## 🚀 Quick Start
 
-### 1. Embedded HTML Script Spec (`type="application/euix"`)
+### 1. Declarative Island Mount (`data-euix` Zero-Boilerplate Drop-In)
+Add a single script tag with the `euix` attribute to any HTML page (Laravel Blade, WordPress, Django, Rails, or static HTML), and declare reactive islands directly on container elements with `data-euix`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EUIX Island Mount</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Single script inclusion with euix attribute enables auto-scanning & MutationObserver -->
+  <script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js" euix></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-8 space-y-6">
+  <!-- Option A: Load remote XML component with props & state overrides -->
+  <div data-euix="/counter.xml" data-prop-title="Live Counter" data-state-count="10"></div>
+
+  <!-- Option B: Reference an inline <template id="..."> -->
+  <div data-euix="#quick-card" data-prop-author="Ahmet"></div>
+
+  <!-- Option C: Inline XML directly in data-euix -->
+  <div data-euix="<uid_spec><span>Count: {data.count}</span></uid_spec>" data-state-count="5"></div>
+
+  <template id="quick-card">
+    <uid_spec>
+      <div class="p-4 bg-slate-800 rounded-xl">
+        <h4>Author: {props.author}</h4>
+      </div>
+    </uid_spec>
+  </template>
+</body>
+</html>
+```
+
+#### Programmatic Global API (`window.euix` / `window.EUIX`)
+For imperative integrations in existing server-rendered templates:
+```javascript
+// Scan DOM container dynamically for newly added [data-euix] elements
+await window.euix.scan(document.body);
+
+// Mount single element imperatively
+const engine = await window.euix.mountElement(document.querySelector('#my-island'));
+
+// Dynamically update component props
+engine.setProps({ title: 'Updated Title' });
+
+// Retrieve engine instance by selector or DOM element
+const inst = window.euix.get('#my-island');
+
+// Cleanly unmount element and clear reactive listeners
+window.euix.unmount(document.querySelector('#my-island'));
+```
+
+---
+
+### 2. Embedded HTML Script Spec (`type="application/euix"`)
 ```html
 <!DOCTYPE html>
 <html lang="en">

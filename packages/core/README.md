@@ -88,6 +88,27 @@ Add a single script tag with `euix` attribute to your HTML page, and declare com
 </html>
 ```
 
+#### Programmatic Global API (`window.euix` / `window.EUIX`)
+For imperative integrations in existing server-rendered templates:
+```javascript
+// Scan DOM container dynamically for newly added [data-euix] elements
+await window.euix.scan(document.body);
+
+// Mount single element imperatively
+const engine = await window.euix.mountElement(document.querySelector('#my-island'));
+
+// Dynamically update component props
+engine.setProps({ title: 'Updated Title' });
+
+// Retrieve engine instance by selector or DOM element
+const inst = window.euix.get('#my-island');
+
+// Cleanly unmount element and clear reactive listeners
+window.euix.unmount(document.querySelector('#my-island'));
+```
+
+---
+
 ### 2. Embedded HTML Script Spec (`type="application/euix"`)
 ```html
 <!DOCTYPE html>

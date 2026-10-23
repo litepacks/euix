@@ -478,6 +478,7 @@ export function registerCustomElement(EngineClass) {
  */
 export function initGlobalEuix(EngineClass) {
     if (typeof window === "undefined") return;
+    if (!EngineClass.instances) EngineClass.instances = new Set();
     const euixApi = {
         mount: (xml, container, opts) => EngineClass.mount(xml, container, opts),
         mountAsync: (xml, container, opts) => EngineClass.mountAsync(xml, container, opts),
@@ -485,7 +486,9 @@ export function initGlobalEuix(EngineClass) {
         unmount: (el) => unmountElement(EngineClass, el),
         scan: (root, opts) => scan(EngineClass, root, opts),
         get: (elOrSel) => EngineClass.getEngine(elOrSel),
-        instances: EngineClass.instances || new Set(),
+        get instances() {
+            return EngineClass.instances || (EngineClass.instances = new Set());
+        },
         version: "0.3.78",
     };
     window.euix = euixApi;
