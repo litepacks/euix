@@ -74,6 +74,11 @@ import {
     runMountActions,
 } from "./lifecycle/Lifecycle.js";
 import {
+    mountElement,
+    scan,
+    unmountElement,
+} from "./lifecycle/DeclarativeLoader.js";
+import {
     _astCache,
     _astCacheMaxSize,
     _astCacheStats,
@@ -211,7 +216,9 @@ class EUIXEngineCore {
 
     constructor(containerSelector) {
         this.container =
-            typeof containerSelector === "string" ? document.querySelector(containerSelector) : containerSelector;
+            isStr(containerSelector) ? document.querySelector(containerSelector) : containerSelector;
+        this.props = {};
+        this._mountOptions = null;
         this.state = null;
         this._rawState = null;
         this.xmlDoc = null;
@@ -421,7 +428,7 @@ class EUIXEngineCore {
         this._isPending = true;
         try {
             const res = fn();
-            if (res && typeof res.then === "function") {
+            if (res && isFn(res.then)) {
                 return res.finally(() => {
                     this._isPending = false;
                 });
@@ -434,10 +441,10 @@ class EUIXEngineCore {
 
     scheduleIdle(fn, options = { timeout: 1000 }) {
         if (!isFn(fn)) return () => {};
-        if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+        if (typeof window !== "undefined" && isFn(window.requestIdleCallback)) {
             const handle = window.requestIdleCallback(() => fn(this), options);
             return () => {
-                if (typeof window.cancelIdleCallback === "function") {
+                if (isFn(window.cancelIdleCallback)) {
                     window.cancelIdleCallback(handle);
                 }
             };
@@ -475,8 +482,39 @@ class EUIXEngineCore {
         return registerEngineComponentSpec(this, name, xmlStringOrNode);
     }
 
-    static autoInit() {
-        return autoInit(EUIXEngineCore);
+    static autoInit(options = {}) {
+        return autoInit(EUIXEngineCore, options);
+    }
+
+    static mountElement(element, options = {}) {
+        return mountElement(EUIXEngineCore, element, options);
+    }
+
+    static unmountElement(element) {
+        return unmountElement(EUIXEngineCore, element);
+    }
+
+    static scan(root = document, options = {}) {
+        return scan(EUIXEngineCore, root, options);
+    }
+
+    static getEngine(elementOrSelector) {
+        if (isStr(elementOrSelector)) {
+            const el = typeof document !== "undefined" ? document.querySelector(elementOrSelector) : null;
+            return el?._euixEngine || (EUIXEngineCore.elements && EUIXEngineCore.elements.get(el));
+        }
+        return elementOrSelector?._euixEngine || (EUIXEngineCore.elements && EUIXEngineCore.elements.get(elementOrSelector));
+    }
+
+    setProps(nextProps) {
+        if (!nextProps || typeof nextProps !== "object") return this;
+        this.props = { ...(this.props || {}), ...nextProps };
+        if (this._rawState) {
+            this._rawState.$props = this.props;
+        }
+        this.syncBindings("props", this.props);
+        this.render();
+        return this;
     }
 
     getChild(node, tagName) {
@@ -728,7 +766,7 @@ class EUIXEngineCore {
     }
 
     findClosestErrorBoundary(el) {
-        if (!el || typeof el.closest !== "function") return null;
+        if (!el || !isFn(el.closest)) return null;
         const boundaryEl = el.closest(".euix-error-boundary");
         return boundaryEl?._errorBoundary || null;
     }
@@ -891,7 +929,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXEngineCore = EUIXEngineCore;
     const scheduleCoreInit = () => {
         queueMicrotask(() => {
-            if (window.EUIXEngine && typeof window.EUIXEngine.autoInit === "function") {
+            if (window.EUIXEngine && isFn(window.EUIXEngine.autoInit)) {
                 window.EUIXEngine.autoInit();
             } else {
                 EUIXEngineCore.autoInit();

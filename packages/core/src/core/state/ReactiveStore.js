@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath } from "../utils/constants.js";
+import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath, isObj } from "../utils/constants.js";
 import { applyArrayMutation } from "./Mutations.js";
 import { resolveScopedValue } from "../binding/BindingResolver.js";
 
@@ -43,7 +43,7 @@ export function getState(engine, key) {
 export function resolveValueFromPath(engine, path, context = {}) {
     if (!path) return undefined;
 
-    if (typeof path === "string" && path.includes("[")) {
+    if (isStr(path) && path.includes("[")) {
         path = path.replace(/\[\s*([^\]]+)\s*\]/g, (m, innerKey) => {
             const trimmed = innerKey.trim().replace(/^['"]|['"]$/g, "");
             if (/^\d+$/.test(trimmed)) return `.${trimmed}`;
@@ -65,6 +65,18 @@ export function resolveValueFromPath(engine, path, context = {}) {
         }
         if (context.local && context.local[key] !== undefined) {
             return context.local[key];
+        }
+    }
+    if (path.startsWith("props.") || path.startsWith("$props.")) {
+        const key = path.replace(/^(\$props|props)\./, "");
+        const propsObj = context && context.props !== undefined ? context.props : engine?.props;
+        if (propsObj && typeof propsObj === "object") {
+            const parts = key.split(".");
+            let curr = propsObj;
+            for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
+                curr = curr[parts[i]];
+            }
+            if (curr !== undefined) return curr;
         }
     }
     if (path.startsWith("global.") || path.startsWith("$global.")) {
@@ -206,7 +218,7 @@ export function flushStateUpdates(engine) {
 }
 
 export function setState(engine, key, value, options = {}) {
-    if (typeof key === "object" && key !== null && !Array.isArray(key)) {
+    if (isObj(key) && !Array.isArray(key)) {
         engine.batch(() => {
             Object.entries(key).forEach(([k, v]) => {
                 setState(engine, k, v, options);
@@ -303,7 +315,7 @@ export function setState(engine, key, value, options = {}) {
         if (engine._isBatching || batch) {
             engine._pendingBatchChanges = engine._pendingBatchChanges || new Map();
             engine._pendingBatchChanges.set(key, { key, value, oldValue, silent, sourceEl, context });
-            if (typeof queueMicrotask === "function" && !engine._microtaskScheduled) {
+            if (isFn(queueMicrotask) && !engine._microtaskScheduled) {
                 engine._microtaskScheduled = true;
                 queueMicrotask(() => {
                     engine._microtaskScheduled = false;
@@ -362,7 +374,7 @@ export function registerBinding(engine, path, el, kind, updateFn = null) {
     const depMask = engine.getKeyMask(path);
     list.push({ el, kind, updateFn, depMask });
 
-    if (typeof el.setAttribute === "function") {
+    if (isFn(el.setAttribute)) {
         el.setAttribute("data-euix-key", path);
         el.setAttribute("data-euix-bind", kind);
         el.setAttribute("data-xui-key", path);

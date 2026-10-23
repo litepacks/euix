@@ -4,10 +4,10 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
-import { isFn } from "../utils/constants.js";
+import { isFn, isBool, isNum, hasWindow } from "../utils/constants.js";
 
 export function updateDevToolsStatus(_engine, key, deltaOrValue) {
-    if (typeof window === "undefined") return;
+    if (!hasWindow()) return;
     if (!window.__EUIX_DEVTOOLS__) {
         window.__EUIX_DEVTOOLS__ = {
             pendingActions: 0,
@@ -18,9 +18,9 @@ export function updateDevToolsStatus(_engine, key, deltaOrValue) {
         };
     }
     const dev = window.__EUIX_DEVTOOLS__;
-    if (typeof deltaOrValue === "number") {
+    if (isNum(deltaOrValue)) {
         dev[key] = Math.max(0, (dev[key] || 0) + deltaOrValue);
-    } else if (typeof deltaOrValue === "boolean") {
+    } else if (isBool(deltaOrValue)) {
         dev[key] = deltaOrValue;
     }
     dev.ready =
@@ -72,7 +72,7 @@ export function getPerformanceMetrics(engine, EngineClass) {
         mountDuration: engine?._mountDuration || 0,
         activeBindingsCount: bindingsStats.totalBindings,
         boundElementsCount: bindingsStats.uniqueElements,
-        astCache: EngineClass && typeof EngineClass.getAstCacheStats === "function" ? EngineClass.getAstCacheStats() : null,
+        astCache: EngineClass && isFn(EngineClass.getAstCacheStats) ? EngineClass.getAstCacheStats() : null,
         componentCache: {
             astCount: EngineClass?._componentAstCache ? EngineClass._componentAstCache.size : 0,
             urlCount: EngineClass?._componentUrlCache ? EngineClass._componentUrlCache.size : 0,
@@ -97,7 +97,7 @@ export function getPerformanceMetrics(engine, EngineClass) {
 }
 
 export function enableDevTools(engine, autoOpen = false) {
-    if (typeof window !== "undefined") {
+    if (hasWindow()) {
         const devToolsClass = window.EUIXDevTools || (typeof EUIXDevTools !== "undefined" ? EUIXDevTools : null);
         if (devToolsClass && isFn(devToolsClass.init)) {
             const devtools = devToolsClass.init(engine);

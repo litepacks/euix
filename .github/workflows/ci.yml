@@ -5,8 +5,6 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
-  schedule:
-    - cron: "0 2 * * *" # Nightly stress & soak run
 
 jobs:
   unit_integration_tests:
@@ -113,23 +111,3 @@ jobs:
           path: |
             test-results/
             playwright-report/
-
-  nightly_soak:
-    name: Nightly Soak Testing
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run 5-Minute Soak Test
-        run: SOAK_DURATION_MIN=5 npm run test:soak

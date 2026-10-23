@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { ACTION_DISPATCH_TABLE, genId, getNow, isFn } from "../utils/constants.js";
+import { ACTION_DISPATCH_TABLE, genId, getNow, isFn, isStr, getAttr } from "../utils/constants.js";
 
 export function _setScopedState(engine, rawPath, path, nextValue, context = {}) {
     if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
@@ -221,7 +221,7 @@ export function _handleActionInternal(engine, actionNode, context = {}) {
 
     const actionName = actionNode?.getAttribute
         ? actionNode.getAttribute("action") || actionNode.getAttribute("name") || actionNode.tagName
-        : typeof actionNode === "string"
+        : isStr(actionNode)
           ? actionNode
           : "ACTION";
 
@@ -230,25 +230,25 @@ export function _handleActionInternal(engine, actionNode, context = {}) {
         context,
         timestamp: Date.now(),
     };
-    const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    const startTime = getNow();
 
     if (engine.hooks) {
         engine.hooks.emit("action:start", actionPayload);
     }
-    if (typeof engine._updateDevToolsStatus === "function") {
+    if (isFn(engine._updateDevToolsStatus)) {
         engine._updateDevToolsStatus("pendingActions", 1);
     } else if (engine.hooks) {
         engine.hooks.emit("devtools:status", { key: "pendingActions", deltaOrValue: 1 });
     }
 
     const onComplete = (err, result) => {
-        if (typeof engine._updateDevToolsStatus === "function") {
+        if (isFn(engine._updateDevToolsStatus)) {
             engine._updateDevToolsStatus("pendingActions", -1);
         } else if (engine.hooks) {
             engine.hooks.emit("devtools:status", { key: "pendingActions", deltaOrValue: -1 });
         }
         const duration =
-            (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startTime;
+            (getNow()) - startTime;
         if (engine.hooks) {
             engine.hooks.emit("action:end", {
                 ...actionPayload,
@@ -361,7 +361,7 @@ export function _executeActionInternalBody(engine, actionNode, context = {}) {
 
     // 1. Direct O(1) Action Dispatch via Table
     const handlerName = ACTION_DISPATCH_TABLE[primaryKey];
-    if (handlerName && typeof engine[handlerName] === "function") {
+    if (handlerName && isFn(engine[handlerName])) {
         return engine[handlerName](actionNode, context);
     }
 
@@ -451,7 +451,7 @@ export function extractActionArgs(engine, actionNode, context = {}) {
         ];
 
         argNodes.forEach((node) => {
-            const name = node.getAttribute("name") || node.getAttribute("id");
+            const name = getAttr(node, "name", "id");
             if (name) {
                 const rawVal = node.getAttribute("value") || node.getAttribute("expr") || node.textContent.trim();
                 args[name] = engine && isFn(engine.interpolate) ? engine.interpolate(rawVal, context) : rawVal;
@@ -500,7 +500,7 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
 
     for (let i = 0; i < hLen; i++) {
         const node = handlerNodes[i];
-        const targetKey = node.getAttribute("key") || node.getAttribute("code");
+        const targetKey = getAttr(node, "key", "code");
         if (targetKey && e.key && e.key.toLowerCase() !== targetKey.toLowerCase()) {
             continue;
         }
@@ -598,7 +598,7 @@ export function _createShorthandActionNode(eventType, directive, attrValue, sour
     let doc = typeof document !== "undefined" ? document : null;
     let node;
     try {
-        node = doc && typeof doc.createElement === "function" ? doc.createElement(`on_${eventType}`) : null;
+        node = doc && isFn(doc.createElement) ? doc.createElement(`on_${eventType}`) : null;
     } catch (_) {
         node = null;
     }
@@ -624,17 +624,17 @@ export function _createShorthandActionNode(eventType, directive, attrValue, sour
     if (confirmVal) node.setAttribute("confirm", confirmVal);
 
     const preventVal = sourceXmlNode.getAttribute
-        ? sourceXmlNode.getAttribute("prevent") || sourceXmlNode.getAttribute("prevent_default")
+        ? getAttr(sourceXmlNode, "prevent", "prevent_default")
         : null;
     if (preventVal !== null) node.setAttribute("prevent", preventVal || "true");
 
     const stopVal = sourceXmlNode.getAttribute
-        ? sourceXmlNode.getAttribute("stop") || sourceXmlNode.getAttribute("stop_propagation")
+        ? getAttr(sourceXmlNode, "stop", "stop_propagation")
         : null;
     if (stopVal !== null) node.setAttribute("stop", stopVal || "true");
 
     const keyVal = sourceXmlNode.getAttribute
-        ? sourceXmlNode.getAttribute("key") || sourceXmlNode.getAttribute("code")
+        ? getAttr(sourceXmlNode, "key", "code")
         : null;
     if (keyVal) node.setAttribute("key", keyVal);
 
@@ -810,7 +810,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
         }
     }
 
-    if (typeof engine.setupDropListener === "function") {
+    if (isFn(engine.setupDropListener)) {
         engine.setupDropListener(el, eventMap, context);
     }
 
@@ -831,7 +831,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
         const hLen = handlerNodes.length;
         for (let i = 0; i < hLen; i++) {
             const h = handlerNodes[i];
-            const act = h?.getAttribute ? h.getAttribute("action") || h.getAttribute("name") : null;
+            const act = h?.getAttribute ? getAttr(h, "action", "name") : null;
             if (act && !actionNames.includes(act)) actionNames.push(act);
         }
 

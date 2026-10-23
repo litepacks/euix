@@ -3,7 +3,7 @@
  * Two-way data binding resolvers, path parsers, and mapping utilities for EUIX Engine.
  */
 
-import { getRootKey, isFn } from "../utils/constants.js";
+import { getRootKey, isFn, isStr, isBool } from "../utils/constants.js";
 
 export function parseBindPath(expr) {
     if (!expr) return "";
@@ -26,7 +26,7 @@ export function extractBindModifiers(xmlNode) {
         lazy: false,
         debounce: 0,
     };
-    if (!xmlNode || typeof xmlNode.getAttribute !== "function") return { bindAttr: null, modifiers };
+    if (!xmlNode || !isFn(xmlNode.getAttribute)) return { bindAttr: null, modifiers };
 
     let bindAttr = xmlNode.getAttribute("bind");
 
@@ -79,12 +79,12 @@ export function extractBindModifiers(xmlNode) {
 export function coerceBindingValue(engine, rawValue, binding = {}, xmlNode = null) {
     if (rawValue === undefined || rawValue === null) return rawValue;
     const mods = binding?.modifiers || {};
-    const inputType = xmlNode && typeof xmlNode.getAttribute === "function" ? (xmlNode.getAttribute("type") || "").toLowerCase() : "";
+    const inputType = xmlNode && isFn(xmlNode.getAttribute) ? (xmlNode.getAttribute("type") || "").toLowerCase() : "";
 
     let val = rawValue;
 
     // 1. Trim modifier
-    if (mods.trim && typeof val === "string") {
+    if (mods.trim && isStr(val)) {
         val = val.trim();
     }
 
@@ -103,7 +103,7 @@ export function coerceBindingValue(engine, rawValue, binding = {}, xmlNode = nul
 
     if (isNumberType) {
         if (typeof val === "number") return val;
-        if (typeof val === "string") {
+        if (isStr(val)) {
             if (val.trim() === "") return "";
             const num = Number(val);
             return isNaN(num) ? val : num;
@@ -112,10 +112,10 @@ export function coerceBindingValue(engine, rawValue, binding = {}, xmlNode = nul
 
     // 4. Target state declared as type="number" in data_model or is currently a number
     const path = binding?.path || (binding?.scope && binding?.prop ? `${binding.scope}.${binding.prop}` : null);
-    if (path && engine && typeof engine.getState === "function") {
+    if (path && engine && isFn(engine.getState)) {
         const existingVal = engine.getState(path);
         const stateMeta = engine._stateMeta?.get?.(path) || engine._stateTypes?.get?.(path);
-        if (stateMeta === "number" || (typeof existingVal === "number" && typeof val === "string" && val.trim() !== "")) {
+        if (stateMeta === "number" || (typeof existingVal === "number" && isStr(val) && val.trim() !== "")) {
             const num = Number(val);
             if (!isNaN(num)) return num;
         }
@@ -199,7 +199,7 @@ export function escapeRegExp(str) {
 
 export function getKeyMask(engine, key) {
     if (!key) return 0;
-    const strKey = typeof key === "string" ? key : String(key);
+    const strKey = isStr(key) ? key : String(key);
     let cleanKey = strKey;
     if (strKey.charCodeAt(0) === 100 && strKey.startsWith("data.")) {
         cleanKey = strKey.slice(5);
@@ -288,8 +288,8 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
     // 1. Custom registered namespace handler
     const nsHandler = BINDING_NAMESPACES.get(lowerScope);
     if (nsHandler) {
-        if (typeof nsHandler === "function") return nsHandler(engine, scope, prop, context);
-        if (typeof nsHandler.resolve === "function") return nsHandler.resolve(engine, scope, prop, context);
+        if (isFn(nsHandler)) return nsHandler(engine, scope, prop, context);
+        if (isFn(nsHandler.resolve)) return nsHandler.resolve(engine, scope, prop, context);
     }
 
     // 2. Stream namespace
@@ -297,7 +297,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
         const parts = (prop || "").split(".");
         const streamId = parts[0];
         const streamProp = parts.slice(1).join(".");
-        const status = typeof engine.getStreamStatus === "function" ? engine.getStreamStatus(streamId) : engine._streamStatus?.[streamId];
+        const status = isFn(engine.getStreamStatus) ? engine.getStreamStatus(streamId) : engine._streamStatus?.[streamId];
         if (!status) return undefined;
         if (!streamProp) return status;
         return streamProp.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
@@ -305,7 +305,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
 
     // 3. Errors namespace
     if (lowerScope === "errors" || lowerScope === "$errors") {
-        const errObj = engine._formErrors || (typeof engine.getState === "function" ? engine.getState("errors") || engine.getState("$errors") : null);
+        const errObj = engine._formErrors || (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null);
         if (!errObj) return !prop ? {} : undefined;
         if (!prop) return errObj;
         return errObj[prop];
@@ -317,7 +317,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
             const parts = prop.split(".");
             const endpointId = parts[0];
             const epProp = parts.slice(1).join(".");
-            const status = typeof engine.getApiStatus === "function" ? engine.getApiStatus(endpointId) : engine._apiStatus?.[endpointId];
+            const status = isFn(engine.getApiStatus) ? engine.getApiStatus(endpointId) : engine._apiStatus?.[endpointId];
             if (!status) return undefined;
             if (!epProp) return status;
             return epProp.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
@@ -330,7 +330,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
         const helper =
             engine.$date ||
             engine.date ||
-            (typeof engine.getState === "function" ? engine.getState("$date") || engine.getState("date") : null);
+            (isFn(engine.getState) ? engine.getState("$date") || engine.getState("date") : null);
         if (!helper) return undefined;
         if (!prop) return helper;
         return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
@@ -341,12 +341,12 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
         let dev =
             engine.$device ||
             engine.device ||
-            (typeof engine.getState === "function" ? engine.getState("$device") || engine.getState("device") : null) ||
+            (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
             (context && (context.$device || context.device));
         if (!dev && typeof navigator !== "undefined") {
             const nav = navigator;
             dev = {
-                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
+                online: isBool(nav.onLine) ? nav.onLine : true,
                 hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
                 cores: Number(nav.hardwareConcurrency) || 8,
                 deviceMemory: Number(nav.deviceMemory) || 8,
@@ -366,13 +366,13 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
     if (lowerScope === "$isvalid" || lowerScope === "isvalid") {
         return engine._isFormValid !== undefined
             ? engine._isFormValid
-            : (typeof engine.getState === "function" ? engine.getState("$isValid") : true);
+            : (isFn(engine.getState) ? engine.getState("$isValid") : true);
     }
 
     // 8. Context or Root State lookup for $route, $router, $fetcher, etc.
     const root = (context && context[scope] !== undefined)
         ? context[scope]
-        : (typeof engine.getState === "function" ? engine.getState(scope) : undefined) ?? (engine && engine[scope]);
+        : (isFn(engine.getState) ? engine.getState(scope) : undefined) ?? (engine && engine[scope]);
 
     if (root !== undefined && root !== null) {
         if (!prop) return root;
@@ -383,7 +383,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
 }
 
 export function registerScopedBinding(engine, expr, targetNode, kind, updateFn, context = {}) {
-    if (!expr || typeof expr !== "string" || !expr.includes("{")) return false;
+    if (!expr || !isStr(expr) || !expr.includes("{")) return false;
 
     let registeredCount = 0;
 
@@ -428,7 +428,7 @@ export function registerScopedBinding(engine, expr, targetNode, kind, updateFn, 
 
         // 1. Custom namespace subscriber
         const nsHandler = BINDING_NAMESPACES.get(lowerScope);
-        if (nsHandler && typeof nsHandler.subscribe === "function") {
+        if (nsHandler && isFn(nsHandler.subscribe)) {
             nsHandler.subscribe(engine, scope, prop, targetNode, kind, updateFn, context);
             registeredCount++;
             continue;
@@ -487,6 +487,19 @@ export function registerScopedBinding(engine, expr, targetNode, kind, updateFn, 
             if (prop) {
                 engine.registerBinding(`${scope}.${prop}`, targetNode, kind, updateFn);
                 registeredCount++;
+            }
+            continue;
+        }
+
+        // 5.5 Props bindings (props.name, $props.name)
+        if (scope === "props" || scope === "$props") {
+            engine.registerBinding("props", targetNode, kind, updateFn);
+            engine.registerBinding("$props", targetNode, kind, updateFn);
+            registeredCount += 2;
+            if (prop) {
+                engine.registerBinding(`props.${prop}`, targetNode, kind, updateFn);
+                engine.registerBinding(`$props.${prop}`, targetNode, kind, updateFn);
+                registeredCount += 2;
             }
             continue;
         }

@@ -86,7 +86,20 @@ EUIXEngineCore.use(EUIXProfilerPlugin);
 const EUIXEngine = EUIXEngineCore;
 EUIXEngine.EUIXProfilerPlugin = EUIXProfilerPlugin;
 
+const euix = {
+    mount: (xml, container, opts) => EUIXEngine.mount(xml, container, opts),
+    mountAsync: (xml, container, opts) => EUIXEngine.mountAsync(xml, container, opts),
+    mountElement: (el, opts) => EUIXEngine.mountElement(el, opts),
+    unmount: (el) => EUIXEngine.unmountElement(el),
+    scan: (root, opts) => EUIXEngine.scan(root, opts),
+    get: (elOrSel) => EUIXEngine.getEngine(elOrSel),
+    instances: EUIXEngine.instances,
+    version: "0.3.78",
+};
+
 if (typeof window !== "undefined" && typeof document !== "undefined") {
+    window.euix = euix;
+    window.EUIX = euix;
     window.EUIXExpressionParser = EUIXExpressionParser;
     window.EUIXStructuredError = EUIXStructuredError;
     window.EUIXCancellationController = EUIXCancellationController;
@@ -136,6 +149,7 @@ export {
     createPath,
     createStaticRouter,
     DATE_PRESETS,
+    euix,
     EUIXA11yPlugin,
     EUIXActionComposer,
     EUIXActionContext,

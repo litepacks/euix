@@ -1,3 +1,4 @@
+import { getNow } from "../core/utils/constants.js";
 /**
  * EUIXComposerPlugin.js
  * Action Composer Subroutines & Workflow System Plugin for EUIX Engine.
@@ -245,7 +246,7 @@ function coerceComposerType(val, type) {
 
 export class EUIXActionComposer {
     static async execute(actionDef, rawArgs = EMPTY_OBJ, engine = null, parentEventContext = EMPTY_OBJ) {
-        const startTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+        const startTime = getNow();
 
         // 1. Resolve arguments in caller context & apply param defaults
         const evaluatedArgs = {};
@@ -384,7 +385,7 @@ export class EUIXActionComposer {
         } finally {
             if (engine) engine._currentActionContext = prevContext;
 
-            const endTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+            const endTime = getNow();
             const durationMs = Math.round((endTime - startTime) * 100) / 100;
 
             if (typeof window !== "undefined" && typeof window.__EUIX_DEVTOOLS_LOG_ACTION__ === "function") {

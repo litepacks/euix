@@ -12,8 +12,16 @@ export const isObj = (v) => v !== null && typeof v === "object";
 export const isFn = (v) => typeof v === "function";
 export const isStr = (v) => typeof v === "string";
 export const isBool = (v) => typeof v === "boolean";
+export const isNum = (v) => typeof v === "number" && !Number.isNaN(v);
 export const isElem = (n) => n && n.nodeType === 1;
 export const isTxtNode = (n) => n && (n.nodeType === 3 || n.nodeType === 4);
+
+export const hasWindow = () => typeof window !== "undefined";
+export const hasDoc = () => typeof document !== "undefined";
+export const isBrowser = () => typeof window !== "undefined" && typeof document !== "undefined";
+export const HAS_WINDOW = typeof window !== "undefined";
+export const HAS_DOCUMENT = typeof document !== "undefined";
+export const IS_BROWSER = typeof window !== "undefined" && typeof document !== "undefined";
 
 export function safeStringify(val, space) {
     if (val === undefined) return "";
@@ -65,6 +73,18 @@ export const getAttr = (n, ...names) => {
 };
 export const getChildNodes = (n) => (n?.childNodes && n.childNodes.length > 0 ? Array.from(n.childNodes) : EMPTY_ARR);
 export const getChildrenList = (n) => (n?.children && n.children.length > 0 ? Array.from(n.children) : EMPTY_ARR);
+export const queryAll = (n, selector) => {
+    if (!n) return EMPTY_ARR;
+    if (isFn(n.querySelectorAll)) {
+        const res = n.querySelectorAll(selector);
+        return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
+    }
+    if (isFn(n.getElementsByTagName) && !selector.includes(" ") && !selector.includes(">") && !selector.includes(",")) {
+        const res = n.getElementsByTagName(selector);
+        return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
+    }
+    return EMPTY_ARR;
+};
 export const isScoped = (n) => {
     if (!n?.getAttribute) return false;
     const s = n.getAttribute("scope");

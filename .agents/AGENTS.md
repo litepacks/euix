@@ -229,6 +229,40 @@ When serving files locally or from a relative web server path, use `./` or `../`
 <script src="https://unpkg.com/euixjs/dist/EUIXDevTools.umd.js" data-euix-devtools="open"></script>
 ```
 
+### Declarative Auto-Mount & Island Architecture (`<script euix />` & `data-euix`)
+
+For drop-in integration into existing server-rendered or static projects (Laravel Blade, WordPress, Django, static HTML), EUIX supports automatic DOM scanning and zero-boilerplate island mounting:
+
+```html
+<!-- 1. Include EUIX script with the `euix` attribute (automatically activates scanner and MutationObserver) -->
+<script src="./dist/EUIXEngine.umd.js" euix></script>
+
+<!-- 2. Declare and mount components directly in target elements -->
+<!-- Option A: Remote Component File -->
+<div data-euix="/components/counter.xml" data-prop-step="5" data-state-count="10"></div>
+
+<!-- Option B: Template Element by ID Selector -->
+<div data-euix="#card-template" data-prop-title="Live Overview"></div>
+
+<template id="card-template">
+  <uid_spec>
+    <h3>{props.title}</h3>
+  </uid_spec>
+</template>
+
+<!-- 3. Programmatic Global API (window.euix / window.EUIX) -->
+<script>
+  // Mount an element imperatively
+  const engine = await window.euix.mount(element);
+  
+  // Update props dynamically
+  engine.setProps({ step: 10 });
+  
+  // Retrieve engine instance for any element
+  const inst = window.euix.get(element);
+</script>
+```
+
 ---
 
 ## 📜 3. XML UI Specification Syntax

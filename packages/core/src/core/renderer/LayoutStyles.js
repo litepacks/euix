@@ -3,7 +3,7 @@
  * High-performance layout style resolution (flex, grid, gap, justify, align) and compilation for EUIX Engine.
  */
 
-import { isElem } from "../utils/constants.js";
+import { isElem, getAttr } from "../utils/constants.js";
 
 /**
  * Applies layout styles (flex/grid/alignment/gaps) to a DOM element based on XML attributes or pre-computed static style cache.
@@ -45,7 +45,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
     let isDynamic = false;
 
     const direction =
-        xmlNode.getAttribute("direction") || xmlNode.getAttribute("flex_direction") || xmlNode.getAttribute("dir");
+        getAttr(xmlNode, "direction", "flex_direction", "dir");
     if (direction) {
         if (direction.includes("{")) {
             isDynamic = true;
@@ -56,7 +56,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const align = xmlNode.getAttribute("align") || xmlNode.getAttribute("align_items");
+    const align = getAttr(xmlNode, "align", "align_items");
     if (align) {
         if (align.includes("{")) {
             isDynamic = true;
@@ -69,7 +69,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const justify = xmlNode.getAttribute("justify") || xmlNode.getAttribute("justify_content");
+    const justify = getAttr(xmlNode, "justify", "justify_content");
     if (justify) {
         if (justify.includes("{")) {
             isDynamic = true;
@@ -117,7 +117,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const gapX = xmlNode.getAttribute("gap_x") || xmlNode.getAttribute("col_gap");
+    const gapX = getAttr(xmlNode, "gap_x", "col_gap");
     if (gapX) {
         if (gapX.includes("{")) {
             isDynamic = true;
@@ -130,7 +130,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const gapY = xmlNode.getAttribute("gap_y") || xmlNode.getAttribute("row_gap");
+    const gapY = getAttr(xmlNode, "gap_y", "row_gap");
     if (gapY) {
         if (gapY.includes("{")) {
             isDynamic = true;
@@ -160,7 +160,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const cols = xmlNode.getAttribute("cols") || xmlNode.getAttribute("columns");
+    const cols = getAttr(xmlNode, "cols", "columns");
     if (cols) {
         if (cols.includes("{")) {
             isDynamic = true;
@@ -186,7 +186,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const padding = xmlNode.getAttribute("padding") || xmlNode.getAttribute("pad") || xmlNode.getAttribute("p");
+    const padding = getAttr(xmlNode, "padding", "pad", "p");
     if (padding) {
         if (padding.includes("{")) {
             isDynamic = true;
@@ -200,7 +200,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
     }
 
     const radius =
-        xmlNode.getAttribute("radius") || xmlNode.getAttribute("rounded") || xmlNode.getAttribute("border_radius");
+        getAttr(xmlNode, "radius", "rounded", "border_radius");
     if (radius) {
         if (radius.includes("{")) {
             isDynamic = true;
@@ -213,7 +213,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const margin = xmlNode.getAttribute("margin") || xmlNode.getAttribute("m");
+    const margin = getAttr(xmlNode, "margin", "m");
     if (margin) {
         if (margin.includes("{")) {
             isDynamic = true;
@@ -226,7 +226,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const bg = xmlNode.getAttribute("bg") || xmlNode.getAttribute("background");
+    const bg = getAttr(xmlNode, "bg", "background");
     if (bg) {
         if (bg.includes("{")) {
             isDynamic = true;
@@ -237,7 +237,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const width = xmlNode.getAttribute("width") || xmlNode.getAttribute("w");
+    const width = getAttr(xmlNode, "width", "w");
     if (width) {
         if (width.includes("{")) {
             isDynamic = true;
@@ -250,7 +250,7 @@ export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
         }
     }
 
-    const height = xmlNode.getAttribute("height") || xmlNode.getAttribute("h");
+    const height = getAttr(xmlNode, "height", "h");
     if (height) {
         if (height.includes("{")) {
             isDynamic = true;

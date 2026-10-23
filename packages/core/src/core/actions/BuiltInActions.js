@@ -5,7 +5,7 @@
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
 import { EUIXStructuredError } from "../parser/errors.js";
-import { isFn, trimStr } from "../utils/constants.js";
+import { isFn, trimStr, isBool, isStr, getAttr } from "../utils/constants.js";
 import {
     interpolateObjectProperties,
     evaluateObjectExpression,
@@ -121,13 +121,22 @@ export function _handleSetStateAction(actionNode, context = {}) {
             const num = parseFloat(val);
             return !Number.isNaN(num) && val !== "" && val !== null ? num : (val ?? 0);
         }
+        if (key.startsWith("props.") || key.startsWith("$props.")) {
+            const propKey = key.replace(/^(\$props|props)\./, "");
+            const propsObj = (context && context.props !== undefined) ? context.props : this.props;
+            if (propsObj && propsObj[propKey] !== undefined) {
+                const val = propsObj[propKey];
+                const num = parseFloat(val);
+                return !Number.isNaN(num) && val !== "" && val !== null ? num : (val ?? 0);
+            }
+        }
         const val = this.getState(cleanKey);
         const num = parseFloat(val);
         return !Number.isNaN(num) && val !== "" && val !== null ? num : (val ?? 0);
     };
 
     const cleanExpr = rawValue
-        .replace(/\{\s*(data\.\w+|local\.\w+|\$local\.\w+|\w+)\s*\}/g, "$1")
+        .replace(/\{\s*(data\.\w+|local\.\w+|\$local\.\w+|props\.\w+|\$props\.\w+|\w+)\s*\}/g, "$1")
         .replace(/^\{\s*|\s*\}$/g, "")
         .trim();
     const hasBraces = /^\{.*\}$/.test(rawValue.trim()) || rawValue.includes("{");
@@ -138,9 +147,9 @@ export function _handleSetStateAction(actionNode, context = {}) {
         (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "number");
 
     const targetIsBool =
-        typeof this._rawState?.[path] === "boolean" ||
-        typeof context._localState?.[path] === "boolean" ||
-        (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "boolean");
+        isBool(this._rawState?.[path]) ||
+        isBool(context._localState?.[path]) ||
+        (context._localState && isBool(context._localState[rawPath.replace(/^(\$local|local)\./, "")]));
 
     const hasMathOrTernary =
         (/(?:^|\s|\d|[a-zA-Z_$])[+\-*/](?:\s|\d|[a-zA-Z_$])/.test(cleanExpr) && !cleanExpr.startsWith("http")) ||
@@ -151,7 +160,7 @@ export function _handleSetStateAction(actionNode, context = {}) {
             const evaluated = EUIXExpressionParser.eval(cleanExpr, evalGetter);
             if (evaluated !== undefined && typeof evaluated === "number" && !Number.isNaN(evaluated)) {
                 nextValue = targetIsNumber ? evaluated : String(evaluated);
-            } else if (typeof evaluated === "boolean") {
+            } else if (isBool(evaluated)) {
                 nextValue = targetIsBool ? evaluated : String(evaluated);
             }
         } catch (_) {}
@@ -175,12 +184,12 @@ export function _handleSetStateAction(actionNode, context = {}) {
 
     if (
         targetIsNumber &&
-        typeof nextValue === "string" &&
+        isStr(nextValue) &&
         nextValue.trim() !== "" &&
         !Number.isNaN(Number(nextValue))
     ) {
         nextValue = Number(nextValue);
-    } else if (targetIsBool && typeof nextValue === "string") {
+    } else if (targetIsBool && isStr(nextValue)) {
         if (nextValue === "true") nextValue = true;
         else if (nextValue === "false") nextValue = false;
     }
@@ -226,9 +235,9 @@ export function _handleToggleStateAction(actionNode, context = {}) {
 
     const isTruthy = currentVal === true || currentVal === "true" || currentVal === 1 || currentVal === "1";
     const targetIsBool =
-        typeof this._rawState?.[path] === "boolean" ||
-        typeof context._localState?.[path] === "boolean" ||
-        (context._localState && typeof context._localState[rawPath.replace(/^(\$local|local)\./, "")] === "boolean");
+        isBool(this._rawState?.[path]) ||
+        isBool(context._localState?.[path]) ||
+        (context._localState && isBool(context._localState[rawPath.replace(/^(\$local|local)\./, "")]));
     const nextValue = targetIsBool ? !isTruthy : isTruthy ? "false" : "true";
     this._setScopedState(rawPath, path, nextValue, context);
 }
@@ -236,7 +245,7 @@ export function _handleToggleStateAction(actionNode, context = {}) {
 export function _handleFocusAction(actionNode, context = {}) {
     const target =
         (actionNode.getAttribute
-            ? actionNode.getAttribute("target") || actionNode.getAttribute("focus") || actionNode.getAttribute("ref")
+            ? getAttr(actionNode, "target", "focus", "ref")
             : "") ||
         this.getChild(actionNode, "target")?.textContent ||
         this.getChild(actionNode, "focus")?.textContent ||
@@ -253,7 +262,7 @@ export function _handleFocusAction(actionNode, context = {}) {
 
 export function _handleRevalidateAction(actionNode, context = {}) {
     const routeAttr = actionNode?.getAttribute ? actionNode.getAttribute("route") : null;
-    if (routeAttr && this.router && typeof this.router.revalidate === "function") {
+    if (routeAttr && this.router && isFn(this.router.revalidate)) {
         this.router.revalidate(routeAttr);
         return;
     }
@@ -271,9 +280,9 @@ export function _handleRevalidateAction(actionNode, context = {}) {
             ""
           : "";
     const tag = this.interpolate(rawTag, context);
-    if (typeof this.revalidateApi === "function") {
+    if (isFn(this.revalidateApi)) {
         this.revalidateApi(tag);
-    } else if (this.router && typeof this.router.revalidate === "function") {
+    } else if (this.router && isFn(this.router.revalidate)) {
         this.router.revalidate(tag);
     }
 }
@@ -317,10 +326,7 @@ export function _handleRethrowAction(_actionNode, context = {}) {
 export function _handleRunScriptAction(actionNode, context = {}) {
     const code =
         (actionNode.getAttribute
-            ? actionNode.getAttribute("run") ||
-              actionNode.getAttribute("script") ||
-              actionNode.getAttribute("code") ||
-              actionNode.getAttribute("eval")
+            ? getAttr(actionNode, "run", "script", "code", "eval")
             : "") ||
         actionNode.textContent?.trim() ||
         "";
@@ -478,9 +484,7 @@ export function _handleTakeSnapshotAction(actionNode, context = {}) {
 export function _handleResetErrorBoundaryAction(actionNode, context = {}) {
     const target =
         (actionNode?.getAttribute &&
-            (actionNode.getAttribute("target") ||
-                actionNode.getAttribute("boundary") ||
-                actionNode.getAttribute("name"))) ||
+            (getAttr(actionNode, "target", "boundary", "name"))) ||
         this.getChild?.(actionNode, "target")?.textContent?.trim();
     if (target) {
         return this.resetErrorBoundary(target);
@@ -502,9 +506,7 @@ export function _handleResetErrorBoundaryAction(actionNode, context = {}) {
 export function _handleEmitAction(actionNode, context = {}) {
     const eventName =
         (actionNode?.getAttribute
-            ? actionNode.getAttribute("event") ||
-              actionNode.getAttribute("name") ||
-              actionNode.getAttribute("emit")
+            ? getAttr(actionNode, "event", "name", "emit")
             : "") ||
         (this.getChild && this.getChild(actionNode, "event")?.textContent.trim()) ||
         "";
@@ -516,7 +518,7 @@ export function _handleEmitAction(actionNode, context = {}) {
         this.hooks.emit(eventName, { ...args, context });
     }
     const el = context._targetEl || (actionNode.parentElement ? actionNode.parentElement : null);
-    if (el && typeof el.dispatchEvent === "function" && typeof CustomEvent !== "undefined") {
+    if (el && isFn(el.dispatchEvent) && typeof CustomEvent !== "undefined") {
         try {
             el.dispatchEvent(new CustomEvent(eventName, { detail: args, bubbles: true, composed: true }));
         } catch (_) {}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EUIX Declarative Auto-Mount Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tek bir script tag ile EUIX'i sayfaya dahil edin (euix attribute ile otomatik scan aktifleşir) -->
+    <script src="/packages/core/dist/EUIXEngine.umd.js" euix></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen p-8">
+    <div class="max-w-3xl mx-auto space-y-8">
+        <header class="text-center space-y-2">
+            <h1 class="text-3xl font-black bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+                EUIX Declarative Auto-Mount
+            </h1>
+            <p class="text-slate-400 text-sm">
+                Sayfaya tek bir script ekleyip, herhangi bir HTML elementine <code class="text-emerald-300 font-mono">data-euix</code> eklemeniz yeterli!
+            </p>
+        </header>
+
+        <!-- Örnek 1: Harici XML dosyası yükleme (Kullanıcının istediği tam sözdizimi) -->
+        <section class="space-y-3 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-200">1. Remote Component Fetch (<code class="text-emerald-400 font-mono text-sm">data-euix="/counter.xml"</code>)</h2>
+                <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono">Island #1</span>
+            </div>
+            <div data-euix="/counter.xml" data-prop-title="Canlı Sayaç #1" data-state-count="10"></div>
+        </section>
+
+        <!-- Örnek 2: Başka bir bağımsız ada (farklı prop ve state ile tam izolasyon) -->
+        <section class="space-y-3 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-200">2. İkinci Bağımsız Ada (İzole State & Props)</h2>
+                <span class="text-xs bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-mono">Island #2</span>
+            </div>
+            <div data-euix="/counter.xml" data-prop-title="Canlı Sayaç #2" data-state-count="100"></div>
+        </section>
+
+        <!-- Örnek 3: Template Elementinden Yükleme -->
+        <section class="space-y-3 bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+            <div class="flex items-center justify-between">
+                <h2 class="text-base font-bold text-slate-200">3. Template Referansı (<code class="text-cyan-400 font-mono text-sm">data-euix="#quick-card"</code>)</h2>
+                <span class="text-xs bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-0.5 rounded-full font-mono">Island #3</span>
+            </div>
+            <div data-euix="#quick-card" data-prop-author="Ahmet"></div>
+        </section>
+    </div>
+
+    <!-- Template for Example 3 -->
+    <template id="quick-card">
+        <uid_spec>
+            <data_model>
+                <state id="liked" type="boolean">false</state>
+            </data_model>
+            <div class="p-5 bg-slate-800/80 rounded-xl border border-slate-700 flex items-center justify-between">
+                <div>
+                    <h4 class="font-bold text-white">Yazar: {props.author}</h4>
+                    <p class="text-xs text-slate-400">Template tabanlı mikro bileşen ada örneği</p>
+                </div>
+                <button class="px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
+                        on_click:toggle="liked">
+                    {data.liked ? '❤️ Beğenildi' : '🤍 Beğen'}
+                </button>
+            </div>
+        </uid_spec>
+    </template>
+</body>
+</html>

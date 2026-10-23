@@ -3,12 +3,12 @@
  * Declarative state mutation query engine (PUSH, REMOVE, UPDATE, SWAP, SORT, etc.) for EUIX Engine.
  */
 
-import { isFn, MUTATION_OPS, trimStr } from "../utils/constants.js";
+import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr } from "../utils/constants.js";
 
 export function interpolateObjectProperties(engine, obj, context) {
     if (!obj || typeof obj !== "object" || !engine) return obj;
     for (const [k, v] of Object.entries(obj)) {
-        if (typeof v === "string" && v.includes("{")) {
+        if (isStr(v) && v.includes("{")) {
             obj[k] = engine.interpolate(v, context);
         } else if (v && typeof v === "object") {
             interpolateObjectProperties(engine, v, context);
@@ -18,7 +18,7 @@ export function interpolateObjectProperties(engine, obj, context) {
 }
 
 export function evaluateObjectExpression(engine, expr, context = {}) {
-    if (!expr || typeof expr !== "string") return null;
+    if (!expr || !isStr(expr)) return null;
     const trimmed = expr.trim();
     if (!trimmed) return null;
 
@@ -93,7 +93,7 @@ export function evaluateObjectExpression(engine, expr, context = {}) {
 }
 
 export function parseMutateExpr(expr) {
-    if (!expr || typeof expr !== "string") return null;
+    if (!expr || !isStr(expr)) return null;
     const trimmed = expr.trim();
 
     const m = trimmed.match(
@@ -126,7 +126,7 @@ export function parseMutateExpr(expr) {
 
 export function _handleMutateStateAction(actionNode, context = {}) {
     const mutateAttr = actionNode.getAttribute
-        ? actionNode.getAttribute("mutate") || actionNode.getAttribute("expr")
+        ? getAttr(actionNode, "mutate", "expr")
         : null;
     let path = "";
     let operation = "";
@@ -148,7 +148,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const pathNode = this.getChild(actionNode, "path");
         const rawPath =
             trimStr(pathNode) ||
-            (actionNode.getAttribute ? actionNode.getAttribute("path") || actionNode.getAttribute("target") : "") ||
+            (actionNode.getAttribute ? getAttr(actionNode, "path", "target") : "") ||
             "";
         const interpolatedPath = this.interpolate(rawPath, context);
         path = this.parseBindPath(interpolatedPath);
@@ -157,7 +157,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const opNode = this.getChild(actionNode, "operation") || this.getChild(actionNode, "op");
         operation = (
             trimStr(opNode) ||
-            (actionNode.getAttribute ? actionNode.getAttribute("operation") || actionNode.getAttribute("op") : "") ||
+            (actionNode.getAttribute ? getAttr(actionNode, "operation", "op") : "") ||
             ""
         ).toUpperCase();
     }
@@ -234,7 +234,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const rawText =
             shorthandValue ||
             (valItem
-                ? (typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) ||
+                ? (isFn(valItem.getAttribute) && valItem.getAttribute("text")) ||
                   valItem.textContent?.trim() ||
                   ""
                 : actionNode.getAttribute
@@ -246,7 +246,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             evaluateObjectExpression(this, rawText, context) || evaluateObjectExpression(this, textValue, context);
 
         const itemId =
-            (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
+            (valItem && isFn(valItem.getAttribute) && valItem.getAttribute("id")) ||
             parsedObj?.id ||
             `task-${Date.now()}`;
 
@@ -276,7 +276,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
                 }
             }
         }
-        if (valItem && typeof valItem.getAttribute === "function") {
+        if (valItem && isFn(valItem.getAttribute)) {
             const textAttr = valItem.getAttribute("text");
             if (textAttr && !newItem.text) newItem.text = this.interpolate(textAttr, context);
             const titleAttr = valItem.getAttribute("title");
@@ -617,8 +617,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         if (field) {
             list.sort((a, b) => {
-                const valA = a != null && typeof a === "object" ? a[field] : a;
-                const valB = b != null && typeof b === "object" ? b[field] : b;
+                const valA = isObj(a) ? a[field] : a;
+                const valB = isObj(b) ? b[field] : b;
                 if (valA === valB) return 0;
                 if (valA == null) return isDesc ? -1 : 1;
                 if (valB == null) return isDesc ? 1 : -1;
@@ -654,7 +654,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const rawIdx = indexNode ? indexNode.textContent.trim() : actionNode.getAttribute("index") || "0";
         const idx = parseInt(this.interpolate(rawIdx, context), 10);
         const rawText = valItem
-            ? (typeof valItem.getAttribute === "function" && valItem.getAttribute("text")) ||
+            ? (isFn(valItem.getAttribute) && valItem.getAttribute("text")) ||
               valItem.textContent?.trim() ||
               ""
             : "";
@@ -662,7 +662,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const parsedObj =
             evaluateObjectExpression(this, rawText, context) || evaluateObjectExpression(this, textValue, context);
         const itemId =
-            (valItem && typeof valItem.getAttribute === "function" && valItem.getAttribute("id")) ||
+            (valItem && isFn(valItem.getAttribute) && valItem.getAttribute("id")) ||
             parsedObj?.id ||
             `task-${Date.now()}`;
         const newItem =

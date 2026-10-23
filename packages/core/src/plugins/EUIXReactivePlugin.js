@@ -1,3 +1,4 @@
+import { getNow } from "../core/utils/constants.js";
 /**
  * EUIXReactivePlugin
  * Declarative Computed State (derived state) and Reactive Watchers for EUIX Engine.
@@ -250,7 +251,7 @@ export class EUIXWatchNode {
             $oldValue: prevVal,
             path: this.path,
             $path: this.path,
-            $timestamp: typeof performance !== "undefined" && performance.now ? performance.now() : Date.now(),
+            $timestamp: getNow(),
             $source: "WATCHER",
             _componentName: this.component || (context ? context._componentName : null),
         };

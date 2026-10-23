@@ -3,14 +3,10 @@
  * High-performance DOM node instantiation, layout styling, dynamic attribute binding, and template interpolation for EUIX Engine.
  */
 
-import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
 import {
     ALLOWED_HTML_TAGS,
-    BOOLEAN_ATTRS,
     EVENT_TAGS,
     getChildNodes,
-    getCompiledTemplate,
-    getRootKey,
     getTagName,
     isElem,
     isFn,
@@ -18,17 +14,13 @@ import {
     METADATA_AND_EVENT_TAGS,
     SVG_NAMESPACE,
     SVG_TAGS,
-    safeStringify,
+    isStr,
+    getAttr,
+    queryAll,
 } from "../utils/constants.js";
 import { renderForEach } from "./ForEachRenderer.js";
 import { renderErrorBoundary } from "./ErrorBoundaryRenderer.js";
-import {
-    extractBindModifiers,
-    coerceBindingValue,
-    resolveScopedValue,
-    registerScopedBinding,
-    registerBindingNamespace,
-} from "../binding/BindingResolver.js";
+import { registerScopedBinding } from "../binding/BindingResolver.js";
 import { renderSlotElement } from "./SlotRenderer.js";
 import {
     renderFormControl,
@@ -43,1033 +35,33 @@ import { scopeCSS, processStyleTag } from "./StyleProcessor.js";
 
 export { applyLayoutStyles, applyItemChildStyles };
 
-const EXTRACT_KEYS_CACHE = new Map();
-const EXTRACT_KEYS_CACHE_MAX = 1000;
-
-export function extractStateKeys(expr) {
-    if (!expr || typeof expr !== "string") return [];
-    let cached = EXTRACT_KEYS_CACHE.get(expr);
-    if (cached !== undefined) return cached;
-
-    const keys = new Set();
-    const matches = expr.match(/(?:data|local|\$local)\.([a-zA-Z0-9_.]+)/g);
-    if (matches) {
-        for (let i = 0; i < matches.length; i++) {
-            const clean = matches[i].replace(/^(?:data|local|\$local)\./, "");
-            keys.add(clean);
-            const dot = clean.indexOf(".");
-            if (dot !== -1) {
-                keys.add(clean.slice(0, dot));
-            }
-        }
-    }
-    const plainMatches = expr.match(/\{([a-zA-Z0-9_]+)\}/g);
-    if (plainMatches) {
-        for (let i = 0; i < plainMatches.length; i++) {
-            keys.add(plainMatches[i].slice(1, -1));
-        }
-    }
-    if (!expr.includes("{")) {
-        const bareMatches = expr.match(/[a-zA-Z_$][a-zA-Z0-9_]*/g);
-        if (bareMatches) {
-            for (let i = 0; i < bareMatches.length; i++) {
-                const w = bareMatches[i];
-                if (w !== "true" && w !== "false" && w !== "null" && w !== "undefined" && w !== "data") {
-                    keys.add(w);
-                }
-            }
-        }
-    }
-    cached = Array.from(keys);
-    if (EXTRACT_KEYS_CACHE.size >= EXTRACT_KEYS_CACHE_MAX) {
-        const first = EXTRACT_KEYS_CACHE.keys().next().value;
-        if (first !== undefined) EXTRACT_KEYS_CACHE.delete(first);
-    }
-    EXTRACT_KEYS_CACHE.set(expr, cached);
-    return cached;
-}
-
-export function interpolate(engine, text, context = {}) {
-    if (!text || typeof text !== "string" || !text.includes("{")) return text || "";
-
-    // Fast-path: single simple token e.g. "{item.text}" or "{todo.completed}" or "{data.count}"
-    if (text.charCodeAt(0) === 123 && text.charCodeAt(text.length - 1) === 125) {
-        const inner = text.slice(1, -1).trim();
-        if (inner.startsWith("JSON.stringify($route") || inner === "$route") {
-            const root = engine.getState("$route") || context?.$route;
-            return root !== undefined && root !== null ? safeStringify(root, 2) : "{}";
-        }
-        if (inner.startsWith("JSON.stringify($router") || inner === "$router") {
-            const root = engine.getState("$router") || context?.$router;
-            return root !== undefined && root !== null ? safeStringify(root, 2) : "{}";
-        }
-        if (!/[?!=><+*/(),&|%-]/.test(inner) && !inner.includes("{")) {
-            const dotIdx = inner.indexOf(".");
-            if (dotIdx === -1) {
-                if (context && context[inner] !== undefined) {
-                    const v = context[inner];
-                    return typeof v === "string"
-                        ? v
-                        : typeof v === "number"
-                          ? String(v)
-                          : typeof v === "object" && v !== null
-                            ? safeStringify(v)
-                            : String(v ?? "");
-                }
-                const v = engine.getState(inner);
-                if (v !== undefined) {
-                    return typeof v === "string"
-                        ? v
-                        : typeof v === "number"
-                          ? String(v)
-                          : typeof v === "object" && v !== null
-                            ? safeStringify(v)
-                            : String(v ?? "");
-                }
-            } else {
-                const scope = inner.slice(0, dotIdx);
-                const prop = inner.slice(dotIdx + 1);
-                if (scope === "data" || scope === "state" || scope === "global" || scope === "$global") {
-                    if (!prop.includes("[")) {
-                        const v = engine.getState(prop);
-                        if (v !== undefined) {
-                            return typeof v === "string"
-                                ? v
-                                : typeof v === "number"
-                                  ? String(v)
-                                  : typeof v === "object" && v !== null
-                                    ? safeStringify(v)
-                                    : String(v ?? "");
-                        }
-                    }
-                } else if (scope.startsWith("$") || scope === "api" || scope === "stream" || scope === "errors" || scope === "device") {
-                    const scopedVal = resolveScopedValue(engine, scope, prop, context);
-                    if (scopedVal !== undefined && scopedVal !== null) {
-                        return typeof scopedVal === "string"
-                            ? scopedVal
-                            : typeof scopedVal === "number"
-                              ? String(scopedVal)
-                              : typeof scopedVal === "object"
-                                ? safeStringify(scopedVal)
-                                : String(scopedVal ?? "");
-                    }
-                } else if (context && context[scope] !== undefined && context[scope] !== null) {
-                    let curr = context[scope];
-                    const parts = prop.split(".");
-                    for (let pIdx = 0; pIdx < parts.length; pIdx++) {
-                        if (curr === undefined || curr === null) break;
-                        curr = curr[parts[pIdx]];
-                    }
-                    if (curr !== undefined)
-                        return typeof curr === "string"
-                            ? curr
-                            : typeof curr === "object" && curr !== null
-                              ? safeStringify(curr)
-                              : String(curr ?? "");
-                }
-            }
-        }
-    }
-
-    // Fast-path 2: compiled tokenized template chunks (Multi-token without regex overhead)
-    const compiled = getCompiledTemplate(text);
-    if (compiled) {
-        let out = "";
-        const cLen = compiled.length;
-        for (let i = 0; i < cLen; i++) {
-            const c = compiled[i];
-            if (c.type === "static") {
-                out += c.val;
-            } else if (c.isSimple) {
-                if (context && context[c.scope] !== undefined) {
-                    const v = context[c.scope];
-                    out +=
-                        typeof v === "string" || typeof v === "number"
-                            ? v
-                            : typeof v === "object" && v !== null
-                              ? safeStringify(v)
-                              : (v ?? "");
-                } else if (engine.constants?.has(c.scope)) {
-                    out += engine.constants.get(c.scope);
-                } else if (engine.constructor._globalConstants?.has(c.scope)) {
-                    out += engine.constructor._globalConstants.get(c.scope);
-                } else {
-                    const v = engine.getState(c.scope);
-                    out +=
-                        v !== undefined
-                            ? typeof v === "string" || typeof v === "number"
-                                ? v
-                                : typeof v === "object" && v !== null
-                                  ? safeStringify(v)
-                                  : (v ?? "")
-                            : "";
-                }
-            } else if (
-                c.scope === "const" ||
-                c.scope === "constants" ||
-                c.scope === "var" ||
-                c.scope === "vars" ||
-                c.scope === "constant" ||
-                c.scope === "variable"
-            ) {
-                if (context && context.constants && context.constants[c.prop] !== undefined) {
-                    out += context.constants[c.prop];
-                } else if (engine.constants?.has(c.prop)) {
-                    out += engine.constants.get(c.prop);
-                } else if (engine.constructor._globalConstants?.has(c.prop)) {
-                    out += engine.constructor._globalConstants.get(c.prop);
-                }
-            } else if (c.scope.startsWith("$") || c.scope === "device") {
-                const scopedVal = resolveScopedValue(engine, c.scope, c.prop, context);
-                if (scopedVal !== undefined && scopedVal !== null) {
-                    out += typeof scopedVal === "object" ? safeStringify(scopedVal) : String(scopedVal);
-                }
-            } else if (c.scope === "data" || c.scope === "state" || c.scope === "global" || c.scope === "$global") {
-                const v = engine.getState(c.prop);
-                out +=
-                    v !== undefined
-                        ? typeof v === "string" || typeof v === "number"
-                            ? v
-                            : typeof v === "object" && v !== null
-                              ? safeStringify(v)
-                              : (v ?? "")
-                        : "";
-            } else if (c.scope === "parent") {
-                const clean = c.prop.replace(/^data\./, "");
-                const v = engine.getState(clean);
-                out += v !== undefined ? (typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "")) : "";
-            } else if (c.scope === "props") {
-                const propsObj = context ? context.props || context : null;
-                if (propsObj && propsObj[c.prop] !== undefined) {
-                    const v = propsObj[c.prop];
-                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
-                }
-            } else if (c.scope === "local" || c.scope === "$local") {
-                if (context && context._localState && context._localState[c.prop] !== undefined) {
-                    const v = context._localState[c.prop];
-                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
-                } else if (context && context.local && context.local[c.prop] !== undefined) {
-                    const v = context.local[c.prop];
-                    out += typeof v === "object" && v !== null ? safeStringify(v) : (v ?? "");
-                }
-            } else if (
-                c.scope === "api" ||
-                c.scope === "$api" ||
-                c.scope === "stream" ||
-                c.scope === "$stream" ||
-                c.scope === "errors" ||
-                c.scope === "$errors"
-            ) {
-                const val = resolveScopedValue(engine, c.scope, c.prop, context);
-                if (val !== undefined && val !== null) {
-                    out += typeof val === "object" ? safeStringify(val) : String(val);
-                }
-            } else if (c.scope === "result") {
-                if (!c.prop) {
-                    if (context && context.result !== undefined && context.result !== null) {
-                        out +=
-                            typeof context.result === "object"
-                                ? JSON.stringify(context.result)
-                                : String(context.result);
-                    }
-                } else if (context?.result && typeof context.result === "object") {
-                    let curr = context.result;
-                    for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
-                        curr = curr[c.parts[p]];
-                    }
-                    if (curr !== undefined && curr !== null) out += String(curr);
-                }
-            } else if (c.scope === "err" || c.scope === "error") {
-                const errObj = context ? context[c.scope] || context.err || context.error : null;
-                if (errObj) {
-                    if (!c.prop) {
-                        out += typeof errObj === "object" ? errObj.message || JSON.stringify(errObj) : String(errObj);
-                    } else {
-                        let curr = errObj;
-                        for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
-                            curr = curr[c.parts[p]];
-                        }
-                        if (curr !== undefined && curr !== null) out += String(curr);
-                    }
-                }
-            } else if (c.scope === "args" || c.scope === "params") {
-                const argsObj = context ? context.args || context.params : null;
-                if (argsObj && typeof argsObj === "object") {
-                    let curr = argsObj;
-                    for (let p = 0; p < c.parts.length && curr !== undefined && curr !== null; p++) {
-                        curr = curr[c.parts[p]];
-                    }
-                    if (curr !== undefined) {
-                        out += typeof curr === "object" && curr !== null ? JSON.stringify(curr) : (curr ?? "");
-                    }
-                }
-            } else if (context && context[c.scope] !== undefined && context[c.scope] !== null) {
-                let curr = context[c.scope];
-                const parts = c.parts;
-                for (let p = 0; p < parts.length && curr !== undefined && curr !== null; p++) {
-                    curr = curr[parts[p]];
-                }
-                if (curr !== undefined) {
-                    out += typeof curr === "object" && curr !== null ? JSON.stringify(curr) : (curr ?? "");
-                }
-            }
-        }
-        return out;
-    }
-
-    // Fast-path 3: JIT compiled template function for complex expressions/ternaries/math
-    const jitFn = EUIXExpressionParser.compileTemplateFunction(text);
-    if (jitFn) {
-        const dataScope = engine ? engine._rawState || engine.state : null;
-        const localScope = context._localState || context.local;
-        const res = jitFn(dataScope, localScope, context, engine, (p) => engine.resolveValueFromPath(p, context));
-        if (res !== undefined && res !== null) return res;
-    }
-
-    let result = text;
-
-    // 1. Resolve {const.name}, {var.name}, {constants.name}, {vars.name}
-    result = result.replace(/\{(?:const|var|constant|variable|constants|vars)\.(\w+)\}/g, (match, name) => {
-        if (context && context.constants && context.constants[name] !== undefined) {
-            return context.constants[name];
-        }
-        if (engine.constants?.has(name)) {
-            return engine.constants.get(name);
-        }
-        if (engine.constructor._globalConstants?.has(name)) {
-            return engine.constructor._globalConstants.get(name);
-        }
-        return match;
-    });
-
-    // 1.5. Resolve {args.name}, {params.name}, {result.name}, {result}, {err.name}, {error.name}, {local.name}, {$local.name}, {global.name}, {errors.name}, {$errors.name}, {api.name}, {$api.name}, {stream.name}, {$stream.name}, {$route.name}, {$router.name}, {$fetcher.name}
-    result = result.replace(
-        /\{(args|params|result|err|error|local|\$local|global|errors|\$errors|api|\$api|stream|\$stream|\$route|\$router|\$fetcher)(?:\.([a-zA-Z0-9_.]+))?\}/g,
-        (match, scope, prop) => {
-            if (
-                scope === "stream" ||
-                scope === "$stream" ||
-                scope === "errors" ||
-                scope === "$errors" ||
-                scope === "$route" ||
-                scope === "$router" ||
-                scope === "$fetcher" ||
-                scope === "api" ||
-                scope === "$api"
-            ) {
-                const val = resolveScopedValue(engine, scope, prop, context);
-                if (val !== undefined && val !== null) {
-                    return typeof val === "object" ? JSON.stringify(val) : String(val);
-                }
-                return (scope === "api" || scope === "$api") && !prop ? match : "";
-            }
-            if (scope === "local" || scope === "$local") {
-                if (context._localState && prop) {
-                    return context._localState[prop] !== undefined ? String(context._localState[prop]) : "";
-                }
-                if (context.local && prop && context.local[prop] !== undefined) {
-                    return String(context.local[prop]);
-                }
-                return match;
-            }
-            if (scope === "global") {
-                if (prop) {
-                    const clean = prop.replace(/^data\./, "");
-                    const val = engine.getState(clean);
-                    return val !== undefined && val !== null ? String(val) : "";
-                }
-                return match;
-            }
-            if (scope === "args" || scope === "params") {
-                const argsObj = context.args || context.params;
-                if (argsObj && typeof argsObj === "object") {
-                    if (!prop) return typeof argsObj === "object" ? JSON.stringify(argsObj) : String(argsObj);
-                    const parts = prop.split(".");
-                    let curr = argsObj;
-                    for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
-                        curr = curr[parts[i]];
-                    }
-                    return curr !== undefined && curr !== null ? String(curr) : "";
-                }
-            }
-            if (scope === "result") {
-                if (!prop)
-                    return context.result !== undefined && context.result !== null
-                        ? typeof context.result === "object"
-                            ? JSON.stringify(context.result)
-                            : String(context.result)
-                        : "";
-                if (context.result && typeof context.result === "object") {
-                    const parts = prop.split(".");
-                    let curr = context.result;
-                    for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
-                        curr = curr[parts[i]];
-                    }
-                    return curr !== undefined && curr !== null ? String(curr) : "";
-                }
-            }
-            if (scope === "err" || scope === "error") {
-                const errObj = context[scope] || context.err || context.error;
-                if (errObj) {
-                    if (!prop)
-                        return typeof errObj === "object" ? errObj.message || JSON.stringify(errObj) : String(errObj);
-                    const parts = prop.split(".");
-                    let curr = errObj;
-                    for (let i = 0; i < parts.length && curr !== undefined && curr !== null; i++) {
-                        curr = curr[parts[i]];
-                    }
-                    return curr !== undefined && curr !== null ? String(curr) : "";
-                }
-            }
-            return match;
-        },
-    );
-
-    // 2. Resolve complex expressions or ternary inside {...}
-    result = result.replace(/\{([^{}]+)\}/g, (match, innerExpr) => {
-        const trimmed = innerExpr.trim();
-
-        if (/^(?:const|var|constant|variable|constants|vars)\./.test(trimmed)) {
-            return match;
-        }
-
-        let resolvedExpr = trimmed;
-        if (resolvedExpr.includes("[") && resolvedExpr.includes("]")) {
-            resolvedExpr = resolvedExpr.replace(/\[(?:data\.)?([a-zA-Z0-9_]+)\]/g, (m, key) => {
-                if (/^\d+$/.test(key)) return m;
-                const idxVal = context && context[key] !== undefined ? context[key] : engine.getState(key);
-                return idxVal !== undefined ? `[${idxVal}]` : m;
-            });
-        }
-
-        if (
-            /[?!=><+*/&|%-]/.test(resolvedExpr) ||
-            resolvedExpr.includes(".") ||
-            resolvedExpr.includes("data.") ||
-            resolvedExpr.includes("local.") ||
-            resolvedExpr.includes("api.")
-        ) {
-            try {
-                const evaluated = EUIXExpressionParser.eval(resolvedExpr, (name) => {
-                    const dotIdx = name.indexOf(".");
-                    if (dotIdx !== -1) {
-                        const scope = name.slice(0, dotIdx);
-                        const prop = name.slice(dotIdx + 1);
-                        if (
-                            scope === "api" ||
-                            scope === "$api" ||
-                            scope === "stream" ||
-                            scope === "$stream" ||
-                            scope === "errors" ||
-                            scope === "$errors" ||
-                            scope === "date" ||
-                            scope === "$date" ||
-                            scope === "device" ||
-                            scope === "$device" ||
-                            scope === "$route" ||
-                            scope === "$router" ||
-                            scope === "$fetcher"
-                        ) {
-                            const scopedVal = resolveScopedValue(engine, scope, prop, context);
-                            if (scopedVal !== undefined) return scopedVal;
-                        }
-                        if (scope === "local" || scope === "$local") {
-                            if (context._localState && context._localState[prop] !== undefined) {
-                                return context._localState[prop];
-                            }
-                            if (context.local && context.local[prop] !== undefined) {
-                                return context.local[prop];
-                            }
-                        }
-                        if (scope === "global" || scope === "$global") {
-                            const gk = prop.replace(/^data\./, "");
-                            return engine.getState(gk);
-                        }
-                    } else if (
-                        name === "$date" ||
-                        name === "date" ||
-                        name === "$device" ||
-                        name === "device" ||
-                        name === "$route" ||
-                        name === "$router"
-                    ) {
-                        return resolveScopedValue(engine, name, "", context);
-                    }
-
-                    const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
-                    if (context._localState && context._localState[cleanKey] !== undefined) {
-                        return context._localState[cleanKey];
-                    }
-
-                    const parts = name.split(".");
-                    const firstPart = parts[0];
-
-                    if (context && context[firstPart] !== undefined && context[firstPart] !== null) {
-                        let curr = context[firstPart];
-                        if (parts.length === 1) {
-                            return curr;
-                        }
-                        for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
-                            curr = curr[parts[i]];
-                        }
-                        if (curr !== undefined) return curr;
-                    }
-
-                    const val = engine.getState(engine.parseBindPath(cleanKey));
-                    if (val !== undefined && val !== null) return val;
-
-                    if (context && context[name] !== undefined) {
-                        return context[name];
-                    }
-
-                    if (
-                        name.includes(".") &&
-                        context &&
-                        context[firstPart] !== undefined &&
-                        context[firstPart] !== null
-                    ) {
-                        let curr = context[firstPart];
-                        for (let i = 1; i < parts.length && curr !== undefined && curr !== null; i++) {
-                            curr = curr[parts[i]];
-                        }
-                        if (curr !== undefined) return curr;
-                    }
-
-                    return undefined;
-                });
-                if (evaluated !== undefined && evaluated !== null && typeof evaluated !== "object") {
-                    return String(evaluated);
-                }
-            } catch (_) {}
-        }
-
-        if (/^(?:parent\.)?data\./.test(resolvedExpr)) {
-            const cleanKey = resolvedExpr.replace(/^(?:parent\.)?data\./, "");
-            if (context._localState && context._localState[cleanKey] !== undefined) {
-                const val = context._localState[cleanKey];
-                return val !== undefined && val !== null
-                    ? typeof val === "object"
-                        ? safeStringify(val)
-                        : String(val)
-                    : "";
-            }
-            const val = engine.getState(engine.parseBindPath(cleanKey));
-            return val !== undefined && val !== null
-                ? typeof val === "object"
-                    ? safeStringify(val)
-                    : String(val)
-                : "";
-        }
-
-        if (/^(?:local|\$local)\./.test(trimmed)) {
-            const cleanKey = trimmed.replace(/^(?:local|\$local)\./, "");
-            if (context._localState && context._localState[cleanKey] !== undefined) {
-                const val = context._localState[cleanKey];
-                return val !== undefined && val !== null
-                    ? typeof val === "object"
-                        ? safeStringify(val)
-                        : String(val)
-                    : "";
-            }
-            if (context.local && context.local[cleanKey] !== undefined) {
-                const val = context.local[cleanKey];
-                return val !== undefined && val !== null
-                    ? typeof val === "object"
-                        ? safeStringify(val)
-                        : String(val)
-                    : "";
-            }
-        }
-
-        if (
-            context &&
-            context[trimmed] !== undefined &&
-            context[trimmed] !== null &&
-            typeof context[trimmed] !== "object"
-        ) {
-            return String(context[trimmed]);
-        }
-
-        return match;
-    });
-
-    // 3. Resolve {props.key} and {scope.key}
-    result = result.replace(/\{(\w+)\.(\w+)\}/g, (match, scope, prop) => {
-        if (context[scope] && typeof context[scope] === "object") {
-            return context[scope][prop] !== undefined ? context[scope][prop] : "";
-        }
-        return match;
-    });
-
-    return result;
-}
-
-export function evalCondition(engine, expr, context = {}) {
-    if (!expr) return true;
-
-    const resolved = engine.interpolate(expr, context);
-    if (resolved === "true") return true;
-    if (resolved === "false" || resolved === "") return false;
-
-    const resolveValueFn = (name) => {
-        let val;
-        if (name.startsWith("data.")) {
-            val = engine.getState(name.slice(5));
-        } else {
-            const ctxMatch = name.match(/^(\w+)(?:\.(\w+))?$/);
-            if (ctxMatch) {
-                const [_, scope, prop] = ctxMatch;
-                if (scope && context[scope] !== undefined) {
-                    val = prop ? context[scope][prop] : context[scope];
-                }
-            }
-            if (val === undefined) val = engine.getState(name);
-        }
-        if (typeof val === "string" && val.trim() !== "" && !Number.isNaN(Number(val))) {
-            return Number(val);
-        }
-        return val;
-    };
-
-    if (/[==|!=|>|<|&&||||!|()]/.test(expr)) {
-        const cleanExpr = expr.replace(/\{([^}]+)\}/g, "$1");
-        const res = EUIXExpressionParser.eval(cleanExpr, resolveValueFn);
-        return res !== undefined ? Boolean(res) : Boolean(resolved);
-    }
-
-    return Boolean(resolved);
-}
-
-export function appendChildren(engine, fragment, nodes, context, { skipTags = [] } = {}) {
-    if (!nodes) return fragment;
-    const len = nodes.length;
-    const hasSkip = skipTags && skipTags.length > 0;
-    for (let i = 0; i < len; i++) {
-        const child = nodes[i];
-        if (hasSkip && child.nodeType === 1 && skipTags.includes(child.tagName.toLowerCase())) {
-            continue;
-        }
-        const el = engine.createHTMLElement(child, context);
-        if (el) fragment.appendChild(el);
-    }
-    return fragment;
-}
-
-const _SKIP_CONDITIONAL_TAGS = Object.freeze({ skipTags: ["else", "else_if"] });
-
-function _parseConditionalBranches(xmlNode) {
-    const branches = [];
-    let current = {
-        type: "if",
-        condition: xmlNode.getAttribute("condition") || xmlNode.getAttribute("if") || "",
-        nodes: [],
-        sealed: false,
-    };
-
-    const children = xmlNode.childNodes;
-    const len = children ? children.length : 0;
-    for (let i = 0; i < len; i++) {
-        const child = children[i];
-        if (child.nodeType === 1) {
-            const tag = child.tagName.toLowerCase();
-            if (tag === "else_if") {
-                branches.push(current);
-                current = {
-                    type: "else_if",
-                    condition: child.getAttribute("condition") || "",
-                    nodes: Array.from(child.childNodes),
-                    sealed: true,
-                };
-                continue;
-            }
-            if (tag === "else") {
-                branches.push(current);
-                current = {
-                    type: "else",
-                    condition: null,
-                    nodes: Array.from(child.childNodes),
-                    sealed: true,
-                };
-                continue;
-            }
-        }
-        if (!current.sealed) {
-            current.nodes.push(child);
-        }
-    }
-    branches.push(current);
-    return branches;
-}
-
-function _getConditionalActiveIndex(engine, branches, context) {
-    const len = branches.length;
-    for (let i = 0; i < len; i++) {
-        const b = branches[i];
-        if (b.type === "else" || engine.evalCondition(b.condition, context)) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-function _renderConditionalBranch(engine, containerNode, branchNodes, context) {
-    containerNode.innerHTML = "";
-    if (branchNodes && branchNodes.length > 0) {
-        const fragment = document.createDocumentFragment();
-        engine.appendChildren(fragment, branchNodes, context, _SKIP_CONDITIONAL_TAGS);
-        containerNode.appendChild(fragment);
-    }
-}
-
-function _switchConditionalBranch(engine, containerNode, branches, newIndex, context) {
-    const oldNodes = containerNode.children;
-    const oldLen = oldNodes ? oldNodes.length : 0;
-    const targetNodes = newIndex !== -1 ? branches[newIndex].nodes : null;
-
-    if (oldLen > 0 && isFn(engine._runLeaveTransitionThenRemove)) {
-        let pendingCount = oldLen;
-        const onDone = () => {
-            pendingCount--;
-            if (pendingCount <= 0) {
-                _renderConditionalBranch(engine, containerNode, targetNodes, context);
-            }
-        };
-        const oldArr = Array.from(oldNodes);
-        for (let i = 0; i < oldLen; i++) {
-            engine._runLeaveTransitionThenRemove(oldArr[i], onDone);
-        }
-    } else {
-        _renderConditionalBranch(engine, containerNode, targetNodes, context);
-    }
-}
-
-export function renderConditional(engine, xmlNode, context = {}) {
-    const containerNode = document.createElement("div");
-    containerNode.className = "euix-if-branch";
-    containerNode.style.display = "contents";
-
-    const branches = _parseConditionalBranches(xmlNode);
-    let activeIndex = _getConditionalActiveIndex(engine, branches, context);
-
-    if (activeIndex !== -1) {
-        engine.appendChildren(containerNode, branches[activeIndex].nodes, context, _SKIP_CONDITIONAL_TAGS);
-    }
-
-    const keys = new Set();
-    const branchLen = branches.length;
-    for (let i = 0; i < branchLen; i++) {
-        const cond = branches[i].condition;
-        if (cond) {
-            const stateKeys = engine.extractStateKeys(cond);
-            const kLen = stateKeys.length;
-            for (let j = 0; j < kLen; j++) {
-                keys.add(stateKeys[j]);
-            }
-        }
-    }
-
-    const updateFn = () => {
-        const newIndex = _getConditionalActiveIndex(engine, branches, context);
-        if (newIndex !== activeIndex) {
-            activeIndex = newIndex;
-            _switchConditionalBranch(engine, containerNode, branches, newIndex, context);
-        }
-    };
-
-    for (const k of keys) {
-        engine.registerBinding(k, containerNode, "conditional", updateFn);
-    }
-
-    return containerNode;
-}
-
-export function resolveBindPath(engine, xmlNode) {
-    if (typeof xmlNode === "string") {
-        return engine.parseBindPath(xmlNode);
-    }
-    if (!xmlNode) return "";
-    const { bindAttr } = extractBindModifiers(xmlNode);
-    if (bindAttr) return engine.parseBindPath(bindAttr);
-
-    const onChange = engine.getChild(xmlNode, "on_change");
-    if (onChange && typeof onChange.getAttribute === "function" && onChange.getAttribute("action") === "SET_STATE") {
-        const pathNode = engine.getChild(onChange, "path");
-        if (pathNode) return engine.parseBindPath(pathNode.textContent);
-    }
-
-    const valNode = engine.getChild(xmlNode, "value");
-    if (valNode) {
-        const match = String(valNode.textContent || "")
-            .trim()
-            .match(/^\{data\.(\w+)\}$/);
-        if (match) return match[1];
-    }
-
-    if (xmlNode.textContent) {
-        const match = String(xmlNode.textContent || "")
-            .trim()
-            .match(/^\{data\.(\w+)\}$/);
-        if (match) return match[1];
-    }
-
-    return "";
-}
-
-export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
-    if (!el || !xmlNode || xmlNode.nodeType !== 1 || !xmlNode.attributes) return;
-
-    const validationAttrs = ["pattern", "minlength", "maxlength", "min", "max", "step", "title", "autocomplete"];
-    const attrs = xmlNode.attributes;
-    const aLen = attrs.length;
-
-    for (let aIdx = 0; aIdx < aLen; aIdx++) {
-        const attr = attrs[aIdx];
-        const attrName = attr.name;
-        const attrValue = attr.value;
-        if (attrValue === undefined || attrValue === null) continue;
-
-        const lowerAttrName = attrName.toLowerCase();
-
-        if (attrName === "id") {
-            const idVal = engine.interpolate(attrValue, context);
-            el.id = idVal;
-            el.setAttribute("id", idVal);
-        } else if (
-            lowerAttrName === "test-id" ||
-            lowerAttrName === "test_id" ||
-            lowerAttrName === "testid" ||
-            lowerAttrName === "data-testid" ||
-            lowerAttrName === "data-euix-test"
-        ) {
-            const testVal = engine.interpolate(attrValue, context);
-            el.setAttribute("data-euix-test", testVal);
-            el.setAttribute(attrName, testVal);
-        } else if (lowerAttrName === "action" || lowerAttrName === "data-euix-action") {
-            const actionVal = engine.interpolate(attrValue, context);
-            el.setAttribute("data-euix-action", actionVal);
-            el.setAttribute(attrName, actionVal);
-        } else if (attrName.startsWith("on") && attrName.length > 2 && !attrName.startsWith("on_")) {
-            const eventName = attrName.toLowerCase();
-            const handlerCode = engine.interpolate(attrValue, context);
-            try {
-                const isAsync = handlerCode.includes("await ");
-                const AsyncFn = Object.getPrototypeOf(async () => {}).constructor;
-                el[eventName] = isAsync
-                    ? new AsyncFn("event", "$evt", handlerCode)
-                    : new Function("event", "$evt", handlerCode);
-            } catch (_) {
-                el.setAttribute(attrName, handlerCode);
-            }
-        } else if (BOOLEAN_ATTRS.has(lowerAttrName)) {
-            const interpolated = engine.interpolate(attrValue, context);
-            const lower = String(interpolated).trim().toLowerCase();
-            const isExplicitFalse = lower === "false" || lower === "0" || lower === "null" || lower === "undefined";
-            const isBoolTrue =
-                !isExplicitFalse &&
-                (lower === "true" ||
-                    lower === "1" ||
-                    lower === lowerAttrName ||
-                    (attrValue === "" && !String(attrValue).includes("{")));
-
-            if (isBoolTrue) {
-                el.setAttribute(attrName, "");
-                try {
-                    el[attrName] = true;
-                } catch (_) {}
-            } else {
-                el.removeAttribute(attrName);
-                try {
-                    el[attrName] = false;
-                } catch (_) {}
-            }
-        } else if (validationAttrs.includes(lowerAttrName)) {
-            if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
-                el.setAttribute(attrName, engine.interpolate(attrValue, context));
-            }
-        } else if (attrName === "class" || attrName === "className") {
-            const interpolatedVal = engine.interpolate(attrValue, context);
-            if (el.namespaceURI === SVG_NAMESPACE) {
-                el.setAttribute("class", interpolatedVal);
-            } else {
-                if (
-                    el.className &&
-                    el.className !== interpolatedVal &&
-                    !el.className.split(" ").includes(interpolatedVal)
-                ) {
-                    el.className = [el.className, interpolatedVal].filter(Boolean).join(" ");
-                } else if (!el.className) {
-                    el.className = interpolatedVal;
-                }
-            }
-        } else if (attrName === "style") {
-            let interpolatedVal = engine.interpolate(attrValue, context);
-            if (
-                typeof interpolatedVal === "string" &&
-                interpolatedVal.trim().startsWith("{") &&
-                interpolatedVal.trim().endsWith("}")
-            ) {
-                try {
-                    const parsed = JSON.parse(interpolatedVal);
-                    if (typeof parsed === "object" && parsed !== null) {
-                        interpolatedVal = Object.entries(parsed)
-                            .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                            .map(
-                                ([k, v]) =>
-                                    `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
-                            )
-                            .join(" ");
-                    }
-                } catch (_) {}
-            } else if (interpolatedVal && typeof interpolatedVal === "object") {
-                interpolatedVal = Object.entries(interpolatedVal)
-                    .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                    .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
-                    .join(" ");
-            }
-            el.setAttribute("style", interpolatedVal);
-        } else if (attrName === "type") {
-            el.setAttribute("type", engine.interpolate(attrValue, context));
-        } else {
-            const interpolatedVal = engine.interpolate(attrValue, context);
-            el.setAttribute(attrName, interpolatedVal);
-            if (attrName === "draggable") {
-                try {
-                    const isDraggable = interpolatedVal === "true";
-                    if (isFn(engine.enableDraggable)) {
-                        engine.enableDraggable(el, isDraggable, context);
-                    } else {
-                        el.draggable = isDraggable;
-                    }
-                } catch (_) {}
-            }
-        }
-
-        if (attrValue && typeof attrValue === "string" && attrValue.includes("{")) {
-            const hasBinding = registerScopedBinding(
-                engine,
-                attrValue,
-                el,
-                "attribute",
-                () => {
-                    engine.updateAttributeBinding(el, attrName, attrValue, context);
-                },
-                context,
-            );
-            if (hasBinding) {
-                engine.updateAttributeBinding(el, attrName, attrValue, context);
-            }
-        }
-    }
-}
-
-export function updateAttributeBinding(engine, el, attrName, template, context = {}) {
-    if (!el || !attrName || !template) return;
-    const newAttrVal = engine.interpolate(template, context);
-    const lowerAttrName = attrName.toLowerCase();
-
-    if (BOOLEAN_ATTRS.has(lowerAttrName)) {
-        const lower = String(newAttrVal).trim().toLowerCase();
-        const isExplicitFalse =
-            lower === "false" || lower === "0" || lower === "null" || lower === "undefined" || lower === "";
-        const isBoolTrue =
-            !isExplicitFalse &&
-            (lower === "true" || lower === "1" || lower === lowerAttrName || engine.isTruthy(newAttrVal));
-
-        if (isBoolTrue) {
-            el.setAttribute(attrName, "");
-            try {
-                el[attrName] = true;
-            } catch (_) {}
-        } else {
-            el.removeAttribute(attrName);
-            try {
-                el[attrName] = false;
-            } catch (_) {}
-        }
-        return;
-    }
-
-    if (attrName === "value" && "value" in el && el.namespaceURI !== SVG_NAMESPACE) {
-        if (el.value !== newAttrVal) el.value = newAttrVal;
-    } else if (attrName === "class" && el.namespaceURI !== SVG_NAMESPACE) {
-        let finalVal = newAttrVal;
-        if (el.classList && el.classList.contains("euix-flex") && !finalVal.includes("euix-flex")) {
-            finalVal = `euix-flex ${finalVal}`.trim();
-        } else if (el.classList && el.classList.contains("euix-grid") && !finalVal.includes("euix-grid")) {
-            finalVal = `euix-grid ${finalVal}`.trim();
-        }
-        if (el.className !== finalVal) el.className = finalVal;
-    } else if (attrName === "style") {
-        let styleVal = newAttrVal;
-        if (typeof styleVal === "string" && styleVal.trim().startsWith("{") && styleVal.trim().endsWith("}")) {
-            try {
-                const parsed = JSON.parse(styleVal);
-                if (typeof parsed === "object" && parsed !== null) {
-                    styleVal = Object.entries(parsed)
-                        .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                        .map(
-                            ([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`,
-                        )
-                        .join(" ");
-                }
-            } catch (_) {}
-        } else if (styleVal && typeof styleVal === "object") {
-            styleVal = Object.entries(styleVal)
-                .filter(([_k, v]) => v !== undefined && v !== null && v !== "")
-                .map(([k, v]) => `${k.startsWith("--") ? k : k.replace(/([A-Z])/g, "-$1").toLowerCase()}: ${v};`)
-                .join(" ");
-        }
-        if (el.getAttribute("style") !== styleVal) el.setAttribute("style", styleVal);
-    } else {
-        if (el.getAttribute(attrName) !== newAttrVal) el.setAttribute(attrName, newAttrVal);
-    }
-}
-
-export function applyRef(engine, el, xmlNode, context = {}) {
-    if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
-    engine.applyNodeAttributes(el, xmlNode, context);
-
-    const showAttr = xmlNode.getAttribute("show");
-    if (showAttr) {
-        const updateShow = () => {
-            const isVisible = engine.evalCondition(showAttr, context);
-            el.style.display = isVisible ? "" : "none";
-        };
-        updateShow();
-        const keys = engine.extractStateKeys(showAttr);
-        for (const k of keys) {
-            engine.registerBinding(k, el, "attribute", updateShow);
-        }
-    }
-
-    const unlessAttr = xmlNode.getAttribute("unless");
-    if (unlessAttr) {
-        const updateUnless = () => {
-            const isMatch = engine.evalCondition(unlessAttr, context);
-            el.style.display = !isMatch ? "" : "none";
-        };
-        updateUnless();
-        const keys = engine.extractStateKeys(unlessAttr);
-        for (const k of keys) {
-            engine.registerBinding(k, el, "attribute", updateUnless);
-        }
-    }
-
-    const refAttr = xmlNode.getAttribute("ref");
-    if (refAttr) {
-        const resolvedRef = engine.interpolate(refAttr, context);
-        if (resolvedRef) {
-            engine.refs[resolvedRef] = el;
-            el.dataset.euixRef = resolvedRef;
-            el.dataset.xuiRef = resolvedRef;
-            if (typeof el.setAttribute === "function") {
-                el.setAttribute("data-euix-ref", resolvedRef);
-                el.setAttribute("data-xui-ref", resolvedRef);
-            }
-        }
-    }
-    return el;
-}
+import {
+    extractStateKeys,
+    interpolate,
+    evalCondition,
+} from "./TemplateInterpolator.js";
+import {
+    appendChildren,
+    renderConditional,
+} from "./ConditionalRenderer.js";
+import {
+    resolveBindPath,
+    applyNodeAttributes,
+    updateAttributeBinding,
+    applyRef,
+} from "./AttributeBinder.js";
+
+export {
+    extractStateKeys,
+    interpolate,
+    evalCondition,
+    appendChildren,
+    renderConditional,
+    resolveBindPath,
+    applyNodeAttributes,
+    updateAttributeBinding,
+    applyRef,
+};
 
 export function isStaticSubtree(xmlNode, engine = null) {
     if (!xmlNode) return false;
@@ -1085,7 +77,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
 
     const tagName = (xmlNode.tagName || "").toLowerCase();
     const typeAttr = (xmlNode.getAttribute("type") || "").toLowerCase();
-    const srcAttr = xmlNode.getAttribute("src") || xmlNode.getAttribute("url");
+    const srcAttr = getAttr(xmlNode, "src", "url");
     const nameAttr = (xmlNode.getAttribute("name") || "").toLowerCase();
 
     if (
@@ -1276,10 +268,10 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
     const tagName = xmlNode.tagName.toLowerCase();
     if (METADATA_AND_EVENT_TAGS.has(tagName) || tagName.startsWith("on_")) {
         if (["use_script", "script_loader", "load_script"].includes(tagName)) {
-            const src = xmlNode.getAttribute("src") || xmlNode.getAttribute("url");
+            const src = getAttr(xmlNode, "src", "url");
             if (src) engine.loadScript(src, { async: xmlNode.getAttribute("async") !== "false" });
         } else if (["use_style", "style_loader", "load_style"].includes(tagName)) {
-            const href = xmlNode.getAttribute("src") || xmlNode.getAttribute("href") || xmlNode.getAttribute("url");
+            const href = getAttr(xmlNode, "src", "href", "url");
             if (href) engine.loadStyle(href);
         } else if (tagName === "style") {
             processStyleTag(engine, xmlNode, context);
@@ -1300,7 +292,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         tagName !== "else_if" &&
         (xmlNode.hasAttribute("if") || xmlNode.hasAttribute("condition"))
     ) {
-        const condExpr = xmlNode.getAttribute("if") || xmlNode.getAttribute("condition");
+        const condExpr = getAttr(xmlNode, "if", "condition");
         const containerNode = document.createElement("div");
         containerNode.className = "euix-conditional-wrapper";
         containerNode.style.display = "contents";
@@ -1421,7 +413,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
     if (tagName === "img" || tagName === "image") {
         const el = document.createElement("img");
-        const imgClass = xmlNode.getAttribute("class") || xmlNode.getAttribute("className");
+        const imgClass = getAttr(xmlNode, "class", "className");
         if (imgClass) el.className = engine.interpolate(imgClass, context);
         const rawSrc = xmlNode.getAttribute("src") || "";
         const alt = xmlNode.getAttribute("alt") || "";
@@ -1443,7 +435,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
     if (tagName === "button") {
         const el = document.createElement("button");
-        const btnClass = xmlNode.getAttribute("class") || xmlNode.getAttribute("className");
+        const btnClass = getAttr(xmlNode, "class", "className");
         if (btnClass) el.className = engine.interpolate(btnClass, context);
         const btnType = xmlNode.getAttribute("type");
         if (btnType) el.type = btnType;
@@ -1857,16 +849,14 @@ export function render(engine) {
         engine.parseWebMCPMetadata(root);
     }
 
-    const rootStyles = Array.from(
-        root.querySelectorAll ? root.querySelectorAll("style, use_style, style_loader, load_style") : [],
-    );
+    const rootStyles = queryAll(root, "style, use_style, style_loader, load_style");
     rootStyles.forEach((st) => {
         if (st.closest && st.closest("component_def")) return;
         const sTag = (st.tagName || "").toLowerCase();
         if (sTag === "style") {
             processStyleTag(engine, st, {});
         } else {
-            const href = st.getAttribute("src") || st.getAttribute("href") || st.getAttribute("url");
+            const href = getAttr(st, "src", "href", "url");
             if (href) engine.loadStyle(href);
         }
     });
@@ -1875,7 +865,7 @@ export function render(engine) {
         (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()),
     );
     if (uiChildren.length === 0) {
-        const fallback = Array.from(root.querySelectorAll("*")).find(
+        const fallback = queryAll(root, "*").find(
             (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()) && !c.closest("component_def"),
         );
         if (fallback) {
@@ -1898,7 +888,7 @@ export function render(engine) {
     }
 
     const autofocusEl = engine.container.querySelector("[data-euix-autofocus='true']");
-    if (autofocusEl && typeof autofocusEl.focus === "function") {
+    if (autofocusEl && isFn(autofocusEl.focus)) {
         autofocusEl.focus();
     }
 }

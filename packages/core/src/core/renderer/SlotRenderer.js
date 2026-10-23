@@ -4,7 +4,7 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
-import { getChildNodes, getTagName, isElem } from "../utils/constants.js";
+import { getChildNodes, getTagName, isElem, isStr, getAttr } from "../utils/constants.js";
 
 /**
  * Renders a <slot> or <children> element, projecting named or default children from context._projectedSlots.
@@ -41,7 +41,7 @@ export function renderSlotElement(engine, xmlNode, context = {}) {
                 const val = a.value;
                 let resolvedVal;
                 if (
-                    typeof val === "string" &&
+                    isStr(val) &&
                     val.startsWith("{") &&
                     val.endsWith("}") &&
                     !val.slice(1, -1).includes("{")
@@ -80,11 +80,7 @@ export function renderSlotElement(engine, xmlNode, context = {}) {
 
             if (isElem(pNode)) {
                 const scopeVarName =
-                    pNode.getAttribute("let") ||
-                    pNode.getAttribute("var") ||
-                    pNode.getAttribute("as") ||
-                    pNode.getAttribute("slot_scope") ||
-                    pNode.getAttribute("scope");
+                    getAttr(pNode, "let", "var", "as", "slot_scope", "scope");
 
                 if (scopeVarName) {
                     scopedContext[scopeVarName] = slotScopeProps;

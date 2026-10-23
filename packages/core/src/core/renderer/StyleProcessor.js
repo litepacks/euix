@@ -3,7 +3,7 @@
  * Scoped CSS transformer and reactive <style> tag processor for EUIX Engine.
  */
 
-import { isElem } from "../utils/constants.js";
+import { isElem, isFn, getAttr } from "../utils/constants.js";
 
 /**
  * Scopes a block of CSS by prepending or nesting with scopeSelector.
@@ -62,7 +62,7 @@ export function scopeCSS(cssText, scopeSelector) {
  */
 export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) {
     if (!xmlNode || !engine) return null;
-    const href = xmlNode.getAttribute("src") || xmlNode.getAttribute("href") || xmlNode.getAttribute("url");
+    const href = getAttr(xmlNode, "src", "href", "url");
     if (href) {
         engine.loadStyle(href);
         return null;
@@ -74,7 +74,7 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
     const isScoped =
         xmlNode.getAttribute("scoped") === "true" ||
         xmlNode.getAttribute("scoped") === "" ||
-        (typeof xmlNode.hasAttribute === "function" && xmlNode.hasAttribute("scoped"));
+        (isFn(xmlNode.hasAttribute) && xmlNode.hasAttribute("scoped"));
 
     let scopeId = null;
     if (isScoped) {
@@ -180,7 +180,7 @@ export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) 
         docHead.appendChild(styleEl);
     }
 
-    if (context._instanceId && typeof engine.onUnmount === "function") {
+    if (context._instanceId && isFn(engine.onUnmount)) {
         engine.onUnmount(() => {
             if (styleEl.parentNode) {
                 styleEl.parentNode.removeChild(styleEl);

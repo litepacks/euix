@@ -1,3 +1,4 @@
+import { getNow } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXProfilerPlugin.js
  * Modular Performance Profiler & DevTools Connector Plugin for EUIX Engine.
@@ -19,9 +20,7 @@ export const EUIXProfilerPlugin = {
             // Register hook listeners for DevTools status updates and mount metrics
             EngineClass.hooks.on("engine:init", (engine) => {
                 engine._mountStartTime =
-                    typeof performance !== "undefined" && typeof performance.now === "function"
-                        ? performance.now()
-                        : Date.now();
+                    getNow();
 
                 // Initialize DevTools status on engine initialization
                 updateDevToolsStatus(engine);
@@ -36,9 +35,7 @@ export const EUIXProfilerPlugin = {
             EngineClass.hooks.on("engine:mount", (engine) => {
                 if (engine._mountStartTime) {
                     const now =
-                        typeof performance !== "undefined" && typeof performance.now === "function"
-                            ? performance.now()
-                            : Date.now();
+                        getNow();
                     engine._mountDuration = Number((now - engine._mountStartTime).toFixed(2));
                 }
             });

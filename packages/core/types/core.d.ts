@@ -112,12 +112,22 @@ export class EUIXEngineCore<TState extends Record<string, any> = Record<string, 
         xmlString: string | HTMLElement,
         containerSelector?: string | HTMLElement
     ): EUIXEngineCore<T>;
+    static mountElement<T extends Record<string, any> = Record<string, any>>(
+        element: HTMLElement,
+        options?: { props?: Record<string, any>; state?: Record<string, any> }
+    ): Promise<EUIXEngineCore<T>>;
+    static unmountElement(element: HTMLElement): boolean;
+    static scan(root?: Document | HTMLElement): Promise<EUIXEngineCore[]>;
+    static getEngine(elementOrSelector: HTMLElement | string): EUIXEngineCore | undefined;
+    static instances: EUIXEngineCore[];
+    static elements: WeakMap<HTMLElement, EUIXEngineCore>;
     static registerAction(actionType: string, handler: (actionNode: Element, context: Record<string, any>) => any): void;
 
     mount<T extends Record<string, any> = TState>(
         xmlString: string | HTMLElement,
         containerSelector?: string | HTMLElement
     ): EUIXEngineCore<T>;
+    setProps(nextProps: Record<string, any>): this;
     unmount(): this;
     destroy(): void;
     onUnmount(callback: () => void): this;

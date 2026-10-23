@@ -16,6 +16,9 @@ import {
     isTxtNode,
     toNum,
     trimStr,
+    isObj,
+    isStr,
+    queryAll,
 } from "../utils/constants.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
@@ -33,18 +36,18 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
             typeof window !== "undefined" &&
             (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
         const res = await fetch(url, isDev ? { cache: "no-cache" } : undefined);
-        const xmlText = isFn(res.text) ? await res.text() : typeof res === "string" ? res : String(res);
+        const xmlText = isFn(res.text) ? await res.text() : isStr(res) ? res : String(res);
 
         const doc = EngineClass.parseXmlToAst(xmlText, options);
         if (EngineClass._componentUrlCache.size < 200) {
             EngineClass._componentUrlCache.set(url, doc);
         }
 
-        const nestedImports = Array.from(doc.querySelectorAll("import"));
+        const nestedImports = queryAll(doc, "import");
         const loadPromises = [];
         for (const imp of nestedImports) {
             const impSrc = imp.getAttribute("src");
-            const impName = imp.getAttribute("name") || imp.getAttribute("as");
+            const impName = getAttr(imp, "name", "as");
             const lazyAttr = imp.getAttribute("lazy");
             const preloadAttr = imp.getAttribute("preload");
             const isLazy =
@@ -65,7 +68,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
             if (impSrc && impName) {
                 const currentStack = options.parentStack || [(name || "").toLowerCase()];
                 if (isLazy) {
-                    if (typeof EngineClass.registerLazyComponent === "function") {
+                    if (isFn(EngineClass.registerLazyComponent)) {
                         EngineClass.registerLazyComponent(impName, impSrc, {
                             fallback: imp.getAttribute("fallback"),
                             preload:
@@ -73,12 +76,12 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
                             viewport: isViewport,
                             observer: isViewport,
                             rootMargin: rootMargin,
-                            minHeight: imp.getAttribute("min_height") || imp.getAttribute("minHeight"),
-                            aspectRatio: imp.getAttribute("aspect_ratio") || imp.getAttribute("aspectRatio"),
+                            minHeight: getAttr(imp, "min_height", "minHeight"),
+                            aspectRatio: getAttr(imp, "aspect_ratio", "aspectRatio"),
                             placeholderClass:
-                                imp.getAttribute("placeholder_class") || imp.getAttribute("placeholderClass"),
+                                getAttr(imp, "placeholder_class", "placeholderClass"),
                             retries: imp.getAttribute("retries"),
-                            retryDelay: imp.getAttribute("retry_delay") || imp.getAttribute("retryDelay"),
+                            retryDelay: getAttr(imp, "retry_delay", "retryDelay"),
                             parentStack: currentStack,
                         });
                     }
@@ -109,7 +112,7 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
 
 export function registerComponentSpec(EngineClass, name, xmlStringOrNode, options = {}) {
     let node;
-    if (typeof xmlStringOrNode === "string") {
+    if (isStr(xmlStringOrNode)) {
         if (!EngineClass._componentAstCache) EngineClass._componentAstCache = new Map();
         let doc;
         if (EngineClass._componentAstCache.has(xmlStringOrNode)) {
@@ -121,9 +124,9 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
             }
         }
 
-        const nestedDefs = Array.from(doc.querySelectorAll("component_def"));
+        const nestedDefs = queryAll(doc, "component_def");
         nestedDefs.forEach((def) => {
-            const defName = def.getAttribute("name") || def.getAttribute("id");
+            const defName = getAttr(def, "name", "id");
             if (defName && defName.toLowerCase() !== (name || "").toLowerCase()) {
                 EngineClass.registerComponentSpec(defName, def, options);
             }
@@ -144,9 +147,9 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
                 xmlStringOrNode.documentElement;
         }
 
-        const nestedDefs = Array.from(xmlStringOrNode.querySelectorAll("component_def"));
+        const nestedDefs = queryAll(xmlStringOrNode, "component_def");
         nestedDefs.forEach((def) => {
-            const defName = def.getAttribute("name") || def.getAttribute("id");
+            const defName = getAttr(def, "name", "id");
             if (defName && defName.toLowerCase() !== (name || "").toLowerCase() && def !== node) {
                 EngineClass.registerComponentSpec(defName, def);
             }
@@ -161,11 +164,9 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
         EngineClass._globalComponentSpecs.set(compName, node);
 
         if (isFn(EngineClass.registerActionDef)) {
-            const actionDefNodes = Array.from(
-                node.querySelectorAll ? node.querySelectorAll("action_def, workflow_def") : [],
-            );
+            const actionDefNodes = queryAll(node, "action_def, workflow_def");
             actionDefNodes.forEach((def) => {
-                const actName = def.getAttribute("name") || def.getAttribute("id");
+                const actName = getAttr(def, "name", "id");
                 if (actName) {
                     EngineClass.registerActionDef(actName, def);
                 }
@@ -182,11 +183,9 @@ export function initComponentSchema(engine, specNode, context = {}) {
 
     // 1. Action / Workflow definitions
     if (isFn(engine.constructor.registerActionDef)) {
-        const actionDefNodes = Array.from(
-            specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : [],
-        );
+        const actionDefNodes = queryAll(specNode, "action_def, workflow_def");
         actionDefNodes.forEach((def) => {
-            const actName = def.getAttribute("name") || def.getAttribute("id");
+            const actName = getAttr(def, "name", "id");
             if (actName) {
                 engine.constructor.registerActionDef(actName, def);
             }
@@ -194,12 +193,10 @@ export function initComponentSchema(engine, specNode, context = {}) {
     }
 
     // 2. Computed signals
-    const computedNodes = specNode.querySelectorAll
-        ? Array.from(specNode.querySelectorAll("computed"))
-        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("computed") : []);
+    const computedNodes = queryAll(specNode, "computed");
     computedNodes.forEach((node) => {
-        const id = node.getAttribute("id") || node.getAttribute("name");
-        const deps = node.getAttribute("deps") || node.getAttribute("watch");
+        const id = getAttr(node, "id", "name");
+        const deps = getAttr(node, "deps", "watch");
         const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
         if (id && isFn(engine.computed) && (!engine._computedRegistry || !engine._computedRegistry.has(id))) {
             engine.computed(id, getter, deps);
@@ -207,11 +204,9 @@ export function initComponentSchema(engine, specNode, context = {}) {
     });
 
     // 3. Watch observers
-    const watchNodes = specNode.querySelectorAll
-        ? Array.from(specNode.querySelectorAll("watch"))
-        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("watch") : []);
+    const watchNodes = queryAll(specNode, "watch");
     watchNodes.forEach((node) => {
-        const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
+        const path = getAttr(node, "path", "watch", "on");
         if (path && isFn(engine.watch)) {
             engine.watch(path, node);
         }
@@ -223,7 +218,7 @@ export function initComponentSchema(engine, specNode, context = {}) {
         ...Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("keyframe_def") : []),
     ];
     animDefNodes.forEach((node) => {
-        const name = node.getAttribute("name") || node.getAttribute("id");
+        const name = getAttr(node, "name", "id");
         if (name && isFn(engine.registerAnimationDef)) {
             engine.registerAnimationDef(name, node);
         }
@@ -233,9 +228,7 @@ export function initComponentSchema(engine, specNode, context = {}) {
     const apiConfigNode = specNode.querySelector ? specNode.querySelector("api_config, api_client, api") : null;
     if (apiConfigNode && engine._apiConfig) {
         const baseUrl =
-            apiConfigNode.getAttribute("base_url") ||
-            apiConfigNode.getAttribute("baseUrl") ||
-            apiConfigNode.getAttribute("url");
+            getAttr(apiConfigNode, "base_url", "baseUrl", "url");
         if (baseUrl && !engine._apiConfig.baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
 
         const credentials = apiConfigNode.getAttribute("credentials");
@@ -244,19 +237,15 @@ export function initComponentSchema(engine, specNode, context = {}) {
         const timeout = apiConfigNode.getAttribute("timeout");
         if (timeout && !engine._apiConfig.timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
 
-        const headerNodes = Array.from(apiConfigNode.querySelectorAll("headers > header, header"));
+        const headerNodes = queryAll(apiConfigNode, "headers > header, header");
         headerNodes.forEach((h) => {
-            const name = h.getAttribute("name") || h.getAttribute("key");
+            const name = getAttr(h, "name", "key");
             const val = h.textContent.trim() || h.getAttribute("value") || "";
             if (name && isFn(engine.setApiHeader)) engine.setApiHeader(name, val);
         });
     }
 
-    const apiEndpoints = specNode.querySelectorAll
-        ? Array.from(specNode.querySelectorAll("api_endpoint, endpoint"))
-        : Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("api_endpoint") : []).concat(
-              Array.from(specNode.getElementsByTagName ? specNode.getElementsByTagName("endpoint") : []),
-          );
+    const apiEndpoints = queryAll(specNode, "api_endpoint, endpoint");
     if (isFn(engine.handleXHR) && apiEndpoints.length > 0) {
         apiEndpoints.forEach((node) => {
             const autoFetchAttr = node.getAttribute("auto_fetch");
@@ -285,7 +274,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             const slotName =
                 child.getAttribute("slot") ||
                 (["slot", "template"].includes(childTag)
-                    ? child.getAttribute("name") || child.getAttribute("slot")
+                    ? getAttr(child, "name", "slot")
                     : null);
             if (slotName && slotName !== "default") {
                 if (!namedSlots.has(slotName)) namedSlots.set(slotName, []);
@@ -307,7 +296,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             if (attr.name !== "type" && attr.name !== "class") {
                 const val = attr.value;
                 if (
-                    typeof val === "string" &&
+                    isStr(val) &&
                     val.startsWith("{") &&
                     val.endsWith("}") &&
                     !val.slice(1, -1).includes("{")
@@ -343,7 +332,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             const cnLen = constsNodes.length;
             for (let i = 0; i < cnLen; i++) {
                 const node = constsNodes[i];
-                const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
+                const id = getAttr(node, "id", "name", "key");
                 if (id) compConstants[id] = node.textContent.trim();
             }
         }
@@ -394,9 +383,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     let hasLocalState = false;
     const stateNodes = dataModelNode
         ? engine.getChildren(dataModelNode, "state")
-        : specNode.querySelectorAll
-          ? Array.from(specNode.querySelectorAll("data_model > state"))
-          : [];
+        : queryAll(specNode, "data_model > state");
     stateNodes.forEach((node) => {
         const id = node.getAttribute("id");
         if (!id) return;
@@ -458,7 +445,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             const format = node.getAttribute("format");
             if (format === "toon") {
                 const parsed = toonToJson(txt);
-                parsedValue = typeof parsed === "object" && parsed !== null ? parsed : {};
+                parsedValue = isObj(parsed) ? parsed : {};
             } else {
                 try {
                     parsedValue = txt ? JSON.parse(txt) : {};
@@ -571,11 +558,9 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     ];
 
     // Trigger external script loaders declared inside component
-    const compScripts = specNode._cachedCompScripts || (specNode._cachedCompScripts = Array.from(
-        specNode.querySelectorAll ? specNode.querySelectorAll("use_script, script_loader, load_script") : [],
-    ));
+    const compScripts = specNode._cachedCompScripts || (specNode._cachedCompScripts = queryAll(specNode, "use_script, script_loader, load_script"));
     compScripts.forEach((node) => {
-        const src = node.getAttribute("src") || node.getAttribute("url");
+        const src = getAttr(node, "src", "url");
         if (src) engine.loadScript(src, { async: node.getAttribute("async") !== "false" });
     });
 
@@ -601,15 +586,13 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
     const rendered = engine.createHTMLElement(templateNode, childContext);
 
     // Process style and use_style loaders declared inside component
-    const compStyles = specNode._cachedCompStyles || (specNode._cachedCompStyles = Array.from(
-        specNode.querySelectorAll ? specNode.querySelectorAll("use_style, style_loader, load_style, style") : [],
-    ));
+    const compStyles = specNode._cachedCompStyles || (specNode._cachedCompStyles = queryAll(specNode, "use_style, style_loader, load_style, style"));
     compStyles.forEach((node) => {
         const tag = (node.tagName || "").toLowerCase();
         if (tag === "style") {
             processStyleTag(engine, node, childContext, rendered);
         } else {
-            const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+            const href = getAttr(node, "src", "href", "url");
             if (href) engine.loadStyle(href);
         }
     });
@@ -646,11 +629,9 @@ export async function loadComponentFile(engine, name, url) {
         engine._componentSpecs.set(compName, specNode);
 
         if (isFn(engine.registerActionDef)) {
-            const actionDefNodes = Array.from(
-                specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : [],
-            );
+            const actionDefNodes = queryAll(specNode, "action_def, workflow_def");
             actionDefNodes.forEach((def) => {
-                const actName = def.getAttribute("name") || def.getAttribute("id");
+                const actName = getAttr(def, "name", "id");
                 if (actName) {
                     engine.registerActionDef(actName, def);
                 }
@@ -658,11 +639,9 @@ export async function loadComponentFile(engine, name, url) {
         }
 
         if (isFn(engine.registerAnimationDef)) {
-            const animNodes = Array.from(
-                specNode.querySelectorAll ? specNode.querySelectorAll("animation_def, keyframe_def") : [],
-            );
+            const animNodes = queryAll(specNode, "animation_def, keyframe_def");
             animNodes.forEach((def) => {
-                const animName = def.getAttribute("name") || def.getAttribute("id");
+                const animName = getAttr(def, "name", "id");
                 if (animName) {
                     engine.registerAnimationDef(animName, def);
                 }
@@ -679,11 +658,9 @@ export function registerEngineComponentSpec(engine, name, xmlStringOrNode) {
         engine._componentSpecs.set(compName, specNode);
 
         if (isFn(engine.registerActionDef)) {
-            const actionDefNodes = Array.from(
-                specNode.querySelectorAll ? specNode.querySelectorAll("action_def, workflow_def") : [],
-            );
+            const actionDefNodes = queryAll(specNode, "action_def, workflow_def");
             actionDefNodes.forEach((def) => {
-                const actName = def.getAttribute("name") || def.getAttribute("id");
+                const actName = getAttr(def, "name", "id");
                 if (actName) {
                     engine.registerActionDef(actName, def);
                 }
@@ -691,11 +668,9 @@ export function registerEngineComponentSpec(engine, name, xmlStringOrNode) {
         }
 
         if (isFn(engine.registerAnimationDef)) {
-            const animNodes = Array.from(
-                specNode.querySelectorAll ? specNode.querySelectorAll("animation_def, keyframe_def") : [],
-            );
+            const animNodes = queryAll(specNode, "animation_def, keyframe_def");
             animNodes.forEach((def) => {
-                const animName = def.getAttribute("name") || def.getAttribute("id");
+                const animName = getAttr(def, "name", "id");
                 if (animName) {
                     engine.registerAnimationDef(animName, def);
                 }

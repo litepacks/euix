@@ -57,7 +57,38 @@ EUIX Engine is engineered for maximum performance on modern web applications wit
 
 ## 🚀 Quick Start
 
-### 1. Embedded HTML Script Spec (`type="application/euix"`)
+### 1. Declarative Island Mount (Zero-Boilerplate Drop-In)
+Add a single script tag with `euix` attribute to your HTML page, and declare components directly on container elements with `data-euix`:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EUIX Island Mount</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Single script inclusion with euix attribute enables auto-scanning -->
+  <script src="https://unpkg.com/euixjs@latest/dist/EUIXEngine.umd.js" euix></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-8">
+  <!-- Load remote component with props & state overrides -->
+  <div data-euix="/counter.xml" data-prop-title="My Counter" data-state-count="10"></div>
+
+  <!-- Or reference an inline <template id="..."> -->
+  <div data-euix="#quick-card" data-prop-author="Ahmet"></div>
+
+  <template id="quick-card">
+    <uid_spec>
+      <div class="p-4 bg-slate-800 rounded-xl">
+        <h4>Author: {props.author}</h4>
+      </div>
+    </uid_spec>
+  </template>
+</body>
+</html>
+```
+
+### 2. Embedded HTML Script Spec (`type="application/euix"`)
 ```html
 <!DOCTYPE html>
 <html lang="en">

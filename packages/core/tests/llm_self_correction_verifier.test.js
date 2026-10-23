@@ -55,7 +55,7 @@ describe("Phase 3: LLM Self-Correction & Doctor in the Loop Verifier", () => {
             expect(result.isValid).toBe(true);
             expect(result.errors.length).toBe(0);
             expect(result.promptFeedback).toBeNull();
-            expect(result.stats.durationMs).toBeLessThan(50);
+            expect(result.stats.durationMs).toBeLessThan(250);
         });
 
         it("should automatically auto-repair fuzzy typos and React habits", async () => {

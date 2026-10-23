@@ -3,12 +3,28 @@
  * Mount lifecycle orchestration, external script/style loaders, data model parsing, and teardown hooks for EUIX Engine.
  */
 
-import { getNow, isElem, isFn, isScoped } from "../utils/constants.js";
+import {
+    getNow,
+    isElem,
+    isFn,
+    isScoped,
+    isObj,
+    isStr,
+    getAttr,
+    hasDoc,
+    hasWindow,
+    queryAll,
+} from "../utils/constants.js";
 import { toonToJson } from "../parser/toon.js";
+import { autoInit as declarativeAutoInit } from "./DeclarativeLoader.js";
 
 export function mount(engine, appXmlString, options = {}) {
     const mountStart = getNow();
-    if (typeof appXmlString === "object" && appXmlString !== null) {
+    engine._mountOptions = options;
+    if (options.props && typeof options.props === "object") {
+        engine.props = { ...(engine.props || {}), ...options.props };
+    }
+    if (isObj(appXmlString)) {
         if (appXmlString.nodeType) {
             engine.xmlDoc = appXmlString;
         } else if (appXmlString.irVersion || appXmlString.ir) {
@@ -55,13 +71,13 @@ export function mount(engine, appXmlString, options = {}) {
         return engine;
     }
 
-    if (!engine.xmlDoc || typeof engine.xmlDoc.querySelectorAll !== "function") {
+    if (!engine.xmlDoc || !isFn(engine.xmlDoc.querySelectorAll)) {
         return engine;
     }
 
-    const defNodes = engine.xmlDoc._cachedDefNodes || (engine.xmlDoc._cachedDefNodes = Array.from(engine.xmlDoc.querySelectorAll("component_def")));
+    const defNodes = engine.xmlDoc._cachedDefNodes || (engine.xmlDoc._cachedDefNodes = queryAll(engine.xmlDoc, "component_def"));
     defNodes.forEach((def) => {
-        const name = def.getAttribute("name") || def.getAttribute("id");
+        const name = getAttr(def, "name", "id");
         if (name) {
             engine.registerComponentSpec(name, def);
         }
@@ -72,11 +88,11 @@ export function mount(engine, appXmlString, options = {}) {
     engine.initDataModel();
     if (isFn(engine.initActionRegistry)) engine.initActionRegistry();
 
-    const importNodes = engine.xmlDoc._cachedImportNodes || (engine.xmlDoc._cachedImportNodes = Array.from(engine.xmlDoc.querySelectorAll("import")));
+    const importNodes = engine.xmlDoc._cachedImportNodes || (engine.xmlDoc._cachedImportNodes = queryAll(engine.xmlDoc, "import"));
     if (importNodes.length > 0 && typeof fetch !== "undefined") {
         importNodes.forEach((imp) => {
             const src = imp.getAttribute("src");
-            const name = imp.getAttribute("name") || imp.getAttribute("as");
+            const name = getAttr(imp, "name", "as");
             const lazyAttr = imp.getAttribute("lazy");
             const preloadAttr = imp.getAttribute("preload");
             const isLazy =
@@ -95,7 +111,7 @@ export function mount(engine, appXmlString, options = {}) {
             const rootMargin = imp.getAttribute("root_margin") || imp.getAttribute("rootMargin") || "300px";
             if (src && name) {
                 if (isLazy) {
-                    if (typeof engine.constructor.registerLazyComponent === "function") {
+                    if (isFn(engine.constructor.registerLazyComponent)) {
                         engine.constructor.registerLazyComponent(name, src, {
                             fallback: imp.getAttribute("fallback"),
                             preload:
@@ -103,12 +119,12 @@ export function mount(engine, appXmlString, options = {}) {
                             viewport: isViewport,
                             observer: isViewport,
                             rootMargin: rootMargin,
-                            minHeight: imp.getAttribute("min_height") || imp.getAttribute("minHeight"),
-                            aspectRatio: imp.getAttribute("aspect_ratio") || imp.getAttribute("aspectRatio"),
+                            minHeight: getAttr(imp, "min_height", "minHeight"),
+                            aspectRatio: getAttr(imp, "aspect_ratio", "aspectRatio"),
                             placeholderClass:
-                                imp.getAttribute("placeholder_class") || imp.getAttribute("placeholderClass"),
+                                getAttr(imp, "placeholder_class", "placeholderClass"),
                             retries: imp.getAttribute("retries"),
-                            retryDelay: imp.getAttribute("retry_delay") || imp.getAttribute("retryDelay"),
+                            retryDelay: getAttr(imp, "retry_delay", "retryDelay"),
                         });
                     }
                 } else {
@@ -202,10 +218,7 @@ export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
     if (onChangeNodes) {
         onChangeNodes.forEach((node) => {
             const rawWatch =
-                node.getAttribute("watch") ||
-                node.getAttribute("path") ||
-                node.getAttribute("key") ||
-                node.getAttribute("bind");
+                getAttr(node, "watch", "path", "key", "bind");
             const watchPath = rawWatch ? engine.parseBindPath(rawWatch) : null;
             if (watchPath) {
                 const unwatch = engine.watch(watchPath, (newValue, oldValue) => {
@@ -236,7 +249,7 @@ export function processLifecycleHooks(engine, xmlNode, domEl, context = {}) {
                         clearInterval(intervalId);
                         return;
                     }
-                    const condAttr = node.getAttribute("if") || node.getAttribute("when") || node.getAttribute("condition");
+                    const condAttr = getAttr(node, "if", "when", "condition");
                     if (condAttr) {
                         const evalCond = engine.evalCondition(condAttr, context);
                         if (!evalCond) return;
@@ -310,9 +323,9 @@ export function initConstants(engine) {
         return;
     }
 
-    const containers = Array.from(engine.xmlDoc.querySelectorAll("constants, vars, variables"));
+    const containers = queryAll(engine.xmlDoc, "constants, vars, variables");
     containers.forEach((container) => {
-        const src = container.getAttribute("src") || container.getAttribute("url");
+        const src = getAttr(container, "src", "url");
         if (src && typeof fetch !== "undefined") {
             const interpolatedSrc = engine.interpolate(src);
             const p = engine.loadConstants(interpolatedSrc);
@@ -320,16 +333,16 @@ export function initConstants(engine) {
         }
     });
 
-    const constsNodes = Array.from(engine.xmlDoc.querySelectorAll("const, constant, var, variable"));
+    const constsNodes = queryAll(engine.xmlDoc, "const, constant, var, variable");
     constsNodes.forEach((node) => {
-        const id = node.getAttribute("id") || node.getAttribute("name") || node.getAttribute("key");
-        const src = node.getAttribute("src") || node.getAttribute("url");
+        const id = getAttr(node, "id", "name", "key");
+        const src = getAttr(node, "src", "url");
         if (src && typeof fetch !== "undefined") {
             const interpolatedSrc = engine.interpolate(src);
             const p = fetch(interpolatedSrc)
                 .then((res) => res.json())
                 .then((json) => {
-                    if (typeof json === "object" && json !== null) {
+                    if (isObj(json)) {
                         const val = json[id] !== undefined ? json[id] : json.value || json.text || JSON.stringify(json);
                         engine.registerConstant(id, String(val));
                     }
@@ -353,7 +366,7 @@ export function initDataModel(engine) {
         const dataModelNode =
             engine.getChild(doc.querySelector("uid_spec") || doc, "data_model") || doc.querySelector("data_model");
         if (dataModelNode) {
-            const src = dataModelNode.getAttribute("src") || dataModelNode.getAttribute("url");
+            const src = getAttr(dataModelNode, "src", "url");
             if (src && isMainDoc && typeof fetch !== "undefined") {
                 const interpolatedSrc = engine.interpolate(src);
                 const p = engine.loadDataModel(interpolatedSrc);
@@ -386,9 +399,7 @@ export function initDataModel(engine) {
 
         const stateNodes = dataModelNode
             ? engine.getChildren(dataModelNode, "state")
-            : doc.querySelectorAll
-              ? Array.from(doc.querySelectorAll("data_model > state"))
-              : [];
+            : queryAll(doc, "data_model > state");
 
         stateNodes.forEach((node) => {
             const id = node.getAttribute("id");
@@ -401,8 +412,8 @@ export function initDataModel(engine) {
             }
 
             const type = node.getAttribute("type");
-            const src = node.getAttribute("src") || node.getAttribute("url");
-            const persistAttr = node.getAttribute("persist") || node.getAttribute("storage");
+            const src = getAttr(node, "src", "url");
+            const persistAttr = getAttr(node, "persist", "storage");
 
             if (src && isMainDoc && typeof fetch !== "undefined") {
                 const interpolatedSrc = engine.interpolate(src);
@@ -467,7 +478,7 @@ export function initDataModel(engine) {
                 const format = node.getAttribute("format");
                 if (format === "toon") {
                     const parsed = toonToJson(txt);
-                    rawState[id] = typeof parsed === "object" && parsed !== null ? parsed : {};
+                    rawState[id] = isObj(parsed) ? parsed : {};
                 } else {
                     try {
                         rawState[id] = txt ? JSON.parse(txt) : {};
@@ -483,7 +494,7 @@ export function initDataModel(engine) {
 
             if (persistAttr) {
                 if (!engine._persistenceConfig) engine._persistenceConfig = new Map();
-                const customKey = node.getAttribute("storage_key") || node.getAttribute("key");
+                const customKey = getAttr(node, "storage_key", "key");
                 engine._persistenceConfig.set(id, {
                     storage: String(persistAttr).toLowerCase(),
                     storageKey: customKey || `euix_state_${id}`,
@@ -491,23 +502,19 @@ export function initDataModel(engine) {
             }
         });
 
-        const computedNodes = doc.querySelectorAll
-            ? Array.from(doc.querySelectorAll("computed"))
-            : Array.from(doc.getElementsByTagName("computed"));
+        const computedNodes = queryAll(doc, "computed");
         computedNodes.forEach((node) => {
-            const id = node.getAttribute("id") || node.getAttribute("name");
-            const deps = node.getAttribute("deps") || node.getAttribute("watch");
+            const id = getAttr(node, "id", "name");
+            const deps = getAttr(node, "deps", "watch");
             const getter = node.textContent.trim() || node.getAttribute("value") || node.getAttribute("expr");
             if (id && isFn(engine.computed)) {
                 engine.computed(id, getter, deps);
             }
         });
 
-        const watchNodes = doc.querySelectorAll
-            ? Array.from(doc.querySelectorAll("watch"))
-            : Array.from(doc.getElementsByTagName("watch"));
+        const watchNodes = queryAll(doc, "watch");
         watchNodes.forEach((node) => {
-            const path = node.getAttribute("path") || node.getAttribute("watch") || node.getAttribute("on");
+            const path = getAttr(node, "path", "watch", "on");
             if (path && isFn(engine.watch)) {
                 engine.watch(path, node);
             }
@@ -518,7 +525,7 @@ export function initDataModel(engine) {
             ...Array.from(doc.getElementsByTagName("keyframe_def")),
         ];
         animDefNodes.forEach((node) => {
-            const name = node.getAttribute("name") || node.getAttribute("id");
+            const name = getAttr(node, "name", "id");
             if (name && isFn(engine.registerAnimationDef)) {
                 engine.registerAnimationDef(name, node);
             }
@@ -528,7 +535,7 @@ export function initDataModel(engine) {
         if (persistenceNode) {
             const defaultStorage = persistenceNode.getAttribute("storage") || "local";
             const prefix = persistenceNode.getAttribute("prefix") || "";
-            const persistItems = Array.from(persistenceNode.querySelectorAll("persist, item, key, persisted_key"));
+            const persistItems = queryAll(persistenceNode, "persist, item, key, persisted_key");
             persistItems.forEach((item) => {
                 const key = item.getAttribute("key") || item.getAttribute("id") || item.textContent.trim();
                 const itemStorage = item.getAttribute("storage") || defaultStorage;
@@ -546,9 +553,7 @@ export function initDataModel(engine) {
         const apiConfigNode = doc.querySelector("api_config, api_client, api");
         if (apiConfigNode) {
             const baseUrl =
-                apiConfigNode.getAttribute("base_url") ||
-                apiConfigNode.getAttribute("baseUrl") ||
-                apiConfigNode.getAttribute("url");
+                getAttr(apiConfigNode, "base_url", "baseUrl", "url");
             const credentials = apiConfigNode.getAttribute("credentials");
             const timeout = apiConfigNode.getAttribute("timeout");
 
@@ -572,19 +577,15 @@ export function initDataModel(engine) {
                 if (timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
             }
 
-            const headerNodes = Array.from(apiConfigNode.querySelectorAll("headers > header, header"));
+            const headerNodes = queryAll(apiConfigNode, "headers > header, header");
             headerNodes.forEach((h) => {
-                const name = h.getAttribute("name") || h.getAttribute("key");
+                const name = getAttr(h, "name", "key");
                 const val = h.textContent.trim() || h.getAttribute("value") || "";
                 if (name && isFn(engine.setApiHeader)) engine.setApiHeader(name, val);
             });
         }
 
-        const apiEndpoints = doc.querySelectorAll
-            ? Array.from(doc.querySelectorAll("api_endpoint, endpoint"))
-            : Array.from(doc.getElementsByTagName("api_endpoint")).concat(
-                  Array.from(doc.getElementsByTagName("endpoint")),
-              );
+        const apiEndpoints = queryAll(doc, "api_endpoint, endpoint");
         apiEndpoints.forEach((node) => {
             const autoFetchAttr = node.getAttribute("auto_fetch");
             const autoFetch = autoFetchAttr !== "false";
@@ -595,29 +596,17 @@ export function initDataModel(engine) {
             engine.constructor.hooks.emit("lifecycle:datamodel", { engine, doc, isMainDoc, rawState, pendingEndpoints });
         }
 
-        const useScriptNodes = Array.from(
-            doc.querySelectorAll
-                ? doc.querySelectorAll("use_script, script_loader, load_script")
-                : doc.getElementsByTagName
-                  ? doc.getElementsByTagName("use_script")
-                  : [],
-        );
+        const useScriptNodes = queryAll(doc, "use_script, script_loader, load_script");
         useScriptNodes.forEach((node) => {
-            const src = node.getAttribute("src") || node.getAttribute("url");
+            const src = getAttr(node, "src", "url");
             if (src) {
                 engine.loadScript(src, { async: node.getAttribute("async") !== "false" });
             }
         });
 
-        const useStyleNodes = Array.from(
-            doc.querySelectorAll
-                ? doc.querySelectorAll("use_style, style_loader, load_style")
-                : doc.getElementsByTagName
-                  ? doc.getElementsByTagName("use_style")
-                  : [],
-        );
+        const useStyleNodes = queryAll(doc, "use_style, style_loader, load_style");
         useStyleNodes.forEach((node) => {
-            const href = node.getAttribute("src") || node.getAttribute("href") || node.getAttribute("url");
+            const href = getAttr(node, "src", "href", "url");
             if (href) engine.loadStyle(href);
         });
 
@@ -666,6 +655,18 @@ export function initDataModel(engine) {
         }
     }
 
+    if (engine._mountOptions?.state && typeof engine._mountOptions.state === "object") {
+        for (const [k, v] of Object.entries(engine._mountOptions.state)) {
+            rawState[k] = v;
+        }
+    }
+    if (engine._mountOptions?.props && typeof engine._mountOptions.props === "object") {
+        engine.props = { ...(engine.props || {}), ...engine._mountOptions.props };
+    }
+    if (engine.props) {
+        rawState.$props = engine.props;
+    }
+
     engine._rawState = rawState;
     const self = engine;
     const proxyCache = new WeakMap();
@@ -681,7 +682,7 @@ export function initDataModel(engine) {
         const isArray = Array.isArray(target);
         const proxy = new Proxy(target, {
             get(obj, prop, receiver) {
-                if (typeof prop === "string") {
+                if (isStr(prop)) {
                     if (!currentPath && self._computedRegistry?.has(prop)) {
                         return self.getComputed(prop);
                     }
@@ -703,7 +704,7 @@ export function initDataModel(engine) {
                     }
                 }
                 const val = Reflect.get(obj, prop, receiver);
-                if (val && typeof val === "object" && typeof prop === "string" && prop !== "__proto__") {
+                if (val && typeof val === "object" && isStr(prop) && prop !== "__proto__") {
                     const nextPath = currentPath ? `${currentPath}.${prop}` : prop;
                     const nextRoot = rootKey || prop;
                     return createDeepProxy(val, nextRoot, nextPath);
@@ -715,7 +716,7 @@ export function initDataModel(engine) {
                     return true;
                 }
                 const res = Reflect.set(obj, prop, value);
-                if (typeof prop === "string" && prop !== "length" && !prop.startsWith("_")) {
+                if (isStr(prop) && prop !== "length" && !prop.startsWith("_")) {
                     const targetRoot = rootKey || prop;
                     const subPath = currentPath ? `${currentPath}.${prop}` : prop;
                     if (isFn(self._savePersistedState)) {
@@ -730,7 +731,7 @@ export function initDataModel(engine) {
             },
             deleteProperty(obj, prop) {
                 const res = Reflect.deleteProperty(obj, prop);
-                if (typeof prop === "string" && !prop.startsWith("_")) {
+                if (isStr(prop) && !prop.startsWith("_")) {
                     const targetRoot = rootKey || prop;
                     const subPath = currentPath ? `${currentPath}.${prop}` : prop;
                     if (isFn(self._savePersistedState)) {
@@ -766,12 +767,12 @@ export function initDataModel(engine) {
 }
 
 export function loadScript(engine, src, options = {}) {
-    if (typeof document === "undefined" || !src) return Promise.resolve();
+    if (!hasDoc() || !src) return Promise.resolve();
     const cleanUrl = engine.interpolate(src, options.context || {});
     if (!cleanUrl) return Promise.resolve();
 
     const isJSDOM =
-        typeof window !== "undefined" &&
+        hasWindow() &&
         window.navigator &&
         window.navigator.userAgent &&
         window.navigator.userAgent.includes("jsdom");
@@ -818,7 +819,7 @@ export function loadScript(engine, src, options = {}) {
 }
 
 export function loadStyle(engine, href, options = {}) {
-    if (typeof document === "undefined" || !href) return;
+    if (!hasDoc() || !href) return;
     const cleanUrl = engine.interpolate(href, options.context || {});
     if (!cleanUrl) return;
 
@@ -832,12 +833,12 @@ export function loadStyle(engine, href, options = {}) {
 }
 
 export async function loadDataModel(engine, urlOrObj) {
-    if (typeof urlOrObj === "string") {
+    if (isStr(urlOrObj)) {
         try {
             if (typeof fetch === "undefined") return null;
             const res = await fetch(urlOrObj);
             const json = await res.json();
-            if (typeof json === "object" && json !== null) {
+            if (isObj(json)) {
                 engine.batch(() => {
                     Object.entries(json).forEach(([k, v]) => engine.setState(k, v));
                 });
@@ -847,7 +848,7 @@ export async function loadDataModel(engine, urlOrObj) {
             engine.reportError(err, `Failed to load data model from '${urlOrObj}'`);
             return null;
         }
-    } else if (typeof urlOrObj === "object" && urlOrObj !== null) {
+    } else if (isObj(urlOrObj)) {
         engine.batch(() => {
             Object.entries(urlOrObj).forEach(([k, v]) => engine.setState(k, v));
         });
@@ -856,12 +857,12 @@ export async function loadDataModel(engine, urlOrObj) {
 }
 
 export async function loadConstants(engine, urlOrObj) {
-    if (typeof urlOrObj === "string") {
+    if (isStr(urlOrObj)) {
         try {
             if (typeof fetch === "undefined") return null;
             const res = await fetch(urlOrObj);
             const json = await res.json();
-            if (typeof json === "object" && json !== null) {
+            if (isObj(json)) {
                 Object.entries(json).forEach(([k, v]) => engine.registerConstant(k, String(v)));
             }
             return json;
@@ -869,7 +870,7 @@ export async function loadConstants(engine, urlOrObj) {
             engine.reportError(err, `Failed to load constants from '${urlOrObj}'`);
             return null;
         }
-    } else if (typeof urlOrObj === "object" && urlOrObj !== null) {
+    } else if (isObj(urlOrObj)) {
         Object.entries(urlOrObj).forEach(([k, v]) => engine.registerConstant(k, String(v)));
         return urlOrObj;
     }
@@ -967,22 +968,6 @@ export function destroy(engine) {
     return engine;
 }
 
-export function autoInit(EngineClass) {
-    if (typeof document === "undefined") return;
-    const scripts = document.querySelectorAll(
-        'script[type="application/euix"], script[type="text/euix"], script[data-euix-app], euix-app',
-    );
-    scripts.forEach((script) => {
-        if (script.closest?.("code, pre, [data-euix-example], .no-auto-init")) return;
-        if (script.dataset?.euixAutoInitialized) return;
-        if (script.dataset) script.dataset.euixAutoInitialized = "true";
-        const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
-        const xml = script.tagName.toLowerCase() === "euix-app" ? script.innerHTML.trim() : script.textContent.trim();
-        if (xml) {
-            const engine = EngineClass.mount(xml, targetSelector);
-            if (engine) {
-                engine.enableDevTools(false);
-            }
-        }
-    });
+export function autoInit(EngineClass, options = {}) {
+    return declarativeAutoInit(EngineClass, options);
 }

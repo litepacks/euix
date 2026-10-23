@@ -1,9 +1,8 @@
+import { getNow } from "../core/utils/constants.js";
 import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
 
 const noop = () => {};
 const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
-const getNow = () =>
-    typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
 
 const logScope = (engine, context, event, payload) => {
     const devtools = engine?._devtools || context?._engine?._devtools || context?.$engine?._devtools;

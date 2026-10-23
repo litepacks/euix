@@ -1,4 +1,4 @@
-import { MUTATION_OPS } from "../utils/constants.js";
+import { MUTATION_OPS, isObj, isFn } from "../utils/constants.js";
 
 export function applyArrayMutation(current, operation, payload = {}) {
     const op = String(operation || "").toUpperCase();
@@ -77,7 +77,7 @@ export function applyArrayMutation(current, operation, payload = {}) {
         if (payload?.where) {
             const { field, equals, op } = payload.where;
             const isNeq = op === "neq" || op === "!=" || op === "ne";
-            const isObjVal = typeof payload.value === "object" && payload.value !== null;
+            const isObjVal = isObj(payload.value);
             for (let i = 0; i < current.length; i++) {
                 const item = current[i];
                 if (!item) continue;
@@ -156,12 +156,12 @@ export function applyArrayMutation(current, operation, payload = {}) {
         const field = payload?.by || payload?.field || payload?.key;
         const order = String(payload?.order || payload?.direction || "asc").toLowerCase();
         const isDesc = order === "desc" || order === "descending" || order === "reverse";
-        if (typeof payload?.compare === "function") {
+        if (isFn(payload?.compare)) {
             current.sort(payload.compare);
         } else if (field) {
             current.sort((a, b) => {
-                const valA = a != null && typeof a === "object" ? a[field] : a;
-                const valB = b != null && typeof b === "object" ? b[field] : b;
+                const valA = isObj(a) ? a[field] : a;
+                const valB = isObj(b) ? b[field] : b;
                 if (valA === valB) return 0;
                 if (valA == null) return isDesc ? -1 : 1;
                 if (valB == null) return isDesc ? 1 : -1;

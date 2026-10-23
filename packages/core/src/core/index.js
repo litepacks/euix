@@ -43,6 +43,15 @@ export {
     runMountActions,
 } from "./lifecycle/Lifecycle.js";
 export {
+    coerceAttributeValue,
+    extractPropsAndState,
+    mountElement,
+    normalizeXml,
+    resolveXmlSource,
+    scan,
+    unmountElement,
+} from "./lifecycle/DeclarativeLoader.js";
+export {
     clearAstCache,
     generateCodeFrame,
     getAstCacheStats,
