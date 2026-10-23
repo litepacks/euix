@@ -351,6 +351,11 @@ class EUIXEngineCore {
         return reportError(this, error, contextInfo);
     }
 
+    static config = {
+        showMountErrors: true,
+        defaultMountError: null,
+    };
+
     static _globalErrorHandler = null;
 
     static onError(handler) {

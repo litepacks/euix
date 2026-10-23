@@ -315,22 +315,84 @@ export async function mountElement(EngineClass, element, options = {}) {
         delete element.dataset.euixMounted;
         if (prevContent !== null) element.innerHTML = prevContent;
 
-        const errDiv = document.createElement("div");
-        errDiv.className = "euix-mount-error";
-        errDiv.style.cssText =
-            "padding:12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#991b1b;font-size:12px;font-family:monospace;";
-        errDiv.textContent = `[EUIX Mount Error] ${err.message}`;
-        element.appendChild(errDiv);
+        const showErrorAttr = getAttr(element, "data-show-error", "data-euix-show-error");
+        const errorAttr = getAttr(element, "data-error", "data-euix-error");
+        const scriptConfig = EngineClass._scriptConfig || (EngineClass._scriptConfig = getScriptConfig(EngineClass));
+        const isGloballyDisabled =
+            EngineClass.config?.showMountErrors === false ||
+            (typeof window !== "undefined" && window.__EUIX_SHOW_MOUNT_ERRORS__ === false) ||
+            scriptConfig?.showError === false;
+
+        const shouldShowError =
+            options.showError !== false &&
+            showErrorAttr !== "false" &&
+            errorAttr !== "false" &&
+            errorAttr !== "none" &&
+            !isGloballyDisabled;
+
+        if (shouldShowError) {
+            if (isFn(options.renderError)) {
+                const rendered = options.renderError(err, element);
+                if (rendered instanceof Node) {
+                    element.appendChild(rendered);
+                } else if (isStr(rendered)) {
+                    element.innerHTML = rendered;
+                }
+            } else if ((errorAttr && errorAttr.startsWith("#")) || options.errorTemplate) {
+                const selector = errorAttr?.startsWith("#") ? errorAttr : options.errorTemplate;
+                const tpl = typeof document !== "undefined" && selector ? document.querySelector(selector) : null;
+                if (tpl && tpl.content) {
+                    element.appendChild(tpl.content.cloneNode(true));
+                } else {
+                    const errDiv = document.createElement("div");
+                    errDiv.className = "euix-mount-error";
+                    errDiv.style.cssText =
+                        "padding:12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#991b1b;font-size:12px;font-family:monospace;";
+                    errDiv.textContent = `[EUIX Mount Error] ${err.message}`;
+                    element.appendChild(errDiv);
+                }
+            } else {
+                const customMessage =
+                    (errorAttr && errorAttr !== "true") ? errorAttr :
+                    options.errorMessage ||
+                    (isStr(options.error) ? options.error : null) ||
+                    EngineClass.config?.defaultMountError ||
+                    scriptConfig?.defaultError ||
+                    (typeof window !== "undefined" && window.__EUIX_DEFAULT_MOUNT_ERROR__) ||
+                    null;
+
+                const errDiv = document.createElement("div");
+                errDiv.className = "euix-mount-error";
+                errDiv.style.cssText =
+                    "padding:12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#991b1b;font-size:12px;font-family:monospace;";
+                errDiv.textContent = customMessage ? customMessage : `[EUIX Mount Error] ${err.message}`;
+                element.appendChild(errDiv);
+            }
+        }
+
+        if (isFn(options.onError)) {
+            try {
+                options.onError(err, element);
+            } catch (_) {}
+        }
+
+        if (EngineClass && isFn(EngineClass._globalErrorHandler)) {
+            try {
+                EngineClass._globalErrorHandler(err, "Mount Error", null);
+            } catch (_) {}
+        }
 
         if (typeof CustomEvent !== "undefined") {
             element.dispatchEvent(
                 new CustomEvent("euix:error", {
                     bubbles: true,
-                    detail: { error: err },
+                    detail: { error: err, element },
                 })
             );
         }
-        console.error(err);
+        if (!options.silent && !EngineClass?.silent) {
+            console.error(err);
+        }
         return null;
     }
 }
@@ -423,6 +485,10 @@ export function getScriptConfig(EngineClass) {
         getAttr(script, "auto", "data-auto", "data-euix-auto");
     const devtoolsAttr =
         getAttr(script, "devtools", "data-devtools");
+    const showErrorAttr =
+        getAttr(script, "show-error", "data-show-error", "data-euix-show-error");
+    const defaultErrorAttr =
+        getAttr(script, "default-error", "data-default-error", "data-error");
 
     if (basePath) EngineClass._basePath = basePath;
     if (baseUrl) EngineClass._defaultApiBaseUrl = baseUrl;
@@ -433,6 +499,8 @@ export function getScriptConfig(EngineClass) {
         baseUrl,
         isAuto: autoAttr !== "false",
         devtools: devtoolsAttr,
+        showError: showErrorAttr !== "false",
+        defaultError: defaultErrorAttr || null,
     };
 }
 
@@ -514,6 +582,7 @@ export function initGlobalEuix(EngineClass) {
             return EngineClass.instances || (EngineClass.instances = new Set());
         },
         version: "0.3.79",
+        config: EngineClass.config || (EngineClass.config = { showMountErrors: true, defaultMountError: null }),
     };
     window.euix = euixApi;
     window.EUIX = euixApi;

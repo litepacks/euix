@@ -64,7 +64,13 @@ export function mount(engine, appXmlString, options = {}) {
         const codeFrame = engine.constructor.generateCodeFrame(appXmlString, line, col);
         const errMsg = `[EUIX XML Parse Error] at line ${line}, column ${col}:\n${codeFrame || errorText}`;
         engine.reportError(errMsg, "XML Parse Error");
-        if (engine.container) {
+        const shouldShowError =
+            options.showError !== false &&
+            engine.options?.showError !== false &&
+            engine.constructor.config?.showMountErrors !== false &&
+            (typeof window === "undefined" || window.__EUIX_SHOW_MOUNT_ERRORS__ !== false);
+
+        if (engine.container && shouldShowError) {
             engine.container.innerHTML = `
                 <div class="euix-mount-error" style="padding:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:12px;color:#991b1b;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;">
                     <h3 style="margin:0 0 8px 0;font-size:14px;font-weight:bold;">⚠️ EUIXEngine XML Parse Error (Line ${line}, Col ${col})</h3>
