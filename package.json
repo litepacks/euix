@@ -1,6 +1,7 @@
 {
   "name": "euix-monorepo",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*",
     "apps/*"
@@ -44,6 +45,9 @@
     "publish:vscode:dry-run": "node scripts/publish-package.js vscode --dry-run",
     "publish:core:dry-run": "node scripts/publish-package.js core --dry-run",
     "publish:packages:dry-run": "node scripts/publish-package.js all --dry-run",
+    "version:bump": "node scripts/bump-version.js",
+    "version:bump:minor": "node scripts/bump-version.js minor",
+    "version:bump:major": "node scripts/bump-version.js major",
     "docs:build": "docboot build",
     "docs:dev": "docboot dev"
   },

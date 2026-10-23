@@ -2,7 +2,7 @@ import path from "node:path";
 import { ruleHint } from "../diagnostics/messages.js";
 import type { Diagnostic, DoctorResult } from "../ir/types.js";
 
-const DOCTOR_VERSION = "0.2.0";
+const DOCTOR_VERSION = "0.2.1";
 
 export function doctorResultToSarif(result: DoctorResult): string {
     const rules = buildRuleDefinitions(result.project.diagnostics);

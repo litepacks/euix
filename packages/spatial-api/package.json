@@ -1,6 +1,6 @@
 {
   "name": "euix-spatial-worker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cloudflare Worker & D1 Spatial API for EUIX Engine Interactive Map Suite",
   "main": "src/index.js",
   "repository": {

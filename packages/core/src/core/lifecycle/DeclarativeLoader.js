@@ -500,7 +500,7 @@ export function initGlobalEuix(EngineClass) {
         get instances() {
             return EngineClass.instances || (EngineClass.instances = new Set());
         },
-        version: "0.3.78",
+        version: "0.3.79",
     };
     window.euix = euixApi;
     window.EUIX = euixApi;

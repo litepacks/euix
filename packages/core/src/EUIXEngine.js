@@ -94,7 +94,7 @@ const euix = {
     scan: (root, opts) => EUIXEngine.scan(root, opts),
     get: (elOrSel) => EUIXEngine.getEngine(elOrSel),
     instances: EUIXEngine.instances,
-    version: "0.3.78",
+    version: "0.3.79",
 };
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {

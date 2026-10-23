@@ -15,6 +15,11 @@ describe("EUIXDevTools & Inspector Coverage Boost Suite", () => {
         document.body.appendChild(container);
     });
 
+    afterEach(() => {
+        EUIXDevTools.close();
+        document.body.innerHTML = "";
+    });
+
     it("should initialize DevTools and toggle inspector with static and instance methods", () => {
         const xml = `
         <uid_spec>
