@@ -9,6 +9,7 @@
   "bin": {
     "euix": "./bin/euix.js"
   },
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./types/index.d.ts",
