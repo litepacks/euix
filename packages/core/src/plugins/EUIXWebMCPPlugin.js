@@ -3,8 +3,10 @@
  * First-Class WebMCP (Model Context Protocol) Plugin for EUIX Engine.
  * Enables declarative and imperative exposure of application actions as browser AI agent tools
  * via document.modelContext with progressive enhancement, strict sandboxing, and zero external dependencies.
+ */
+
 import { safeParse } from "../core/utils/constants.js";
-/**
+
 
 /**
  * Structured WebMCP Error class
