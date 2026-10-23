@@ -11,6 +11,9 @@ import {
     EUIXXMLParseError,
     processStyleTag,
     scopeCSS,
+    DEFAULT_TIMEOUTS,
+    createTimeoutSignal,
+    safeFetchWithTimeout,
 } from "./core/EUIXEngineCore.js";
 import { announce, createFocusTrap, EUIXA11yPlugin } from "./plugins/EUIXA11yPlugin.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
@@ -134,6 +137,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.WebMCPPlugin = WebMCPPlugin;
     window.EUIXWebMCPError = EUIXWebMCPError;
     window.EUIXProfilerPlugin = EUIXProfilerPlugin;
+    window.DEFAULT_TIMEOUTS = DEFAULT_TIMEOUTS;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -198,6 +202,9 @@ export {
     resolvePath,
     scopeCSS,
     WebMCPPlugin,
+    DEFAULT_TIMEOUTS,
+    createTimeoutSignal,
+    safeFetchWithTimeout,
 };
 
 export default EUIXEngine;

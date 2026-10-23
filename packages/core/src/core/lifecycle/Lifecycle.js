@@ -16,6 +16,8 @@ import {
     queryAll,
     safeParse,
     toInt,
+    DEFAULT_TIMEOUTS,
+    safeFetchWithTimeout,
 } from "../utils/constants.js";
 import { parseStateValue } from "../state/ReactiveStore.js";
 import { autoInit as declarativeAutoInit } from "./DeclarativeLoader.js";
@@ -341,7 +343,7 @@ export function initConstants(engine) {
         const src = getAttr(node, "src", "url");
         if (src && typeof fetch !== "undefined") {
             const interpolatedSrc = engine.interpolate(src);
-            const p = fetch(interpolatedSrc)
+            const p = safeFetchWithTimeout(interpolatedSrc, undefined, DEFAULT_TIMEOUTS.RESOURCE_LOAD)
                 .then((res) => res.json())
                 .then((json) => {
                     if (isObj(json)) {
@@ -419,7 +421,7 @@ export function initDataModel(engine) {
 
             if (src && isMainDoc && typeof fetch !== "undefined") {
                 const interpolatedSrc = engine.interpolate(src);
-                const p = fetch(interpolatedSrc)
+                const p = safeFetchWithTimeout(interpolatedSrc, undefined, DEFAULT_TIMEOUTS.RESOURCE_LOAD)
                     .then((res) => res.json())
                     .then((json) => {
                         engine.setState(id, json);
@@ -499,7 +501,7 @@ export function initDataModel(engine) {
                 engine.configureApi({
                     baseUrl: baseUrl ? baseUrl.trim() : undefined,
                     credentials: credentials ? credentials.trim() : undefined,
-                    timeout: timeout ? toInt(timeout, 0) : undefined,
+                    timeout: timeout ? toInt(timeout, DEFAULT_TIMEOUTS.API_REQUEST) : undefined,
                 });
             } else {
                 if (!engine._apiConfig) {
@@ -507,12 +509,12 @@ export function initDataModel(engine) {
                         baseUrl: "",
                         credentials: undefined,
                         headers: new Map(),
-                        timeout: 0,
+                        timeout: DEFAULT_TIMEOUTS.API_REQUEST,
                     };
                 }
                 if (baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
                 if (credentials) engine._apiConfig.credentials = credentials.trim();
-                if (timeout) engine._apiConfig.timeout = toInt(timeout, 0);
+                if (timeout) engine._apiConfig.timeout = toInt(timeout, DEFAULT_TIMEOUTS.API_REQUEST);
             }
 
             const headerNodes = queryAll(apiConfigNode, "headers > header, header");
@@ -538,7 +540,10 @@ export function initDataModel(engine) {
         useScriptNodes.forEach((node) => {
             const src = getAttr(node, "src", "url");
             if (src) {
-                engine.loadScript(src, { async: node.getAttribute("async") !== "false" });
+                engine.loadScript(src, {
+                    async: node.getAttribute("async") !== "false",
+                    timeout: node.getAttribute("timeout") || undefined,
+                });
             }
         });
 
@@ -744,10 +749,13 @@ export function loadScript(engine, src, options = {}) {
         script.onerror = done;
         document.head.appendChild(script);
 
+        const scriptTimeout = options.timeout
+            ? toInt(options.timeout, DEFAULT_TIMEOUTS.SCRIPT_LOAD)
+            : DEFAULT_TIMEOUTS.SCRIPT_LOAD;
         if (isJSDOM) {
             setTimeout(done, 10);
         } else {
-            setTimeout(done, 5000);
+            setTimeout(done, scriptTimeout);
         }
     });
 }
@@ -770,7 +778,7 @@ export async function loadDataModel(engine, urlOrObj) {
     if (isStr(urlOrObj)) {
         try {
             if (typeof fetch === "undefined") return null;
-            const res = await fetch(urlOrObj);
+            const res = await safeFetchWithTimeout(urlOrObj, undefined, DEFAULT_TIMEOUTS.RESOURCE_LOAD);
             const json = await res.json();
             if (isObj(json)) {
                 engine.batch(() => {
@@ -794,7 +802,7 @@ export async function loadConstants(engine, urlOrObj) {
     if (isStr(urlOrObj)) {
         try {
             if (typeof fetch === "undefined") return null;
-            const res = await fetch(urlOrObj);
+            const res = await safeFetchWithTimeout(urlOrObj, undefined, DEFAULT_TIMEOUTS.RESOURCE_LOAD);
             const json = await res.json();
             if (isObj(json)) {
                 Object.entries(json).forEach(([k, v]) => engine.registerConstant(k, String(v)));

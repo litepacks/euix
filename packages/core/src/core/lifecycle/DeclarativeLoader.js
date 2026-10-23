@@ -18,7 +18,16 @@
  * - Global window.euix namespace for clean developer ergonomics
  */
 
-import { isFn, isStr, isObj, getAttr, queryAll, safeParse } from "../utils/constants.js";
+import {
+    isFn,
+    isStr,
+    isObj,
+    getAttr,
+    queryAll,
+    safeParse,
+    DEFAULT_TIMEOUTS,
+    safeFetchWithTimeout,
+} from "../utils/constants.js";
 
 /**
  * Safely coerce attribute string value into appropriate JS primitive or object.
@@ -197,7 +206,11 @@ export async function resolveXmlSource(element, options = {}, EngineClass) {
         const isDev =
             typeof window !== "undefined" &&
             (window.location?.hostname === "localhost" || window.location?.hostname === "127.0.0.1");
-        const res = await fetch(finalUrl, isDev ? { cache: "no-cache" } : undefined);
+        const res = await safeFetchWithTimeout(
+            finalUrl,
+            isDev ? { cache: "no-cache" } : undefined,
+            DEFAULT_TIMEOUTS.COMPONENT_LOAD,
+        );
         if (!res.ok) {
             throw new Error(`[EUIX] Failed to fetch component from '${finalUrl}': ${res.status} ${res.statusText}`);
         }

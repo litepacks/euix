@@ -20,6 +20,8 @@ import {
     isStr,
     queryAll,
     isCycleError,
+    DEFAULT_TIMEOUTS,
+    safeFetchWithTimeout,
 } from "../utils/constants.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
@@ -36,7 +38,12 @@ export async function loadComponent(EngineClass, name, url, options = {}) {
         const isDev =
             typeof window !== "undefined" &&
             (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-        const res = await fetch(url, isDev ? { cache: "no-cache" } : undefined);
+        const fetchTimeout = options.timeout !== undefined ? options.timeout : DEFAULT_TIMEOUTS.COMPONENT_LOAD;
+        const res = await safeFetchWithTimeout(
+            url,
+            isDev ? { cache: "no-cache" } : undefined,
+            fetchTimeout,
+        );
         const xmlText = isFn(res.text) ? await res.text() : isStr(res) ? res : String(res);
 
         const doc = EngineClass.parseXmlToAst(xmlText, options);

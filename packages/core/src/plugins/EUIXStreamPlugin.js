@@ -1,4 +1,4 @@
-import { isObj, isStr, isFn, safeParse } from "../core/utils/constants.js";
+import { isObj, isStr, isFn, safeParse, toInt, DEFAULT_TIMEOUTS } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXStreamPlugin.js
  * Declarative WebSocket & Server-Sent Events (SSE) Real-Time Streaming Engine for EUIX Engine.
@@ -134,16 +134,41 @@ export const EUIXStreamPlugin = {
                         : [config.protocols]
                     : undefined;
                 const socket = protocols ? new WSClass(url, protocols) : new WSClass(url);
+                const connectTimeoutMs = config.connectTimeout !== undefined
+                    ? toInt(config.connectTimeout, DEFAULT_TIMEOUTS.STREAM_CONNECT)
+                    : DEFAULT_TIMEOUTS.STREAM_CONNECT;
+                let connectTimer = null;
+                if (connectTimeoutMs > 0) {
+                    connectTimer = setTimeout(() => {
+                        if (socket.readyState !== 1 /* WebSocket.OPEN */) {
+                            try {
+                                socket.close();
+                            } catch (_) {}
+                            this._updateStreamStatus(streamId, {
+                                status: "error",
+                                connected: false,
+                                error: `WebSocket connection timed out after ${connectTimeoutMs}ms`,
+                            });
+                        }
+                    }, connectTimeoutMs);
+                }
+
                 const streamEntry = {
                     type: "websocket",
                     socket,
                     config,
                     reconnectTimer: null,
+                    connectTimer,
                     explicitlyClosed: false,
                 };
                 this._activeStreams.set(streamId, streamEntry);
 
                 socket.onopen = (evt) => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                        streamEntry.connectTimer = null;
+                    }
                     this._updateStreamStatus(streamId, {
                         status: "connected",
                         connected: true,
@@ -160,6 +185,11 @@ export const EUIXStreamPlugin = {
                 };
 
                 socket.onerror = (evt) => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                        streamEntry.connectTimer = null;
+                    }
                     const errMsg = evt?.message || "WebSocket connection error";
                     this._updateStreamStatus(streamId, {
                         status: "error",
@@ -172,6 +202,11 @@ export const EUIXStreamPlugin = {
                 };
 
                 socket.onclose = (evt) => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                        streamEntry.connectTimer = null;
+                    }
                     this._updateStreamStatus(streamId, {
                         status: "disconnected",
                         connected: false,
@@ -212,16 +247,41 @@ export const EUIXStreamPlugin = {
                 const sse = new EventSourceClass(url, {
                     withCredentials: config.withCredentials === true || config.withCredentials === "true",
                 });
+                const connectTimeoutMs = config.connectTimeout !== undefined
+                    ? toInt(config.connectTimeout, DEFAULT_TIMEOUTS.STREAM_CONNECT)
+                    : DEFAULT_TIMEOUTS.STREAM_CONNECT;
+                let connectTimer = null;
+                if (connectTimeoutMs > 0) {
+                    connectTimer = setTimeout(() => {
+                        if (sse.readyState !== 1 /* EventSource.OPEN */) {
+                            try {
+                                sse.close();
+                            } catch (_) {}
+                            this._updateStreamStatus(streamId, {
+                                status: "error",
+                                connected: false,
+                                error: `SSE connection timed out after ${connectTimeoutMs}ms`,
+                            });
+                        }
+                    }, connectTimeoutMs);
+                }
+
                 const streamEntry = {
                     type: "sse",
                     socket: sse,
                     config,
                     reconnectTimer: null,
+                    connectTimer,
                     explicitlyClosed: false,
                 };
                 this._activeStreams.set(streamId, streamEntry);
 
                 sse.onopen = (evt) => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                        streamEntry.connectTimer = null;
+                    }
                     this._updateStreamStatus(streamId, {
                         status: "connected",
                         connected: true,
@@ -244,6 +304,11 @@ export const EUIXStreamPlugin = {
                 }
 
                 sse.onerror = (evt) => {
+                    if (connectTimer) {
+                        clearTimeout(connectTimer);
+                        connectTimer = null;
+                        streamEntry.connectTimer = null;
+                    }
                     this._updateStreamStatus(streamId, {
                         status: "error",
                         connected: false,
@@ -354,6 +419,7 @@ export const EUIXStreamPlugin = {
             if (streamEntry) {
                 streamEntry.explicitlyClosed = true;
                 if (streamEntry.reconnectTimer) clearTimeout(streamEntry.reconnectTimer);
+                if (streamEntry.connectTimer) clearTimeout(streamEntry.connectTimer);
                 if (streamEntry.socket) {
                     try {
                         streamEntry.socket.close();
@@ -407,6 +473,7 @@ export const EUIXStreamPlugin = {
                             reconnect: node.getAttribute("reconnect") !== "false",
                             reconnectInterval: node.getAttribute("reconnect_interval") || 3000,
                             reconnectAttempts: node.getAttribute("reconnect_attempts") || 10,
+                            connectTimeout: node.getAttribute("connect_timeout") || node.getAttribute("timeout") || undefined,
                             onMessageAction: node.getAttribute("on_message") || node.getAttribute("on_message_action"),
                             onOpenAction: node.getAttribute("on_open") || node.getAttribute("on_open_action"),
                             onCloseAction: node.getAttribute("on_close") || node.getAttribute("on_close_action"),

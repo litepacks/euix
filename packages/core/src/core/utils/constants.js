@@ -514,3 +514,102 @@ export const MUTATION_OPS = Object.freeze({
     REVERSE: "REVERSE",
     SORT: "SORT",
 });
+
+/**
+ * Standardized default timeout durations across EUIX Engine (in milliseconds).
+ */
+export const DEFAULT_TIMEOUTS = Object.freeze({
+    API_REQUEST: 12000,       // Default XHR / API endpoint request timeout
+    COMPONENT_LOAD: 10000,    // Remote XML component load (ComponentLoader & DeclarativeLoader)
+    RESOURCE_LOAD: 10000,     // Remote data model & constants load (<data_model src="...">, <constants src="...">)
+    SCRIPT_LOAD: 8000,        // Remote external script load (<use_script src="...">)
+    ROUTER_LOADER: 10000,     // Router declarative / programmatic loader fetch
+    STREAM_CONNECT: 10000,    // Stream connection timeout (WebSocket, SSE handshake)
+    ACTION_EXECUTION: 30000,  // Resilience timeout guard for actions (<timeout ms="...">)
+    PLAYWRIGHT_IDLE: 15000,   // Playwright waitForIdle
+    PLAYWRIGHT_LAZY: 10000,   // Playwright waitForLazy
+    PLAYWRIGHT_READY: 5000,   // Playwright waitForReady
+});
+
+/**
+ * Creates an AbortSignal that automatically aborts after timeoutMs milliseconds.
+ * If a parentSignal is provided, aborts whenever either fires.
+ * Returns { signal, cleanup }.
+ */
+export function createTimeoutSignal(timeoutMs, parentSignal = null) {
+    if (!timeoutMs || timeoutMs <= 0) {
+        return { signal: parentSignal, cleanup: noop };
+    }
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    if (!controller) {
+        return { signal: parentSignal, cleanup: noop };
+    }
+
+    let timerId = setTimeout(() => {
+        try {
+            controller.abort(new Error(`Operation timed out after ${timeoutMs}ms`));
+        } catch (_) {
+            controller.abort();
+        }
+    }, timeoutMs);
+
+    let onParentAbort = null;
+    if (parentSignal) {
+        if (parentSignal.aborted) {
+            clearTimeout(timerId);
+            try {
+                controller.abort(parentSignal.reason);
+            } catch (_) {
+                controller.abort();
+            }
+        } else {
+            onParentAbort = () => {
+                clearTimeout(timerId);
+                try {
+                    controller.abort(parentSignal.reason);
+                } catch (_) {
+                    controller.abort();
+                }
+            };
+            if (isFn(parentSignal.addEventListener)) {
+                parentSignal.addEventListener("abort", onParentAbort, { once: true });
+            }
+        }
+    }
+
+    const cleanup = () => {
+        if (timerId) {
+            clearTimeout(timerId);
+            timerId = null;
+        }
+        if (parentSignal && onParentAbort && isFn(parentSignal.removeEventListener)) {
+            parentSignal.removeEventListener("abort", onParentAbort);
+        }
+    };
+
+    return { signal: controller.signal, cleanup };
+}
+
+/**
+ * Executes a fetch request with an automatic timeout signal and cleanup.
+ *
+ * @param {string|Request} url
+ * @param {RequestInit} [options={}]
+ * @param {number} [timeoutMs=DEFAULT_TIMEOUTS.API_REQUEST]
+ * @returns {Promise<Response>}
+ */
+export async function safeFetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_TIMEOUTS.API_REQUEST) {
+    const fetchFn = typeof fetch !== "undefined" ? fetch : null;
+    if (!fetchFn) {
+        throw new Error("[EUIX] fetch is not available in current environment");
+    }
+    const effectiveTimeout = timeoutMs !== undefined && timeoutMs !== null ? timeoutMs : DEFAULT_TIMEOUTS.API_REQUEST;
+    const { signal, cleanup } = createTimeoutSignal(effectiveTimeout, options?.signal);
+    try {
+        const fetchOptions = options ? { ...options, signal } : { signal };
+        return await fetchFn(url, fetchOptions);
+    } finally {
+        cleanup();
+    }
+}
+

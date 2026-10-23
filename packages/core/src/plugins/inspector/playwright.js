@@ -3,6 +3,8 @@
  * Playwright E2E Test Helper Suite for EUIX Engine.
  */
 
+import { DEFAULT_TIMEOUTS } from "../../core/utils/constants.js";
+
 /**
  * Creates a chainable EUIX Playwright helper wrapper around a Playwright Page or Locator.
  * @param {import('@playwright/test').Page | import('@playwright/test').Locator} pageOrLocator
@@ -94,7 +96,7 @@ export class EuixPlaywrightWrapper {
      * Checks pending actions, loaders, revalidations, and route transitions.
      */
     async waitForIdle(options = {}) {
-        const timeout = options.timeout || 15000;
+        const timeout = options.timeout || DEFAULT_TIMEOUTS.PLAYWRIGHT_IDLE;
         const page = this.page;
 
         try {
@@ -128,7 +130,7 @@ export class EuixPlaywrightWrapper {
      * Waits for a specific lazy component to be fetched and hydrated.
      */
     async waitForLazy(componentName, options = {}) {
-        const timeout = options.timeout || 10000;
+        const timeout = options.timeout || DEFAULT_TIMEOUTS.PLAYWRIGHT_LAZY;
         const page = this.page;
         await page.waitForFunction(
             (comp) => {
@@ -149,7 +151,7 @@ export class EuixPlaywrightWrapper {
      */
     async waitForReady(options = {}) {
         const locator = this.scopeSelector ? this.context.locator(this.scopeSelector) : this.context;
-        await locator.waitFor({ state: "visible", timeout: options.timeout || 5000 });
+        await locator.waitFor({ state: "visible", timeout: options.timeout || DEFAULT_TIMEOUTS.PLAYWRIGHT_READY });
         await this.waitForIdle(options);
         return this;
     }

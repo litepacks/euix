@@ -1,4 +1,4 @@
-import { safeParse, toInt } from "../core/utils/constants.js";
+import { safeParse, toInt, DEFAULT_TIMEOUTS, safeFetchWithTimeout } from "../core/utils/constants.js";
 const getApiStore = (type) => {
     const s = String(type || "").toLowerCase();
     if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
@@ -29,7 +29,7 @@ export const EUIXApiPlugin = {
                     baseUrl: "",
                     credentials: undefined,
                     headers: new Map(),
-                    timeout: 0,
+                    timeout: DEFAULT_TIMEOUTS.API_REQUEST,
                     onRequest: null,
                     onResponse: null,
                     revalidateFocus: false,
@@ -46,7 +46,7 @@ export const EUIXApiPlugin = {
                 this._apiConfig.revalidateOnline = Boolean(options.revalidateOnline);
             if (options.persist !== undefined) this._apiConfig.persist = options.persist;
             if (options.queueOffline !== undefined) this._apiConfig.queueOffline = Boolean(options.queueOffline);
-            if (options.timeout !== undefined) this._apiConfig.timeout = toInt(options.timeout, 0);
+            if (options.timeout !== undefined) this._apiConfig.timeout = toInt(options.timeout, DEFAULT_TIMEOUTS.API_REQUEST);
             if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
             if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
 
@@ -137,11 +137,11 @@ export const EUIXApiPlugin = {
                 const results = [];
                 for (const item of queue) {
                     try {
-                        const res = await fetch(item.url, {
+                        const res = await safeFetchWithTimeout(item.url, {
                             method: item.method,
                             headers: item.headers,
                             body: item.body,
-                        });
+                        }, DEFAULT_TIMEOUTS.API_REQUEST);
                         results.push({ url: item.url, success: res.ok });
                     } catch (err) {
                         results.push({ url: item.url, success: false, error: err.message });
@@ -604,12 +604,12 @@ export const EUIXApiPlugin = {
 
             let timeoutId = null;
             const timeoutAttr = actionNode.getAttribute("timeout");
-            const configTimeout = compApiConfig.timeout || (this._apiConfig && this._apiConfig.timeout);
+            const configTimeout = compApiConfig.timeout !== undefined ? compApiConfig.timeout : (this._apiConfig && this._apiConfig.timeout);
             const timeoutMs = timeoutAttr !== null 
-                ? toInt(timeoutAttr, 0)
+                ? toInt(timeoutAttr, DEFAULT_TIMEOUTS.API_REQUEST)
                 : configTimeout !== undefined
-                  ? toInt(configTimeout, 0)
-                  : 12000;
+                  ? toInt(configTimeout, DEFAULT_TIMEOUTS.API_REQUEST)
+                  : DEFAULT_TIMEOUTS.API_REQUEST;
             if (typeof AbortController !== "undefined") {
                 const controller = new AbortController();
                 fetchOptions.signal = controller.signal;
@@ -822,6 +822,12 @@ export const EUIXApiPlugin = {
                         throw structuredErr;
                     }
                     return null;
+                })
+                .finally(() => {
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        timeoutId = null;
+                    }
                 });
         };
 

@@ -5,6 +5,7 @@
 
 import { parseSearchParams } from "../core/location.js";
 import { RouterError, RouterRedirect } from "../core/navigation.js";
+import { DEFAULT_TIMEOUTS, safeFetchWithTimeout } from "../../../core/utils/constants.js";
 
 export class RouteLoaderManager {
     constructor({ cache, engine } = {}) {
@@ -104,7 +105,10 @@ export class RouteLoaderManager {
 
         if (typeof fetch === "undefined") return null;
 
-        const res = await fetch(requestUrl, { method, signal });
+        const timeoutAttr = xmlNode.getAttribute("timeout");
+        const timeoutMs = timeoutAttr !== null ? parseInt(timeoutAttr, 10) : DEFAULT_TIMEOUTS.ROUTER_LOADER;
+
+        const res = await safeFetchWithTimeout(requestUrl, { method, signal }, timeoutMs);
         if (!res.ok) {
             throw new RouterError(res.status, `Failed to load declarative loader (${res.status})`);
         }
