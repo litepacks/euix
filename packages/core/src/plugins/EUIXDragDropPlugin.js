@@ -1,3 +1,4 @@
+import { isFn } from "../core/utils/constants.js";
 /**
  * EUIXDragDropPlugin.js
  * HTML5 & Pointer Drag and Drop Subsystem Plugin for EUIX Engine.
@@ -120,7 +121,7 @@ export const EUIXDragDropPlugin = {
             }
             if (eventType === "dragstart") {
                 const dragEl =
-                    e.target && typeof e.target.closest === "function"
+                    e.target && isFn(e.target.closest)
                         ? e.target.closest('[draggable="true"]') || el
                         : el;
                 const dragVal = resolveDraggableId(context, dragEl);
@@ -131,7 +132,7 @@ export const EUIXDragDropPlugin = {
                     try {
                         e.dataTransfer.setData("text/plain", String(dragVal || "task"));
                         e.dataTransfer.effectAllowed = "move";
-                        if (dragEl && typeof e.dataTransfer.setDragImage === "function") {
+                        if (dragEl && isFn(e.dataTransfer.setDragImage)) {
                             e.dataTransfer.setDragImage(dragEl, 20, 20);
                         }
                     } catch (_) {}

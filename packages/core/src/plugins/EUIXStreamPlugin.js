@@ -1,3 +1,4 @@
+import { isObj, isStr, isFn } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXStreamPlugin.js
  * Declarative WebSocket & Server-Sent Events (SSE) Real-Time Streaming Engine for EUIX Engine.
@@ -263,7 +264,7 @@ export const EUIXStreamPlugin = {
 
         proto._handleIncomingStreamMessage = function (streamId, rawData, config, rawEvt) {
             let parsedData = rawData;
-            if (typeof rawData === "string") {
+            if (isStr(rawData)) {
                 try {
                     parsedData = JSON.parse(rawData);
                 } catch (_) {}
@@ -342,7 +343,7 @@ export const EUIXStreamPlugin = {
             }
 
             let msgString = payload;
-            if (typeof payload === "object" && payload !== null) {
+            if (isObj(payload)) {
                 msgString = JSON.stringify(payload);
             } else {
                 msgString = String(payload);
@@ -382,7 +383,7 @@ export const EUIXStreamPlugin = {
 
         // Extract declarative <api_stream>, <websocket>, <sse> tags from XML Document
         proto._parseStreamsFromDoc = function (doc) {
-            if (!doc || typeof doc.getElementsByTagName !== "function") return;
+            if (!doc || !isFn(doc.getElementsByTagName)) return;
             const apiConfigNodes = doc.getElementsByTagName("api_config");
             const baseUrl = apiConfigNodes.length > 0 ? apiConfigNodes[0].getAttribute("base_url") || "" : "";
 

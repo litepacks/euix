@@ -1,3 +1,4 @@
+import { isFn } from "../core/utils/constants.js";
 /**
  * EUIXStoragePlugin.js
  * State Persistence & Storage Plugin for EUIX Engine.
@@ -14,9 +15,9 @@ const getStore = (type) => {
 export const EUIXStoragePlugin = {
     name: "storage",
     install(engineClass) {
-        if (engineClass.hooks && typeof engineClass.hooks.on === "function") {
+        if (engineClass.hooks && isFn(engineClass.hooks.on)) {
             engineClass.hooks.on("engine:init", (engine) => {
-                if (typeof engine._setupStorageListener === "function") {
+                if (isFn(engine._setupStorageListener)) {
                     engine._setupStorageListener();
                 }
             });
@@ -44,7 +45,7 @@ export const EUIXStoragePlugin = {
 
             window.addEventListener("storage", this._storageHandler);
 
-            if (typeof this.onUnmount === "function") {
+            if (isFn(this.onUnmount)) {
                 this.onUnmount(() => {
                     if (typeof window !== "undefined" && this._storageHandler) {
                         window.removeEventListener("storage", this._storageHandler);
@@ -57,7 +58,7 @@ export const EUIXStoragePlugin = {
         proto.persist = function (key, { storage = "local", key: customKey = null } = {}) {
             if (!key) return this;
             if (!this._persistenceConfig) this._persistenceConfig = new Map();
-            if (!this._storageListenerBound && typeof this._setupStorageListener === "function") {
+            if (!this._storageListenerBound && isFn(this._setupStorageListener)) {
                 this._setupStorageListener();
             }
             const parsedKey = this.parseBindPath(key);

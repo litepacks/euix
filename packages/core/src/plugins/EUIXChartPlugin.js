@@ -1,3 +1,4 @@
+import { isObj, isStr, isFn } from "../core/utils/constants.js";
 /**
  * EUIXChartPlugin.js
  * Declarative Chart.js (v4.x) Integration Plugin for EUIX Engine.
@@ -44,7 +45,7 @@ export function getChartConstructor() {
  */
 function resolveConfig(engine, rawConfig, context = {}) {
     if (!rawConfig) return null;
-    if (typeof rawConfig === "object" && rawConfig !== null) return rawConfig;
+    if (isObj(rawConfig)) return rawConfig;
 
     const clean = String(rawConfig).trim();
     if (clean.startsWith("{") && clean.endsWith("}")) {
@@ -84,7 +85,7 @@ function resolveConfig(engine, rawConfig, context = {}) {
  * Extracts bind key / state path from dynamic expression
  */
 function extractStatePath(rawExpr) {
-    if (!rawExpr || typeof rawExpr !== "string") return null;
+    if (!rawExpr || !isStr(rawExpr)) return null;
     const trimmed = rawExpr.trim();
     if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
         const inner = trimmed.slice(1, -1).trim();
@@ -162,9 +163,9 @@ export const EUIXChartPlugin = {
                         show(id, datasetIndex = 0) {
                             const chart = this.get(id);
                             if (chart) {
-                                if (typeof chart.show === "function") {
+                                if (isFn(chart.show)) {
                                     chart.show(Number(datasetIndex));
-                                } else if (typeof chart.setDatasetVisibility === "function") {
+                                } else if (isFn(chart.setDatasetVisibility)) {
                                     chart.setDatasetVisibility(Number(datasetIndex), true);
                                     chart.update();
                                 }
@@ -175,9 +176,9 @@ export const EUIXChartPlugin = {
                         hide(id, datasetIndex = 0) {
                             const chart = this.get(id);
                             if (chart) {
-                                if (typeof chart.hide === "function") {
+                                if (isFn(chart.hide)) {
                                     chart.hide(Number(datasetIndex));
-                                } else if (typeof chart.setDatasetVisibility === "function") {
+                                } else if (isFn(chart.setDatasetVisibility)) {
                                     chart.setDatasetVisibility(Number(datasetIndex), false);
                                     chart.update();
                                 }
@@ -190,8 +191,8 @@ export const EUIXChartPlugin = {
                             if (chart) {
                                 const idx = Number(datasetIndex);
                                 const isVisible =
-                                    typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(idx) : true;
-                                if (typeof chart.setDatasetVisibility === "function") {
+                                    isFn(chart.isDatasetVisible) ? chart.isDatasetVisible(idx) : true;
+                                if (isFn(chart.setDatasetVisibility)) {
                                     chart.setDatasetVisibility(idx, !isVisible);
                                     chart.update();
                                 }
@@ -203,7 +204,7 @@ export const EUIXChartPlugin = {
                             const chart = this.get(id);
                             if (chart) {
                                 const idx = Number(index);
-                                if (typeof chart.toggleDataVisibility === "function") {
+                                if (isFn(chart.toggleDataVisibility)) {
                                     chart.toggleDataVisibility(idx);
                                     chart.update();
                                 }
@@ -213,7 +214,7 @@ export const EUIXChartPlugin = {
                         },
                         toBase64Image(id, type = "image/png", quality = 1) {
                             const chart = this.get(id);
-                            if (chart && typeof chart.toBase64Image === "function") {
+                            if (chart && isFn(chart.toBase64Image)) {
                                 return chart.toBase64Image(type, quality);
                             }
                             return null;
@@ -230,7 +231,7 @@ export const EUIXChartPlugin = {
             return eng.renderChart(xmlNode, context);
         };
 
-        if (typeof engineClass.registerComponent === "function") {
+        if (isFn(engineClass.registerComponent)) {
             engineClass.registerComponent("chart", renderChartHandler);
             engineClass.registerComponent("euix_chart", renderChartHandler);
         }
@@ -278,7 +279,7 @@ export const EUIXChartPlugin = {
                     "CHARTJS_NOT_AVAILABLE",
                     { chartId },
                 );
-                if (typeof this.handleStructuredError === "function") {
+                if (isFn(this.handleStructuredError)) {
                     this.handleStructuredError(err, xmlNode);
                 }
                 const errEl = document.createElement("div");
@@ -388,9 +389,9 @@ export const EUIXChartPlugin = {
                         _evt: customEvt,
                         _targetEl: containerNode,
                     };
-                    if (typeof this.handleAction === "function") {
+                    if (isFn(this.handleAction)) {
                         this.handleAction(actionTag, actionContext);
-                    } else if (typeof this.dispatchAction === "function") {
+                    } else if (isFn(this.dispatchAction)) {
                         this.dispatchAction(actionTag, actionContext);
                     }
                 });
@@ -398,7 +399,7 @@ export const EUIXChartPlugin = {
 
             // Attach canvas click listener for interaction
             const onCanvasClick = (e) => {
-                if (!currentChart || typeof currentChart.getElementsAtEventForMode !== "function") return;
+                if (!currentChart || !isFn(currentChart.getElementsAtEventForMode)) return;
                 try {
                     const elements = currentChart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
                     dispatchChartEvent("chart_click", e, elements);
@@ -406,7 +407,7 @@ export const EUIXChartPlugin = {
             };
 
             const onCanvasMouseMove = (e) => {
-                if (!currentChart || typeof currentChart.getElementsAtEventForMode !== "function") return;
+                if (!currentChart || !isFn(currentChart.getElementsAtEventForMode)) return;
                 try {
                     const elements = currentChart.getElementsAtEventForMode(e, "nearest", { intersect: true }, false);
                     if (elements && elements.length > 0) {
@@ -505,7 +506,7 @@ export const EUIXChartPlugin = {
             };
 
             const boundKey = extractStatePath(rawConfigAttr);
-            if (boundKey && typeof this.registerBinding === "function") {
+            if (boundKey && isFn(this.registerBinding)) {
                 this.registerBinding(boundKey, containerNode, "chart", (newVal) => {
                     applyChartUpdate(newVal);
                 });
@@ -610,18 +611,18 @@ export const EUIXChartPlugin = {
                     return true;
 
                 case "CHART_SHOW_DATASET":
-                    if (typeof chart.show === "function") {
+                    if (isFn(chart.show)) {
                         chart.show(datasetIndex);
-                    } else if (typeof chart.setDatasetVisibility === "function") {
+                    } else if (isFn(chart.setDatasetVisibility)) {
                         chart.setDatasetVisibility(datasetIndex, true);
                         chart.update(mode);
                     }
                     return true;
 
                 case "CHART_HIDE_DATASET":
-                    if (typeof chart.hide === "function") {
+                    if (isFn(chart.hide)) {
                         chart.hide(datasetIndex);
-                    } else if (typeof chart.setDatasetVisibility === "function") {
+                    } else if (isFn(chart.setDatasetVisibility)) {
                         chart.setDatasetVisibility(datasetIndex, false);
                         chart.update(mode);
                     }
@@ -629,8 +630,8 @@ export const EUIXChartPlugin = {
 
                 case "CHART_TOGGLE_DATASET": {
                     const isVis =
-                        typeof chart.isDatasetVisible === "function" ? chart.isDatasetVisible(datasetIndex) : true;
-                    if (typeof chart.setDatasetVisibility === "function") {
+                        isFn(chart.isDatasetVisible) ? chart.isDatasetVisible(datasetIndex) : true;
+                    if (isFn(chart.setDatasetVisibility)) {
                         chart.setDatasetVisibility(datasetIndex, !isVis);
                         chart.update(mode);
                     }
@@ -638,7 +639,7 @@ export const EUIXChartPlugin = {
                 }
 
                 case "CHART_TOGGLE_DATA":
-                    if (typeof chart.toggleDataVisibility === "function") {
+                    if (isFn(chart.toggleDataVisibility)) {
                         chart.toggleDataVisibility(dataIndex);
                         chart.update(mode);
                     }
@@ -660,14 +661,14 @@ export const EUIXChartPlugin = {
                     const filename = actionNode.getAttribute("filename") || (chartId ? `${chartId}.png` : "chart.png");
 
                     let base64 = null;
-                    if (chart && typeof chart.toBase64Image === "function") {
+                    if (chart && isFn(chart.toBase64Image)) {
                         base64 = chart.toBase64Image(imgType, quality);
-                    } else if (chart && chart.canvas && typeof chart.canvas.toDataURL === "function") {
+                    } else if (chart && chart.canvas && isFn(chart.canvas.toDataURL)) {
                         base64 = chart.canvas.toDataURL(imgType, quality);
                     }
 
                     if (base64) {
-                        if (targetState && typeof this.setState === "function") {
+                        if (targetState && isFn(this.setState)) {
                             const cleanPath = targetState.replace(/^(?:parent\.)?(?:data|state)\./, "");
                             this.setState(cleanPath, base64);
                         }
@@ -705,7 +706,7 @@ export const EUIXChartPlugin = {
         ];
 
         chartActions.forEach((actionName) => {
-            if (typeof engineClass.registerAction === "function") {
+            if (isFn(engineClass.registerAction)) {
                 engineClass.registerAction(actionName, function (actionNode, context) {
                     return this.executeChartAction(actionName, actionNode, context);
                 });

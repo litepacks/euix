@@ -1,3 +1,4 @@
+import { isFn, isStr } from "../core/utils/constants.js";
 /**
  * EUIXDialogPlugin.js
  * Modal Dialog Component Plugin for EUIX Engine with Automated WAI-ARIA Focus Trap and A11y.
@@ -24,12 +25,12 @@ export const EUIXDialogPlugin = {
                 });
                 this._activeDialogs.clear();
             }
-            if (typeof originalUnmount === "function") {
+            if (isFn(originalUnmount)) {
                 return originalUnmount.apply(this, arguments);
             }
         };
 
-        if (typeof engineClass.registerTag === "function") {
+        if (isFn(engineClass.registerTag)) {
             engineClass.registerTag("dialog", function (xmlNode, context) {
                 return this.renderDialog(xmlNode, context);
             });
@@ -74,7 +75,7 @@ export const EUIXDialogPlugin = {
             const close = () => {
                 if (bindPath) {
                     const currentVal = this.getState(bindPath);
-                    if (typeof currentVal === "string") {
+                    if (isStr(currentVal)) {
                         this.setState(bindPath, "false");
                     } else {
                         this.setState(bindPath, false);

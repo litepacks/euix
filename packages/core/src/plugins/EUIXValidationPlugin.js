@@ -1,3 +1,4 @@
+import { isBool, isFn, isStr } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXValidationPlugin.js
  * Declarative Form Validation Schema & Reactive Error Engine for EUIX Engine.
@@ -54,7 +55,7 @@ export const EUIXValidationPlugin = {
             let errorMsg = null;
 
             // 1. Required rule (handles empty strings, null, undefined, and boolean false)
-            const isUncheckedBool = val === false || (typeof val === "boolean" && !val);
+            const isUncheckedBool = val === false || (isBool(val) && !val);
             if (rules.required && (!strVal || isUncheckedBool)) {
                 errorMsg = rules.requiredMsg || rules.message || `${cleanKey} is required`;
             }
@@ -125,9 +126,9 @@ export const EUIXValidationPlugin = {
             }
 
             // 9. Custom validation function
-            if (!errorMsg && typeof rules.custom === "function") {
+            if (!errorMsg && isFn(rules.custom)) {
                 const customResult = rules.custom(val, this.state || this._rawState, this);
-                if (customResult && typeof customResult === "string") {
+                if (customResult && isStr(customResult)) {
                     errorMsg = customResult;
                 } else if (customResult === false) {
                     errorMsg = rules.message || "Validation failed";
@@ -254,7 +255,7 @@ export const EUIXValidationPlugin = {
 
         // Extract declarative <validation_rules> and <form_rules> from XML Document
         proto._parseValidationRulesFromDoc = function (doc) {
-            if (!doc || typeof doc.getElementsByTagName !== "function") return;
+            if (!doc || !isFn(doc.getElementsByTagName)) return;
             const tags = ["validation_rules", "form_rules", "validation"];
             tags.forEach((t) => {
                 const rNodes = doc.getElementsByTagName(t);

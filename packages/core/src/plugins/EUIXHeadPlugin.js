@@ -1,3 +1,4 @@
+import { isFn } from "../core/utils/constants.js";
 /**
  * EUIXHeadPlugin.js
  * Document Head & HTML Metadata / Helmet Plugin for EUIX Engine.
@@ -38,12 +39,12 @@ export const EUIXHeadPlugin = {
                 });
                 this._headManagedElements.clear();
             }
-            if (typeof originalUnmount === "function") {
+            if (isFn(originalUnmount)) {
                 return originalUnmount.apply(this, arguments);
             }
         };
 
-        if (typeof engineClass.registerTag === "function") {
+        if (isFn(engineClass.registerTag)) {
             engineClass.registerTag("head", function (xmlNode, context) {
                 return this.renderHead(xmlNode, context);
             });

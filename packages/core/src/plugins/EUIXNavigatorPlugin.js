@@ -1,3 +1,4 @@
+import { isBool, isFn } from "../core/utils/constants.js";
 /**
  * EUIXNavigatorPlugin.js
  * Browser Navigator & Device Capabilities Plugin for EUIX Engine.
@@ -73,7 +74,7 @@ export const EUIXNavigatorPlugin = {
             };
 
             const readNetworkInfo = () => ({
-                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
+                online: isBool(nav.onLine) ? nav.onLine : true,
                 effectiveType: (conn && conn.effectiveType) || (nav.onLine ? "4g" : "none"),
                 downlink: (conn && conn.downlink) || 10,
                 rtt: (conn && conn.rtt) || 50,
@@ -109,7 +110,7 @@ export const EUIXNavigatorPlugin = {
             };
 
             const setDeviceState = (updated) => {
-                if (typeof this.batch === "function") {
+                if (isFn(this.batch)) {
                     this.batch(() => {
                         if (this._rawState) {
                             this._rawState[targetKey] = updated;
@@ -155,7 +156,7 @@ export const EUIXNavigatorPlugin = {
                     conn.addEventListener("change", updateNetwork);
                 }
 
-                if (typeof this.onUnmount === "function") {
+                if (isFn(this.onUnmount)) {
                     this.onUnmount(() => {
                         window.removeEventListener("online", updateNetwork);
                         window.removeEventListener("offline", updateNetwork);
@@ -167,10 +168,10 @@ export const EUIXNavigatorPlugin = {
             }
 
             // Battery Change Tracking
-            if (typeof nav.getBattery === "function") {
+            if (isFn(nav.getBattery)) {
                 try {
                     const batteryPromise = nav.getBattery();
-                    if (batteryPromise && typeof batteryPromise.then === "function") {
+                    if (batteryPromise && isFn(batteryPromise.then)) {
                         batteryPromise
                             .then((battery) => {
                                 if (!battery) return;
@@ -200,7 +201,7 @@ export const EUIXNavigatorPlugin = {
                                 battery.addEventListener("levelchange", updateBattery);
                                 battery.addEventListener("chargingchange", updateBattery);
 
-                                if (typeof this.onUnmount === "function") {
+                                if (isFn(this.onUnmount)) {
                                     this.onUnmount(() => {
                                         battery.removeEventListener("levelchange", updateBattery);
                                         battery.removeEventListener("chargingchange", updateBattery);
@@ -213,7 +214,7 @@ export const EUIXNavigatorPlugin = {
             }
 
             // Geolocation Watch Tracking
-            if (options.trackGeo && nav.geolocation && typeof nav.geolocation.watchPosition === "function") {
+            if (options.trackGeo && nav.geolocation && isFn(nav.geolocation.watchPosition)) {
                 const watchId = nav.geolocation.watchPosition(
                     (pos) => {
                         const latest = this.getState("$device") || {};
@@ -242,9 +243,9 @@ export const EUIXNavigatorPlugin = {
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
                 );
 
-                if (typeof this.onUnmount === "function") {
+                if (isFn(this.onUnmount)) {
                     this.onUnmount(() => {
-                        if (typeof nav.geolocation.clearWatch === "function") {
+                        if (isFn(nav.geolocation.clearWatch)) {
                             nav.geolocation.clearWatch(watchId);
                         }
                     });
@@ -264,7 +265,7 @@ export const EUIXNavigatorPlugin = {
             if (
                 typeof navigator !== "undefined" &&
                 navigator.clipboard &&
-                typeof navigator.clipboard.writeText === "function"
+                isFn(navigator.clipboard.writeText)
             ) {
                 await navigator.clipboard.writeText(text);
             } else if (typeof document !== "undefined") {
@@ -295,7 +296,7 @@ export const EUIXNavigatorPlugin = {
             if (
                 typeof navigator !== "undefined" &&
                 navigator.clipboard &&
-                typeof navigator.clipboard.readText === "function"
+                isFn(navigator.clipboard.readText)
             ) {
                 text = await navigator.clipboard.readText();
             }
@@ -353,7 +354,7 @@ export const EUIXNavigatorPlugin = {
                 pattern = parseInt(patternStr, 10) || 50;
             }
 
-            if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+            if (typeof navigator !== "undefined" && isFn(navigator.vibrate)) {
                 navigator.vibrate(pattern);
                 return true;
             }
@@ -400,7 +401,7 @@ export const EUIXNavigatorPlugin = {
             const valStr = valNode ? this.interpolate(valNode.textContent, context) : this.interpolate(rawVal, context);
             const count = parseInt(valStr, 10);
 
-            if (typeof navigator !== "undefined" && typeof navigator.setAppBadge === "function") {
+            if (typeof navigator !== "undefined" && isFn(navigator.setAppBadge)) {
                 if (!Number.isNaN(count) && count > 0) {
                     await navigator.setAppBadge(count);
                 } else {
@@ -411,7 +412,7 @@ export const EUIXNavigatorPlugin = {
             return false;
         });
         engineClass.registerAction("CLEAR_APP_BADGE", async () => {
-            if (typeof navigator !== "undefined" && typeof navigator.clearAppBadge === "function") {
+            if (typeof navigator !== "undefined" && isFn(navigator.clearAppBadge)) {
                 await navigator.clearAppBadge();
                 return true;
             }
@@ -450,7 +451,7 @@ export const EUIXNavigatorPlugin = {
 
         // Auto-initialize navigator state on engine data model boot
         const originalInitDataModel = engineClass.prototype.initDataModel;
-        if (typeof originalInitDataModel === "function") {
+        if (isFn(originalInitDataModel)) {
             engineClass.prototype.initDataModel = function (doc, isMainDoc) {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
@@ -465,12 +466,12 @@ export const EUIXNavigatorPlugin = {
                         (targetDoc.querySelector
                             ? targetDoc.querySelector("navigator_config, device_config, navigator, device")
                             : null);
-                    if (navConfig && typeof this._processNavigatorTag === "function") {
+                    if (navConfig && isFn(this._processNavigatorTag)) {
                         this._processNavigatorTag(navConfig);
-                    } else if (typeof this.initNavigatorState === "function") {
+                    } else if (isFn(this.initNavigatorState)) {
                         this.initNavigatorState("$device");
                     }
-                } else if (typeof this.initNavigatorState === "function") {
+                } else if (isFn(this.initNavigatorState)) {
                     this.initNavigatorState("$device");
                 }
                 return res;

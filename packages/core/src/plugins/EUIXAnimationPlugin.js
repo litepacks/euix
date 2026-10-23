@@ -1,3 +1,4 @@
+import { isStr, isFn } from "../core/utils/constants.js";
 /**
  * EUIXAnimationPlugin
  * Declarative Animation System for EUIX Engine.
@@ -134,7 +135,7 @@ export class EUIXAnimationRegistry {
     }
 
     register(name, def) {
-        if (!name || typeof name !== "string") return;
+        if (!name || !isStr(name)) return;
         const cleanName = name.trim();
         this.definitions.set(cleanName, def);
     }
@@ -164,7 +165,7 @@ export const EUIXAnimationPlugin = {
             window.EUIXAnimationRegistry = EUIXAnimationRegistry;
         }
 
-        if (typeof engineClass.registerAction === "function") {
+        if (isFn(engineClass.registerAction)) {
             engineClass.registerAction("ANIMATE", function (actionNode, context) {
                 return this._handleAnimateAction(actionNode, context);
             });
@@ -203,7 +204,7 @@ export const EUIXAnimationPlugin = {
         proto.registerAnimationDef = function (name, xmlNodeOrObj) {
             this._initAnimationPlugin();
 
-            if (typeof name === "string" && xmlNodeOrObj) {
+            if (isStr(name) && xmlNodeOrObj) {
                 let parsedDef = xmlNodeOrObj;
 
                 if (xmlNodeOrObj.nodeType === 1) {
@@ -277,15 +278,15 @@ export const EUIXAnimationPlugin = {
             let targetEl = null;
             if (target && target.nodeType === 1) {
                 targetEl = target;
-            } else if (typeof target === "string" && target) {
+            } else if (isStr(target) && target) {
                 const interpolatedTarget = this.interpolate(target, context);
                 if (interpolatedTarget === "self" || interpolatedTarget === "this" || interpolatedTarget === "$el") {
                     targetEl = context._targetEl || context.$el || null;
                 } else {
-                    if (this.container && typeof this.container.querySelector === "function") {
+                    if (this.container && isFn(this.container.querySelector)) {
                         targetEl = this.container.querySelector(interpolatedTarget);
                     }
-                    if (!targetEl && typeof document !== "undefined" && typeof document.querySelector === "function") {
+                    if (!targetEl && typeof document !== "undefined" && isFn(document.querySelector)) {
                         targetEl = document.querySelector(interpolatedTarget);
                     }
                     if (!targetEl && context && context._targetEl) {
@@ -313,7 +314,7 @@ export const EUIXAnimationPlugin = {
             let keyframes = [];
             let animOptions = { ...options };
 
-            if (typeof keyframesOrName === "string") {
+            if (isStr(keyframesOrName)) {
                 const namedDef = this._animationRegistry.get(keyframesOrName);
                 if (!namedDef) {
                     const err = new EUIXStructuredError({
@@ -368,14 +369,14 @@ export const EUIXAnimationPlugin = {
             // 3. Interruption Handling
             if (this._activeAnimations.has(targetEl)) {
                 const active = this._activeAnimations.get(targetEl);
-                if (interruptPolicy === "finish" && active.animation && typeof active.animation.finish === "function") {
+                if (interruptPolicy === "finish" && active.animation && isFn(active.animation.finish)) {
                     try {
                         active.animation.finish();
                     } catch (_) {}
                 } else if (
                     interruptPolicy === "cancel" &&
                     active.animation &&
-                    typeof active.animation.cancel === "function"
+                    isFn(active.animation.cancel)
                 ) {
                     try {
                         active.animation.cancel();
@@ -395,7 +396,7 @@ export const EUIXAnimationPlugin = {
                 };
 
                 let animation;
-                if (typeof targetEl.animate === "function") {
+                if (isFn(targetEl.animate)) {
                     try {
                         animation = targetEl.animate(keyframes, webAnimOptions);
                     } catch (err) {
@@ -440,7 +441,7 @@ export const EUIXAnimationPlugin = {
                     if (isJSDOM) {
                         const timerId = setTimeout(
                             () => {
-                                if (animation && typeof animation.onfinish === "function") {
+                                if (animation && isFn(animation.onfinish)) {
                                     try {
                                         animation.onfinish();
                                     } catch (_) {}
@@ -451,7 +452,7 @@ export const EUIXAnimationPlugin = {
                         const origCancel = animation.cancel;
                         animation.cancel = function () {
                             clearTimeout(timerId);
-                            if (typeof origCancel === "function") origCancel.call(animation);
+                            if (isFn(origCancel)) origCancel.call(animation);
                             if (this.oncancel) this.oncancel();
                         };
                     }
@@ -496,7 +497,7 @@ export const EUIXAnimationPlugin = {
                     if (unbindSignal) unbindSignal();
                     this._activeAnimations.delete(targetEl);
 
-                    if (commit && typeof animation.commitStyles === "function") {
+                    if (commit && isFn(animation.commitStyles)) {
                         try {
                             animation.commitStyles();
                         } catch (_) {}

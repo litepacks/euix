@@ -1,3 +1,4 @@
+import { isFn } from "../core/utils/constants.js";
 /**
  * EUIXCollapsePlugin.js
  * Accordion & Collapsible UI Component Plugin for EUIX Engine with full WAI-ARIA Accessibility.
@@ -9,7 +10,7 @@ let collapseUidCounter = 0;
 export const EUIXCollapsePlugin = {
     name: "collapse",
     install(engineClass) {
-        if (typeof engineClass.registerTag === "function") {
+        if (isFn(engineClass.registerTag)) {
             engineClass.registerTag("collapse", function (xmlNode, context) {
                 return this.renderCollapse(xmlNode, context);
             });

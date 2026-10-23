@@ -1,3 +1,4 @@
+import { isFn } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXA11yPlugin.js
  * Accessibility (A11y) & Automated WAI-ARIA Focus Management Plugin for EUIX Engine.
@@ -20,7 +21,7 @@ export const EUIXA11yPlugin = {
         engineClass.prototype.createFocusTrap = (element, options = {}) => createFocusTrap(element, options);
 
         // Register declarative ANNOUNCE action
-        if (typeof engineClass.registerAction === "function") {
+        if (isFn(engineClass.registerAction)) {
             engineClass.registerAction("ANNOUNCE", function (actionNode, context = {}) {
                 const messageAttr = actionNode.getAttribute ? actionNode.getAttribute("message") : null;
                 const messageText = actionNode.textContent ? actionNode.textContent.trim() : "";
@@ -34,7 +35,7 @@ export const EUIXA11yPlugin = {
             });
         }
 
-        if (typeof engineClass.registerTag === "function") {
+        if (isFn(engineClass.registerTag)) {
             engineClass.registerTag("live_region", function (xmlNode, context) {
                 return this.renderLiveRegion(xmlNode, context);
             });

@@ -1,3 +1,4 @@
+import { isStr, isFn } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXLazyPlugin.js
  * EUIX XML Component & Route Lazy Loading Plugin.
@@ -46,7 +47,7 @@ export function EUIXLazyPlugin(EngineClass) {
     // Static registration API
     EngineClass.registerLazyComponent = (name, src, options = {}) => {
         const key = (name || "").toLowerCase();
-        const fallback = typeof options === "string" ? options : options?.fallback || null;
+        const fallback = isStr(options) ? options : options?.fallback || null;
         const preload = options?.preload || (options?.hover ? "hover" : options?.idle ? "idle" : null);
         const observer =
             typeof options === "object" && ("observer" in options || "viewport" in options)
@@ -151,7 +152,7 @@ export function EUIXLazyPlugin(EngineClass) {
 
         const fetchPromise = (async () => {
             if (typeof window !== "undefined" && isForeground) {
-                if (typeof EngineClass.updateDevToolsStatus === "function") {
+                if (isFn(EngineClass.updateDevToolsStatus)) {
                     EngineClass.updateDevToolsStatus(EngineClass, "pendingLoaders", 1);
                 } else if (window.__EUIX_DEVTOOLS__) {
                     window.__EUIX_DEVTOOLS__.pendingLoaders = (window.__EUIX_DEVTOOLS__.pendingLoaders || 0) + 1;
@@ -245,7 +246,7 @@ export function EUIXLazyPlugin(EngineClass) {
             }
             EngineClass._loadingStack.delete(key);
             if (typeof window !== "undefined" && isForeground) {
-                if (typeof EngineClass.updateDevToolsStatus === "function") {
+                if (isFn(EngineClass.updateDevToolsStatus)) {
                     EngineClass.updateDevToolsStatus(EngineClass, "pendingLoaders", -1);
                 } else if (window.__EUIX_DEVTOOLS__) {
                     window.__EUIX_DEVTOOLS__.pendingLoaders = Math.max(
@@ -378,7 +379,7 @@ export function EUIXLazyPlugin(EngineClass) {
                     }
 
                     cleanup();
-                    if (typeof this.initComponentSchema === "function") {
+                    if (isFn(this.initComponentSchema)) {
                         this.initComponentSchema(specNode, context);
                     }
                     const realDom = this.renderComponentSpec(specNode, xmlNode, context);
@@ -389,10 +390,10 @@ export function EUIXLazyPlugin(EngineClass) {
                         realDom.classList.add("euix-lazy-enter");
                         placeholder.replaceWith(realDom);
 
-                        if (typeof this.syncAllBindings === "function") {
+                        if (isFn(this.syncAllBindings)) {
                             this.syncAllBindings();
                         }
-                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                        if (window.lucide && isFn(window.lucide.createIcons)) {
                             window.lucide.createIcons();
                         }
                     }
@@ -453,7 +454,7 @@ export function EUIXLazyPlugin(EngineClass) {
                     (entry.observer || entry.viewport) &&
                     entry.preload !== "hover" &&
                     typeof window !== "undefined" &&
-                    typeof window.IntersectionObserver === "function";
+                    isFn(window.IntersectionObserver);
 
                 if (useObserver) {
                     let hasTriggered = false;
