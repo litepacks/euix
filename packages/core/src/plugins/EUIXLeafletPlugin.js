@@ -11,7 +11,7 @@
  * - Declarative Actions: FLY_TO, PAN_TO, SET_VIEW, FIT_BOUNDS, CLEAR_MAP, REMOVE_LAYER, INVALIDATE_MAP_SIZE, ADD_MARKER
  */
 
-import { safeParse } from "../core/utils/constants.js";
+import { safeParse, getTagName, genId, isFn } from "../core/utils/constants.js";
 /**
  * Geodesic Polygon Area Calculation in square meters (m²)
  */
@@ -59,7 +59,7 @@ export const EUIXLeafletPlugin = {
             return eng.renderLeafletMap(xmlNode, context);
         };
 
-        if (typeof engineClass.registerComponent === "function") {
+        if (isFn(engineClass.registerComponent)) {
             engineClass.registerComponent("leaflet_map", renderLeafletMapHandler);
             engineClass.registerComponent("map_view", renderLeafletMapHandler);
             engineClass.registerComponent("leaflet", renderLeafletMapHandler);
@@ -169,14 +169,14 @@ export const EUIXLeafletPlugin = {
 
                 const cleanupMap = () => {
                     try {
-                        if (map && typeof map.remove === "function") {
+                        if (map && isFn(map.remove)) {
                             map.remove();
                         }
                     } catch (_) {}
                     if (this._leafletMaps) this._leafletMaps.delete(mapId);
                     if (this._leafletLayers) this._leafletLayers.delete(mapId);
                 };
-                if (typeof this.onUnmount === "function") {
+                if (isFn(this.onUnmount)) {
                     this.onUnmount(cleanupMap);
                 } else {
                     (this._destroyHooks = this._destroyHooks || []).push(cleanupMap);
@@ -414,14 +414,14 @@ export const EUIXLeafletPlugin = {
                                 }
                             };
                             window.addEventListener("keydown", escKeyHandler);
-                            if (typeof this.onUnmount === "function") {
+                            if (isFn(this.onUnmount)) {
                                 this.onUnmount(() => {
                                     if (typeof window !== "undefined") {
                                         window.removeEventListener("keydown", escKeyHandler);
                                     }
                                 });
                             }
-                            if (map && typeof map.on === "function") {
+                            if (map && isFn(map.on)) {
                                 map.on("unload", () => {
                                     if (typeof window !== "undefined") {
                                         window.removeEventListener("keydown", escKeyHandler);
@@ -441,9 +441,9 @@ export const EUIXLeafletPlugin = {
                                     polyMode.handler.enabled()
                                 ) {
                                     try {
-                                        if (typeof polyMode.handler._finishShape === "function") {
+                                        if (isFn(polyMode.handler._finishShape)) {
                                             polyMode.handler._finishShape();
-                                        } else if (typeof polyMode.handler.completeShape === "function") {
+                                        } else if (isFn(polyMode.handler.completeShape)) {
                                             polyMode.handler.completeShape();
                                         }
                                     } catch (_) {}
@@ -497,7 +497,7 @@ export const EUIXLeafletPlugin = {
                 const lcLen = lChildren ? lChildren.length : 0;
                 for (let i = 0; i < lcLen; i++) {
                     const child = lChildren[i];
-                    const tag = child.tagName ? child.tagName.toLowerCase() : "";
+                    const tag = getTagName(child);
                     if (tag === "marker") {
                         const mLat = Number(this.interpolate(child.getAttribute("lat"), context));
                         const mLng = Number(this.interpolate(child.getAttribute("lng"), context));
@@ -729,7 +729,7 @@ export const EUIXLeafletPlugin = {
         ];
 
         leafletActions.forEach((actionName) => {
-            if (typeof engineClass.registerAction === "function") {
+            if (isFn(engineClass.registerAction)) {
                 engineClass.registerAction(actionName, function (actionNode, context) {
                     return this.executeLeafletAction(actionName, actionNode, context);
                 });

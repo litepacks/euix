@@ -1,4 +1,4 @@
-import { isStr, isFn, toInt } from "../core/utils/constants.js";
+import { isStr, isFn, toInt, isElem, getTagName } from "../core/utils/constants.js";
 /**
  * EUIXAnimationPlugin
  * Declarative Animation System for EUIX Engine.
@@ -207,7 +207,7 @@ export const EUIXAnimationPlugin = {
             if (isStr(name) && xmlNodeOrObj) {
                 let parsedDef = xmlNodeOrObj;
 
-                if (xmlNodeOrObj.nodeType === 1) {
+                if (isElem(xmlNodeOrObj)) {
                     // XML Element Node
                     const durationAttr = xmlNodeOrObj.getAttribute("duration");
                     const delayAttr = xmlNodeOrObj.getAttribute("delay");
@@ -218,8 +218,8 @@ export const EUIXAnimationPlugin = {
 
                     const keyframeNodes = Array.from(xmlNodeOrObj.childNodes || []).filter(
                         (c) =>
-                            c.nodeType === 1 &&
-                            (c.nodeName.toLowerCase() === "keyframe" || c.tagName?.toLowerCase() === "keyframe"),
+                            isElem(c) &&
+                            (c.nodeName.toLowerCase() === "keyframe" || getTagName(c) === "keyframe"),
                     );
                     const keyframes = keyframeNodes.map((kf) => {
                         const kfObj = {};
@@ -228,11 +228,11 @@ export const EUIXAnimationPlugin = {
 
                         const propNodes = Array.from(kf.childNodes || []).filter(
                             (c) =>
-                                c.nodeType === 1 &&
+                                isElem(c) &&
                                 (c.nodeName.toLowerCase() === "property" ||
                                     c.nodeName.toLowerCase() === "prop" ||
-                                    c.tagName?.toLowerCase() === "property" ||
-                                    c.tagName?.toLowerCase() === "prop"),
+                                    getTagName(c) === "property" ||
+                                    getTagName(c) === "prop"),
                         );
                         if (propNodes.length > 0) {
                             propNodes.forEach((p) => {
@@ -276,7 +276,7 @@ export const EUIXAnimationPlugin = {
 
             // 1. Target Resolution
             let targetEl = null;
-            if (target && target.nodeType === 1) {
+            if (target && isElem(target)) {
                 targetEl = target;
             } else if (isStr(target) && target) {
                 const interpolatedTarget = this.interpolate(target, context);
@@ -293,7 +293,7 @@ export const EUIXAnimationPlugin = {
                         targetEl = context._targetEl;
                     }
                 }
-            } else if (target && target.nodeType === 1) {
+            } else if (target && isElem(target)) {
                 targetEl = target;
             } else if (!target) {
                 targetEl = context._targetEl || context.$el || null;
@@ -541,7 +541,7 @@ export const EUIXAnimationPlugin = {
             const fillAttr = actionNode.getAttribute("fill") || this.getChild(actionNode, "fill")?.textContent.trim();
 
             const keyframeNodes = Array.from(actionNode.children || []).filter(
-                (c) => c.tagName && c.tagName.toLowerCase() === "keyframe",
+                (c) => c.tagName && getTagName(c) === "keyframe",
             );
             let keyframes = null;
 
@@ -553,7 +553,7 @@ export const EUIXAnimationPlugin = {
 
                     const propNodes = Array.from(kf.children || []).filter(
                         (c) =>
-                            c.tagName && (c.tagName.toLowerCase() === "property" || c.tagName.toLowerCase() === "prop"),
+                            c.tagName && (getTagName(c) === "property" || getTagName(c) === "prop"),
                     );
                     if (propNodes.length > 0) {
                         propNodes.forEach((p) => {
@@ -622,7 +622,7 @@ export const EUIXAnimationPlugin = {
                   targetEl.getAttribute("on_leave")
                 : null;
             const onLeaveChild =
-                targetEl.tagName && targetEl.tagName.toLowerCase() === "on_leave"
+                targetEl.tagName && getTagName(targetEl) === "on_leave"
                     ? targetEl
                     : targetEl.querySelector
                       ? targetEl.querySelector("on_leave")
@@ -652,7 +652,7 @@ export const EUIXAnimationPlugin = {
 
         proto.disposeComponentAnimations = function (componentNameOrEl) {
             if (!this._activeAnimations) return;
-            if (componentNameOrEl && componentNameOrEl.nodeType === 1) {
+            if (componentNameOrEl && isElem(componentNameOrEl)) {
                 if (this._activeAnimations.has(componentNameOrEl)) {
                     safeCancelAnimation(this._activeAnimations.get(componentNameOrEl));
                     this._activeAnimations.delete(componentNameOrEl);

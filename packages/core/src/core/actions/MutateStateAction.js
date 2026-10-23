@@ -3,7 +3,7 @@
  * Declarative state mutation query engine (PUSH, REMOVE, UPDATE, SWAP, SORT, etc.) for EUIX Engine.
  */
 
-import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr, safeParse } from "../utils/constants.js";
+import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr, safeParse, toInt } from "../utils/constants.js";
 
 export function getMutableList(engine, path) {
     const v = engine.getState(path);
@@ -196,7 +196,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     if (operation === MUTATION_OPS.INCREMENT || operation === MUTATION_OPS.DECREMENT) {
         const rawVal = this.getState(path);
         if (!Array.isArray(rawVal)) {
-            let num = parseInt(rawVal ?? "0", 10);
+            let num = toInt(rawVal ?? "0", 0);
             if (Number.isNaN(num)) num = 0;
             num = operation === MUTATION_OPS.INCREMENT ? num + 1 : num - 1;
             const targetIsNumber = typeof this._rawState?.[path] === "number";
@@ -208,12 +208,12 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const fieldNode = this.getChild(actionNode, "field");
         const rawIdx = idxNode ? idxNode.textContent.trim() : actionNode.getAttribute("index") || "";
         const fieldName = fieldNode ? fieldNode.textContent.trim() : actionNode.getAttribute("field") || "quantity";
-        const index = parseInt(this.interpolate(rawIdx, context), 10);
+        const index = toInt(this.interpolate(rawIdx, context), 0);
 
         const currentList = getMutableList(this, path);
         if (!Number.isNaN(index) && index >= 0 && index < currentList.length) {
             const item = { ...currentList[index] };
-            let currVal = parseInt(item[fieldName] || 1, 10);
+            let currVal = toInt(item[fieldName] || 1, 0);
             if (operation === MUTATION_OPS.INCREMENT) {
                 currVal += 1;
             } else {
@@ -299,8 +299,8 @@ export function _handleMutateStateAction(actionNode, context = {}) {
 
         if (existingIdx >= 0 && targetId) {
             const existing = { ...currentList[existingIdx] };
-            const currentQty = parseInt(existing.quantity || 1, 10);
-            const addQty = parseInt(newItem.quantity || 1, 10);
+            const currentQty = toInt(existing.quantity || 1, 0);
+            const addQty = toInt(newItem.quantity || 1, 0);
             existing.quantity = currentQty + addQty;
             currentList[existingIdx] = existing;
         } else {
@@ -326,7 +326,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         if (indexNode) {
             const rawIdx = indexNode.textContent.trim() || indexNode.getAttribute("value") || "";
             const interpolatedIdx = this.interpolate(rawIdx, context);
-            const idx = parseInt(interpolatedIdx, 10);
+            const idx = toInt(interpolatedIdx, 0);
             if (!Number.isNaN(idx) && idx >= 0 && idx < list.length) {
                 list.splice(idx, 1);
                 this.batch(() => {
@@ -464,7 +464,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         let targetIdx = -1;
 
         if (idxNode) {
-            targetIdx = parseInt(this.interpolate(idxNode.textContent.trim(), context), 10);
+            targetIdx = toInt(this.interpolate(idxNode.textContent.trim(), context), 0);
         } else if (whereNode) {
             const field = whereNode.getAttribute("field") || "id";
             const eqVal = this.interpolate(
@@ -495,19 +495,19 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const indexBNode = this.getChild(actionNode, "indexB");
         const fromNode = this.getChild(actionNode, "from");
         const toNode = this.getChild(actionNode, "to");
-        let idxA = parseInt(
+        let idxA = toInt(
             this.interpolate(
                 indexANode ? indexANode.textContent.trim() : fromNode ? fromNode.textContent.trim() : "-1",
                 context,
             ),
-            10,
+            0,
         );
-        let idxB = parseInt(
+        let idxB = toInt(
             this.interpolate(
                 indexBNode ? indexBNode.textContent.trim() : toNode ? toNode.textContent.trim() : "-1",
                 context,
             ),
-            10,
+            0,
         );
 
         const whereNode = this.getChild(actionNode, "where");
@@ -605,7 +605,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const valNode = this.getChild(actionNode, "value");
         const valItem = (valNode && this.getChild(valNode, "item")) || this.getChild(actionNode, "item") || valNode;
         const rawIdx = indexNode ? indexNode.textContent.trim() : actionNode.getAttribute("index") || "0";
-        const idx = parseInt(this.interpolate(rawIdx, context), 10);
+        const idx = toInt(this.interpolate(rawIdx, context), 0);
         const rawText = valItem
             ? (isFn(valItem.getAttribute) && valItem.getAttribute("text")) ||
               valItem.textContent?.trim() ||

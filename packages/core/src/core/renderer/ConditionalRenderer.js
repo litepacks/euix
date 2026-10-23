@@ -3,7 +3,7 @@
  * Conditional logic (<if>, <else_if>, <else>) and dynamic child DOM node appending for EUIX Engine.
  */
 
-import { isFn } from "../utils/constants.js";
+import { isFn, getTagName, isElem } from "../utils/constants.js";
 
 export function appendChildren(engine, fragment, nodes, context, { skipTags = [] } = {}) {
     if (!nodes) return fragment;
@@ -11,7 +11,7 @@ export function appendChildren(engine, fragment, nodes, context, { skipTags = []
     const hasSkip = skipTags && skipTags.length > 0;
     for (let i = 0; i < len; i++) {
         const child = nodes[i];
-        if (hasSkip && child.nodeType === 1 && skipTags.includes(child.tagName.toLowerCase())) {
+        if (hasSkip && isElem(child) && skipTags.includes(getTagName(child))) {
             continue;
         }
         const el = engine.createHTMLElement(child, context);
@@ -35,8 +35,8 @@ function _parseConditionalBranches(xmlNode) {
     const len = children ? children.length : 0;
     for (let i = 0; i < len; i++) {
         const child = children[i];
-        if (child.nodeType === 1) {
-            const tag = child.tagName.toLowerCase();
+        if (isElem(child)) {
+            const tag = getTagName(child);
             if (tag === "else_if") {
                 branches.push(current);
                 current = {

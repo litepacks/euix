@@ -1,4 +1,4 @@
-import { isObj, isStr, isFn, safeParse } from "../core/utils/constants.js";
+import { isObj, isStr, isFn, safeParse, getTagName } from "../core/utils/constants.js";
 /**
  * EUIXChartPlugin.js
  * Declarative Chart.js (v4.x) Integration Plugin for EUIX Engine.
@@ -369,7 +369,7 @@ export const EUIXChartPlugin = {
 
                 // Execute declarative action tags matching the event
                 const childTags = Array.from(xmlNode.children || []).filter((c) => {
-                    const tag = c.tagName ? c.tagName.toLowerCase() : "";
+                    const tag = c.tagName ? getTagName(c) : "";
                     if (eventName === "chart_click" && (tag === "on_chart_click" || tag === "on_click")) return true;
                     if (eventName === "chart_hover" && (tag === "on_chart_hover" || tag === "on_hover")) return true;
                     if (eventName === "chart_resize" && (tag === "on_chart_resize" || tag === "on_resize")) return true;

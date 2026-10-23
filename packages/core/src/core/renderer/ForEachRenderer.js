@@ -10,14 +10,16 @@ import {
     EMPTY_ARR,
     getForEachItemHash,
     toInt,
+    isElem,
+    getTagName,
 } from "../utils/constants.js";
 
 const _EXT_KEY_RE = /\{(?:data\.)?([a-zA-Z_$][a-zA-Z0-9_$]*)/g;
 
 export function _isVisualXmlChild(n) {
     if (n.nodeType === 3) return Boolean(n.textContent && n.textContent.trim() !== "");
-    if (n.nodeType === 1) {
-        const tag = (n.tagName || "").toLowerCase();
+    if (isElem(n)) {
+        const tag = getTagName(n);
         return !(
             tag.startsWith("on_") ||
             tag === "confirm" ||
@@ -86,7 +88,7 @@ export { _getLongestIncreasingSubsequence, _reconcileKeyedDOM, initVirtualContai
 
 export function _isComplexForEachChild(engine, node) {
     if (node?.nodeType !== 1) return false;
-    const tag = (node.tagName || "").toLowerCase();
+    const tag = getTagName(node);
     const EngineClass = engine.constructor;
     if (
         node.getAttribute?.("draggable") === "true" ||
@@ -113,7 +115,7 @@ export function _isComplexForEachChild(engine, node) {
     const chLen = children.length;
     for (let i = 0; i < chLen; i++) {
         const c = children[i];
-        if (c.nodeType === 1 && _isComplexForEachChild(engine, c)) return true;
+        if (isElem(c) && _isComplexForEachChild(engine, c)) return true;
     }
     return false;
 }
@@ -128,7 +130,7 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
     const rawLen = rawChildren.length;
     for (let i = 0; i < rawLen; i++) {
         const c = rawChildren[i];
-        if (c.nodeType === 1) templateChildren.push(c);
+        if (isElem(c)) templateChildren.push(c);
     }
 
     let hasComplexChild = false;
@@ -208,7 +210,7 @@ export function _getCompiledForEachTemplate(engine, xmlNode, varName, baseChildC
                 return;
             }
 
-            if (xNode.nodeType === 1) {
+            if (isElem(xNode)) {
                 const attrs = xNode.attributes;
                 if (attrs) {
                     for (let aIdx = 0; aIdx < attrs.length; aIdx++) {
@@ -505,7 +507,7 @@ export function renderForEach(engine, xmlNode, context = {}) {
     const templateChildren = [];
     for (let tcIdx = 0; tcIdx < rawTemplateChildren.length; tcIdx++) {
         const tc = rawTemplateChildren[tcIdx];
-        if (tc.nodeType === 1) templateChildren.push(tc);
+        if (isElem(tc)) templateChildren.push(tc);
     }
 
     const createItemNodes = (item, idx) => {

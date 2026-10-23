@@ -1,3 +1,4 @@
+import { isElem, isFn, toInt, getAttr } from "../../../core/utils/constants.js";
 /**
  * src/plugins/router/core/outlet.js
  * Hierarchical nested <outlet> and <router-outlet> component with layout preservation.
@@ -144,7 +145,7 @@ export function createOutletRenderer(engine, routerInstance) {
                                     if (rendered) {
                                         container.replaceChild(rendered, placeholder);
                                         currentChildEl = rendered;
-                                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                        if (window.lucide && isFn(window.lucide.createIcons)) {
                                             window.lucide.createIcons();
                                         }
                                     }
@@ -165,7 +166,7 @@ export function createOutletRenderer(engine, routerInstance) {
 
                         // Handle <pending delay="150">
                         if (match.route.pendingNode) {
-                            const delay = parseInt(match.route.pendingNode.getAttribute("delay") || "0", 10);
+                            const delay = toInt(match.route.pendingNode.getAttribute("delay") || "0");
                             if (delay > 0) {
                                 pendingTimer = setTimeout(() => {
                                     if (placeholder.parentNode === container) {
@@ -200,7 +201,7 @@ export function createOutletRenderer(engine, routerInstance) {
                                     if (rendered) {
                                         container.replaceChild(rendered, placeholder);
                                         currentChildEl = rendered;
-                                        if (window.lucide && typeof window.lucide.createIcons === "function") {
+                                        if (window.lucide && isFn(window.lucide.createIcons)) {
                                             window.lucide.createIcons();
                                         }
                                     }
@@ -211,7 +212,7 @@ export function createOutletRenderer(engine, routerInstance) {
                                 console.error(`[EUIXRouter] Failed to load lazy route component (${targetSpec}):`, err);
                             });
                     }
-                } else if (targetSpec.nodeType === 1) {
+                } else if (isElem(targetSpec)) {
                     // Inline XML node template
                     el = engine.createHTMLElement(targetSpec, childContext);
                 }
@@ -230,7 +231,7 @@ export function createOutletRenderer(engine, routerInstance) {
 
         // Subscribe to route match updates
         const unlisten = routerInstance.on("route:match", updateOutletContent);
-        if (typeof engine.onUnmount === "function") {
+        if (isFn(engine.onUnmount)) {
             engine.onUnmount(() => {
                 if (pendingTimer) clearTimeout(pendingTimer);
                 unlisten();
@@ -270,7 +271,7 @@ export function createRouteContext(match, routerInstance) {
         actionData:
             match.actionData !== undefined
                 ? match.actionData
-                : typeof routerInstance.getRouteActionData === "function"
+                : isFn(routerInstance.getRouteActionData)
                   ? routerInstance.getRouteActionData(match.id)
                   : undefined,
         error: match.error,

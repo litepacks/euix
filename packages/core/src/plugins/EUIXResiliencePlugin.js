@@ -1,8 +1,5 @@
-import { getNow, toInt } from "../core/utils/constants.js";
+import { getNow, toInt, noop, genId, getTagName, isFn } from "../core/utils/constants.js";
 import { EUIXStructuredError } from "../core/EUIXEngineCore.js";
-
-const noop = () => {};
-const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
 
 const logScope = (engine, context, event, payload) => {
     const devtools = engine?._devtools || context?._engine?._devtools || context?.$engine?._devtools;
@@ -91,7 +88,7 @@ export class EUIXCancellationController {
             } catch (_) {}
         }
 
-        if (typeof this._parentUnsubscribe === "function") {
+        if (isFn(this._parentUnsubscribe)) {
             this._parentUnsubscribe();
             this._parentUnsubscribe = null;
         }
@@ -131,7 +128,7 @@ export function handleDelayDirect(engine, ms, context = {}) {
             originatingAction: "DELAY",
             component: context._componentName,
         });
-        if (engine && typeof engine.reportError === "function") engine.reportError(err, "Delay Validation");
+        if (engine && isFn(engine.reportError)) engine.reportError(err, "Delay Validation");
         throw err;
     }
 
@@ -185,7 +182,7 @@ export const EUIXResiliencePlugin = {
             return handleDelayDirect(this, interpolatedMs, context);
         });
         engineClass.registerAction("WAIT", async function (actionNode, context) {
-            if (typeof this._handleActionInternal === "function") {
+            if (isFn(this._handleActionInternal)) {
                 const delegatedNode = Object.create(actionNode || {}, {
                     getAttribute: {
                         value: (attr) =>
@@ -211,7 +208,7 @@ export const EUIXResiliencePlugin = {
             return handleDelayDirect(this, interpolatedMs, context);
         });
         engineClass.registerAction("SLEEP", async function (actionNode, context) {
-            if (typeof this._handleActionInternal === "function") {
+            if (isFn(this._handleActionInternal)) {
                 const delegatedNode = Object.create(actionNode || {}, {
                     getAttribute: {
                         value: (attr) =>
@@ -297,7 +294,7 @@ export const EUIXResiliencePlugin = {
 
             const childActions = Array.from(actionNode.childNodes || actionNode.children || []).filter((c) => {
                 const tag =
-                    c.nodeType === 1 && c.tagName ? c.tagName.toLowerCase() : c.tagName ? c.tagName.toLowerCase() : "";
+                    getTagName(c);
                 return tag && !["message", "msg", "ms", "duration"].includes(tag);
             });
 
@@ -424,7 +421,7 @@ export const EUIXResiliencePlugin = {
 
             const childActions = Array.from(actionNode.childNodes || actionNode.children || []).filter((c) => {
                 const tag =
-                    c.nodeType === 1 && c.tagName ? c.tagName.toLowerCase() : c.tagName ? c.tagName.toLowerCase() : "";
+                    getTagName(c);
                 return tag && !["delay", "ms", "attempts", "filter"].includes(tag);
             });
 

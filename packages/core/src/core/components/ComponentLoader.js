@@ -22,6 +22,7 @@ import {
     isCycleError,
     DEFAULT_TIMEOUTS,
     safeFetchWithTimeout,
+    toInt,
 } from "../utils/constants.js";
 
 export async function loadComponent(EngineClass, name, url, options = {}) {
@@ -141,9 +142,9 @@ export function registerComponentSpec(EngineClass, name, xmlStringOrNode, option
         });
 
         node = doc.querySelector("component_def, uid_spec, flex, grid, layout") || doc.documentElement;
-    } else if (xmlStringOrNode && (xmlStringOrNode.nodeType === 1 || xmlStringOrNode.nodeType === 9)) {
-        if (xmlStringOrNode.nodeType === 1) {
-            const tagName = xmlStringOrNode.tagName ? xmlStringOrNode.tagName.toLowerCase() : "";
+    } else if (xmlStringOrNode && (isElem(xmlStringOrNode) || xmlStringOrNode.nodeType === 9)) {
+        if (isElem(xmlStringOrNode)) {
+            const tagName = xmlStringOrNode.tagName ? getTagName(xmlStringOrNode) : "";
             if (["component_def", "uid_spec", "flex", "grid", "layout"].includes(tagName)) {
                 node = xmlStringOrNode;
             } else {
@@ -243,7 +244,7 @@ export function initComponentSchema(engine, specNode, context = {}) {
         if (credentials && !engine._apiConfig.credentials) engine._apiConfig.credentials = credentials.trim();
 
         const timeout = apiConfigNode.getAttribute("timeout");
-        if (timeout && !engine._apiConfig.timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
+        if (timeout && !engine._apiConfig.timeout) engine._apiConfig.timeout = toInt(timeout) || 0;
 
         const headerNodes = queryAll(apiConfigNode, "headers > header, header");
         headerNodes.forEach((h) => {

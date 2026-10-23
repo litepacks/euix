@@ -1,4 +1,4 @@
-import { safeParse, toInt, DEFAULT_TIMEOUTS, safeFetchWithTimeout } from "../core/utils/constants.js";
+import { safeParse, toInt, DEFAULT_TIMEOUTS, safeFetchWithTimeout, isFn } from "../core/utils/constants.js";
 const getApiStore = (type) => {
     const s = String(type || "").toLowerCase();
     if (s === "session" || s === "sessionstorage") return typeof sessionStorage !== "undefined" ? sessionStorage : null;
@@ -10,12 +10,12 @@ const getApiStore = (type) => {
 export const EUIXApiPlugin = {
     name: "api",
     install(engineClass) {
-        if (engineClass.hooks && typeof engineClass.hooks.on === "function") {
+        if (engineClass.hooks && isFn(engineClass.hooks.on)) {
             engineClass.hooks.on("engine:init", (engine) => {
-                if (!engine._apiConfig && typeof engine.configureApi === "function") {
+                if (!engine._apiConfig && isFn(engine.configureApi)) {
                     engine.configureApi();
                 }
-                if (typeof engine._initRevalidationListeners === "function") {
+                if (isFn(engine._initRevalidationListeners)) {
                     engine._initRevalidationListeners();
                 }
             });
@@ -47,8 +47,8 @@ export const EUIXApiPlugin = {
             if (options.persist !== undefined) this._apiConfig.persist = options.persist;
             if (options.queueOffline !== undefined) this._apiConfig.queueOffline = Boolean(options.queueOffline);
             if (options.timeout !== undefined) this._apiConfig.timeout = toInt(options.timeout, DEFAULT_TIMEOUTS.API_REQUEST);
-            if (typeof options.onRequest === "function") this._apiConfig.onRequest = options.onRequest;
-            if (typeof options.onResponse === "function") this._apiConfig.onResponse = options.onResponse;
+            if (isFn(options.onRequest)) this._apiConfig.onRequest = options.onRequest;
+            if (isFn(options.onResponse)) this._apiConfig.onResponse = options.onResponse;
 
             if (options.headers && typeof options.headers === "object") {
                 Object.entries(options.headers).forEach(([k, v]) => {
@@ -211,7 +211,7 @@ export const EUIXApiPlugin = {
             window.addEventListener("focus", this._focusRevalidateHandler);
             window.addEventListener("online", this._onlineRevalidateHandler);
 
-            if (typeof this.onUnmount === "function") {
+            if (isFn(this.onUnmount)) {
                 this.onUnmount(() => {
                     if (typeof window !== "undefined") {
                         if (this._focusRevalidateHandler)
@@ -625,7 +625,7 @@ export const EUIXApiPlugin = {
                 }
             }
 
-            if (this._apiConfig && typeof this._apiConfig.onRequest === "function") {
+            if (this._apiConfig && isFn(this._apiConfig.onRequest)) {
                 try {
                     this._apiConfig.onRequest({ url: finalUrl, options: fetchOptions });
                 } catch (_) {}
@@ -634,7 +634,7 @@ export const EUIXApiPlugin = {
             return fetch(finalUrl, fetchOptions)
                 .then(async (response) => {
                     if (timeoutId) clearTimeout(timeoutId);
-                    if (this._apiConfig && typeof this._apiConfig.onResponse === "function") {
+                    if (this._apiConfig && isFn(this._apiConfig.onResponse)) {
                         try {
                             this._apiConfig.onResponse(response);
                         } catch (_) {}
@@ -643,19 +643,19 @@ export const EUIXApiPlugin = {
                         throw new Error(`HTTP ${response.status}`);
                     }
                     const contentType =
-                        (response.headers && typeof response.headers.get === "function"
+                        (response.headers && isFn(response.headers.get)
                             ? response.headers.get("content-type")
                             : "") || "";
                     let data;
-                    if (contentType.includes("application/json") || typeof response.json === "function") {
+                    if (contentType.includes("application/json") || isFn(response.json)) {
                         try {
                             data = await response.json();
                         } catch (_) {
-                            const textData = typeof response.text === "function" ? await response.text() : "";
+                            const textData = isFn(response.text) ? await response.text() : "";
                             data = safeParse(textData, textData);
                         }
                     } else {
-                        const textData = typeof response.text === "function" ? await response.text() : "";
+                        const textData = isFn(response.text) ? await response.text() : "";
                         data = safeParse(textData, textData);
                     }
                     return data;

@@ -1,4 +1,4 @@
-import { isBool, isFn, isStr } from "../core/utils/constants.js";
+import { isBool, isFn, isStr, toInt } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXValidationPlugin.js
  * Declarative Form Validation Schema & Reactive Error Engine for EUIX Engine.
@@ -69,7 +69,7 @@ export const EUIXValidationPlugin = {
 
             // 3. Min Length rule
             if (!errorMsg && strVal && rules.minLength != null && rules.minLength !== "") {
-                const min = parseInt(rules.minLength, 10);
+                const min = toInt(rules.minLength, 0);
                 if (!Number.isNaN(min) && strVal.length < min) {
                     errorMsg = rules.minLengthMsg || rules.message || `Minimum ${min} characters required`;
                 }
@@ -77,7 +77,7 @@ export const EUIXValidationPlugin = {
 
             // 4. Max Length rule
             if (!errorMsg && strVal && rules.maxLength != null && rules.maxLength !== "") {
-                const max = parseInt(rules.maxLength, 10);
+                const max = toInt(rules.maxLength, 0);
                 if (!Number.isNaN(max) && strVal.length > max) {
                     errorMsg = rules.maxLengthMsg || rules.message || `Maximum ${max} characters allowed`;
                 }

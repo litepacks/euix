@@ -27,6 +27,8 @@ import {
     safeParse,
     DEFAULT_TIMEOUTS,
     safeFetchWithTimeout,
+    isElem,
+    getTagName,
 } from "../utils/constants.js";
 
 /**
@@ -517,7 +519,7 @@ export function setupMutationObserver(EngineClass, options = {}) {
     const observer = new MutationObserver((mutations) => {
         for (const m of mutations) {
             for (const node of m.addedNodes) {
-                if (node.nodeType === 1) {
+                if (isElem(node)) {
                     if (node.matches && node.matches(selector)) {
                         mountElement(EngineClass, node, options);
                     } else if (node.querySelectorAll) {
@@ -526,7 +528,7 @@ export function setupMutationObserver(EngineClass, options = {}) {
                 }
             }
             for (const node of m.removedNodes) {
-                if (node.nodeType === 1) {
+                if (isElem(node)) {
                     if (node._euixEngine) {
                         unmountElement(EngineClass, node);
                     } else if (node.querySelectorAll) {
@@ -610,7 +612,7 @@ export function autoInit(EngineClass, options = {}) {
         const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
         const targetEl = typeof targetSelector === "string" ? document.querySelector(targetSelector) : targetSelector;
         if (targetEl && (targetEl._euixMounted || targetEl.__euixEngine)) return;
-        const xml = script.tagName.toLowerCase() === "euix-app" ? script.innerHTML.trim() : script.textContent.trim();
+        const xml = getTagName(script) === "euix-app" ? script.innerHTML.trim() : script.textContent.trim();
         if (xml) {
             const engine = EngineClass.mount(xml, targetSelector);
             if (engine) {

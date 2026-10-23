@@ -361,7 +361,7 @@ export const EUIXStreamPlugin = {
         proto._scheduleReconnect = function (streamId, config) {
             const current = this._streamStatus[streamId] || {};
             const count = (current.reconnectCount || 0) + 1;
-            const maxAttempts = parseInt(config.reconnectAttempts || config.maxAttempts || 10, 10);
+            const maxAttempts = toInt(config.reconnectAttempts || config.maxAttempts || 10, 0);
 
             if (count > maxAttempts) {
                 this._updateStreamStatus(streamId, {
@@ -371,7 +371,7 @@ export const EUIXStreamPlugin = {
                 return;
             }
 
-            const interval = parseInt(config.reconnectInterval || config.interval || 3000, 10);
+            const interval = toInt(config.reconnectInterval || config.interval || 3000, 0);
             this._updateStreamStatus(streamId, {
                 status: "connecting",
                 reconnectCount: count,

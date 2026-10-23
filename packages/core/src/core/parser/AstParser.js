@@ -1,4 +1,4 @@
-import { toInt } from "../utils/constants.js";
+import { toInt, isElem, isFn } from "../utils/constants.js";
 /**
  * src/core/parser/AstParser.js
  * High-performance XML parser and AST caching module for EUIX Engine.
@@ -16,7 +16,7 @@ export function _cloneDocument(doc) {
         if (
             typeof document !== "undefined" &&
             document.implementation &&
-            typeof document.implementation.createDocument === "function"
+            isFn(document.implementation.createDocument)
         ) {
             const cloned = document.implementation.createDocument(null, null, null);
             if (doc.documentElement) {
@@ -314,7 +314,7 @@ export function serializeAst(docOrXml) {
 
     function serializeNode(node) {
         if (!node) return null;
-        if (node.nodeType === 1) {
+        if (isElem(node)) {
             const attrs = {};
             if (node.attributes) {
                 for (let i = 0; i < node.attributes.length; i++) {
@@ -373,7 +373,7 @@ export function deserializeAst(astJson) {
     if (typeof document === "undefined") return null;
 
     let doc;
-    if (document.implementation && typeof document.implementation.createDocument === "function") {
+    if (document.implementation && isFn(document.implementation.createDocument)) {
         doc = document.implementation.createDocument(null, null, null);
     } else {
         doc = document.createElement("xml");
@@ -419,7 +419,7 @@ export function deserializeAst(astJson) {
         return deserializeNode(astJson);
     }
     const singleNode = deserializeNode(astJson);
-    if (singleNode && singleNode.nodeType === 1) {
+    if (singleNode && isElem(singleNode)) {
         doc.appendChild(singleNode);
         return doc;
     }

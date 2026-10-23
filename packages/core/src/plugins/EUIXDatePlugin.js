@@ -1,3 +1,4 @@
+import { toInt, getTagName } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXDatePlugin.js
  * Comprehensive Declarative Date, Time & Intl Formatting Plugin for EUIX Engine.
@@ -111,7 +112,7 @@ export class EUIXDateFormatter {
             if (str === "now") return new Date();
             // Numeric timestamp string
             if (/^\d{1,13}$/.test(str)) {
-                const num = parseInt(str, 10);
+                const num = toInt(str);
                 const d = new Date(num < 1e11 ? num * 1000 : num);
                 return Number.isNaN(d.getTime()) ? null : d;
             }
@@ -771,7 +772,7 @@ export const EUIXDatePlugin = {
         const renderDateElement = function (xmlNode, context, forceRelative = false) {
             if (typeof document === "undefined") return null;
 
-            const asTag = xmlNode.getAttribute("as") || (xmlNode.tagName.toLowerCase() === "time" ? "time" : "span");
+            const asTag = xmlNode.getAttribute("as") || (getTagName(xmlNode) === "time" ? "time" : "span");
             const el = document.createElement(asTag);
             const baseClass = xmlNode.getAttribute("class") || "";
             if (baseClass) el.className = baseClass;
@@ -805,7 +806,7 @@ export const EUIXDatePlugin = {
             const fallback = xmlNode.getAttribute("fallback") || "";
             const isRelative = forceRelative || xmlNode.getAttribute("relative") === "true" || rawFormat === "relative";
             const isLive = xmlNode.getAttribute("live") === "true";
-            const intervalMs = parseInt(xmlNode.getAttribute("interval") || "60000", 10);
+            const intervalMs = toInt(xmlNode.getAttribute("interval") || "60000");
 
             // Custom Intl options from individual attributes
             const customOptions = {};
@@ -850,7 +851,7 @@ export const EUIXDatePlugin = {
                 }
 
                 // Set datetime attribute for <time> tags (accessibility & HTML5 standard)
-                if (el.tagName.toLowerCase() === "time" || el.hasAttribute("datetime")) {
+                if (getTagName(el) === "time" || el.hasAttribute("datetime")) {
                     el.setAttribute("datetime", parsed.toISOString());
                 }
 

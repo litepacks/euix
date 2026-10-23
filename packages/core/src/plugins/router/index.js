@@ -1,3 +1,4 @@
+import { isElem, isFn, getTagName } from "../../core/utils/constants.js";
 /**
  * src/plugins/router/index.js
  * Main EUIX Web Router Plugin and high-level router runtime.
@@ -394,10 +395,10 @@ export function parseXmlRoutes(xmlNode) {
     const routes = [];
     if (!xmlNode) return routes;
 
-    const children = Array.from(xmlNode.children || xmlNode.childNodes || []).filter((c) => c.nodeType === 1);
+    const children = Array.from(xmlNode.children || xmlNode.childNodes || []).filter((c) => isElem(c));
 
     for (const child of children) {
-        const tag = (child.tagName || "").toLowerCase();
+        const tag = getTagName(child);
 
         if (tag === "route" || tag === "index" || tag === "route-group") {
             const isIndex = tag === "index" || child.hasAttribute("index");
@@ -423,9 +424,9 @@ export function parseXmlRoutes(xmlNode) {
             };
 
             // Inspect nested children (declarative <loader>, <error>, <pending>, <route-meta>, or nested <route>)
-            const subChildren = Array.from(child.children || child.childNodes || []).filter((c) => c.nodeType === 1);
+            const subChildren = Array.from(child.children || child.childNodes || []).filter((c) => isElem(c));
             for (const sub of subChildren) {
-                const subTag = (sub.tagName || "").toLowerCase();
+                const subTag = getTagName(sub);
                 if (subTag === "loader") {
                     routeDef.loaderNode = sub;
                 } else if (subTag === "error") {
@@ -550,7 +551,7 @@ export const EUIXRouterPlugin = {
                 Array.from(root.children || []).some(
                     (c) =>
                         c.tagName &&
-                        (c.tagName.toLowerCase() === "outlet" || c.tagName.toLowerCase() === "router-outlet"),
+                        (getTagName(c) === "outlet" || getTagName(c) === "router-outlet"),
                 );
             if (topLevelOutlet) {
                 return null;
@@ -689,20 +690,20 @@ export const EUIXRouterPlugin = {
                 return true;
             }
 
-            if ((tagAttr || tagChild) && typeof this.revalidateApi === "function") {
+            if ((tagAttr || tagChild) && isFn(this.revalidateApi)) {
                 const rawTag = tagChild ? tagChild.textContent.trim() : tagAttr;
                 const tag = this.interpolate(rawTag || "", context);
                 await this.revalidateApi(tag);
                 return true;
             }
 
-            if (this.router && actionNode.getAttribute("id") && typeof this.revalidateApi !== "function") {
+            if (this.router && actionNode.getAttribute("id") && !isFn(this.revalidateApi)) {
                 await this.router.revalidate(actionNode.getAttribute("id"));
                 return true;
             }
 
             let handled = false;
-            if (typeof this.revalidateApi === "function") {
+            if (isFn(this.revalidateApi)) {
                 const id = actionNode.getAttribute("id") || "";
                 await this.revalidateApi(id);
                 handled = true;
@@ -729,7 +730,7 @@ export const EUIXRouterPlugin = {
 
         // 5. Hook into XML Parsing Lifecycle to parse <router>
         const originalInitDataModel = engineClass.prototype.initDataModel;
-        if (typeof originalInitDataModel === "function") {
+        if (isFn(originalInitDataModel)) {
             engineClass.prototype.initDataModel = function (doc, isMainDoc) {
                 const res = originalInitDataModel.call(this, doc, isMainDoc);
                 const targetDoc = doc || this.xmlDoc;
@@ -739,7 +740,7 @@ export const EUIXRouterPlugin = {
                         : targetDoc.getElementsByTagName
                           ? targetDoc.getElementsByTagName("router")[0]
                           : null;
-                    if (routerTag && typeof this._processRouterTag === "function") {
+                    if (routerTag && isFn(this._processRouterTag)) {
                         this._processRouterTag(routerTag);
                     }
                 }

@@ -17,6 +17,8 @@ import {
     isStr,
     getAttr,
     queryAll,
+    toInt,
+    getChildrenList,
 } from "../utils/constants.js";
 import { renderForEach } from "./ForEachRenderer.js";
 import { renderErrorBoundary } from "./ErrorBoundaryRenderer.js";
@@ -69,7 +71,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
         const txt = xmlNode.textContent || xmlNode.nodeValue || "";
         return !txt.includes("{");
     }
-    if (xmlNode.nodeType !== 1) return false;
+    if (!isElem(xmlNode)) return false;
 
     if (xmlNode._isStaticSubtree !== undefined) {
         return xmlNode._isStaticSubtree;
@@ -167,7 +169,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
     if (children) {
         for (let i = 0; i < children.length; i++) {
             const child = children[i];
-            if (child.nodeType === 1) {
+            if (isElem(child)) {
                 const childTag = (child.tagName || "").toLowerCase();
                 if (childTag.startsWith("on_") || EVENT_TAGS.has(childTag)) {
                     xmlNode._isStaticSubtree = false;
@@ -189,7 +191,7 @@ export function createHTMLElement(engine, xmlNode, context = {}) {
     if (!xmlNode) return null;
     try {
         const el = engine._createHTMLElementInternal(xmlNode, context);
-        if (el && el.nodeType === 1) {
+        if (el && isElem(el)) {
             engine.processLifecycleHooks(xmlNode, el, context);
         }
         return el;
@@ -206,7 +208,7 @@ export function createHTMLElement(engine, xmlNode, context = {}) {
 }
 
 export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
-    if (!context._skipStaticClone && xmlNode.nodeType === 1) {
+    if (!context._skipStaticClone && isElem(xmlNode)) {
         if (xmlNode._staticPrototype) {
             return xmlNode._staticPrototype.cloneNode(true);
         }
@@ -236,7 +238,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         let isCodeBlock = false;
         while (parent) {
             if (parent.tagName) {
-                const tag = parent.tagName.toLowerCase();
+                const tag = getTagName(parent);
                 if (tag === "code" || tag === "pre") {
                     isCodeBlock = true;
                     break;
@@ -263,9 +265,9 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         return textNode;
     }
 
-    if (xmlNode.nodeType !== 1) return null;
+    if (!isElem(xmlNode)) return null;
 
-    const tagName = xmlNode.tagName.toLowerCase();
+    const tagName = getTagName(xmlNode);
     if (METADATA_AND_EVENT_TAGS.has(tagName) || tagName.startsWith("on_")) {
         if (["use_script", "script_loader", "load_script"].includes(tagName)) {
             const src = getAttr(xmlNode, "src", "url");
@@ -428,8 +430,8 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             };
         }
 
-        if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
-        if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
+        if (xmlNode.getAttribute("width")) el.width = toInt(xmlNode.getAttribute("width")) || undefined;
+        if (xmlNode.getAttribute("height")) el.height = toInt(xmlNode.getAttribute("height")) || undefined;
         engine.bindEvents(xmlNode, el, context);
         return engine.applyRef(el, xmlNode, context);
     }
@@ -447,7 +449,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         for (let i = 0; i < chLen; i++) {
             const child = chNodes[i];
             if (
-                child.nodeType === 1 &&
+                isElem(child) &&
                 [
                     "on_click",
                     "on_change",
@@ -459,9 +461,9 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                     "event",
                     "on",
                     "label",
-                ].includes(child.tagName.toLowerCase())
+                ].includes(getTagName(child))
             ) {
-                if (child.tagName.toLowerCase() === "label") {
+                if (getTagName(child) === "label") {
                     const lblText = engine.interpolate(child.textContent.trim(), context);
                     el.appendChild(document.createTextNode(lblText));
                 }
@@ -506,8 +508,8 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             const alt = xmlNode.getAttribute("alt") || "";
             el.src = engine.interpolate(src, context);
             el.alt = engine.interpolate(alt, context);
-            if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
-            if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
+            if (xmlNode.getAttribute("width")) el.width = toInt(xmlNode.getAttribute("width")) || undefined;
+            if (xmlNode.getAttribute("height")) el.height = toInt(xmlNode.getAttribute("height")) || undefined;
         } else if (type === "text_input") {
             el = document.createElement("input");
             el.type = "text";
@@ -569,7 +571,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             el = document.createElement("textarea");
             if (xmlNode.getAttribute("placeholder"))
                 el.placeholder = engine.interpolate(xmlNode.getAttribute("placeholder"), context);
-            if (xmlNode.getAttribute("rows")) el.rows = parseInt(xmlNode.getAttribute("rows"), 10);
+            if (xmlNode.getAttribute("rows")) el.rows = toInt(xmlNode.getAttribute("rows"));
             if (bindPath) {
                 el.value = engine.getState(bindPath) ?? "";
                 engine.registerBinding(bindPath, el, "input");
@@ -638,7 +640,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         for (let i = 0; i < compChLen; i++) {
             const child = compChNodes[i];
             if (
-                child.nodeType === 1 &&
+                isElem(child) &&
                 [
                     "on_click",
                     "on_change",
@@ -651,7 +653,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
                     "on",
                     "value",
                     "template",
-                ].includes(child.tagName.toLowerCase())
+                ].includes(getTagName(child))
             ) {
                 continue;
             }
@@ -853,15 +855,15 @@ export function render(engine) {
     });
 
     let uiChildren = Array.from(root.children || []).filter(
-        (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()),
+        (c) => c.tagName && !metadataTags.includes(getTagName(c)),
     );
     if (uiChildren.length === 0) {
         const fallback = queryAll(root, "*").find(
-            (c) => c.tagName && !metadataTags.includes(c.tagName.toLowerCase()) && !c.closest("component_def"),
+            (c) => c.tagName && !metadataTags.includes(getTagName(c)) && !c.closest("component_def"),
         );
         if (fallback) {
             uiChildren = [fallback];
-        } else if (root.tagName && !metadataTags.includes(root.tagName.toLowerCase())) {
+        } else if (root.tagName && !metadataTags.includes(getTagName(root))) {
             uiChildren = [root];
         }
     }

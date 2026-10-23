@@ -1,4 +1,4 @@
-import { getNow, safeParse } from "../core/utils/constants.js";
+import { getNow, safeParse, getTagName, isElem } from "../core/utils/constants.js";
 /**
  * EUIXComposerPlugin.js
  * Action Composer Subroutines & Workflow System Plugin for EUIX Engine.
@@ -144,7 +144,7 @@ export class EUIXActionRegistry {
             (n) => n && n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) && n.tagName,
         );
         const paramNodes = directChildren.filter((n) => {
-            const t = n.tagName.toLowerCase();
+            const t = getTagName(n);
             return t === "param" || t === "arg_def" || t === "parameter";
         });
         paramNodes.forEach((pNode) => {
@@ -165,7 +165,7 @@ export class EUIXActionRegistry {
             (n) =>
                 n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
                 n.tagName &&
-                n.tagName.toLowerCase() === "return",
+                getTagName(n) === "return",
         );
         if (returnNode) {
             returnExpr =
@@ -179,14 +179,14 @@ export class EUIXActionRegistry {
             (n) => n.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1),
         );
         childNodes.forEach((child) => {
-            const tag = child.tagName ? child.tagName.toLowerCase() : "";
+            const tag = child.tagName ? getTagName(child) : "";
             if (["param", "arg_def", "parameter", "return"].includes(tag)) return;
             child._cachedTag = tag;
             if (tag === "if") {
                 child._cachedCond = child.getAttribute("condition") || child.getAttribute("test") || null;
                 const innerElse = child.querySelector ? child.querySelector("else") : null;
                 const nextElse =
-                    child.nextElementSibling && child.nextElementSibling.tagName?.toLowerCase() === "else"
+                    child.nextElementSibling && getTagName(child.nextElementSibling) === "else"
                         ? child.nextElementSibling
                         : null;
                 child._cachedElseNode = innerElse || nextElse || null;
@@ -304,7 +304,7 @@ export class EUIXActionComposer {
                 const step = steps[sIdx];
                 mergedContext.result = invocationCtx.result;
                 const tag =
-                    step._cachedTag !== undefined ? step._cachedTag : step.tagName ? step.tagName.toLowerCase() : "";
+                    step._cachedTag !== undefined ? step._cachedTag : step.tagName ? getTagName(step) : "";
 
                 if (tag === "else") {
                     if (skipNextElse) {
@@ -333,7 +333,7 @@ export class EUIXActionComposer {
                             step._cachedElseNode !== undefined
                                 ? step._cachedElseNode
                                 : engine.getChild(step, "else") ||
-                                  (step.nextElementSibling && step.nextElementSibling.tagName?.toLowerCase() === "else"
+                                  (step.nextElementSibling && getTagName(step.nextElementSibling) === "else"
                                       ? step.nextElementSibling
                                       : null);
                         if (elseNode) {
@@ -513,21 +513,21 @@ export const EUIXComposerPlugin = {
                     ? engine.getChildren(actionNode, "arg")
                     : Array.from(
                           actionNode.querySelectorAll ? actionNode.querySelectorAll("arg") : actionNode.children || [],
-                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "arg")),
+                      ).filter((c) => c.tagName && getTagName(c) === "arg")),
                 ...(engine && typeof engine.getChildren === "function"
                     ? engine.getChildren(actionNode, "param")
                     : Array.from(
                           actionNode.querySelectorAll
                               ? actionNode.querySelectorAll("param")
                               : actionNode.children || [],
-                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "param")),
+                      ).filter((c) => c.tagName && getTagName(c) === "param")),
                 ...(engine && typeof engine.getChildren === "function"
                     ? engine.getChildren(actionNode, "argument")
                     : Array.from(
                           actionNode.querySelectorAll
                               ? actionNode.querySelectorAll("argument")
                               : actionNode.children || [],
-                      ).filter((c) => c.tagName && c.tagName.toLowerCase() === "argument")),
+                      ).filter((c) => c.tagName && getTagName(c) === "argument")),
             ];
 
             argNodes.forEach((node) => {

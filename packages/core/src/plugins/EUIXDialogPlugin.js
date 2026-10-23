@@ -1,4 +1,4 @@
-import { isFn, isStr } from "../core/utils/constants.js";
+import { isFn, isStr, getTagName } from "../core/utils/constants.js";
 /**
  * EUIXDialogPlugin.js
  * Modal Dialog Component Plugin for EUIX Engine with Automated WAI-ARIA Focus Trap and A11y.
@@ -157,7 +157,7 @@ export const EUIXDialogPlugin = {
             for (let i = 0; i < bLen; i++) {
                 const child = bNodes[i];
                 if (child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1)) {
-                    const tag = child.tagName.toLowerCase();
+                    const tag = getTagName(child);
                     if (tag === "summary" || tag === "actions") {
                         continue;
                     }

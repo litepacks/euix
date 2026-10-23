@@ -1,4 +1,4 @@
-import { isFn } from "../core/utils/constants.js";
+import { isFn, getTagName } from "../core/utils/constants.js";
 /**
  * EUIXCollapsePlugin.js
  * Accordion & Collapsible UI Component Plugin for EUIX Engine with full WAI-ARIA Accessibility.
@@ -83,7 +83,7 @@ export const EUIXCollapsePlugin = {
                     const child = chNodes[i];
                     if (
                         child.nodeType === (typeof Node !== "undefined" ? Node.ELEMENT_NODE : 1) &&
-                        child.tagName.toLowerCase() === "summary"
+                        getTagName(child) === "summary"
                     )
                         continue;
                     const el = this.createHTMLElement(child, context);

@@ -5,7 +5,7 @@
  * via document.modelContext with progressive enhancement, strict sandboxing, and zero external dependencies.
  */
 
-import { safeParse } from "../core/utils/constants.js";
+import { safeParse, getTagName, isFn, getNow } from "../core/utils/constants.js";
 
 
 /**
@@ -17,7 +17,7 @@ export class EUIXWebMCPError extends Error {
         this.name = "EUIXWebMCPError";
         this.code = code || "WEBMCP_ERROR";
         this.details = details;
-        this.timestamp = Date.now();
+        this.timestamp = getNow();
     }
 }
 
@@ -54,7 +54,7 @@ export function sanitizeResult(value, seen = new WeakSet()) {
         (typeof globalThis !== "undefined" && value === globalThis) ||
         (value &&
             typeof value === "object" &&
-            (value.nodeType !== undefined || typeof value.preventDefault === "function"))
+            (value.nodeType !== undefined || isFn(value.preventDefault)))
     ) {
         return undefined;
     }
@@ -314,7 +314,7 @@ export class EUIXWebMCPManager {
      * Initializes $webmcp reactive state in EUIX Engine
      */
     _initExecutionState() {
-        if (this.engine && typeof this.engine.setState === "function") {
+        if (this.engine && isFn(this.engine.setState)) {
             const initialState = {
                 executing: false,
                 currentTool: null,
@@ -354,7 +354,7 @@ export class EUIXWebMCPManager {
      * Checks if WebMCP plugin is currently active and enabled
      */
     isEnabled() {
-        if (typeof this.options.enabled === "function") {
+        if (isFn(this.options.enabled)) {
             try {
                 return Boolean(this.options.enabled({ state: this.engine?.state, engine: this.engine }));
             } catch (_) {
@@ -509,14 +509,14 @@ export class EUIXWebMCPManager {
                 state: {
                     get: (path) => {
                         if (!this.engine) return undefined;
-                        if (this.engine._rawState === null && typeof this.engine.initDataModel === "function") {
+                        if (this.engine._rawState === null && isFn(this.engine.initDataModel)) {
                             this.engine.initDataModel();
                         }
                         return this.engine.getState(path);
                     },
                     set: (path, val, opts) => {
                         if (!this.engine) return;
-                        if (this.engine._rawState === null && typeof this.engine.initDataModel === "function") {
+                        if (this.engine._rawState === null && isFn(this.engine.initDataModel)) {
                             this.engine.initDataModel();
                         }
                         return this.engine.setState(path, val, opts);
@@ -546,7 +546,7 @@ export class EUIXWebMCPManager {
             let rawResult;
 
             // 3. Delegate to tool execution target
-            if (typeof toolDef.execute === "function") {
+            if (isFn(toolDef.execute)) {
                 rawResult = await toolDef.execute(input, execContext);
             } else if (toolDef.action) {
                 rawResult = await this._runAction(
@@ -557,9 +557,9 @@ export class EUIXWebMCPManager {
                 );
             } else if (toolDef.handler) {
                 const handlerFn =
-                    typeof toolDef.handler === "function"
+                    isFn(toolDef.handler)
                         ? toolDef.handler
-                        : typeof window !== "undefined" && typeof window[toolDef.handler] === "function"
+                        : typeof window !== "undefined" && isFn(window[toolDef.handler])
                           ? window[toolDef.handler]
                           : null;
                 if (!handlerFn) {
@@ -633,7 +633,7 @@ export class EUIXWebMCPManager {
         }
 
         // 2. Action Composer Subroutine Workflow
-        if (typeof this.engine.hasActionDef === "function" && this.engine.hasActionDef(normalizedName)) {
+        if (isFn(this.engine.hasActionDef) && this.engine.hasActionDef(normalizedName)) {
             return await this.engine.executeAction(normalizedName, payload, {
                 ...customContext,
                 _webmcpContext: execContext,
@@ -660,7 +660,7 @@ export class EUIXWebMCPManager {
         }
 
         // 4. Direct method on engine
-        if (typeof this.engine[normalizedName] === "function") {
+        if (isFn(this.engine[normalizedName])) {
             return await this.engine[normalizedName](payload, execContext);
         }
 
@@ -684,7 +684,7 @@ export class EUIXWebMCPManager {
             } catch (_) {}
         }
 
-        if (typeof entry.unwatch === "function") {
+        if (isFn(entry.unwatch)) {
             try {
                 entry.unwatch();
             } catch (_) {}
@@ -692,7 +692,7 @@ export class EUIXWebMCPManager {
 
         this._registeredTools.delete(name);
 
-        if (this.isSupported() && typeof document.modelContext.unregisterTool === "function") {
+        if (this.isSupported() && isFn(document.modelContext.unregisterTool)) {
             try {
                 document.modelContext.unregisterTool(name);
             } catch (_) {}
@@ -774,7 +774,7 @@ export function parseXmlToolDef(toolNode, engine, context = {}) {
 
     // Extract child <param> nodes
     const paramNodes = Array.from(toolNode.children || []).filter(
-        (c) => c.tagName && (c.tagName.toLowerCase() === "param" || c.tagName.toLowerCase() === "parameter"),
+        (c) => c.tagName && (getTagName(c) === "param" || getTagName(c) === "parameter"),
     );
 
     const params = paramNodes.map((pNode) => ({
@@ -793,7 +793,7 @@ export function parseXmlToolDef(toolNode, engine, context = {}) {
 
     // Extract custom raw <schema> if present
     const schemaNode = Array.from(toolNode.children || []).find(
-        (c) => c.tagName && ["schema", "input_schema", "inputschema"].includes(c.tagName.toLowerCase()),
+        (c) => c.tagName && ["schema", "input_schema", "inputschema"].includes(getTagName(c)),
     );
     let rawSchema = null;
     if (schemaNode) {
@@ -863,9 +863,9 @@ export function registerDeclarativeTool(engine, toolDef, context = {}) {
                     context._localState &&
                     (context._localState[key] !== undefined || cleanExpr.includes(`local.${key}`));
                 const bindKey = context._instanceId && isLocal ? `${context._instanceId}:${key}` : key;
-                if (typeof engine.watch === "function") {
+                if (isFn(engine.watch)) {
                     const unwatch = engine.watch(bindKey, updateRegistration);
-                    if (typeof unwatch === "function") unwatchers.push(unwatch);
+                    if (isFn(unwatch)) unwatchers.push(unwatch);
                 }
             });
         }
@@ -918,13 +918,13 @@ export const EUIXWebMCPPlugin = {
         }
 
         // Hook into engine destroy/unmount for cleanup
-        if (typeof proto.onUnmount === "function") {
+        if (isFn(proto.onUnmount)) {
             const originalDestroy = proto.destroy;
             proto.destroy = function () {
                 if (this._webmcpManager) {
                     this._webmcpManager.dispose();
                 }
-                if (typeof originalDestroy === "function") {
+                if (isFn(originalDestroy)) {
                     return originalDestroy.apply(this, arguments);
                 }
                 return this;
@@ -942,7 +942,7 @@ export const EUIXWebMCPPlugin = {
             // Also check root itself
             if (
                 rootNode.tagName &&
-                ["webmcp", "webmcp_tool", "webmcp-tool"].includes(rootNode.tagName.toLowerCase()) &&
+                ["webmcp", "webmcp_tool", "webmcp-tool"].includes(getTagName(rootNode)) &&
                 !webmcpNodes.includes(rootNode)
             ) {
                 webmcpNodes.push(rootNode);
@@ -951,12 +951,12 @@ export const EUIXWebMCPPlugin = {
             webmcpNodes.forEach((node) => {
                 const toolNodes = Array.from(node.children || []).filter(
                     (c) =>
-                        c.tagName && (c.tagName.toLowerCase() === "tool" || c.tagName.toLowerCase() === "webmcp_tool"),
+                        c.tagName && (getTagName(c) === "tool" || getTagName(c) === "webmcp_tool"),
                 );
 
                 const isSingleTool =
                     node.tagName &&
-                    (node.tagName.toLowerCase() === "webmcp_tool" || node.tagName.toLowerCase() === "tool");
+                    (getTagName(node) === "webmcp_tool" || getTagName(node) === "tool");
                 const targetNodes = isSingleTool ? [node] : toolNodes;
 
                 targetNodes.forEach((tNode) => {
@@ -973,13 +973,13 @@ export const EUIXWebMCPPlugin = {
             if (!this.webmcp) return null;
 
             const toolNodes = Array.from(xmlNode.children || []).filter(
-                (c) => c.tagName && (c.tagName.toLowerCase() === "tool" || c.tagName.toLowerCase() === "webmcp_tool"),
+                (c) => c.tagName && (getTagName(c) === "tool" || getTagName(c) === "webmcp_tool"),
             );
 
             // If xmlNode itself is a single <webmcp_tool> or <tool>
             const isSingleTool =
                 xmlNode.tagName &&
-                (xmlNode.tagName.toLowerCase() === "webmcp_tool" || xmlNode.tagName.toLowerCase() === "tool");
+                (getTagName(xmlNode) === "webmcp_tool" || getTagName(xmlNode) === "tool");
             const targetNodes = isSingleTool ? [xmlNode] : toolNodes;
 
             const registeredToolNames = [];
@@ -994,7 +994,7 @@ export const EUIXWebMCPPlugin = {
 
             // If inside a component instance, attach cleanup hook to context
             if (context._instanceId && registeredToolNames.length > 0) {
-                if (typeof this.onUnmount === "function") {
+                if (isFn(this.onUnmount)) {
                     this.onUnmount(() => {
                         registeredToolNames.forEach((name) => this.webmcp?.unregister(name));
                     });

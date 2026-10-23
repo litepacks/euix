@@ -4,7 +4,17 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { ACTION_DISPATCH_TABLE, genId, getNow, isFn, isStr, getAttr, isCycleError } from "../utils/constants.js";
+import {
+    ACTION_DISPATCH_TABLE,
+    genId,
+    getNow,
+    isFn,
+    isStr,
+    getAttr,
+    isCycleError,
+    getTagName,
+    isElem,
+} from "../utils/constants.js";
 
 export function _setScopedState(engine, rawPath, path, nextValue, context = {}) {
     if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
@@ -114,7 +124,7 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
     }
 
     const tryActionNodes = engine.getChildren(tryNode).filter((c) => {
-        const tag = c.tagName ? c.tagName.toLowerCase() : "";
+        const tag = c.tagName ? getTagName(c) : "";
         return tag !== "catch" && tag !== "finally";
     });
 
@@ -280,7 +290,7 @@ export function _handleActionInternal(engine, actionNode, context = {}) {
 
 export function _executeActionInternalBody(engine, actionNode, context = {}) {
     let actionAttr = actionNode.getAttribute ? actionNode.getAttribute("action") : null;
-    const tagNameLower = actionNode.tagName ? actionNode.tagName.toLowerCase() : "";
+    const tagNameLower = actionNode.tagName ? getTagName(actionNode) : "";
 
     // 0. Auto-detect shorthand action attributes if action is not explicitly declared
     if (!actionAttr && actionNode.hasAttribute) {
@@ -330,7 +340,7 @@ export function _executeActionInternalBody(engine, actionNode, context = {}) {
             let lastResult;
             for (let i = 0; i < acLen; i++) {
                 const step = actionChildren[i];
-                if (step.nodeType === 1 && step.tagName.toLowerCase() !== "else") {
+                if (isElem(step) && getTagName(step) !== "else") {
                     lastResult = _handleActionInternal(engine, step, context);
                 }
             }
@@ -537,7 +547,7 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
             const ncLen = nChildren ? nChildren.length : 0;
             for (let cIdx = 0; cIdx < ncLen; cIdx++) {
                 const c = nChildren[cIdx];
-                if (c.tagName && c.tagName.toLowerCase() !== "confirm") {
+                if (c.tagName && getTagName(c) !== "confirm") {
                     childActions.push(c);
                 }
             }
@@ -710,13 +720,13 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
     for (let i = 0; i < chLen; i++) {
         const child = rawChildren[i];
         if (child.nodeType !== 1) continue;
-        const tagName = child.tagName.toLowerCase();
+        const tagName = getTagName(child);
         let eventType = null;
 
         if (tagName === "on_click") eventType = "click";
         else if (tagName === "on_change") eventType = "change";
         else if (tagName === "on_submit")
-            eventType = el.tagName && el.tagName.toLowerCase() === "button" ? "click" : "submit";
+            eventType = el.tagName && getTagName(el) === "button" ? "click" : "submit";
         else if (tagName === "on_keyup") eventType = "keyup";
         else if (tagName === "on_keydown") eventType = "keydown";
         else if (tagName === "on_mouseenter") eventType = "mouseenter";
@@ -788,7 +798,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
             }
 
             if (eventType && actionDirective) {
-                if (eventType === "submit" && el.tagName && el.tagName.toLowerCase() === "button") {
+                if (eventType === "submit" && el.tagName && getTagName(el) === "button") {
                     eventType = "click";
                 }
                 let list = eventMap.get(eventType);
