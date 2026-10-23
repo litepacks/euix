@@ -132,3 +132,31 @@ container.appendChild(fragment);
 1. **Benchmark Before Optimizing**: Establish a verifiable baseline before changing any code. Never optimize based on assumptions.
 2. **Isolate JIT Warmup**: Run test loops 1,000 times before measuring to allow the JIT compiler to optimize.
 3. **Verify Memory Profile**: Run test routines 10,000+ times and observe heap memory (`process.memoryUsage().heapUsed` or Chrome DevTools Memory Heap Snapshot) to ensure memory returns to baseline without steady linear growth.
+
+---
+
+## 🏝️ 5. Declarative Island & DOM Engine Hygiene
+
+When building or maintaining island-based reactive frameworks (like EUIX):
+
+### 5.1 Symmetric Island Lifecycle Teardown (`window.euix.unmount`)
+Every mounted island must release its internal event bindings, timer intervals, and engine listeners when removed:
+```ts
+// Cleanly tear down the island instance
+window.euix.unmount(element);
+```
+Ensure `engine.destroy()` cleans up:
+- Detached node references
+- Interval/timer handles (`<on_interval>`)
+- Window / document event listeners attached via `<keyboard>` or `<window>`
+- SWR API subscriber registrations
+
+### 5.2 Single Document Observer Guarantee
+Never instantiate separate `MutationObserver` instances per component or per scan call:
+- Keep a single shared `MutationObserver` instance for the document.
+- Debounce batch processing with `requestAnimationFrame` or `queueMicrotask` to handle bulk DOM insertions in a single scan cycle.
+
+### 5.3 In-Place Prop Updates (`engine.setProps()`)
+Avoid tearing down and re-creating the DOM tree when updating component properties:
+- Use fine-grained reactive updates (`engine.setProps({ count: 10 })`) which mutate only the exact bound text nodes and attributes without destroying existing DOM nodes.
+

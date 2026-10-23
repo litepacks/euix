@@ -25,12 +25,14 @@
       <param name="id" required="true" />
 
       <step action="RUN_SCRIPT">
+        <![CDATA[
         const tasks = $data.tasks || [];
-        const task = tasks.find(t => String(t.id) === String($evt.id || $data._tempId || '{args.id}'));
+        const task = tasks.find(t => String(t.id) === String(($evt && $evt.id) || '{args.id}'));
         if (task) {
           task.completed = !task.completed;
           $engine.setState('tasks', [...tasks]);
         }
+        ]]>
       </step>
 
       <return>{"success": true, "taskId": "{args.id}"}</return>

@@ -127,3 +127,42 @@ When modifying existing codebases:
 2. **Minimal Blast Radius**: Solve the exact problem without unnecessary refactoring of adjacent stable code.
 3. **Adhere to Codebase Idioms**: Follow the existing style, naming conventions, and file structures rather than introducing new paradigms unprompted.
 4. **Static Verification**: Run project linters, typecheckers, and static validators before declaring completion.
+
+---
+
+## 🏝️ 5. Declarative Island & UI Engine Robustness
+
+When implementing auto-mount systems, declarative islands (`data-euix`), or XML template loaders:
+
+### 5.1 Remote Fetch & SPA Fallback Protection
+When loading remote template files via `fetch(url)` in client-side routing environments, a missing file frequently responds with `200 OK` containing an HTML fallback (`<!DOCTYPE html>...`):
+```ts
+// ✅ Always verify that fetched component source is not an HTML 404 fallback
+const text = await res.text();
+if (text.trim().startsWith('<!DOCTYPE') || !text.includes('<uid_spec>')) {
+  throw new Error(`Failed to load XML component from ${url}: Received HTML document instead of <uid_spec>`);
+}
+```
+
+### 5.2 Double-Mount Guards
+DOM elements can be processed multiple times by auto-scanners and `MutationObserver`. Guard against double initialization:
+```ts
+// ✅ Guard mount against duplicate processing
+if (el._euixMounted) return el._euixInstance;
+el._euixMounted = true;
+```
+
+### 5.3 Dynamic Getters vs Stale Snapshots
+When exposing internal instance maps or registry items on global namespaces (`window.euix.instances`), avoid caching a static frozen snapshot:
+```ts
+// ❌ Stale snapshot: does not reflect newly mounted islands
+export const euix = { instances: Array.from(_mountedMap.values()) };
+
+// ✅ Dynamic getter: always returns up-to-date mounted instances
+export const euix = {
+  get instances() {
+    return Array.from(_mountedMap.values());
+  }
+};
+```
+

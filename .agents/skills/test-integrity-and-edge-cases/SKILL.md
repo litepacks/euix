@@ -130,3 +130,35 @@ When fixing a reported bug or edge case, follow this strict four-step protocol:
      expect(calculateDiscount(100, 0)).toBe(100);
    });
    ```
+
+---
+
+## 🏝️ 5. Declarative UI & Island Architecture Testing Protocols
+
+When testing declarative reactive UI engines (such as EUIX) and island-based DOM architectures:
+
+### 5.1 Strict Mode Locator Disambiguation
+When multiple islands or components exist on the same page, tests must never use overly broad selectors that trigger Playwright strict-mode violations:
+```js
+// ❌ Flaky / Fails with strict-mode violation when multiple islands render <h3>
+await expect(page.locator('div[data-euix="/counter.xml"] h3')).toHaveText('Counter');
+
+// ✅ Robust: Scope to a specific instance or container
+const firstIsland = page.locator('div[data-euix="/counter.xml"]').first();
+await expect(firstIsland.locator('h3').first()).toHaveText('Live Counter #1');
+```
+
+### 5.2 Cross-Platform Keyboard Shortcuts
+Mac keyboards mutate `event.key` when Alt/Option is pressed (e.g. `Alt+Shift+X` outputs `˛` on macOS or `≈` on Turkish Q).
+- **Rule**: Always assert against physical hardware code (`e.code === 'KeyX'`) rather than layout-dependent character values (`e.key === 'x'`).
+
+### 5.3 Static Validation Before Browser Execution
+Always run static semantic validation before spending execution budget on heavy browser tests:
+```bash
+# 1. Static validation (zero-DOM, instant)
+node packages/core/bin/euix.js doctor apps/playground
+
+# 2. End-to-End browser verification
+npx playwright test apps/playground/e2e/declarative_automount.spec.js
+```
+
