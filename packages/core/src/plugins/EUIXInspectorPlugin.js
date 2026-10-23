@@ -166,7 +166,11 @@ export class EUIXInspector {
 
         // 3. Keyboard Shortcut Toggle (Alt+Shift+X or Alt+Shift+I or Escape)
         const onKeyDown = (e) => {
-            const isAltShiftX = e.altKey && e.shiftKey && (e.key.toLowerCase() === "x" || e.key.toLowerCase() === "i");
+            const keyLower = (e.key || "").toLowerCase();
+            const isAltShiftX =
+                (e.altKey || e.metaKey) &&
+                e.shiftKey &&
+                (keyLower === "x" || keyLower === "i" || e.code === "KeyX" || e.code === "KeyI");
             if (isAltShiftX) {
                 e.preventDefault();
                 this.toggle();

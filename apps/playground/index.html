@@ -287,6 +287,8 @@
             // Mount Single XML Spec Instance
             const specEl = document.querySelector('script[type="application/euix"]');
             if (specEl) {
+                if (specEl.dataset?.euixAutoInitialized) return;
+                if (specEl.dataset) specEl.dataset.euixAutoInitialized = "true";
                 const target = specEl.getAttribute('target') || '#app';
                 const container = document.querySelector(target);
                 if (container && !container._euixMounted) {

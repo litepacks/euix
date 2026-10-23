@@ -512,6 +512,8 @@ export function autoInit(EngineClass, options = {}) {
         if (script.dataset?.euixAutoInitialized) return;
         if (script.dataset) script.dataset.euixAutoInitialized = "true";
         const targetSelector = script.getAttribute("target") || script.dataset?.target || "#app";
+        const targetEl = typeof targetSelector === "string" ? document.querySelector(targetSelector) : targetSelector;
+        if (targetEl && (targetEl._euixMounted || targetEl.__euixEngine)) return;
         const xml = script.tagName.toLowerCase() === "euix-app" ? script.innerHTML.trim() : script.textContent.trim();
         if (xml) {
             const engine = EngineClass.mount(xml, targetSelector);
