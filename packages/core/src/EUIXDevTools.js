@@ -1,3 +1,4 @@
+import { safeStringify } from "./core/utils/constants.js";
 /**
  * src/EUIXDevTools.js
  * Comprehensive DevTools & Runtime Inspector Suite for EUIX Engine.
@@ -144,7 +145,7 @@ export class EUIXDevTools extends EUIXInspector {
         const time = new Date().toLocaleTimeString();
         let info = "";
         if (type === "setState") {
-            info = `${details.path} = ${typeof details.value === "object" ? JSON.stringify(details.value) : details.value}`;
+            info = `${details.path} = ${typeof details.value === "object" ? safeStringify(details.value) : details.value}`;
         } else if (type === "MUTATE_STATE") {
             info = `${details.operation || "MUTATE"} on ${details.path || "state"}`;
         } else {

@@ -15,6 +15,10 @@ import {
     createTimeoutSignal,
     safeFetchWithTimeout,
     safeParse,
+    safeStringify,
+    toNum,
+    toInt,
+    isPlainObj,
 } from "./core/EUIXEngineCore.js";
 import { announce, createFocusTrap, EUIXA11yPlugin } from "./plugins/EUIXA11yPlugin.js";
 import { EUIXAnimationPlugin, EUIXAnimationPresets, EUIXAnimationRegistry } from "./plugins/EUIXAnimationPlugin.js";
@@ -208,6 +212,10 @@ export {
     createTimeoutSignal,
     safeFetchWithTimeout,
     safeParse,
+    safeStringify,
+    toNum,
+    toInt,
+    isPlainObj,
 };
 
 export default EUIXEngine;

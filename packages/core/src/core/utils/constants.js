@@ -23,11 +23,15 @@ export const HAS_WINDOW = typeof window !== "undefined";
 export const HAS_DOCUMENT = typeof document !== "undefined";
 export const IS_BROWSER = typeof window !== "undefined" && typeof document !== "undefined";
 
+export const isPlainObj = (v) =>
+    v !== null && typeof v === "object" && !Array.isArray(v) && Object.prototype.toString.call(v) === "[object Object]";
+
 export function safeStringify(val, space) {
     if (val === undefined) return "";
     if (val === null) return "null";
     if (typeof val === "string") return val;
     if (typeof val === "number" || typeof val === "boolean") return String(val);
+    if (typeof val === "bigint" || typeof val === "symbol") return val.toString();
     try {
         return JSON.stringify(val, null, space);
     } catch (_) {
@@ -36,6 +40,8 @@ export function safeStringify(val, space) {
             return JSON.stringify(
                 val,
                 (key, value) => {
+                    if (typeof value === "bigint" || typeof value === "symbol") return value.toString();
+                    if (typeof value === "function") return "[Function]";
                     if (typeof value === "object" && value !== null) {
                         if (value.nodeType !== undefined) return "[DOM Node]";
                         if (seen.has(value)) return "[Circular]";
@@ -59,57 +65,100 @@ export function safeParse(str, fallback = null) {
         return fallback;
     }
 }
-export const trimStr = (s) => (typeof s === "string" ? s.trim() : s?.textContent ? s.textContent.trim() : "");
-export const splitPath = (p) =>
-    p
-        ? String(p)
-              .replace(/\[(\w+)\]/g, ".$1")
-              .split(".")
-              .filter(Boolean)
-        : EMPTY_ARR;
-export const getRootKey = (p) => String(p || "").split(/[.[]/)[0];
-export const getTagName = (n) => (n?.tagName ? n.tagName.toLowerCase() : "");
+export const trimStr = (s) => {
+    if (s === null || s === undefined) return "";
+    if (typeof s === "string") return s.trim();
+    if (typeof s === "number" || typeof s === "boolean") return String(s).trim();
+    if (typeof s?.textContent === "string") return s.textContent.trim();
+    return "";
+};
+export const splitPath = (p) => {
+    if (!p) return EMPTY_ARR;
+    if (Array.isArray(p)) return p.map(String).filter(Boolean);
+    return String(p)
+        .replace(/\[(\w+)\]/g, ".$1")
+        .split(".")
+        .filter(Boolean);
+};
+export const getRootKey = (p) => {
+    if (Array.isArray(p)) return p.length > 0 ? String(p[0]) : "";
+    return String(p || "").split(/[.[]/)[0];
+};
+export const getTagName = (n) => {
+    if (!n) return "";
+    if (typeof n.tagName === "string") return n.tagName.toLowerCase();
+    if (typeof n.nodeName === "string") return n.nodeName.toLowerCase();
+    return "";
+};
 export const genId = (p = "id_") => p + Math.random().toString(36).substring(2, 9);
 export const getNow = () =>
     typeof performance !== "undefined" && isFn(performance.now) ? performance.now() : Date.now();
 export const getAttr = (n, ...names) => {
-    if (!n?.getAttribute) return "";
-    for (const name of names) {
-        const val = n.getAttribute(name);
-        if (val !== null && val !== undefined && val !== "") return val;
+    if (!n || typeof n.getAttribute !== "function") return "";
+    try {
+        for (let i = 0; i < names.length; i++) {
+            const val = n.getAttribute(names[i]);
+            if (val !== null && val !== undefined && val !== "") return val;
+        }
+    } catch (_) {
+        return "";
     }
     return "";
 };
-export const getChildNodes = (n) => (n?.childNodes && n.childNodes.length > 0 ? Array.from(n.childNodes) : EMPTY_ARR);
-export const getChildrenList = (n) => (n?.children && n.children.length > 0 ? Array.from(n.children) : EMPTY_ARR);
+export const getChildNodes = (n) => {
+    try {
+        return n?.childNodes && n.childNodes.length > 0 ? Array.from(n.childNodes) : EMPTY_ARR;
+    } catch (_) {
+        return EMPTY_ARR;
+    }
+};
+export const getChildrenList = (n) => {
+    try {
+        return n?.children && n.children.length > 0 ? Array.from(n.children) : EMPTY_ARR;
+    } catch (_) {
+        return EMPTY_ARR;
+    }
+};
 export const queryAll = (n, selector) => {
-    if (!n) return EMPTY_ARR;
-    if (isFn(n.querySelectorAll)) {
-        const res = n.querySelectorAll(selector);
-        return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
-    }
-    if (isFn(n.getElementsByTagName) && !selector.includes(" ") && !selector.includes(">") && !selector.includes(",")) {
-        const res = n.getElementsByTagName(selector);
-        return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
-    }
+    if (!n || !selector) return EMPTY_ARR;
+    try {
+        if (isFn(n.querySelectorAll)) {
+            const res = n.querySelectorAll(selector);
+            return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
+        }
+    } catch (_) {}
+    try {
+        if (isFn(n.getElementsByTagName) && !selector.includes(" ") && !selector.includes(">") && !selector.includes(",")) {
+            const res = n.getElementsByTagName(selector);
+            return res && res.length > 0 ? Array.from(res) : EMPTY_ARR;
+        }
+    } catch (_) {}
     return EMPTY_ARR;
 };
 export const isScoped = (n) => {
-    if (!n?.getAttribute) return false;
-    const s = n.getAttribute("scope");
-    return (
-        n.getAttribute("isolated") === "true" ||
-        n.getAttribute("scoped") === "true" ||
-        s === "local" ||
-        s === "isolated" ||
-        s === "scoped"
-    );
+    if (!n || typeof n.getAttribute !== "function") return false;
+    try {
+        const s = getAttr(n, "scope");
+        return (
+            getAttr(n, "isolated") === "true" ||
+            getAttr(n, "scoped") === "true" ||
+            s === "local" ||
+            s === "isolated" ||
+            s === "scoped"
+        );
+    } catch (_) {
+        return false;
+    }
 };
 export const toNum = (val, defaultVal = 0) => {
+    if (val === null || val === undefined || val === "" || typeof val === "symbol") return defaultVal;
+    if (typeof val === "string" && val.trim() === "") return defaultVal;
     const n = Number(val);
     return Number.isNaN(n) ? defaultVal : n;
 };
 export const toInt = (val, defaultVal = 0) => {
+    if (val === null || val === undefined || val === "" || typeof val === "symbol") return defaultVal;
+    if (typeof val === "string" && val.trim() === "") return defaultVal;
     const n = parseInt(val, 10);
     return Number.isNaN(n) ? defaultVal : n;
 };
@@ -138,7 +187,13 @@ export const getForEachItemHash = (item) => {
     for (const k in item) {
         if (k !== "_index" && k !== "index") {
             const v = item[k];
-            h += `${k}:${v !== null && typeof v === "object" ? (v.id ?? v.key ?? "") : v};`;
+            const safeVal =
+                typeof v === "symbol"
+                    ? v.toString()
+                    : v !== null && typeof v === "object"
+                      ? (v.id ?? v.key ?? "")
+                      : v;
+            h += `${k}:${safeVal};`;
         }
     }
     return h;

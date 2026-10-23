@@ -1,4 +1,4 @@
-import { safeParse } from "../../core/utils/constants.js";
+import { safeParse, safeStringify } from "../../core/utils/constants.js";
 /**
  * src/plugins/inspector/panel.js
  * Interactive DevTools Drawer & Inspector Panel UI for EUIX Inspector.
@@ -307,21 +307,21 @@ export class InspectorPanel {
                                 ${Object.entries(diff.changed || {})
                                     .map(
                                         ([k, v]) => `
-                                    <div style="color:#facc15;"><span style="color:#64748b;">~</span> <strong>${this.escape(k)}</strong>: <span style="color:#f87171;">${this.escape(JSON.stringify(v.from))}</span> &rarr; <span style="color:#4ade80;">${this.escape(JSON.stringify(v.to))}</span></div>
+                                    <div style="color:#facc15;"><span style="color:#64748b;">~</span> <strong>${this.escape(k)}</strong>: <span style="color:#f87171;">${this.escape(safeStringify(v.from))}</span> &rarr; <span style="color:#4ade80;">${this.escape(safeStringify(v.to))}</span></div>
                                 `,
                                     )
                                     .join("")}
                                 ${Object.entries(diff.added || {})
                                     .map(
                                         ([k, v]) => `
-                                    <div style="color:#4ade80;"><span style="color:#22c55e;">+</span> <strong>${this.escape(k)}</strong>: ${this.escape(JSON.stringify(v))}</div>
+                                    <div style="color:#4ade80;"><span style="color:#22c55e;">+</span> <strong>${this.escape(k)}</strong>: ${this.escape(safeStringify(v))}</div>
                                 `,
                                     )
                                     .join("")}
                                 ${Object.entries(diff.removed || {})
                                     .map(
                                         ([k, v]) => `
-                                    <div style="color:#f87171;"><span style="color:#ef4444;">-</span> <strong>${this.escape(k)}</strong>: ${this.escape(JSON.stringify(v))}</div>
+                                    <div style="color:#f87171;"><span style="color:#ef4444;">-</span> <strong>${this.escape(k)}</strong>: ${this.escape(safeStringify(v))}</div>
                                 `,
                                     )
                                     .join("")}
@@ -390,7 +390,7 @@ export class InspectorPanel {
                         ? `
                     <div>
                         <div style="color:#c084fc;font-weight:bold;margin-bottom:4px;">📦 Props</div>
-                        <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(JSON.stringify(meta.props, null, 2))}</pre>
+                        <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(safeStringify(meta.props, 2))}</pre>
                     </div>
                 `
                         : ""
@@ -401,7 +401,7 @@ export class InspectorPanel {
                         ? `
                     <div>
                         <div style="color:#38bdf8;font-weight:bold;margin-bottom:4px;">🔒 Local State</div>
-                        <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(JSON.stringify(meta.localState, null, 2))}</pre>
+                        <pre style="margin:0;background:#1e293b;padding:6px;border-radius:6px;color:#facc15;font-size:10px;overflow-x:auto;">${this.escape(safeStringify(meta.localState, 2))}</pre>
                     </div>
                 `
                         : ""
@@ -595,9 +595,9 @@ export class InspectorPanel {
                                                 <button class="euix-state-edit-json-toggle" data-key="${this.escape(k)}" style="background:#334155;border:1px solid rgba(255,255,255,0.1);color:#c084fc;padding:2px 6px;border-radius:4px;font-size:9px;font-weight:bold;cursor:pointer;">✏️ Edit JSON</button>
                                                 ${isArr ? `<button class="euix-state-array-clear" data-key="${this.escape(k)}" style="background:#334155;border:none;color:#f87171;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Clear Array</button>` : ""}
                                             </div>
-                                            <div class="euix-state-json-view" style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto;">${this.escape(JSON.stringify(val, null, 2))}</div>
+                                            <div class="euix-state-json-view" style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto;">${this.escape(safeStringify(val, 2))}</div>
                                             <div class="euix-state-json-edit-box" style="display:none;flex-direction:column;gap:4px;margin-top:4px;">
-                                                <textarea class="euix-state-json-textarea" data-key="${this.escape(k)}" style="width:100%;height:90px;background:#0f172a;border:1px solid #c084fc;color:#facc15;padding:6px;border-radius:4px;font-size:10px;font-family:monospace;box-sizing:border-box;">${this.escape(JSON.stringify(val, null, 2))}</textarea>
+                                                <textarea class="euix-state-json-textarea" data-key="${this.escape(k)}" style="width:100%;height:90px;background:#0f172a;border:1px solid #c084fc;color:#facc15;padding:6px;border-radius:4px;font-size:10px;font-family:monospace;box-sizing:border-box;">${this.escape(safeStringify(val, 2))}</textarea>
                                                 <div style="display:flex;gap:4px;justify-content:flex-end;">
                                                     <button class="euix-state-json-cancel" style="background:#334155;color:#94a3b8;border:none;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Cancel</button>
                                                     <button class="euix-state-json-save" data-key="${this.escape(k)}" style="background:#22c55e;color:#052e16;border:none;padding:2px 8px;border-radius:4px;font-size:9px;font-weight:bold;cursor:pointer;">💾 Save JSON</button>
@@ -766,14 +766,14 @@ export class InspectorPanel {
                                         <div style="display:flex;gap:4px;align-items:center;">
                                             ${t.annotations?.readOnlyHint ? `<span style="background:#0284c7;color:#fff;padding:1px 4px;border-radius:3px;font-size:9px;">readOnly</span>` : ""}
                                             ${t.exposedTo ? `<span style="background:#059669;color:#fff;padding:1px 4px;border-radius:3px;font-size:9px;">exposedTo</span>` : ""}
-                                            <button class="euix-copy-btn" data-copy="${this.escape(JSON.stringify(t.inputSchema || {}, null, 2))}" style="background:#334155;border:none;color:#94a3b8;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Schema</button>
+                                            <button class="euix-copy-btn" data-copy="${this.escape(safeStringify(t.inputSchema || {}, 2))}" style="background:#334155;border:none;color:#94a3b8;padding:2px 6px;border-radius:4px;font-size:9px;cursor:pointer;">Schema</button>
                                         </div>
                                     </div>
                                     ${t.description ? `<div style="color:#94a3b8;font-size:10px;">${this.escape(t.description)}</div>` : ""}
                                     <div style="margin-top:2px;">
                                         <details style="font-size:10px;color:#cbd5e1;">
                                             <summary style="cursor:pointer;color:#a5b4fc;font-weight:600;">View Schema</summary>
-                                            <pre style="margin:4px 0 0 0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:9px;overflow-x:auto;">${this.escape(JSON.stringify(t.inputSchema || {}, null, 2))}</pre>
+                                            <pre style="margin:4px 0 0 0;background:#0f172a;padding:6px;border-radius:4px;color:#facc15;font-size:9px;overflow-x:auto;">${this.escape(safeStringify(t.inputSchema || {}, 2))}</pre>
                                         </details>
                                     </div>
                                 </div>
@@ -799,7 +799,7 @@ export class InspectorPanel {
                             </div>
                         `
                                 : `
-                            <pre style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#34d399;font-size:9px;overflow-x:auto;">${this.escape(JSON.stringify(state.lastResult, null, 2))}</pre>
+                            <pre style="margin:0;background:#0f172a;padding:6px;border-radius:4px;color:#34d399;font-size:9px;overflow-x:auto;">${this.escape(safeStringify(state.lastResult, 2))}</pre>
                         `
                         }
                     </div>

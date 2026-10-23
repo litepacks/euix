@@ -130,7 +130,20 @@ import {
     toggleState,
 } from "./state/ReactiveStore.js";
 import { onStateChange, triggerStateWatchers, watch } from "./state/Watchers.js";
-import { isFn, isStr, registerActionDispatch, registerMetadataTag, DEFAULT_TIMEOUTS, createTimeoutSignal, safeFetchWithTimeout, safeParse } from "./utils/constants.js";
+import {
+    isFn,
+    isStr,
+    registerActionDispatch,
+    registerMetadataTag,
+    DEFAULT_TIMEOUTS,
+    createTimeoutSignal,
+    safeFetchWithTimeout,
+    safeParse,
+    safeStringify,
+    toNum,
+    toInt,
+    isPlainObj,
+} from "./utils/constants.js";
 import { getChild, getChildren, reportError } from "./utils/domHelpers.js";
 
 class EUIXEngineCore {
@@ -930,6 +943,10 @@ EUIXEngineCore.DEFAULT_TIMEOUTS = DEFAULT_TIMEOUTS;
 EUIXEngineCore.createTimeoutSignal = createTimeoutSignal;
 EUIXEngineCore.safeFetchWithTimeout = safeFetchWithTimeout;
 EUIXEngineCore.safeParse = safeParse;
+EUIXEngineCore.safeStringify = safeStringify;
+EUIXEngineCore.toNum = toNum;
+EUIXEngineCore.toInt = toInt;
+EUIXEngineCore.isPlainObj = isPlainObj;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
@@ -938,6 +955,10 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXEngineCore = EUIXEngineCore;
     window.DEFAULT_TIMEOUTS = DEFAULT_TIMEOUTS;
     window.safeParse = safeParse;
+    window.safeStringify = safeStringify;
+    window.toNum = toNum;
+    window.toInt = toInt;
+    window.isPlainObj = isPlainObj;
     const scheduleCoreInit = () => {
         queueMicrotask(() => {
             if (window.EUIXEngine && isFn(window.EUIXEngine.autoInit)) {
@@ -971,5 +992,9 @@ export {
     createTimeoutSignal,
     safeFetchWithTimeout,
     safeParse,
+    safeStringify,
+    toNum,
+    toInt,
+    isPlainObj,
 };
 export default EUIXEngineCore;

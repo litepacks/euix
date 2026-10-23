@@ -3,7 +3,7 @@
  * Playwright E2E Test Helper Suite for EUIX Engine.
  */
 
-import { DEFAULT_TIMEOUTS } from "../../core/utils/constants.js";
+import { DEFAULT_TIMEOUTS, safeStringify } from "../../core/utils/constants.js";
 
 /**
  * Creates a chainable EUIX Playwright helper wrapper around a Playwright Page or Locator.
@@ -118,7 +118,7 @@ export class EuixPlaywrightWrapper {
             if (options.strict) {
                 const status = await page.evaluate(() => window.__EUIX_DEVTOOLS__).catch(() => null);
                 throw new Error(
-                    `[playwright:waitForIdle] Timed out after ${timeout}ms waiting for EUIX idle state. DevTools Status: ${JSON.stringify(status)}`,
+                    `[playwright:waitForIdle] Timed out after ${timeout}ms waiting for EUIX idle state. DevTools Status: ${safeStringify(status)}`,
                 );
             }
         }
@@ -184,13 +184,13 @@ Instance ID: ${snapshot?.componentId || "N/A"}
 Route: ${snapshot?.route || "N/A"}
 
 Props:
-${JSON.stringify(snapshot?.props || {}, null, 2)}
+${safeStringify(snapshot?.props || {}, 2)}
 
 Local State:
-${JSON.stringify(snapshot?.localState || {}, null, 2)}
+${safeStringify(snapshot?.localState || {}, 2)}
 
 Global State:
-${JSON.stringify(snapshot?.globalState || {}, null, 2)}
+${safeStringify(snapshot?.globalState || {}, 2)}
 
 Bindings:
 ${(snapshot?.bindings || []).join(", ") || "None"}

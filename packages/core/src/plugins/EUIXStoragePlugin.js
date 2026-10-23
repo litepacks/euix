@@ -1,4 +1,4 @@
-import { isFn, safeParse } from "../core/utils/constants.js";
+import { isFn, safeParse, safeStringify } from "../core/utils/constants.js";
 /**
  * EUIXStoragePlugin.js
  * State Persistence & Storage Plugin for EUIX Engine.
@@ -93,7 +93,12 @@ export const EUIXStoragePlugin = {
             try {
                 const store = getStore(config.storage);
                 if (!store) return;
-                const valToStore = JSON.stringify(value !== undefined ? value : "");
+                let valToStore;
+                try {
+                    valToStore = JSON.stringify(value !== undefined ? value : "");
+                } catch (_) {
+                    valToStore = safeStringify(value !== undefined ? value : "");
+                }
                 store.setItem(config.storageKey, valToStore);
             } catch (err) {
                 this.reportError(err, `Error persisting state key "${key}"`);

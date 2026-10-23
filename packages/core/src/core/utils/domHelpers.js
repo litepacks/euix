@@ -3,7 +3,7 @@
  * DOM node selection, query, and reporting utilities for EUIX Engine.
  */
 
-import { isFn } from "./constants.js";
+import { isFn, getTagName } from "./constants.js";
 
 export function getChild(node, tagName) {
     if (!node || !tagName) return null;
@@ -13,7 +13,7 @@ export function getChild(node, tagName) {
     const len = children.length;
     for (let i = 0; i < len; i++) {
         const c = children[i];
-        if (c && (c.nodeType === 1 || c.nodeType === undefined) && (c.tagName ? c.tagName.toLowerCase() : "") === tag) {
+        if (c && (c.nodeType === 1 || c.nodeType === undefined) && getTagName(c) === tag) {
             return c;
         }
     }
@@ -31,7 +31,7 @@ export function getChildren(node, tagName) {
     for (let i = 0; i < len; i++) {
         const c = children[i];
         if (c && (c.nodeType === 1 || c.nodeType === undefined)) {
-            if (!tag || (c.tagName ? c.tagName.toLowerCase() : "") === tag) {
+            if (!tag || getTagName(c) === tag) {
                 result.push(c);
             }
         }
