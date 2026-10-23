@@ -50,9 +50,16 @@ export function applyArrayMutation(current, operation, payload = {}) {
             current.length = w;
         } else {
             let w = 0;
+            const payloadId =
+                payload && typeof payload === "object" && payload.id !== undefined ? payload.id : payload;
             for (let r = 0; r < current.length; r++) {
                 const item = current[r];
-                if (item !== payload) {
+                const matchesItem = item === payload;
+                const matchesId =
+                    item &&
+                    typeof item === "object" &&
+                    (item.id === payloadId || (item.id !== undefined && String(item.id) === String(payloadId)));
+                if (!matchesItem && !matchesId) {
                     current[w++] = item;
                 }
             }

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "state": {
+    "count": 0
+  },
+  "view": {
+    "tag": "input",
+    "props": {
+      "value": {
+        "$bind": "cunt"
+      }
+    }
+  }
+}

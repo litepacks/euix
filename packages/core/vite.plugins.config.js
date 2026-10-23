@@ -22,6 +22,7 @@ export default defineConfig({
         'plugins/EUIXChartPlugin': resolve(__dirname, 'src/plugins/EUIXChartPlugin.js'),
         'plugins/EUIXDatePlugin': resolve(__dirname, 'src/plugins/EUIXDatePlugin.js'),
         'plugins/EUIXInspectorPlugin': resolve(__dirname, 'src/plugins/EUIXInspectorPlugin.js'),
+        'plugins/EUIXProfilerPlugin': resolve(__dirname, 'src/plugins/EUIXProfilerPlugin.js'),
         'plugins/EUIXPlaywright': resolve(__dirname, 'src/plugins/inspector/playwright.js'),
         'plugins/EUIXWebMCPPlugin': resolve(__dirname, 'src/plugins/EUIXWebMCPPlugin.js'),
         'plugins/EUIXValidationPlugin': resolve(__dirname, 'src/plugins/EUIXValidationPlugin.js'),

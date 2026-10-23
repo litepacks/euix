@@ -6,6 +6,7 @@
 import { EUIXStructuredError } from "../parser/errors.js";
 import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath } from "../utils/constants.js";
 import { applyArrayMutation } from "./Mutations.js";
+import { resolveScopedValue } from "../binding/BindingResolver.js";
 
 export function getState(engine, key) {
     if (!key || !engine._rawState) return undefined;
@@ -70,122 +71,21 @@ export function resolveValueFromPath(engine, path, context = {}) {
         const key = path.replace(/^(\$global|global)\.(data\.)?/, "");
         return engine.getState(key);
     }
-    if (path.startsWith("$route.") || path.startsWith("$router.") || path.startsWith("$fetcher.")) {
-        const scope = path.startsWith("$route") ? "$route" : path.startsWith("$router") ? "$router" : "$fetcher";
-        const prop = path.slice(scope.length + 1);
-        const rootState = engine.getState(scope) || context?.[scope];
-        if (!rootState) return undefined;
-        if (!prop) return rootState;
-        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), rootState);
-    }
-    if (path === "$route" || path === "$router" || path === "$fetcher") {
-        return engine.getState(path) || context?.[path];
-    }
-    if (path.startsWith("$date.") || path.startsWith("date.")) {
-        const helper =
-            engine.$date ||
-            engine.date ||
-            (isFn(engine.getState) ? engine.getState("$date") : null) ||
-            (isFn(engine.getState) ? engine.getState("date") : null);
-        const prop = path.replace(/^(\$date|date)\./, "");
-        if (!helper) return undefined;
-        if (!prop) return helper;
-        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
-    }
-    if (path === "$date" || path === "date") {
-        return (
-            engine.$date ||
-            engine.date ||
-            (isFn(engine.getState) ? engine.getState("$date") : null) ||
-            (isFn(engine.getState) ? engine.getState("date") : null)
-        );
-    }
-    if (path.startsWith("$device.") || path.startsWith("device.")) {
-        let dev =
-            engine.$device ||
-            engine.device ||
-            (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
-            (context && (context.$device || context.device));
-        if (!dev && typeof navigator !== "undefined") {
-            const nav = navigator;
-            dev = {
-                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
-                hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
-                cores: Number(nav.hardwareConcurrency) || 8,
-                deviceMemory: Number(nav.deviceMemory) || 8,
-                memory: Number(nav.deviceMemory) || 8,
-                batteryLevel: 1,
-                batteryCharging: false,
-                prefersDark: true,
-                reducedMotion: false,
-            };
-        }
-        const prop = path.replace(/^(\$device|device)\./, "");
-        if (!dev) return undefined;
-        if (!prop) return dev;
-        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), dev);
-    }
-    if (path === "$device" || path === "device") {
-        return (
-            engine.$device ||
-            engine.device ||
-            (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
-            (context && (context.$device || context.device))
-        );
-    }
-    if (path.startsWith("api.") || path.startsWith("$api.")) {
-        const clean = path.replace(/^(\$api|api)\./, "");
-        const parts = clean.split(".");
-        const endpointId = parts[0];
-        const prop = parts.slice(1).join(".");
-        const status = isFn(engine.getApiStatus) ? engine.getApiStatus(endpointId) : engine._apiStatus?.[endpointId];
-        if (!status) return undefined;
-        if (!prop) return status;
-        return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
-    }
-    if (path.startsWith("stream.") || path.startsWith("$stream.")) {
-        const clean = path.replace(/^(\$stream|stream)\./, "");
-        const parts = clean.split(".");
-        const streamId = parts[0];
-        const prop = parts.slice(1).join(".");
-        const status = isFn(engine.getStreamStatus)
-            ? engine.getStreamStatus(streamId)
-            : engine._streamStatus?.[streamId];
-        if (!status) return undefined;
-        if (!prop) return status;
-        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), status);
-    }
-    if (path.startsWith("errors.") || path.startsWith("$errors.")) {
-        const clean = path.replace(/^(\$errors|errors)\./, "");
-        if (engine._formErrors && engine._formErrors[clean] !== undefined) {
-            return engine._formErrors[clean];
-        }
-        const stateErrors = isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null;
-        if (stateErrors && typeof stateErrors === "object") {
-            return stateErrors[clean];
-        }
-        return isFn(engine.getState) ? engine.getState(path) : undefined;
-    }
-    if (path === "errors" || path === "$errors") {
-        return (
-            engine._formErrors ||
-            (isFn(engine.getState) ? engine.getState("errors") || engine.getState("$errors") : null) ||
-            {}
-        );
-    }
-    if (path === "$isValid" || path === "isValid") {
-        return engine._isFormValid !== undefined
-            ? engine._isFormValid
-            : isFn(engine.getState)
-              ? engine.getState("$isValid")
-              : true;
-    }
     if (path.startsWith("data.") || path.startsWith("state.")) {
         const cleanKey = path.replace(/^(data|state)\./, "");
         if (context._localState && context._localState[cleanKey] !== undefined) {
             return context._localState[cleanKey];
         }
         return engine.getState(cleanKey);
+    }
+
+    // Scoped / plugin / context namespaces delegation
+    const dotIdx = path.indexOf(".");
+    const scope = dotIdx !== -1 ? path.slice(0, dotIdx) : path;
+    const prop = dotIdx !== -1 ? path.slice(dotIdx + 1) : "";
+    const scopedVal = resolveScopedValue(engine, scope, prop, context);
+    if (scopedVal !== undefined) {
+        return scopedVal;
     }
     if (path.startsWith("constants.") || path.startsWith("const.")) {
         const key = path.replace(/^(constants|const)\./, "");
@@ -481,7 +381,13 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
         const item = list[i];
         const { el, kind, updateFn } = item;
 
-        if (engine._isMounted && el && el.isConnected === false) {
+        const rootContainer = engine.container || engine._container;
+        const isDead =
+            engine._isMounted &&
+            el &&
+            el.isConnected === false &&
+            (!rootContainer || !rootContainer.contains(el));
+        if (isDead) {
             hasDeadNodes = true;
             continue;
         }
@@ -567,7 +473,13 @@ export function syncBindings(engine, path, value, sourceEl = null, executedFns =
     }
 
     if (hasDeadNodes) {
-        const alive = list.filter((item) => item.el?.isConnected !== false);
+        const rootContainer = engine.container || engine._container;
+        const alive = list.filter((item) => {
+            if (!item.el) return false;
+            if (item.el.isConnected !== false) return true;
+            if (rootContainer && rootContainer.contains(item.el)) return true;
+            return false;
+        });
         if (alive.length === 0) {
             engine._bindings.delete(path);
         } else {

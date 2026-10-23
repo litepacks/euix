@@ -20,6 +20,7 @@ export const EUIXLeafletPlugin: EUIXPlugin;
 export const EUIXNavigatorPlugin: EUIXPlugin;
 export const EUIXRouterPlugin: EUIXPlugin;
 export const EUIXDatePlugin: EUIXPlugin;
+export const EUIXProfilerPlugin: EUIXPlugin;
 export const DATE_PRESETS: Record<string, Intl.DateTimeFormatOptions>;
 export class EUIXDateFormatter {
     parseDate(value: Date | string | number | null | undefined): Date | null;

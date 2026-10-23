@@ -14,6 +14,14 @@ const getStore = (type) => {
 export const EUIXStoragePlugin = {
     name: "storage",
     install(engineClass) {
+        if (engineClass.hooks && typeof engineClass.hooks.on === "function") {
+            engineClass.hooks.on("engine:init", (engine) => {
+                if (typeof engine._setupStorageListener === "function") {
+                    engine._setupStorageListener();
+                }
+            });
+        }
+
         const proto = engineClass.prototype;
 
         proto._setupStorageListener = function () {
@@ -48,6 +56,10 @@ export const EUIXStoragePlugin = {
 
         proto.persist = function (key, { storage = "local", key: customKey = null } = {}) {
             if (!key) return this;
+            if (!this._persistenceConfig) this._persistenceConfig = new Map();
+            if (!this._storageListenerBound && typeof this._setupStorageListener === "function") {
+                this._setupStorageListener();
+            }
             const parsedKey = this.parseBindPath(key);
             const storageKey = customKey || `euix_state_${parsedKey}`;
             const storageType = String(storage).toLowerCase();
@@ -71,7 +83,7 @@ export const EUIXStoragePlugin = {
         };
 
         proto.clearPersistedState = function (key) {
-            if (!key) return this;
+            if (!key || !this._persistenceConfig) return this;
             const parsedKey = this.parseBindPath(key);
             const config = this._persistenceConfig.get(parsedKey);
             if (config) {
@@ -82,6 +94,7 @@ export const EUIXStoragePlugin = {
         };
 
         proto._savePersistedState = function (key, value) {
+            if (!this._persistenceConfig) return;
             const config = this._persistenceConfig.get(key);
             if (!config) return;
             try {

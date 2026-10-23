@@ -261,3 +261,8 @@ export function validateSchema(source, fileName = "source.euix.json") {
 }
 
 export { generateSourceSchema } from "./ideSchema.js";
+export {
+    generateLlmSchema,
+    formatOpenAiStructuredOutput,
+    formatGeminiResponseSchema,
+} from "./llmSchema.js";

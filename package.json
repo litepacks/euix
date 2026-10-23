@@ -2,10 +2,12 @@
   "name": "euix-monorepo",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "dev": "vite",
+    "dev:deepseek": "vite apps/deepseek-studio --port 3200",
     "build": "npm run build -w euixjs",
     "preview": "npm run preview -w euixjs",
     "test": "npm run test -w euixjs",

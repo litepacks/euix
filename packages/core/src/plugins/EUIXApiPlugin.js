@@ -9,6 +9,17 @@ const getApiStore = (type) => {
 export const EUIXApiPlugin = {
     name: "api",
     install(engineClass) {
+        if (engineClass.hooks && typeof engineClass.hooks.on === "function") {
+            engineClass.hooks.on("engine:init", (engine) => {
+                if (!engine._apiConfig && typeof engine.configureApi === "function") {
+                    engine.configureApi();
+                }
+                if (typeof engine._initRevalidationListeners === "function") {
+                    engine._initRevalidationListeners();
+                }
+            });
+        }
+
         const proto = engineClass.prototype;
 
         proto.configureApi = function (options = {}) {

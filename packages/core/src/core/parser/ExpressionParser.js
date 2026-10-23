@@ -296,6 +296,8 @@ export class EUIXExpressionParser {
         let fn = EUIXExpressionParser._compiledFnCache.get(exprString);
         if (fn !== undefined) {
             EUIXExpressionParser._cacheStats.hits++;
+            EUIXExpressionParser._compiledFnCache.delete(exprString);
+            EUIXExpressionParser._compiledFnCache.set(exprString, fn);
             return fn;
         }
 
@@ -321,11 +323,17 @@ export class EUIXExpressionParser {
             fn = null;
         }
 
-        if (EUIXExpressionParser._compiledFnCache.size >= EUIXExpressionParser._compiledFnCacheMaxSize) {
-            const firstKey = EUIXExpressionParser._compiledFnCache.keys().next().value;
-            if (firstKey !== undefined) EUIXExpressionParser._compiledFnCache.delete(firstKey);
+        if (EUIXExpressionParser._compiledFnCacheMaxSize > 0) {
+            while (EUIXExpressionParser._compiledFnCache.size >= EUIXExpressionParser._compiledFnCacheMaxSize) {
+                const firstKey = EUIXExpressionParser._compiledFnCache.keys().next().value;
+                if (firstKey !== undefined) {
+                    EUIXExpressionParser._compiledFnCache.delete(firstKey);
+                } else {
+                    break;
+                }
+            }
+            EUIXExpressionParser._compiledFnCache.set(exprString, fn);
         }
-        EUIXExpressionParser._compiledFnCache.set(exprString, fn);
         return fn;
     }
 
@@ -337,6 +345,8 @@ export class EUIXExpressionParser {
         let cached = EUIXExpressionParser._compiledTemplateFnCache.get(templateString);
         if (cached !== undefined) {
             EUIXExpressionParser._cacheStats.hits++;
+            EUIXExpressionParser._compiledTemplateFnCache.delete(templateString);
+            EUIXExpressionParser._compiledTemplateFnCache.set(templateString, cached);
             return cached;
         }
 
@@ -360,6 +370,23 @@ export class EUIXExpressionParser {
                         }
                     }
 
+                    // Double brace handling: {{expr}}
+                    if (templateString.charCodeAt(i + 1) === 123) {
+                        const doubleClose = templateString.indexOf("}}", i + 2);
+                        if (doubleClose !== -1) {
+                            const inner = templateString.slice(i + 2, doubleClose).trim();
+                            if (i > lastIdx) {
+                                parts.push(JSON.stringify(templateString.slice(lastIdx, i)));
+                            }
+                            const tokens = EUIXExpressionParser.tokenize(inner);
+                            const jsExpr = EUIXExpressionParser.parseToJs(tokens);
+                            parts.push(`((${jsExpr}) ?? "")`);
+                            i = doubleClose + 1;
+                            lastIdx = doubleClose + 2;
+                            continue;
+                        }
+                    }
+
                     let closeIdx = -1;
                     let inQuote = null;
                     for (let j = i + 1; j < len; j++) {
@@ -379,6 +406,18 @@ export class EUIXExpressionParser {
                     }
 
                     if (closeIdx === -1) {
+                        // Fallback for unclosed identifier expression: e.g. {count
+                        const unclosedMatch = templateString.slice(i).match(/^\{([a-zA-Z_$][\w$.]*)$/);
+                        if (unclosedMatch) {
+                            if (i > lastIdx) {
+                                parts.push(JSON.stringify(templateString.slice(lastIdx, i)));
+                            }
+                            const tokens = EUIXExpressionParser.tokenize(unclosedMatch[1]);
+                            const jsExpr = EUIXExpressionParser.parseToJs(tokens);
+                            parts.push(`((${jsExpr}) ?? "")`);
+                            lastIdx = len;
+                            break;
+                        }
                         i++;
                         continue;
                     }
@@ -419,11 +458,17 @@ export class EUIXExpressionParser {
             cached = null;
         }
 
-        if (EUIXExpressionParser._compiledTemplateFnCache.size >= EUIXExpressionParser._compiledFnCacheMaxSize) {
-            const firstKey = EUIXExpressionParser._compiledTemplateFnCache.keys().next().value;
-            if (firstKey !== undefined) EUIXExpressionParser._compiledTemplateFnCache.delete(firstKey);
+        if (EUIXExpressionParser._compiledFnCacheMaxSize > 0) {
+            while (EUIXExpressionParser._compiledTemplateFnCache.size >= EUIXExpressionParser._compiledFnCacheMaxSize) {
+                const firstKey = EUIXExpressionParser._compiledTemplateFnCache.keys().next().value;
+                if (firstKey !== undefined) {
+                    EUIXExpressionParser._compiledTemplateFnCache.delete(firstKey);
+                } else {
+                    break;
+                }
+            }
+            EUIXExpressionParser._compiledTemplateFnCache.set(templateString, cached);
         }
-        EUIXExpressionParser._compiledTemplateFnCache.set(templateString, cached);
         return cached;
     }
 
@@ -450,10 +495,36 @@ export class EUIXExpressionParser {
         return undefined;
     }
 
+    static get _cache() {
+        return EUIXExpressionParser._compiledFnCache;
+    }
+
     static clearExpressionCache() {
         EUIXExpressionParser._compiledFnCache.clear();
         EUIXExpressionParser._compiledTemplateFnCache.clear();
         EUIXExpressionParser._cacheStats = { hits: 0, misses: 0 };
+    }
+
+    static setExpressionCacheSize(maxSize) {
+        if (typeof maxSize === "number" && maxSize > 0) {
+            EUIXExpressionParser._compiledFnCacheMaxSize = maxSize;
+            while (EUIXExpressionParser._compiledFnCache.size > maxSize) {
+                const firstKey = EUIXExpressionParser._compiledFnCache.keys().next().value;
+                if (firstKey !== undefined) {
+                    EUIXExpressionParser._compiledFnCache.delete(firstKey);
+                } else {
+                    break;
+                }
+            }
+            while (EUIXExpressionParser._compiledTemplateFnCache.size > maxSize) {
+                const firstKey = EUIXExpressionParser._compiledTemplateFnCache.keys().next().value;
+                if (firstKey !== undefined) {
+                    EUIXExpressionParser._compiledTemplateFnCache.delete(firstKey);
+                } else {
+                    break;
+                }
+            }
+        }
     }
 
     static getExpressionCacheStats() {

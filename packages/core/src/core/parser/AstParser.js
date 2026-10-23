@@ -53,6 +53,39 @@ export function generateCodeFrame(source, line = 1, col = 1, windowSize = 2) {
     return frame;
 }
 
+let _sharedParser = null;
+
+export function getSharedParser() {
+    if (typeof DOMParser === "undefined") return null;
+    if (!_sharedParser) {
+        _sharedParser = new DOMParser();
+    }
+    return _sharedParser;
+}
+
+export function resetSharedParser() {
+    _sharedParser = null;
+}
+
+function _pruneAstCache() {
+    while (_astCache.size >= _astCacheMaxSize) {
+        const oldestKey = _astCache.keys().next().value;
+        if (oldestKey !== undefined) {
+            _astCache.delete(oldestKey);
+        } else {
+            break;
+        }
+    }
+}
+
+function _setAstCache(key, doc) {
+    if (!key || typeof key !== "string" || _astCacheMaxSize <= 0) return;
+    if (!_astCache.has(key)) {
+        _pruneAstCache();
+    }
+    _astCache.set(key, doc);
+}
+
 export function parseXmlToAst(xmlString, options = {}) {
     if (!xmlString || typeof xmlString !== "string") return null;
 
@@ -63,6 +96,11 @@ export function parseXmlToAst(xmlString, options = {}) {
         // Refresh LRU position (delete and re-insert)
         _astCache.delete(xmlString);
         _astCache.set(xmlString, cachedDoc);
+        if (cachedDoc?._sanitizedXml && cachedDoc._sanitizedXml !== xmlString && _astCache.has(cachedDoc._sanitizedXml)) {
+            const sDoc = _astCache.get(cachedDoc._sanitizedXml);
+            _astCache.delete(cachedDoc._sanitizedXml);
+            _astCache.set(cachedDoc._sanitizedXml, sDoc);
+        }
         return options && options.clone === true ? _cloneDocument(cachedDoc) : cachedDoc;
     }
 
@@ -73,7 +111,8 @@ export function parseXmlToAst(xmlString, options = {}) {
         const nonXmlEntities = entityMatches.filter((e) => !["&amp;", "&lt;", "&gt;", "&quot;", "&apos;"].includes(e));
         if (nonXmlEntities.length > 0) {
             try {
-                const htmlDoc = new DOMParser().parseFromString(nonXmlEntities.join("___EUIX_ENT___"), "text/html");
+                const parser = getSharedParser() || new DOMParser();
+                const htmlDoc = parser.parseFromString(nonXmlEntities.join("___EUIX_ENT___"), "text/html");
                 const decodedList = (htmlDoc.body ? htmlDoc.body.textContent : "").split("___EUIX_ENT___");
                 nonXmlEntities.forEach((entity, idx) => {
                     const decoded = decodedList[idx];
@@ -222,13 +261,17 @@ export function parseXmlToAst(xmlString, options = {}) {
         _astCache.delete(sanitizedXml);
         _astCache.set(sanitizedXml, cachedDoc);
         if (xmlString && !_astCache.has(xmlString)) {
-            _astCache.set(xmlString, cachedDoc);
+            _setAstCache(xmlString, cachedDoc);
+        } else if (xmlString && _astCache.has(xmlString)) {
+            const rDoc = _astCache.get(xmlString);
+            _astCache.delete(xmlString);
+            _astCache.set(xmlString, rDoc);
         }
         return options && options.clone === true ? _cloneDocument(cachedDoc) : cachedDoc;
     }
 
     _astCacheStats.misses++;
-    const parser = new DOMParser();
+    const parser = getSharedParser() || new DOMParser();
     const doc = parser.parseFromString(sanitizedXml, "text/xml");
 
     const parseError = doc.querySelector("parsererror");
@@ -249,15 +292,12 @@ export function parseXmlToAst(xmlString, options = {}) {
     }
 
     if (!bypassCache && !parseError) {
-        if (_astCache.size >= _astCacheMaxSize) {
-            const oldestKey = _astCache.keys().next().value;
-            if (oldestKey !== undefined) {
-                _astCache.delete(oldestKey);
-            }
-        }
-        _astCache.set(sanitizedXml, doc);
+        try {
+            doc._sanitizedXml = sanitizedXml;
+        } catch (_) {}
+        _setAstCache(sanitizedXml, doc);
         if (xmlString && xmlString !== sanitizedXml) {
-            _astCache.set(xmlString, doc);
+            _setAstCache(xmlString, doc);
         }
     }
 
@@ -425,6 +465,8 @@ export const AstParser = {
     clearAstCache,
     setAstCacheSize,
     getAstCacheStats,
+    getSharedParser,
+    resetSharedParser,
 };
 
 export default AstParser;

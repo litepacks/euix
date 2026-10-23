@@ -24,18 +24,22 @@ export function updateDevToolsStatus(_engine, key, deltaOrValue) {
         dev[key] = deltaOrValue;
     }
     dev.ready =
-        dev.pendingActions === 0 && dev.pendingLoaders === 0 && dev.pendingRevalidations === 0 && !dev.routeTransition;
+        (dev.pendingActions || 0) === 0 &&
+        (dev.pendingLoaders || 0) === 0 &&
+        (dev.pendingRevalidations || 0) === 0 &&
+        !dev.routeTransition;
+    return dev;
 }
 
 export function getBindingsStats(engine) {
     let totalBindings = 0;
     const uniqueElements = new Set();
-    if (engine._bindings) {
+    if (engine?._bindings) {
         for (const list of engine._bindings.values()) {
             if (Array.isArray(list)) {
                 totalBindings += list.length;
                 list.forEach((item) => {
-                    if (item.el) uniqueElements.add(item.el);
+                    if (item?.el) uniqueElements.add(item.el);
                 });
             }
         }
@@ -43,43 +47,45 @@ export function getBindingsStats(engine) {
     return {
         totalBindings,
         uniqueElements: uniqueElements.size,
-        registeredKeys: engine._bindings ? engine._bindings.size : 0,
+        registeredKeys: engine?._bindings ? engine._bindings.size : 0,
     };
 }
 
 export function _getTestStats(engine) {
     return {
-        activeIntervals: engine._activeIntervals ? engine._activeIntervals.length : 0,
+        activeIntervals: engine?._activeIntervals ? engine._activeIntervals.length : 0,
         activeWatchers:
-            (engine._stateWatchers ? engine._stateWatchers.size : 0) +
-            (engine._watchRegistry ? engine._watchRegistry.size : 0),
-        activeSubscriptions: engine._bindings ? engine._bindings.size : 0,
-        activeXhrs: engine._registeredXhrs ? engine._registeredXhrs.size : 0,
-        mountedComponents: engine._componentSpecs ? engine._componentSpecs.size : 0,
-        activeAnimations: engine._activeAnimations ? engine._activeAnimations.size : 0,
-        activeControllers: engine._activeControllers ? engine._activeControllers.size : 0,
-        activeResources: engine._externalResources ? engine._externalResources.size : 0,
+            (engine?._stateWatchers ? engine._stateWatchers.size : 0) +
+            (engine?._watchRegistry ? engine._watchRegistry.size : 0),
+        activeSubscriptions: engine?._bindings ? engine._bindings.size : 0,
+        activeXhrs: engine?._registeredXhrs ? engine._registeredXhrs.size : 0,
+        mountedComponents: engine?._componentSpecs ? engine._componentSpecs.size : 0,
+        activeAnimations: engine?._activeAnimations ? engine._activeAnimations.size : 0,
+        activeControllers: engine?._activeControllers ? engine._activeControllers.size : 0,
+        activeResources: engine?._externalResources ? engine._externalResources.size : 0,
     };
 }
 
 export function getPerformanceMetrics(engine, EngineClass) {
     const bindingsStats = getBindingsStats(engine);
     return {
-        mountDuration: engine._mountDuration || 0,
+        mountDuration: engine?._mountDuration || 0,
         activeBindingsCount: bindingsStats.totalBindings,
         boundElementsCount: bindingsStats.uniqueElements,
-        astCache: EngineClass.getAstCacheStats(),
+        astCache: EngineClass && typeof EngineClass.getAstCacheStats === "function" ? EngineClass.getAstCacheStats() : null,
         componentCache: {
-            astCount: EngineClass._componentAstCache ? EngineClass._componentAstCache.size : 0,
-            urlCount: EngineClass._componentUrlCache ? EngineClass._componentUrlCache.size : 0,
+            astCount: EngineClass?._componentAstCache ? EngineClass._componentAstCache.size : 0,
+            urlCount: EngineClass?._componentUrlCache ? EngineClass._componentUrlCache.size : 0,
         },
-        expressionCacheSize: EUIXExpressionParser._cache ? EUIXExpressionParser._cache.size : 0,
-        componentsCount: engine._componentSpecs ? engine._componentSpecs.size : 0,
-        rawStateKeysCount: engine._rawState ? Object.keys(engine._rawState).length : 0,
+        expressionCacheSize:
+            (EUIXExpressionParser?._compiledFnCache ? EUIXExpressionParser._compiledFnCache.size : 0) +
+            (EUIXExpressionParser?._compiledTemplateFnCache ? EUIXExpressionParser._compiledTemplateFnCache.size : 0),
+        componentsCount: engine?._componentSpecs ? engine._componentSpecs.size : 0,
+        rawStateKeysCount: engine?._rawState ? Object.keys(engine._rawState).length : 0,
         activeWatchersCount:
-            (engine._stateWatchers ? engine._stateWatchers.size : 0) +
-            (engine._watchRegistry ? engine._watchRegistry.size : 0),
-        computedPropertiesCount: engine._computedRegistry ? engine._computedRegistry.size : 0,
+            (engine?._stateWatchers ? engine._stateWatchers.size : 0) +
+            (engine?._watchRegistry ? engine._watchRegistry.size : 0),
+        computedPropertiesCount: engine?._computedRegistry ? engine._computedRegistry.size : 0,
         memory:
             typeof performance !== "undefined" && performance.memory && performance.memory.usedJSHeapSize
                 ? {

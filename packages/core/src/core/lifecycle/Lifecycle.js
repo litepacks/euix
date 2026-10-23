@@ -4,7 +4,7 @@
  */
 
 import { getNow, isElem, isFn, isScoped } from "../utils/constants.js";
-import { irToXmlSpec } from "../../prepare/runtime/adapter.js";
+import { toonToJson } from "../parser/toon.js";
 
 export function mount(engine, appXmlString, options = {}) {
     const mountStart = getNow();
@@ -12,8 +12,18 @@ export function mount(engine, appXmlString, options = {}) {
         if (appXmlString.nodeType) {
             engine.xmlDoc = appXmlString;
         } else if (appXmlString.irVersion || appXmlString.ir) {
-            const xmlStr = irToXmlSpec(appXmlString.ir || appXmlString);
-            engine.xmlDoc = engine.constructor.parseXmlToAst(xmlStr, { ...options, silent: true });
+            const irAdapter =
+                engine.constructor?.irAdapter ||
+                (typeof globalThis !== "undefined" ? globalThis.__EUIX_IR_ADAPTER__ : null);
+            if (isFn(irAdapter)) {
+                const xmlStr = irAdapter(appXmlString.ir || appXmlString);
+                engine.xmlDoc = engine.constructor.parseXmlToAst(xmlStr, { ...options, silent: true });
+            } else {
+                const errMsg =
+                    "[EUIX Lifecycle] Mounting a Runtime IR object requires an IR adapter. Please import 'euixjs/prepare' or register an adapter via EUIXEngineCore.registerIrAdapter(fn).";
+                engine.reportError(errMsg, "Runtime IR Adapter Missing");
+                throw new Error(errMsg);
+            }
         } else if (isFn(engine.constructor.deserializeAst)) {
             engine.xmlDoc = engine.constructor.deserializeAst(appXmlString);
         } else {
@@ -42,6 +52,10 @@ export function mount(engine, appXmlString, options = {}) {
                 </div>
             `;
         }
+        return engine;
+    }
+
+    if (!engine.xmlDoc || typeof engine.xmlDoc.querySelectorAll !== "function") {
         return engine;
     }
 
@@ -356,6 +370,7 @@ export function initDataModel(engine) {
                 rawState[key] = Array.isArray(val) ? [...val] : (val && typeof val === "object") ? { ...val } : val;
             }
             if (cached.persistence) {
+                if (!engine._persistenceConfig) engine._persistenceConfig = new Map();
                 for (const [id, cfg] of cached.persistence) {
                     engine._persistenceConfig.set(id, cfg);
                 }
@@ -419,7 +434,19 @@ export function initDataModel(engine) {
                     rawState[id] = items;
                 } else {
                     const txt = node.textContent.trim();
-                    if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
+                    const format = node.getAttribute("format");
+                    if (format === "toon") {
+                        const parsed = toonToJson(txt);
+                        if (Array.isArray(parsed)) {
+                            rawState[id] = parsed;
+                        } else if (parsed && Array.isArray(parsed[id])) {
+                            rawState[id] = parsed[id];
+                        } else if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
+                            rawState[id] = Object.values(parsed)[0];
+                        } else {
+                            rawState[id] = parsed ? [parsed] : [];
+                        }
+                    } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
                         try {
                             rawState[id] = JSON.parse(txt);
                         } catch (_) {
@@ -437,10 +464,16 @@ export function initDataModel(engine) {
                 rawState[id] = txt === "true";
             } else if (type === "object" || type === "json") {
                 const txt = node.textContent.trim();
-                try {
-                    rawState[id] = txt ? JSON.parse(txt) : {};
-                } catch (_) {
-                    rawState[id] = {};
+                const format = node.getAttribute("format");
+                if (format === "toon") {
+                    const parsed = toonToJson(txt);
+                    rawState[id] = typeof parsed === "object" && parsed !== null ? parsed : {};
+                } else {
+                    try {
+                        rawState[id] = txt ? JSON.parse(txt) : {};
+                    } catch (_) {
+                        rawState[id] = {};
+                    }
                 }
             } else if (type === "html" || (node.children && node.children.length > 0)) {
                 rawState[id] = node.innerHTML.trim();
@@ -449,6 +482,7 @@ export function initDataModel(engine) {
             }
 
             if (persistAttr) {
+                if (!engine._persistenceConfig) engine._persistenceConfig = new Map();
                 const customKey = node.getAttribute("storage_key") || node.getAttribute("key");
                 engine._persistenceConfig.set(id, {
                     storage: String(persistAttr).toLowerCase(),
@@ -500,6 +534,7 @@ export function initDataModel(engine) {
                 const itemStorage = item.getAttribute("storage") || defaultStorage;
                 const customStorageKey = item.getAttribute("storage_key") || (prefix ? `${prefix}${key}` : null);
                 if (key) {
+                    if (!engine._persistenceConfig) engine._persistenceConfig = new Map();
                     engine._persistenceConfig.set(key, {
                         storage: String(itemStorage).toLowerCase(),
                         storageKey: customStorageKey || `euix_state_${key}`,
@@ -514,19 +549,34 @@ export function initDataModel(engine) {
                 apiConfigNode.getAttribute("base_url") ||
                 apiConfigNode.getAttribute("baseUrl") ||
                 apiConfigNode.getAttribute("url");
-            if (baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
-
             const credentials = apiConfigNode.getAttribute("credentials");
-            if (credentials) engine._apiConfig.credentials = credentials.trim();
-
             const timeout = apiConfigNode.getAttribute("timeout");
-            if (timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
+
+            if (isFn(engine.configureApi)) {
+                engine.configureApi({
+                    baseUrl: baseUrl ? baseUrl.trim() : undefined,
+                    credentials: credentials ? credentials.trim() : undefined,
+                    timeout: timeout ? parseInt(timeout, 10) || 0 : undefined,
+                });
+            } else {
+                if (!engine._apiConfig) {
+                    engine._apiConfig = {
+                        baseUrl: "",
+                        credentials: undefined,
+                        headers: new Map(),
+                        timeout: 0,
+                    };
+                }
+                if (baseUrl) engine._apiConfig.baseUrl = baseUrl.trim();
+                if (credentials) engine._apiConfig.credentials = credentials.trim();
+                if (timeout) engine._apiConfig.timeout = parseInt(timeout, 10) || 0;
+            }
 
             const headerNodes = Array.from(apiConfigNode.querySelectorAll("headers > header, header"));
             headerNodes.forEach((h) => {
                 const name = h.getAttribute("name") || h.getAttribute("key");
                 const val = h.textContent.trim() || h.getAttribute("value") || "";
-                if (name) engine.setApiHeader(name, val);
+                if (name && isFn(engine.setApiHeader)) engine.setApiHeader(name, val);
             });
         }
 
@@ -574,7 +624,7 @@ export function initDataModel(engine) {
         if (!isDocIsolated && !isMainDoc && !doc._cachedStateModel) {
             doc._cachedStateModel = {
                 rawState: { ...rawState },
-                persistence: new Map(engine._persistenceConfig),
+                persistence: engine._persistenceConfig ? new Map(engine._persistenceConfig) : null,
                 pendingEndpoints: [...pendingEndpoints],
             };
         }
@@ -591,7 +641,8 @@ export function initDataModel(engine) {
         collectStatesFromDoc(engine.xmlDoc, true);
     }
 
-    for (const [key, config] of engine._persistenceConfig.entries()) {
+    if (engine._persistenceConfig) {
+        for (const [key, config] of engine._persistenceConfig.entries()) {
         const store =
             config.storage === "session"
                 ? typeof sessionStorage !== "undefined"
@@ -611,6 +662,7 @@ export function initDataModel(engine) {
             } else if (rawState[key] !== undefined) {
                 if (isFn(engine._savePersistedState)) engine._savePersistedState(key, rawState[key]);
             }
+        }
         }
     }
 

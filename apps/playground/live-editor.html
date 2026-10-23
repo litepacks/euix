@@ -168,7 +168,7 @@
       <!-- Monaco Editor Mount Container -->
       <div class="flex-1 w-full relative">
         <div id="monaco-editor-container" class="w-full h-full"></div>
-        <textarea id="fallback_textarea" oninput="window.renderLivePreview(this.value)" class="hidden w-full h-full p-4 bg-slate-950 text-slate-200 code-font text-xs leading-relaxed resize-none border-none focus:outline-none" placeholder="Write <uid_spec> XML here..."></textarea>
+        <textarea id="fallback_textarea" oninput="window.renderLivePreviewDebounced ? window.renderLivePreviewDebounced(this.value) : window.renderLivePreview(this.value)" class="hidden w-full h-full p-4 bg-slate-950 text-slate-200 code-font text-xs leading-relaxed resize-none border-none focus:outline-none" placeholder="Write <uid_spec> XML here..."></textarea>
       </div>
     </section>
 
@@ -560,8 +560,21 @@
       localStorage.setItem("euix_studio_saved_code", xmlCode);
     };
 
-    // Global Live Preview Renderer
+    // Global Live Preview Renderer with Debounce
+    let livePreviewDebounceTimer = null;
+    window.renderLivePreviewDebounced = function(xmlString, delay = 200) {
+      if (livePreviewDebounceTimer) clearTimeout(livePreviewDebounceTimer);
+      livePreviewDebounceTimer = setTimeout(() => {
+        livePreviewDebounceTimer = null;
+        window.renderLivePreview(xmlString);
+      }, delay);
+    };
+
     window.renderLivePreview = function(xmlString) {
+      if (livePreviewDebounceTimer) {
+        clearTimeout(livePreviewDebounceTimer);
+        livePreviewDebounceTimer = null;
+      }
       let xml = xmlString !== undefined ? xmlString : window.getCurrentXmlCode();
       const previewRoot = document.getElementById("preview-mount-root");
       const errorBanner = document.getElementById("error-banner");
@@ -655,11 +668,15 @@
 
           if (fallbackTxt) fallbackTxt.classList.add("hidden");
 
-          // Sync typing directly to live preview & localStorage
+          // Sync typing directly to live preview with debounce & localStorage
           window.monacoEditor.onDidChangeModelContent(function () {
             const val = window.monacoEditor.getValue();
             localStorage.setItem("euix_studio_saved_code", val);
-            window.renderLivePreview(val);
+            if (window.renderLivePreviewDebounced) {
+              window.renderLivePreviewDebounced(val);
+            } else {
+              window.renderLivePreview(val);
+            }
           });
         });
       } catch (err) {

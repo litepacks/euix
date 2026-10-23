@@ -34,6 +34,15 @@ export const EUIXA11yPlugin = {
             });
         }
 
+        if (typeof engineClass.registerTag === "function") {
+            engineClass.registerTag("live_region", function (xmlNode, context) {
+                return this.renderLiveRegion(xmlNode, context);
+            });
+            engineClass.registerTag("live-region", function (xmlNode, context) {
+                return this.renderLiveRegion(xmlNode, context);
+            });
+        }
+
         // Render <live_region> tag
         engineClass.prototype.renderLiveRegion = function (xmlNode, context = {}) {
             const doc = this.container?.ownerDocument || (typeof document !== "undefined" ? document : null);

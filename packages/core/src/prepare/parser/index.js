@@ -64,3 +64,15 @@ export function parseSource(input, fileName = "source.euix") {
         ],
     };
 }
+
+export { parseJsonSource } from "./jsonParser.js";
+export { parseXmlToJson } from "./xmlToJson.js";
+export {
+    stripMarkdownFences,
+    repairPartialJson,
+    repairPartialXml,
+    parsePartialJson,
+    parseStreamingEuix,
+    streamRender,
+    createEuixStreamRenderer,
+} from "./streamingJson.js";

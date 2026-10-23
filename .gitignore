@@ -166,3 +166,6 @@ public/
 doctor.html
 .vitest-doctor/
 .vitest-doctor
+
+# Graphify output
+graphify-out/

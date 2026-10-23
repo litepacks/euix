@@ -4,6 +4,12 @@
  */
 
 export const DIAGNOSTIC_CODES = {
+    // Expression & Syntax
+    UNCLOSED_EXPRESSION: "EUIX010",
+    UNEXPECTED_CLOSING_BRACE: "EUIX011",
+    MALFORMED_EXPRESSION: "EUIX012",
+
+    // Structural & Semantic Schema
     SCHEMA_ERROR: "EUIX200",
     UNKNOWN_COMPONENT: "EUIX201",
     UNKNOWN_STATE: "EUIX202",
@@ -17,19 +23,41 @@ export const DIAGNOSTIC_CODES = {
     INVALID_LIFECYCLE: "EUIX210",
     INVALID_PROP: "EUIX211",
     UNDEFINED_SERVICE: "EUIX212",
+
+    // Extended Semantic Codes
+    UNKNOWN_COMPUTED: "EUIX213",
+    DUPLICATE_STATE: "EUIX214",
+    DUPLICATE_ACTION: "EUIX215",
+    INVALID_WRITE: "EUIX216",
+    UNRESOLVED_REFERENCE: "EUIX217",
+    UNUSED_STATE: "EUIX218",
+    UNUSED_ACTION: "EUIX219",
+
+    // Runtime Feedback
+    RUNTIME_ERROR: "EUIX500",
+    ACTION_EXECUTION_FAILED: "EUIX501",
+    STATE_WRITE_FAILED: "EUIX502",
+    COMPUTED_FAILED: "EUIX503",
+    WATCH_FAILED: "EUIX504",
+    BINDING_FAILED: "EUIX505",
 };
 
 /**
  * Standardized machine-readable diagnostic item.
  *
  * @typedef {Object} Diagnostic
- * @property {string} code - Diagnostic code (e.g. "EUIX201")
- * @property {string} type - Diagnostic type (e.g. "unknown-component")
- * @property {string} file - Filename or virtual path
- * @property {string} path - JSON path or source location (e.g. "view.component")
+ * @property {string} code - Diagnostic code (e.g. "EUIX201" or "UNKNOWN_ACTION")
+ * @property {string} [type] - Diagnostic type (e.g. "unknown-action")
+ * @property {"error"|"warning"|"info"} [severity="error"]
+ * @property {string} [name] - Symbol or identifier name
+ * @property {number} [line] - 1-indexed source line number
+ * @property {number} [column] - 1-indexed source column number
+ * @property {string} [nodeId] - View or AST node identifier
+ * @property {string} [expression] - Substring of erroneous expression
+ * @property {string} [file="source.euix.json"] - Filename or virtual path
+ * @property {string} [path=""] - JSON path or source location
  * @property {string} message - Human-readable explanation
  * @property {string|null} [suggestion] - Optional "Did you mean?" suggestion
- * @property {"error"|"warning"|"info"} [severity="error"]
  */
 
 /**
@@ -41,20 +69,31 @@ export const DIAGNOSTIC_CODES = {
 export function createDiagnostic({
     code,
     type,
+    severity = "error",
+    name = undefined,
+    line = undefined,
+    column = undefined,
+    nodeId = undefined,
+    expression = undefined,
     file = "source.euix.json",
     path = "",
     message,
     suggestion = null,
-    severity = "error",
 }) {
     const diag = {
         code,
-        type,
+        type: type || code.toLowerCase().replace(/_/g, "-"),
+        severity,
         file,
         path,
         message,
-        severity,
     };
+
+    if (name !== undefined) diag.name = name;
+    if (line !== undefined) diag.line = line;
+    if (column !== undefined) diag.column = column;
+    if (nodeId !== undefined) diag.nodeId = nodeId;
+    if (expression !== undefined) diag.expression = expression;
     if (suggestion !== null && suggestion !== undefined) {
         diag.suggestion = suggestion;
     }

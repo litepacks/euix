@@ -43,6 +43,15 @@ export const EUIXHeadPlugin = {
             }
         };
 
+        if (typeof engineClass.registerTag === "function") {
+            engineClass.registerTag("head", function (xmlNode, context) {
+                return this.renderHead(xmlNode, context);
+            });
+            engineClass.registerTag("helmet", function (xmlNode, context) {
+                return this.renderHead(xmlNode, context);
+            });
+        }
+
         /**
          * Render <head> or <helmet> XML specifications
          */

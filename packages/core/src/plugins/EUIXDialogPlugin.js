@@ -29,6 +29,12 @@ export const EUIXDialogPlugin = {
             }
         };
 
+        if (typeof engineClass.registerTag === "function") {
+            engineClass.registerTag("dialog", function (xmlNode, context) {
+                return this.renderDialog(xmlNode, context);
+            });
+        }
+
         engineClass.prototype.renderDialog = function (xmlNode, context = {}) {
             if (!this._activeDialogs) this._activeDialogs = new Set();
             const rawBind =

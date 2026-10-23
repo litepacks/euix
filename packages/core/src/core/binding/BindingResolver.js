@@ -306,7 +306,7 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
     // 3. Errors namespace
     if (lowerScope === "errors" || lowerScope === "$errors") {
         const errObj = engine._formErrors || (typeof engine.getState === "function" ? engine.getState("errors") || engine.getState("$errors") : null);
-        if (!errObj) return undefined;
+        if (!errObj) return !prop ? {} : undefined;
         if (!prop) return errObj;
         return errObj[prop];
     }
@@ -325,7 +325,51 @@ export function resolveScopedValue(engine, scope, prop, context = {}) {
         return undefined;
     }
 
-    // 5. Context or Root State lookup for $route, $router, $fetcher, $device, etc.
+    // 5. Date namespace
+    if (lowerScope === "date" || lowerScope === "$date") {
+        const helper =
+            engine.$date ||
+            engine.date ||
+            (typeof engine.getState === "function" ? engine.getState("$date") || engine.getState("date") : null);
+        if (!helper) return undefined;
+        if (!prop) return helper;
+        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
+    }
+
+    // 6. Device namespace
+    if (lowerScope === "device" || lowerScope === "$device") {
+        let dev =
+            engine.$device ||
+            engine.device ||
+            (typeof engine.getState === "function" ? engine.getState("$device") || engine.getState("device") : null) ||
+            (context && (context.$device || context.device));
+        if (!dev && typeof navigator !== "undefined") {
+            const nav = navigator;
+            dev = {
+                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
+                hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
+                cores: Number(nav.hardwareConcurrency) || 8,
+                deviceMemory: Number(nav.deviceMemory) || 8,
+                memory: Number(nav.deviceMemory) || 8,
+                batteryLevel: 1,
+                batteryCharging: false,
+                prefersDark: true,
+                reducedMotion: false,
+            };
+        }
+        if (!dev) return undefined;
+        if (!prop) return dev;
+        return prop.split(".").reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), dev);
+    }
+
+    // 7. Form validation status
+    if (lowerScope === "$isvalid" || lowerScope === "isvalid") {
+        return engine._isFormValid !== undefined
+            ? engine._isFormValid
+            : (typeof engine.getState === "function" ? engine.getState("$isValid") : true);
+    }
+
+    // 8. Context or Root State lookup for $route, $router, $fetcher, etc.
     const root = (context && context[scope] !== undefined)
         ? context[scope]
         : (typeof engine.getState === "function" ? engine.getState(scope) : undefined) ?? (engine && engine[scope]);

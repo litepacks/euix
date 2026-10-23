@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EUIX DeepSeek Studio - Real-Time AI UI Generator</title>
+    <meta name="description"
+        content="Generate declarative reactive UIs in real-time from natural language prompts using DeepSeek and the EUIX Engine. Features streaming JSON repair and Doctor static self-correction.">
+
+    <!-- Preconnect & Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="http://127.0.0.1:7331/client.js"></script>
+
+    <!-- Tailwind CSS v4 Live Runtime (Compiles dynamic AI utility classes on-the-fly) -->
+    <script src="./src/tailwindcss-browser.js"></script>
+
+    <!-- Studio Stylesheet -->
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+
+<body>
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="brand-wrapper">
+            <div class="brand-logo-icon">
+                <i data-lucide="sparkles" style="color: #ffffff; width: 20px; height: 20px;"></i>
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="brand-title">EUIX DeepSeek Studio</span>
+                    <span class="brand-badge">Engine v0.3.78</span>
+                    <span class="brand-badge" style="background: rgba(6, 182, 212, 0.15); color: #38bdf8; border-color: rgba(6, 182, 212, 0.3);">Tailwind v4</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <div class="model-pill">
+                <span class="status-dot" id="api-status-dot"></span>
+                <span id="header-model-name">deepseek-chat</span>
+            </div>
+
+            <button class="btn-icon" id="btn-open-settings" title="API &amp; Model Settings">
+                <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="main-layout">
+        <!-- Prompt Composer Card -->
+        <section class="glass-panel prompt-card">
+            <!-- Sample Pills Row -->
+            <div class="sample-pills-row" id="sample-pills-container">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <!-- Textarea -->
+            <div class="prompt-textarea-wrapper">
+                <textarea id="prompt-input" class="prompt-textarea"
+                    placeholder="Describe the UI you want to build (e.g. 'A crypto dashboard with live balance cards, buy/sell buttons, and transaction table')..."></textarea>
+            </div>
+
+            <!-- Controls -->
+            <div class="prompt-controls">
+                <div style="display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.8rem;">
+                    <span>Press <kbd
+                            style="background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: var(--text-muted);">⌘
+                            + Enter</kbd> to generate</span>
+                    <span id="streaming-indicator" class="streaming-pulse-badge" style="display: none;">
+                        <i data-lucide="loader-2" class="spin" style="width: 12px; height: 12px;"></i>
+                        DeepSeek Streaming...
+                    </span>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-stop" id="btn-stop-generation" style="display: none;">
+                        <i data-lucide="square" style="width: 14px; height: 14px;"></i>
+                        Stop
+                    </button>
+                    <button class="btn-primary" id="btn-generate">
+                        <i data-lucide="zap" style="width: 16px; height: 16px;"></i>
+                        Generate UI
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Studio Workspace Grid -->
+        <section class="workspace-grid">
+            <!-- Left Panel: Live Interactive Preview -->
+            <div class="glass-panel panel-container">
+                <div class="panel-header">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <i data-lucide="play" style="width: 16px; height: 16px; color: var(--accent-emerald);"></i>
+                        <span style="font-size: 0.88rem; font-weight: 700;">Live Interactive Preview</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span id="render-mode-tag"
+                            style="font-size: 0.72rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Zero-DOM
+                            Reactive</span>
+                        <button class="btn-icon" id="btn-refresh-preview" title="Reset State &amp; Re-render"
+                            style="width: 28px; height: 28px;">
+                            <i data-lucide="rotate-cw" style="width: 14px; height: 14px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-body" style="padding: 16px;">
+                    <div id="preview-stage">
+                        <div
+                            style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; min-height: 280px; color: var(--text-dim); text-align: center; gap: 12px;">
+                            <i data-lucide="layout" style="width: 44px; height: 44px; opacity: 0.4;"></i>
+                            <p style="font-size: 0.95rem;">Enter a prompt above or pick a sample template to start
+                                streaming UI.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Code & Doctor Inspector -->
+            <div class="glass-panel panel-container">
+                <div class="panel-header">
+                    <div class="panel-tabs">
+                        <button class="tab-btn active" data-tab="json">
+                            <i data-lucide="code" style="width: 14px; height: 14px;"></i>
+                            JSON AST
+                        </button>
+                        <button class="tab-btn" data-tab="xml">
+                            <i data-lucide="file-code" style="width: 14px; height: 14px;"></i>
+                            XML Spec
+                        </button>
+                        <button class="tab-btn" data-tab="doctor">
+                            <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                            EUIX Doctor
+                        </button>
+                        <button class="tab-btn" data-tab="state" id="tab-btn-state">
+                            <i data-lucide="database" style="width: 14px; height: 14px;"></i>
+                            Live State
+                            <span id="state-var-count-badge" class="state-count-pill" style="display: none;">0</span>
+                        </button>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <button class="btn-icon" id="btn-copy-code" title="Copy Code"
+                            style="width: 28px; height: 28px;">
+                            <i data-lucide="copy" style="width: 14px; height: 14px;"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="panel-body">
+                    <!-- Tab 1: JSON AST -->
+                    <div id="tab-content-json" class="tab-pane">
+                        <pre
+                            class="code-pre"><code id="code-display-json">// Canonical EUIX Source JSON will stream here in real-time...</code></pre>
+                    </div>
+
+                    <!-- Tab 2: XML Spec -->
+                    <div id="tab-content-xml" class="tab-pane" style="display: none;">
+                        <pre
+                            class="code-pre"><code id="code-display-xml">&lt;!-- EUIX XML Specification will appear here --&gt;</code></pre>
+                    </div>
+
+                    <!-- Tab 3: EUIX Doctor -->
+                    <div id="tab-content-doctor" class="tab-pane" style="display: none;">
+                        <div id="doctor-score-container" class="doctor-score-card">
+                            <div>
+                                <div
+                                    style="font-size: 0.76rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">
+                                    Doctor Health Score</div>
+                                <div id="doctor-score-text"
+                                    style="font-size: 1.6rem; font-weight: 800; color: var(--accent-emerald);">100 / 100
+                                </div>
+                            </div>
+                            <button id="btn-auto-repair" class="btn-primary"
+                                style="padding: 6px 14px; font-size: 0.8rem; display: none;">
+                                <i data-lucide="wrench" style="width: 14px; height: 14px;"></i>
+                                Auto-Repair with DeepSeek
+                            </button>
+                        </div>
+
+                        <div id="doctor-diagnostics-list">
+                            <div style="color: var(--text-dim); font-size: 0.85rem; padding: 8px 0;">No semantic or
+                                syntax diagnostics reported.</div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: Live State Editor -->
+                    <div id="tab-content-state" class="tab-pane" style="display: none;">
+                        <div class="state-editor-container">
+                            <div class="state-toolbar">
+                                <div class="state-search-box">
+                                    <i data-lucide="search" style="width: 13px; height: 13px; color: var(--text-dim);"></i>
+                                    <input type="text" id="state-filter-input" placeholder="Filter variables..." class="state-filter-input" />
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="state-mode-toggle">
+                                        <button type="button" class="state-mode-btn active" id="btn-state-mode-visual" title="Visual Cards">
+                                            <i data-lucide="layout-grid" style="width: 13px; height: 13px;"></i>
+                                        </button>
+                                        <button type="button" class="state-mode-btn" id="btn-state-mode-json" title="Raw JSON Code">
+                                            <i data-lucide="code" style="width: 13px; height: 13px;"></i>
+                                        </button>
+                                    </div>
+                                    <button type="button" class="btn-primary" id="btn-toggle-add-state" style="padding: 5px 10px; font-size: 0.76rem;">
+                                        <i data-lucide="plus" style="width: 13px; height: 13px;"></i>
+                                        Add State
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Inline Add State Form -->
+                            <div id="state-add-form-panel" class="state-add-form" style="display: none;">
+                                <div class="state-add-row">
+                                    <input type="text" id="input-new-state-key" placeholder="variable_name" class="state-mini-input" />
+                                    <select id="select-new-state-type" class="state-mini-select">
+                                        <option value="string">string</option>
+                                        <option value="number">number</option>
+                                        <option value="boolean">boolean</option>
+                                        <option value="array">array</option>
+                                        <option value="object">object</option>
+                                    </select>
+                                    <input type="text" id="input-new-state-val" placeholder="initial value" class="state-mini-input" />
+                                    <div style="display: flex; gap: 4px;">
+                                        <button type="button" class="btn-primary" id="btn-submit-new-state" style="padding: 4px 8px; font-size: 0.75rem;">Save</button>
+                                        <button type="button" class="btn-icon" id="btn-cancel-new-state" style="width: 24px; height: 24px; font-size: 0.75rem;">✕</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Visual Cards View -->
+                            <div id="state-cards-container" class="state-cards-list">
+                                <div class="state-empty-hint">
+                                    <i data-lucide="database" style="width: 24px; height: 24px; color: var(--text-dim); margin-bottom: 6px;"></i>
+                                    <div>No reactive states initialized yet.</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-dim);">Generate a UI or click "+ Add State" to declare one.</div>
+                                </div>
+                            </div>
+
+                            <!-- Raw JSON Editor View -->
+                            <div id="state-json-container" class="state-json-pane" style="display: none;">
+                                <textarea id="state-raw-json-editor" class="state-raw-textarea" spellcheck="false" placeholder="{}"></textarea>
+                                <div class="state-json-actions">
+                                    <span id="state-json-status-msg" style="font-size: 0.75rem; color: var(--text-dim);">Edit JSON to modify reactive model directly.</span>
+                                    <button type="button" id="btn-apply-json-state" class="btn-primary" style="padding: 5px 12px; font-size: 0.78rem;">
+                                        <i data-lucide="check" style="width: 13px; height: 13px;"></i>
+                                        Apply State
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="glass-panel modal-dialog">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="key" style="width: 20px; height: 20px; color: var(--primary-400);"></i>
+                    <h2 style="font-size: 1.15rem; font-weight: 800;">DeepSeek Configuration</h2>
+                </div>
+                <button class="btn-icon" id="btn-close-settings" style="width: 32px; height: 32px;">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="setting-api-key">DeepSeek API Key</label>
+                <input type="password" id="setting-api-key" class="form-input" placeholder="sk-..."
+                    autocomplete="off" />
+                <span style="font-size: 0.75rem; color: var(--text-dim);">Your API key is stored securely in your
+                    browser's LocalStorage and never sent to any intermediary server.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="setting-base-url">API Base URL</label>
+                <input type="text" id="setting-base-url" class="form-input" value="https://api.deepseek.com"
+                    placeholder="https://api.deepseek.com" />
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="setting-model">Model</label>
+                <select id="setting-model" class="form-input">
+                    <option value="deepseek-chat" selected>deepseek-chat (DeepSeek-V3)</option>
+                    <option value="deepseek-coder">deepseek-coder</option>
+                    <option value="deepseek-reasoner">deepseek-reasoner (DeepSeek-R1)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <div style="display: flex; justify-content: space-between;">
+                    <label class="form-label" for="setting-temperature">Temperature</label>
+                    <span id="temp-value-display"
+                        style="font-size: 0.8rem; font-weight: 700; color: var(--primary-400);">0.2</span>
+                </div>
+                <input type="range" id="setting-temperature" min="0" max="1" step="0.05" value="0.2"
+                    style="accent-color: var(--primary-500); cursor: pointer;" />
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+                <button class="btn-primary" id="btn-save-settings" style="width: 100%;">
+                    Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- Studio Application Script -->
+    <script type="module" src="./src/app.js"></script>
+</body>
+
+</html>

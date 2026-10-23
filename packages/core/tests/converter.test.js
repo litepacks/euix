@@ -215,4 +215,51 @@ describe("EUIX Bi-directional Converter (euix convert)", () => {
         expect(app.ir.states[0].initial).toBe(5);
         expect(app.ir.actions[0].name).toBe("inc");
     });
+
+    it("should convert declarative events and conditions into interactive executable XML", () => {
+        const sourceJson = {
+            state: {
+                counter: 0,
+                is_modal_open: false,
+                items: [{ id: 1, name: "Alpha" }],
+            },
+            view: {
+                tag: "div",
+                children: [
+                    {
+                        tag: "button",
+                        props: { id: "btn-inc" },
+                        events: {
+                            click: { action: "SET_STATE", path: "counter", value: "{data.counter + 1}" },
+                        },
+                        children: ["Increment"],
+                    },
+                    {
+                        tag: "button",
+                        props: { id: "btn-toggle" },
+                        events: {
+                            click: { action: "TOGGLE_STATE", path: "is_modal_open" },
+                        },
+                        children: ["Toggle Modal"],
+                    },
+                    {
+                        tag: "if",
+                        condition: "{data.is_modal_open}",
+                        children: [
+                            {
+                                tag: "div",
+                                props: { id: "modal-box", class: "modal" },
+                                children: ["Modal Content"],
+                            },
+                        ],
+                    },
+                ],
+            },
+        };
+
+        const xml = jsonToXml(sourceJson);
+        expect(xml).toContain('on_click:set="counter={data.counter + 1}"');
+        expect(xml).toContain('on_click:toggle="is_modal_open"');
+        expect(xml).toContain('condition="{data.is_modal_open}"');
+    });
 });

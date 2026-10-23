@@ -21,6 +21,23 @@ import {
     SNAPSHOT_VERSION,
 } from "./snapshot/index.js";
 import { DIAGNOSTIC_CODES } from "./validator/diagnostics.js";
+import {
+    analyzeSource,
+    SymbolTable,
+    buildSymbolTable,
+    resolveReferences,
+    DependencyGraph,
+    buildDependencyGraph,
+} from "./analyzer/index.js";
+import { parseTemplateAst, parseExpressionToAst, getSourcePosition } from "./parser/expressionAst.js";
+import { applySemanticPatch, applySemanticPatches, findNode, deepClone } from "./patch/semanticPatch.js";
+import { CheckpointManager } from "./checkpoint/lastKnownGood.js";
+import { printCanonicalXml, printCanonicalJson } from "./printer/canonicalPrinter.js";
+import { PhasedGenerationPipeline, GENERATION_PHASES } from "./ai/phasedGenerator.js";
+import { buildTargetedRepairContext } from "./ai/contextBuilder.js";
+import { classifyDiagnosticRepair, autoRepairSource } from "./ai/repairEngine.js";
+import { runDevelopmentLoop } from "./ai/devLoop.js";
+import { RuntimeFeedbackCollector } from "./runtime/feedback.js";
 
 /**
  * Custom error thrown when prepare validation fails in strict mode.
@@ -295,9 +312,27 @@ export function clearPrepareCache() {
 }
 
 export { generateLlmContext } from "./context/index.js";
-export { convert, jsonToXml, xmlToJson } from "./converter/index.js";
+export { convert, jsonToXml, xmlToJson, jsonToToon, toonToJson, xmlToToon, toonToXml } from "./converter/index.js";
 export { applyFixes, fixSource } from "./fixer/index.js";
-export { generateSourceSchema } from "./schema/index.js";
+export {
+    generateSourceSchema,
+    generateLlmSchema,
+    formatOpenAiStructuredOutput,
+    formatGeminiResponseSchema,
+} from "./schema/index.js";
+export {
+    verifyLlmOutput,
+    formatLlmRepairPrompt,
+    stripMarkdownFences,
+} from "./verifier/index.js";
+export {
+    repairPartialJson,
+    repairPartialXml,
+    parsePartialJson,
+    parseStreamingEuix,
+    streamRender,
+    createEuixStreamRenderer,
+} from "./parser/index.js";
 export { renderToString } from "./runtime/ssr.js";
 export {
     createSnapshot,
@@ -308,4 +343,21 @@ export {
     diffStructural,
     SNAPSHOT_VERSION,
 } from "./snapshot/index.js";
+export {
+    analyzeSource,
+    SymbolTable,
+    buildSymbolTable,
+    resolveReferences,
+    DependencyGraph,
+    buildDependencyGraph,
+} from "./analyzer/index.js";
+export { parseTemplateAst, parseExpressionToAst, getSourcePosition } from "./parser/expressionAst.js";
+export { applySemanticPatch, applySemanticPatches, findNode, deepClone } from "./patch/semanticPatch.js";
+export { CheckpointManager } from "./checkpoint/lastKnownGood.js";
+export { printCanonicalXml, printCanonicalJson } from "./printer/canonicalPrinter.js";
+export { PhasedGenerationPipeline, GENERATION_PHASES } from "./ai/phasedGenerator.js";
+export { buildTargetedRepairContext } from "./ai/contextBuilder.js";
+export { classifyDiagnosticRepair, autoRepairSource } from "./ai/repairEngine.js";
+export { runDevelopmentLoop } from "./ai/devLoop.js";
+export { RuntimeFeedbackCollector } from "./runtime/feedback.js";
 export { DIAGNOSTIC_CODES, globalPrepareCache, mountPrepared, irToXmlSpec };

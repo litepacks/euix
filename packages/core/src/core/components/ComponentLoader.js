@@ -4,6 +4,7 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
+import { toonToJson } from "../parser/toon.js";
 import { processStyleTag } from "../renderer/DOMRenderer.js";
 import {
     getAttr,
@@ -407,19 +408,44 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         if (type === "array") {
             const items = engine.getChildren(node, "item");
             const itLen = items.length;
-            parsedValue = new Array(itLen);
-            for (let itIdx = 0; itIdx < itLen; itIdx++) {
-                const item = items[itIdx];
-                const obj = {};
-                const itAttrs = item.attributes;
-                if (itAttrs) {
-                    const iaLen = itAttrs.length;
-                    for (let iaIdx = 0; iaIdx < iaLen; iaIdx++) {
-                        const attr = itAttrs[iaIdx];
-                        obj[attr.name] = attr.value;
+            if (itLen > 0) {
+                parsedValue = new Array(itLen);
+                for (let itIdx = 0; itIdx < itLen; itIdx++) {
+                    const item = items[itIdx];
+                    const obj = {};
+                    const itAttrs = item.attributes;
+                    if (itAttrs) {
+                        const iaLen = itAttrs.length;
+                        for (let iaIdx = 0; iaIdx < iaLen; iaIdx++) {
+                            const attr = itAttrs[iaIdx];
+                            obj[attr.name] = attr.value;
+                        }
                     }
+                    parsedValue[itIdx] = obj;
                 }
-                parsedValue[itIdx] = obj;
+            } else {
+                const txt = node.textContent.trim();
+                const format = node.getAttribute("format");
+                if (format === "toon") {
+                    const parsed = toonToJson(txt);
+                    if (Array.isArray(parsed)) {
+                        parsedValue = parsed;
+                    } else if (parsed && Array.isArray(parsed[id])) {
+                        parsedValue = parsed[id];
+                    } else if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
+                        parsedValue = Object.values(parsed)[0];
+                    } else {
+                        parsedValue = parsed ? [parsed] : [];
+                    }
+                } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
+                    try {
+                        parsedValue = JSON.parse(txt);
+                    } catch (_) {
+                        parsedValue = [];
+                    }
+                } else {
+                    parsedValue = [];
+                }
             }
         } else if (type === "number" || type === "int" || type === "float") {
             const txt = node.textContent.trim();
@@ -429,10 +455,16 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
             parsedValue = txt === "true";
         } else if (type === "object" || type === "json") {
             const txt = node.textContent.trim();
-            try {
-                parsedValue = txt ? JSON.parse(txt) : {};
-            } catch (_) {
-                parsedValue = {};
+            const format = node.getAttribute("format");
+            if (format === "toon") {
+                const parsed = toonToJson(txt);
+                parsedValue = typeof parsed === "object" && parsed !== null ? parsed : {};
+            } else {
+                try {
+                    parsedValue = txt ? JSON.parse(txt) : {};
+                } catch (_) {
+                    parsedValue = {};
+                }
             }
         } else {
             parsedValue = node.textContent.trim() || "";

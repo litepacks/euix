@@ -47,6 +47,11 @@ export class EUIXHookEmitter {
         }
     }
 
+    has(event) {
+        const handlers = this._listeners.get(event);
+        return !!(handlers && handlers.length > 0);
+    }
+
     clear() {
         this._listeners.clear();
     }

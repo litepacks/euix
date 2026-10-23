@@ -49,6 +49,167 @@ function updateByPath(obj, path, updater) {
 }
 
 /**
+ * Normalizes common LLM mistakes and cross-framework syntax habits in a view node.
+ *
+ * @param {any} node
+ * @param {Array<object>} fixesApplied
+ * @param {string} [path="view"]
+ */
+function normalizeLlmHabitsInViewNode(node, fixesApplied, path = "view") {
+    if (!node || typeof node !== "object") return;
+
+    if (Array.isArray(node)) {
+        node.forEach((item, idx) => normalizeLlmHabitsInViewNode(item, fixesApplied, `${path}[${idx}]`));
+        return;
+    }
+
+    // 1. className -> class
+    if (node.props && node.props.className !== undefined) {
+        node.props.class = node.props.className;
+        delete node.props.className;
+        fixesApplied.push({
+            code: "EUIX_ALIAS",
+            path: `${path}.props.className`,
+            original: "className",
+            fixed: "class",
+            message: `Normalized React "className" to "class" at ${path}`,
+        });
+    }
+
+    // 2. v-model, modelValue, or ng-model -> $bind
+    if (node.props) {
+        const vModelKey = ["v-model", "modelValue", "ng-model"].find((k) => node.props[k] !== undefined);
+        if (vModelKey) {
+            const rawVal = node.props[vModelKey];
+            delete node.props[vModelKey];
+            const cleanVal = typeof rawVal === "string" ? rawVal.replace(/^\{|\}$/g, "").trim() : rawVal;
+            node.$bind = cleanVal;
+            fixesApplied.push({
+                code: "EUIX_ALIAS",
+                path: `${path}.props.${vModelKey}`,
+                original: vModelKey,
+                fixed: "$bind",
+                message: `Normalized Vue/Angular "${vModelKey}" to "$bind" at ${path}`,
+            });
+        }
+    }
+
+    // 3. React event handlers: onClick, onChange, onSubmit -> events
+    if (node.props) {
+        const eventMap = {
+            onClick: "click",
+            onChange: "change",
+            onSubmit: "submit",
+            onInput: "input",
+            onKeyDown: "keydown",
+            onKeyUp: "keyup",
+        };
+        for (const [reactEvt, euixEvt] of Object.entries(eventMap)) {
+            if (node.props[reactEvt] !== undefined) {
+                const handler = node.props[reactEvt];
+                delete node.props[reactEvt];
+                node.events = node.events || {};
+                node.events[euixEvt] = handler;
+                fixesApplied.push({
+                    code: "EUIX_ALIAS",
+                    path: `${path}.props.${reactEvt}`,
+                    original: reactEvt,
+                    fixed: `events.${euixEvt}`,
+                    message: `Normalized React "${reactEvt}" to "events.${euixEvt}" at ${path}`,
+                });
+            }
+        }
+    }
+
+    // 4. Curly brackets in $bind: { "$bind": "{data.counter}" } -> "counter"
+    if (node.$bind && typeof node.$bind === "string" && node.$bind.includes("{")) {
+        const original = node.$bind;
+        const cleaned = node.$bind.replace(/^\{(?:data\.)?|\}$/g, "").trim();
+        node.$bind = cleaned;
+        fixesApplied.push({
+            code: "EUIX_SYNTAX",
+            path: `${path}.$bind`,
+            original,
+            fixed: cleaned,
+            message: `Removed redundant template braces from state binding at ${path}`,
+        });
+    }
+
+    // 5. Inferred loop tag: node has items or for_each without tag
+    if (!node.tag && (node.items || node.for_each)) {
+        node.tag = "for_each";
+        fixesApplied.push({
+            code: "EUIX_ALIAS",
+            path: `${path}.tag`,
+            original: undefined,
+            fixed: "for_each",
+            message: `Added missing "tag": "for_each" to loop node at ${path}`,
+        });
+    }
+
+    // 6. Sanitize broken toLocaleString expressions and unsupported array .filter().length in props
+    if (node.props) {
+        for (const [k, v] of Object.entries(node.props)) {
+            if (typeof v === "string") {
+                let fixed = v;
+                if (v.includes(".toLocaleString(")) {
+                    fixed = fixed.replace(/\.toLocaleString\((['"][^'"]+['"]),\s*([a-zA-Z_$][\w$]*)\)/g, (match, locale, ident) => {
+                        if (ident !== "undefined" && ident !== "null") {
+                            return `.toLocaleString(${locale})`;
+                        }
+                        return match;
+                    });
+                }
+                if (fixed.includes(".filter(")) {
+                    fixed = fixed.replace(/\{(?:data\.)?([a-zA-Z0-9_$]+)\.filter\([^}]*\)\.length\}/gi, "{data.$1.length}");
+                }
+                if (fixed !== v) {
+                    node.props[k] = fixed;
+                    fixesApplied.push({
+                        code: "EUIX_SYNTAX",
+                        path: `${path}.props.${k}`,
+                        original: v,
+                        fixed,
+                        message: `Sanitized template expression at ${path}.props.${k}`,
+                    });
+                }
+            }
+        }
+    }
+
+    // Recursively check children
+    if (Array.isArray(node.children)) {
+        node.children.forEach((child, idx) => {
+            if (typeof child === "string") {
+                let fixed = child;
+                if (child.includes(".toLocaleString(")) {
+                    fixed = fixed.replace(/\.toLocaleString\((['"][^'"]+['"]),\s*([a-zA-Z_$][\w$]*)\)/g, (match, locale, ident) => {
+                        if (ident !== "undefined" && ident !== "null") {
+                            return `.toLocaleString(${locale})`;
+                        }
+                        return match;
+                    });
+                }
+                if (fixed.includes(".filter(")) {
+                    fixed = fixed.replace(/\{(?:data\.)?([a-zA-Z0-9_$]+)\.filter\([^}]*\)\.length\}/gi, "{data.$1.length}");
+                }
+                if (fixed !== child) {
+                    node.children[idx] = fixed;
+                    fixesApplied.push({
+                        code: "EUIX_SYNTAX",
+                        path: `${path}.children[${idx}]`,
+                        original: child,
+                        fixed,
+                        message: `Sanitized template expression at ${path}.children[${idx}]`,
+                    });
+                }
+            }
+            normalizeLlmHabitsInViewNode(child, fixesApplied, `${path}.children[${idx}]`);
+        });
+    }
+}
+
+/**
  * Applies fixes to a canonical EUIX JSON object.
  *
  * @param {object} jsonObj
@@ -58,6 +219,11 @@ function updateByPath(obj, path, updater) {
 function fixJsonObject(jsonObj, diagnostics) {
     const fixedObj = deepClone(jsonObj);
     const fixesApplied = [];
+
+    // Normalize common LLM syntax habits in view
+    if (fixedObj.view) {
+        normalizeLlmHabitsInViewNode(fixedObj.view, fixesApplied, "view");
+    }
 
     for (const diag of diagnostics) {
         if (!diag.suggestion && diag.code !== DIAGNOSTIC_CODES.INVALID_ROUTE) continue;
@@ -325,23 +491,54 @@ function fixXmlString(xmlString, diagnostics) {
                 }
             }
         }
+    }
 
-        // 5. Script missing CDATA (EUIX0001)
-        if (diag.code === "EUIX0001" || diag.type === "xml-script-cdata") {
-            fixedXml = fixedXml.replace(/<(computed|step)([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, body) => {
-                if (body.includes("<![CDATA[")) return match;
-                if (/[<>&]/.test(body)) {
-                    fixesApplied.push({
-                        code: "EUIX0001",
-                        type: "xml-script-cdata",
-                        path: tag,
-                        original: body.trim(),
-                        fixed: `<![CDATA[${body.trim()}]]>`,
-                        message: `Wrapped script body in <![CDATA[ ... ]]> in <${tag}>`,
-                    });
-                    return `<${tag}${attrs}><![CDATA[${body.trim()}]]></${tag}>`;
-                }
-                return match;
+    // 5. Script missing CDATA (EUIX0001)
+    if (/<(computed|step)[^>]*>[\s\S]*?<\/\1>/i.test(fixedXml)) {
+        fixedXml = fixedXml.replace(/<(computed|step)([^>]*)>([\s\S]*?)<\/\1>/gi, (match, tag, attrs, body) => {
+            if (body.includes("<![CDATA[")) return match;
+            if (/[<>&]|<=|>=|&&|\|\|/.test(body)) {
+                fixesApplied.push({
+                    code: "EUIX0001",
+                    type: "xml-script-cdata",
+                    path: tag,
+                    original: body.trim(),
+                    fixed: `<![CDATA[${body.trim()}]]>`,
+                    message: `Wrapped script body in <![CDATA[ ... ]]> in <${tag}>`,
+                });
+                return `<${tag}${attrs}><![CDATA[${body.trim()}]]></${tag}>`;
+            }
+            return match;
+        });
+    }
+
+    // 6. Common LLM React/Vue XML attributes
+    if (/\bclassName="/.test(fixedXml)) {
+        fixedXml = fixedXml.replace(/\bclassName="/g, 'class="');
+        fixesApplied.push({
+            code: "EUIX_ALIAS",
+            path: "view",
+            original: "className",
+            fixed: "class",
+            message: 'Normalized React "className" to "class"',
+        });
+    }
+
+    const reactEvents = [
+        { regex: /\bonClick="/g, rep: 'on_click:call="', name: "onClick" },
+        { regex: /\bonChange="/g, rep: 'on_change:call="', name: "onChange" },
+        { regex: /\bonSubmit="/g, rep: 'on_submit:call="', name: "onSubmit" },
+        { regex: /\bv-model="/g, rep: 'bind="', name: "v-model" },
+    ];
+    for (const { regex, rep, name } of reactEvents) {
+        if (regex.test(fixedXml)) {
+            fixedXml = fixedXml.replace(regex, rep);
+            fixesApplied.push({
+                code: "EUIX_ALIAS",
+                path: "view",
+                original: name,
+                fixed: rep.replace('="', ""),
+                message: `Normalized "${name}" attribute to EUIX syntax`,
             });
         }
     }
@@ -374,7 +571,6 @@ export async function applyFixes(source, diagnostics = null, options = {}) {
             : await validateSource(currentSource, { currentFile });
 
         const fixableDiags = currentDiags.filter((d) => d.suggestion || d.code === DIAGNOSTIC_CODES.INVALID_ROUTE || d.code === "EUIX0001");
-        if (fixableDiags.length === 0) break;
 
         let passFixes = [];
 

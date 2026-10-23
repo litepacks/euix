@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "state": {
+    "greeting": "Hello World"
+  },
+  "view": {
+    "tag": "h2",
+    "children": [
+      {
+        "$bind": "greeting"
+      }
+    ]
+  }
+}

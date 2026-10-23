@@ -1,0 +1,19 @@
+{
+  "name": "euix-deepseek-studio",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "DeepSeek Live UI Studio powered by EUIX Engine - Prompt to Real-Time Streaming UI with Doctor Self-Correction",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  },
+  "dependencies": {
+    "@tailwindcss/browser": "^4.3.3"
+  }
+}

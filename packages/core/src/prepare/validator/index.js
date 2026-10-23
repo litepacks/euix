@@ -105,6 +105,89 @@ function checkCircularWatchers(watchMap, actionsMap, fileName) {
     return diagnostics;
 }
 
+const JS_GLOBAL_SYMBOLS = new Set([
+    "true", "false", "null", "undefined", "NaN", "Infinity",
+    "Math", "Date", "Number", "String", "Boolean", "Array", "Object", "JSON", "RegExp",
+    "parseInt", "parseFloat", "isNaN", "isFinite", "console", "window",
+    "data", "$data", "state", "$state", "props", "$props", "ctx", "$ctx", "local", "$local",
+    "api", "$api", "route", "$route", "item", "$item", "$index", "$first", "$last",
+    "arguments", "typeof", "instanceof", "in", "void", "delete", "this",
+]);
+
+/**
+ * Validates template string expressions for syntax errors and undeclared identifiers.
+ *
+ * @param {string} str
+ * @param {import('../resolver/scopeResolver.js').ResolvedScope} scope
+ * @param {string} fileName
+ * @param {string} currentPath
+ * @param {Set<string>} localVars
+ * @param {Array<import('./diagnostics.js').Diagnostic>} diagnostics
+ */
+function validateStringExpressions(str, scope, fileName, currentPath, localVars, diagnostics) {
+    if (!str || typeof str !== "string") return;
+    const matches = str.matchAll(/\{([^{}]+)\}/g);
+    for (const match of matches) {
+        const expr = match[1].trim();
+        if (!expr) continue;
+
+        // 1. JS Syntax Check
+        try {
+            new Function("$data", "data", "$ctx", "context", `return (${expr});`);
+        } catch (err) {
+            diagnostics.push(
+                createDiagnostic({
+                    code: DIAGNOSTIC_CODES.INVALID_BINDING,
+                    type: "expression-syntax-error",
+                    file: fileName,
+                    path: currentPath,
+                    message: `Syntax error in template expression "{${expr}}": ${err.message}`,
+                }),
+            );
+            continue;
+        }
+
+        // 2. Identifier Scope Check
+        const cleaned = expr
+            .replace(/'(?:[^'\\]|\\.)*'/g, " '' ")
+            .replace(/"(?:[^"\\]|\\.)*"/g, ' "" ')
+            .replace(/`[\s\S]*?`/g, ' "" ')
+            .replace(/(?:[{,]\s*)([A-Za-z_$][\w$]*)\s*:/g, " ");
+
+        const tokenRegex = /(?:^|[^.\w$])([A-Za-z_$][\w$]*)/g;
+        let tokenMatch;
+        while ((tokenMatch = tokenRegex.exec(cleaned)) !== null) {
+            const ident = tokenMatch[1];
+            if (!ident) continue;
+            if (JS_GLOBAL_SYMBOLS.has(ident)) continue;
+            if (localVars && localVars.has(ident)) continue;
+            if (scope.states && scope.states.has(ident)) continue;
+            if (scope.computed && scope.computed.has(ident)) continue;
+            if (scope.props && scope.props.has(ident)) continue;
+            if (scope.services && scope.services.has(ident)) continue;
+
+            const candidates = [
+                ...(scope.states || []),
+                ...(scope.computed || []),
+                ...(scope.props || []),
+                ...(localVars || []),
+            ];
+            const suggestion = findClosestMatch(ident, candidates);
+
+            diagnostics.push(
+                createDiagnostic({
+                    code: DIAGNOSTIC_CODES.UNKNOWN_STATE,
+                    type: "unknown-expression-identifier",
+                    file: fileName,
+                    path: currentPath,
+                    message: `Unknown identifier "${ident}" in template expression "{${expr}}".${suggestion ? ` Did you mean "${suggestion}"?` : ""}`,
+                    suggestion,
+                }),
+            );
+        }
+    }
+}
+
 /**
  * Validates a view node recursively against scopes.
  *
@@ -117,6 +200,12 @@ function checkCircularWatchers(watchMap, actionsMap, fileName) {
  */
 function validateViewNode(node, scope, fileName, currentPath, localVars, diagnostics) {
     if (!node) return;
+
+    // Direct string or text with interpolation
+    if (typeof node === "string") {
+        validateStringExpressions(node, scope, fileName, currentPath, localVars, diagnostics);
+        return;
+    }
 
     // Direct binding object: { "$bind": "user.name" }
     if (typeof node === "object" && node.$bind !== undefined) {
@@ -217,9 +306,9 @@ function validateViewNode(node, scope, fileName, currentPath, localVars, diagnos
         }
     }
 
-    // Loop directive scoping: for_each or tag === "for_each"
+    // Loop directive scoping: for_each or tag === "for_each" or node.items
     let childLocalVars = localVars;
-    if (node.tag === "for_each" || node.for_each) {
+    if (node.tag === "for_each" || node.for_each || node.items) {
         const varName = node.var || "item";
         childLocalVars = new Set(localVars);
         childLocalVars.add(varName);
@@ -229,7 +318,11 @@ function validateViewNode(node, scope, fileName, currentPath, localVars, diagnos
     // Validate props & bindings
     if (node.props && typeof node.props === "object") {
         for (const [propKey, propVal] of Object.entries(node.props)) {
-            validateViewNode(propVal, scope, fileName, `${currentPath}.props.${propKey}`, childLocalVars, diagnostics);
+            if (typeof propVal === "string") {
+                validateStringExpressions(propVal, scope, fileName, `${currentPath}.props.${propKey}`, childLocalVars, diagnostics);
+            } else {
+                validateViewNode(propVal, scope, fileName, `${currentPath}.props.${propKey}`, childLocalVars, diagnostics);
+            }
         }
     }
 

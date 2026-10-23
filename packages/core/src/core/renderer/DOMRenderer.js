@@ -29,217 +29,25 @@ import {
     registerScopedBinding,
     registerBindingNamespace,
 } from "../binding/BindingResolver.js";
+import { renderSlotElement } from "./SlotRenderer.js";
+import {
+    renderFormControl,
+    renderInputElement,
+    renderSelectElement,
+    renderOptionElement,
+    renderTextareaElement,
+    renderFormElement,
+} from "./formControls.js";
+import { applyLayoutStyles, applyItemChildStyles } from "./LayoutStyles.js";
+import { scopeCSS, processStyleTag } from "./StyleProcessor.js";
 
-export function applyLayoutStyles(engine, el, xmlNode, context = {}) {
-    if (!el || !isElem(xmlNode)) return;
-
-    if (xmlNode._staticLayoutStyle) {
-        const s = xmlNode._staticLayoutStyle;
-        if (s.flexDirection) el.style.flexDirection = s.flexDirection;
-        if (s.alignItems) el.style.alignItems = s.alignItems;
-        if (s.justifyContent) el.style.justifyContent = s.justifyContent;
-        if (s.gap) el.style.gap = s.gap;
-        if (s.columnGap) el.style.columnGap = s.columnGap;
-        if (s.rowGap) el.style.rowGap = s.rowGap;
-        if (s.flexWrap) el.style.flexWrap = s.flexWrap;
-        if (s.gridTemplateColumns) el.style.gridTemplateColumns = s.gridTemplateColumns;
-        if (s.gridTemplateRows) el.style.gridTemplateRows = s.gridTemplateRows;
-        if (s.cssText) el.style.cssText += `;${s.cssText}`;
-        return;
-    }
-
-    const tagName = xmlNode.tagName.toLowerCase();
-    const typeAttr = (xmlNode.getAttribute("type") || "").toLowerCase();
-    const isFlex = tagName === "flex" || typeAttr === "flex";
-
-    const staticStyle = {};
-    let isDynamic = false;
-
-    const direction =
-        xmlNode.getAttribute("direction") || xmlNode.getAttribute("flex_direction") || xmlNode.getAttribute("dir");
-    if (direction) {
-        if (direction.includes("{")) {
-            isDynamic = true;
-            el.style.flexDirection = engine.interpolate(direction, context).trim();
-        } else {
-            el.style.flexDirection = direction;
-            staticStyle.flexDirection = direction;
-        }
-    }
-
-    const align = xmlNode.getAttribute("align") || xmlNode.getAttribute("align_items");
-    if (align) {
-        if (align.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(align, context).trim();
-            el.style.alignItems = val === "start" ? "flex-start" : val === "end" ? "flex-end" : val;
-        } else {
-            const v = align === "start" ? "flex-start" : align === "end" ? "flex-end" : align;
-            el.style.alignItems = v;
-            staticStyle.alignItems = v;
-        }
-    }
-
-    const justify = xmlNode.getAttribute("justify") || xmlNode.getAttribute("justify_content");
-    if (justify) {
-        if (justify.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(justify, context).trim();
-            el.style.justifyContent =
-                val === "start"
-                    ? "flex-start"
-                    : val === "end"
-                      ? "flex-end"
-                      : val === "between"
-                        ? "space-between"
-                        : val === "around"
-                          ? "space-around"
-                          : val === "evenly"
-                            ? "space-evenly"
-                            : val;
-        } else {
-            const v =
-                justify === "start"
-                    ? "flex-start"
-                    : justify === "end"
-                      ? "flex-end"
-                      : justify === "between"
-                        ? "space-between"
-                        : justify === "around"
-                          ? "space-around"
-                          : justify === "evenly"
-                            ? "space-evenly"
-                            : justify;
-            el.style.justifyContent = v;
-            staticStyle.justifyContent = v;
-        }
-    }
-
-    const gap = xmlNode.getAttribute("gap");
-    if (gap) {
-        if (gap.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(gap, context).trim();
-            el.style.gap = /^\d+$/.test(val) ? `${val}px` : val;
-        } else {
-            const v = /^\d+$/.test(gap) ? `${gap}px` : gap;
-            el.style.gap = v;
-            staticStyle.gap = v;
-        }
-    }
-
-    const gapX = xmlNode.getAttribute("gap_x") || xmlNode.getAttribute("col_gap");
-    if (gapX) {
-        if (gapX.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(gapX, context).trim();
-            el.style.columnGap = /^\d+$/.test(val) ? `${val}px` : val;
-        } else {
-            const v = /^\d+$/.test(gapX) ? `${gapX}px` : gapX;
-            el.style.columnGap = v;
-            staticStyle.columnGap = v;
-        }
-    }
-
-    const gapY = xmlNode.getAttribute("gap_y") || xmlNode.getAttribute("row_gap");
-    if (gapY) {
-        if (gapY.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(gapY, context).trim();
-            el.style.rowGap = /^\d+$/.test(val) ? `${val}px` : val;
-        } else {
-            const v = /^\d+$/.test(gapY) ? `${gapY}px` : gapY;
-            el.style.rowGap = v;
-            staticStyle.rowGap = v;
-        }
-    }
-
-    const wrap = xmlNode.getAttribute("wrap");
-    if (wrap) {
-        if (wrap.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(wrap, context).trim();
-            if (isFlex) {
-                el.style.flexWrap = val === "true" || val === "wrap" ? "wrap" : "nowrap";
-            }
-        } else {
-            if (isFlex) {
-                const v = wrap === "true" || wrap === "wrap" ? "wrap" : "nowrap";
-                el.style.flexWrap = v;
-                staticStyle.flexWrap = v;
-            }
-        }
-    }
-
-    const cols = xmlNode.getAttribute("cols") || xmlNode.getAttribute("columns");
-    if (cols) {
-        if (cols.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(cols, context).trim();
-            el.style.gridTemplateColumns = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
-        } else {
-            const v = /^\d+$/.test(cols) ? `repeat(${cols}, minmax(0, 1fr))` : cols;
-            el.style.gridTemplateColumns = v;
-            staticStyle.gridTemplateColumns = v;
-        }
-    }
-
-    const rows = xmlNode.getAttribute("rows");
-    if (rows) {
-        if (rows.includes("{")) {
-            isDynamic = true;
-            const val = engine.interpolate(rows, context).trim();
-            el.style.gridTemplateRows = /^\d+$/.test(val) ? `repeat(${val}, minmax(0, 1fr))` : val;
-        } else {
-            const v = /^\d+$/.test(rows) ? `repeat(${rows}, minmax(0, 1fr))` : rows;
-            el.style.gridTemplateRows = v;
-            staticStyle.gridTemplateRows = v;
-        }
-    }
-
-    const customStyle = xmlNode.getAttribute("style");
-    if (customStyle) {
-        if (customStyle.includes("{")) {
-            isDynamic = true;
-            const styleStr = engine.interpolate(customStyle, context).trim();
-            if (styleStr) el.style.cssText += `;${styleStr}`;
-        } else {
-            el.style.cssText += `;${customStyle}`;
-            staticStyle.cssText = customStyle;
-        }
-    }
-
-    if (!isDynamic) {
-        xmlNode._staticLayoutStyle = staticStyle;
-    }
-}
-
-export function applyItemChildStyles(engine, childEl, childXmlNode, context) {
-    if (!childEl || !isElem(childXmlNode)) return;
-
-    const flex = childXmlNode.getAttribute("flex");
-    if (flex) {
-        childEl.style.flex = engine.interpolate(flex, context).trim();
-    }
-
-    const colSpan = childXmlNode.getAttribute("col_span");
-    if (colSpan) {
-        const val = engine.interpolate(colSpan, context).trim();
-        childEl.style.gridColumn = val.startsWith("span") ? val : `span ${val} / span ${val}`;
-    }
-
-    const rowSpan = childXmlNode.getAttribute("row_span");
-    if (rowSpan) {
-        const val = engine.interpolate(rowSpan, context).trim();
-        childEl.style.gridRow = val.startsWith("span") ? val : `span ${val} / span ${val}`;
-    }
-}
+export { applyLayoutStyles, applyItemChildStyles };
 
 const EXTRACT_KEYS_CACHE = new Map();
 const EXTRACT_KEYS_CACHE_MAX = 1000;
 
 export function extractStateKeys(expr) {
-    if (!expr || typeof expr !== "string" || !expr.includes("{")) return [];
+    if (!expr || typeof expr !== "string") return [];
     let cached = EXTRACT_KEYS_CACHE.get(expr);
     if (cached !== undefined) return cached;
 
@@ -259,6 +67,17 @@ export function extractStateKeys(expr) {
     if (plainMatches) {
         for (let i = 0; i < plainMatches.length; i++) {
             keys.add(plainMatches[i].slice(1, -1));
+        }
+    }
+    if (!expr.includes("{")) {
+        const bareMatches = expr.match(/[a-zA-Z_$][a-zA-Z0-9_]*/g);
+        if (bareMatches) {
+            for (let i = 0; i < bareMatches.length; i++) {
+                const w = bareMatches[i];
+                if (w !== "true" && w !== "false" && w !== "null" && w !== "undefined" && w !== "data") {
+                    keys.add(w);
+                }
+            }
         }
     }
     cached = Array.from(keys);
@@ -632,86 +451,49 @@ export function interpolate(engine, text, context = {}) {
         ) {
             try {
                 const evaluated = EUIXExpressionParser.eval(resolvedExpr, (name) => {
-                    if (name.startsWith("api.") || name.startsWith("$api.")) {
-                        const clean = name.replace(/^(\$api|api)\./, "");
-                        const parts = clean.split(".");
-                        const endpointId = parts[0];
-                        const prop = parts.slice(1).join(".");
-                        const status = isFn(engine.getApiStatus)
-                            ? engine.getApiStatus(endpointId)
-                            : engine._apiStatus?.[endpointId];
-                        if (!status) return undefined;
-                        if (!prop) return status;
-                        return prop.split(".").reduce((acc, p) => (acc ? acc[p] : undefined), status);
-                    }
-                    if (name.startsWith("local.") || name.startsWith("$local.")) {
-                        const lk = name.replace(/^(\$local|local)\./, "");
-                        if (context._localState && context._localState[lk] !== undefined) {
-                            return context._localState[lk];
+                    const dotIdx = name.indexOf(".");
+                    if (dotIdx !== -1) {
+                        const scope = name.slice(0, dotIdx);
+                        const prop = name.slice(dotIdx + 1);
+                        if (
+                            scope === "api" ||
+                            scope === "$api" ||
+                            scope === "stream" ||
+                            scope === "$stream" ||
+                            scope === "errors" ||
+                            scope === "$errors" ||
+                            scope === "date" ||
+                            scope === "$date" ||
+                            scope === "device" ||
+                            scope === "$device" ||
+                            scope === "$route" ||
+                            scope === "$router" ||
+                            scope === "$fetcher"
+                        ) {
+                            const scopedVal = resolveScopedValue(engine, scope, prop, context);
+                            if (scopedVal !== undefined) return scopedVal;
                         }
-                        if (context.local && context.local[lk] !== undefined) {
-                            return context.local[lk];
+                        if (scope === "local" || scope === "$local") {
+                            if (context._localState && context._localState[prop] !== undefined) {
+                                return context._localState[prop];
+                            }
+                            if (context.local && context.local[prop] !== undefined) {
+                                return context.local[prop];
+                            }
                         }
-                    }
-                    if (name.startsWith("global.") || name.startsWith("$global.")) {
-                        const gk = name.replace(/^(\$global|global)\.(data\.)?/, "");
-                        return engine.getState(gk);
-                    }
-                    if (name.startsWith("$date.") || name.startsWith("date.")) {
-                        const helper =
-                            engine.$date ||
-                            engine.date ||
-                            (isFn(engine.getState) ? engine.getState("$date") : null) ||
-                            (isFn(engine.getState) ? engine.getState("date") : null);
-                        const prop = name.replace(/^(\$date|date)\./, "");
-                        if (!helper) return undefined;
-                        if (!prop) return helper;
-                        return prop
-                            .split(".")
-                            .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), helper);
-                    }
-                    if (name === "$date" || name === "date") {
-                        return (
-                            engine.$date ||
-                            engine.date ||
-                            (isFn(engine.getState) ? engine.getState("$date") : null) ||
-                            (isFn(engine.getState) ? engine.getState("date") : null)
-                        );
-                    }
-                    if (name.startsWith("$device.") || name.startsWith("device.")) {
-                        let dev =
-                            engine.$device ||
-                            engine.device ||
-                            (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
-                            (context && (context.$device || context.device));
-                        if (!dev && typeof navigator !== "undefined") {
-                            const nav = navigator;
-                            dev = {
-                                online: typeof nav.onLine === "boolean" ? nav.onLine : true,
-                                hardwareConcurrency: Number(nav.hardwareConcurrency) || 8,
-                                cores: Number(nav.hardwareConcurrency) || 8,
-                                deviceMemory: Number(nav.deviceMemory) || 8,
-                                memory: Number(nav.deviceMemory) || 8,
-                                batteryLevel: 1,
-                                batteryCharging: false,
-                                prefersDark: true,
-                                reducedMotion: false,
-                            };
+                        if (scope === "global" || scope === "$global") {
+                            const gk = prop.replace(/^data\./, "");
+                            return engine.getState(gk);
                         }
-                        const prop = name.replace(/^(\$device|device)\./, "");
-                        if (!dev) return undefined;
-                        if (!prop) return dev;
-                        return prop
-                            .split(".")
-                            .reduce((acc, p) => (acc !== undefined && acc !== null ? acc[p] : undefined), dev);
-                    }
-                    if (name === "$device" || name === "device") {
-                        return (
-                            engine.$device ||
-                            engine.device ||
-                            (isFn(engine.getState) ? engine.getState("$device") || engine.getState("device") : null) ||
-                            (context && (context.$device || context.device))
-                        );
+                    } else if (
+                        name === "$date" ||
+                        name === "date" ||
+                        name === "$device" ||
+                        name === "device" ||
+                        name === "$route" ||
+                        name === "$router"
+                    ) {
+                        return resolveScopedValue(engine, name, "", context);
                     }
 
                     const cleanKey = name.replace(/^(?:parent\.)?data\./, "");
@@ -879,7 +661,7 @@ function _parseConditionalBranches(xmlNode) {
     const branches = [];
     let current = {
         type: "if",
-        condition: xmlNode.getAttribute("condition") || "",
+        condition: xmlNode.getAttribute("condition") || xmlNode.getAttribute("if") || "",
         nodes: [],
         sealed: false,
     };
@@ -1104,7 +886,7 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
             if (!attrValue.includes("data.") && !attrValue.includes("local.")) {
                 el.setAttribute(attrName, engine.interpolate(attrValue, context));
             }
-        } else if (attrName === "class") {
+        } else if (attrName === "class" || attrName === "className") {
             const interpolatedVal = engine.interpolate(attrValue, context);
             if (el.namespaceURI === SVG_NAMESPACE) {
                 el.setAttribute("class", interpolatedVal);
@@ -1246,6 +1028,33 @@ export function updateAttributeBinding(engine, el, attrName, template, context =
 export function applyRef(engine, el, xmlNode, context = {}) {
     if (!el || !xmlNode || xmlNode.nodeType !== 1) return el;
     engine.applyNodeAttributes(el, xmlNode, context);
+
+    const showAttr = xmlNode.getAttribute("show");
+    if (showAttr) {
+        const updateShow = () => {
+            const isVisible = engine.evalCondition(showAttr, context);
+            el.style.display = isVisible ? "" : "none";
+        };
+        updateShow();
+        const keys = engine.extractStateKeys(showAttr);
+        for (const k of keys) {
+            engine.registerBinding(k, el, "attribute", updateShow);
+        }
+    }
+
+    const unlessAttr = xmlNode.getAttribute("unless");
+    if (unlessAttr) {
+        const updateUnless = () => {
+            const isMatch = engine.evalCondition(unlessAttr, context);
+            el.style.display = !isMatch ? "" : "none";
+        };
+        updateUnless();
+        const keys = engine.extractStateKeys(unlessAttr);
+        for (const k of keys) {
+            engine.registerBinding(k, el, "attribute", updateUnless);
+        }
+    }
+
     const refAttr = xmlNode.getAttribute("ref");
     if (refAttr) {
         const resolvedRef = engine.interpolate(refAttr, context);
@@ -1355,7 +1164,7 @@ export function isStaticSubtree(xmlNode, engine = null) {
             const attr = attrs[i];
             const name = attr.name.toLowerCase();
             const val = attr.value || "";
-            if (name.startsWith("on_") || name === "bind" || name === "ref" || val.includes("{")) {
+            if (name.startsWith("on_") || name === "bind" || name === "ref" || name === "if" || name === "condition" || name === "show" || name === "unless" || val.includes("{")) {
                 xmlNode._isStaticSubtree = false;
                 return false;
             }
@@ -1481,119 +1290,49 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
     const typeAttr = (xmlNode.getAttribute("type") || "").toLowerCase();
 
     if (tagName === "slot" || tagName === "children") {
-        const frag = document.createElement("div");
-        frag.style.display = "contents";
-        frag.className = "euix-slot-wrapper";
+        return renderSlotElement(engine, xmlNode, context);
+    }
 
-        const slotName = xmlNode.getAttribute("name");
-        const slots = context._projectedSlots;
-        let projectedNodes = [];
+    if (
+        !context._evaluatingCondition &&
+        tagName !== "if" &&
+        tagName !== "else" &&
+        tagName !== "else_if" &&
+        (xmlNode.hasAttribute("if") || xmlNode.hasAttribute("condition"))
+    ) {
+        const condExpr = xmlNode.getAttribute("if") || xmlNode.getAttribute("condition");
+        const containerNode = document.createElement("div");
+        containerNode.className = "euix-conditional-wrapper";
+        containerNode.style.display = "contents";
 
-        if (slotName && slots?.named?.has(slotName)) {
-            projectedNodes = slots.named.get(slotName);
-        } else if (!slotName && slots?.default?.length > 0) {
-            projectedNodes = slots.default;
-        }
+        const childCtx = { ...context, _evaluatingCondition: true };
+        let currentEl = null;
 
-        // 1. Extract scoped slot properties from <slot ...> attributes (e.g. item="{item}", index="{$index}")
-        const slotScopeProps = {};
-        if (xmlNode.attributes && xmlNode.attributes.length > 0) {
-            const aLen = xmlNode.attributes.length;
-            for (let i = 0; i < aLen; i++) {
-                const a = xmlNode.attributes[i];
-                if (a.name !== "name" && a.name !== "type" && a.name !== "class" && a.name !== "style") {
-                    const val = a.value;
-                    let resolvedVal;
-                    if (
-                        typeof val === "string" &&
-                        val.startsWith("{") &&
-                        val.endsWith("}") &&
-                        !val.slice(1, -1).includes("{")
-                    ) {
-                        const rawExpr = val.slice(1, -1).trim();
-                        resolvedVal = engine.resolveValueFromPath(rawExpr, context);
-                        if (resolvedVal === undefined) {
-                            try {
-                                resolvedVal = EUIXExpressionParser.eval(rawExpr, (k) =>
-                                    engine.resolveValueFromPath(k, context),
-                                );
-                            } catch (_) {
-                                resolvedVal = engine.interpolate(val, context);
-                            }
-                        }
-                    } else {
-                        resolvedVal = engine.interpolate(val, context);
+        const renderBranch = () => {
+            const isMatch = engine.evalCondition(condExpr, context);
+            if (isMatch) {
+                if (!currentEl) {
+                    currentEl = engine.createHTMLElement(xmlNode, childCtx);
+                    if (currentEl) containerNode.appendChild(currentEl);
+                }
+            } else {
+                if (currentEl) {
+                    if (currentEl.parentNode === containerNode) {
+                        containerNode.removeChild(currentEl);
                     }
-                    slotScopeProps[a.name] = resolvedVal;
+                    currentEl = null;
                 }
             }
+        };
+
+        renderBranch();
+
+        const stateKeys = engine.extractStateKeys(condExpr);
+        for (const k of stateKeys) {
+            engine.registerBinding(k, containerNode, "conditional", renderBranch);
         }
 
-        if (projectedNodes.length > 0) {
-            const baseContext = slots?.parentContext || context;
-            projectedNodes.forEach((pNode) => {
-                const pTag = getTagName(pNode);
-
-                // Build scoped context with variables
-                const scopedContext = {
-                    ...baseContext,
-                    ...slotScopeProps,
-                    $slot: slotScopeProps,
-                    slotProps: slotScopeProps,
-                };
-
-                if (isElem(pNode)) {
-                    const scopeVarName =
-                        pNode.getAttribute("let") ||
-                        pNode.getAttribute("var") ||
-                        pNode.getAttribute("as") ||
-                        pNode.getAttribute("slot_scope") ||
-                        pNode.getAttribute("scope");
-
-                    if (scopeVarName) {
-                        scopedContext[scopeVarName] = slotScopeProps;
-                    }
-
-                    if (pNode.attributes) {
-                        const pAttrs = pNode.attributes;
-                        const paLen = pAttrs.length;
-                        for (let i = 0; i < paLen; i++) {
-                            const a = pAttrs[i];
-                            if (a.name.startsWith("let:") || a.name.startsWith("var:")) {
-                                const targetVar = a.name.slice(4);
-                                const sourceProp = a.value ? a.value.trim() : targetVar;
-                                scopedContext[targetVar] =
-                                    slotScopeProps[sourceProp] !== undefined
-                                        ? slotScopeProps[sourceProp]
-                                        : slotScopeProps;
-                            }
-                        }
-                    }
-                }
-
-                if (pTag === "slot" || pTag === "template") {
-                    getChildNodes(pNode).forEach((c) => {
-                        const el = engine.createHTMLElement(c, scopedContext);
-                        if (el) frag.appendChild(el);
-                    });
-                } else {
-                    const el = engine.createHTMLElement(pNode, scopedContext);
-                    if (el) frag.appendChild(el);
-                }
-            });
-        } else {
-            const fallbackContext = {
-                ...context,
-                ...slotScopeProps,
-                $slot: slotScopeProps,
-                slotProps: slotScopeProps,
-            };
-            getChildNodes(xmlNode).forEach((c) => {
-                const el = engine.createHTMLElement(c, fallbackContext);
-                if (el) frag.appendChild(el);
-            });
-        }
-        return frag;
+        return containerNode;
     }
 
     if (engine._customComponents.has(tagName) || engine.constructor._globalCustomComponents?.has(tagName)) {
@@ -1640,7 +1379,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         el.style.display = isFlex ? "flex" : "grid";
         el.className = [
             isFlex ? "euix-flex" : "euix-grid",
-            engine.interpolate(xmlNode.getAttribute("class") || "", context),
+            engine.interpolate(xmlNode.getAttribute("class") || xmlNode.getAttribute("className") || "", context),
         ]
             .filter(Boolean)
             .join(" ");
@@ -1677,213 +1416,13 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         return null;
     }
 
-    if (tagName === "form") {
-        const form = document.createElement("form");
-        const formClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
-        if (formClass) form.className = formClass;
-        engine.bindEvents(xmlNode, form, context);
-
-        form.onsubmit = (e) => {
-            e.preventDefault();
-        };
-
-        const chNodes = xmlNode.childNodes;
-        const chLen = chNodes ? chNodes.length : 0;
-        for (let i = 0; i < chLen; i++) {
-            const childEl = engine.createHTMLElement(chNodes[i], context);
-            if (childEl) form.appendChild(childEl);
-        }
-
-        return engine.applyRef(form, xmlNode, context);
-    }
-
-    if (tagName === "select") {
-        const sel = document.createElement("select");
-        const selClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
-        if (selClass) sel.className = selClass;
-        const bindPath = engine.resolveBindPath(xmlNode);
-        const binding = engine.resolveBinding(xmlNode, context);
-
-        if (binding || bindPath) {
-            const activeBinding = binding || { type: "state", path: bindPath };
-            const initialVal = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
-            sel.value = initialVal ?? "";
-            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, sel, "input");
-
-            sel.addEventListener("change", (e) => {
-                const raw = e.target.value;
-                const coerced = engine.coerceBindingValue(raw, activeBinding, xmlNode);
-                if (binding) {
-                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
-                } else {
-                    engine.setState(bindPath, coerced, { sourceEl: e.target });
-                }
-            });
-        }
-
-        engine.bindEvents(xmlNode, sel, context);
-
-        const chNodes = xmlNode.childNodes;
-        const chLen = chNodes ? chNodes.length : 0;
-        for (let i = 0; i < chLen; i++) {
-            const childEl = engine.createHTMLElement(chNodes[i], context);
-            if (childEl) sel.appendChild(childEl);
-        }
-
-        if (binding) sel.value = engine.getBindingValue(binding, context) ?? "";
-        else if (bindPath) sel.value = engine.getState(bindPath) ?? "";
-
-        return engine.applyRef(sel, xmlNode, context);
-    }
-
-    if (tagName === "option") {
-        const opt = document.createElement("option");
-        const valAttr = xmlNode.getAttribute("value");
-        opt.value = valAttr ? engine.interpolate(valAttr, context) : xmlNode.textContent.trim();
-        opt.textContent = engine.interpolate(xmlNode.textContent.trim(), context);
-        if (xmlNode.getAttribute("selected") === "true") opt.selected = true;
-        return opt;
-    }
-
-    if (tagName === "textarea") {
-        const ta = document.createElement("textarea");
-        const taClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
-        if (taClass) ta.className = taClass;
-        const placeholder = xmlNode.getAttribute("placeholder");
-        if (placeholder) ta.placeholder = engine.interpolate(placeholder, context);
-        const rows = xmlNode.getAttribute("rows");
-        if (rows) ta.rows = parseInt(rows, 10);
-
-        const bindPath = engine.resolveBindPath(xmlNode);
-        const binding = engine.resolveBinding(xmlNode, context);
-        const activeBinding = binding || (bindPath ? { type: "state", path: bindPath } : null);
-
-        if (activeBinding) {
-            const mods = activeBinding.modifiers || {};
-            const isLazy = mods.lazy || xmlNode.getAttribute("lazy") === "true";
-            const debounceMs = mods.debounce;
-
-            const initialVal = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
-            ta.value = initialVal !== undefined && initialVal !== null ? initialVal : "";
-            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, ta, "input");
-
-            const handleTextareaEvent = (e) => {
-                const coerced = engine.coerceBindingValue(e.target.value, activeBinding, xmlNode);
-                if (binding) {
-                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
-                } else {
-                    engine.setState(bindPath, coerced, { sourceEl: e.target });
-                }
-            };
-
-            let eventHandler = handleTextareaEvent;
-            if (debounceMs > 0) {
-                let timer = null;
-                eventHandler = (e) => {
-                    const target = e.target;
-                    clearTimeout(timer);
-                    timer = setTimeout(() => handleTextareaEvent({ target }), debounceMs);
-                };
-            }
-
-            if (isLazy) {
-                ta.onchange = eventHandler;
-                ta.onblur = eventHandler;
-            } else {
-                ta.oninput = eventHandler;
-            }
-        }
-        engine.bindEvents(xmlNode, ta, context);
-        return engine.applyRef(ta, xmlNode, context);
-    }
-
-    if (tagName === "input") {
-        const inputType = (xmlNode.getAttribute("type") || "text").toLowerCase();
-        const el = document.createElement("input");
-        el.type = inputType;
-        if (xmlNode.getAttribute("class")) el.className = engine.interpolate(xmlNode.getAttribute("class"), context);
-        if (xmlNode.getAttribute("placeholder"))
-            el.placeholder = engine.interpolate(xmlNode.getAttribute("placeholder"), context);
-        if (xmlNode.getAttribute("autofocus") === "true") el.dataset.xuiAutofocus = "true";
-        if (xmlNode.getAttribute("min")) el.min = xmlNode.getAttribute("min");
-        if (xmlNode.getAttribute("max")) el.max = xmlNode.getAttribute("max");
-        if (xmlNode.getAttribute("step")) el.step = xmlNode.getAttribute("step");
-        if (xmlNode.getAttribute("name")) el.name = engine.interpolate(xmlNode.getAttribute("name"), context);
-        if (xmlNode.getAttribute("value")) el.value = engine.interpolate(xmlNode.getAttribute("value"), context);
-
-        const bindPath = engine.resolveBindPath(xmlNode);
-        const binding = engine.resolveBinding(xmlNode, context);
-        const activeBinding = binding || (bindPath ? { type: "state", path: bindPath } : null);
-
-        if (inputType === "checkbox") {
-            if (activeBinding) {
-                const rawInit = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
-                el.checked = engine.isTruthy(rawInit);
-                if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "checkbox");
-                el.onchange = (e) => {
-                    const boolVal = e.target.checked;
-                    const next = activeBinding.modifiers?.boolean ? boolVal : (boolVal ? "true" : "false");
-                    if (binding) engine.setBindingValue(binding, next, context);
-                    else engine.setState(bindPath, next);
-                };
-            }
-        } else if (inputType === "radio") {
-            if (activeBinding) {
-                const rawInit = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
-                const current = String(rawInit ?? "");
-                el.checked = current === el.value;
-                if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "radio");
-                el.onchange = (e) => {
-                    if (e.target.checked) {
-                        const coerced = engine.coerceBindingValue(el.value, activeBinding, xmlNode);
-                        if (binding) engine.setBindingValue(binding, coerced, context);
-                        else engine.setState(bindPath, coerced);
-                    }
-                };
-            }
-        } else if (activeBinding) {
-            const mods = activeBinding.modifiers || {};
-            const isLazy = mods.lazy || xmlNode.getAttribute("lazy") === "true";
-            const debounceMs = mods.debounce;
-
-            const val = binding ? engine.getBindingValue(binding, context) : engine.getState(bindPath);
-            el.value = val !== undefined && val !== null ? val : "";
-            if (activeBinding.type === "state") engine.registerBinding(activeBinding.path, el, "input");
-
-            const handleInputEvent = (e) => {
-                const coerced = engine.coerceBindingValue(e.target.value, activeBinding, xmlNode);
-                if (binding) {
-                    engine.setBindingValue(binding, coerced, context, { sourceEl: e.target });
-                } else {
-                    engine.setState(bindPath, coerced, { sourceEl: e.target });
-                }
-            };
-
-            let eventHandler = handleInputEvent;
-            if (debounceMs > 0) {
-                let timer = null;
-                eventHandler = (e) => {
-                    const target = e.target;
-                    clearTimeout(timer);
-                    timer = setTimeout(() => handleInputEvent({ target }), debounceMs);
-                };
-            }
-
-            if (isLazy) {
-                el.onchange = eventHandler;
-                el.onblur = eventHandler;
-            } else {
-                el.oninput = eventHandler;
-            }
-        }
-
-        engine.bindEvents(xmlNode, el, context);
-        return engine.applyRef(el, xmlNode, context);
-    }
+    const formEl = renderFormControl(engine, tagName, xmlNode, context);
+    if (formEl) return formEl;
 
     if (tagName === "img" || tagName === "image") {
         const el = document.createElement("img");
-        if (xmlNode.getAttribute("class")) el.className = engine.interpolate(xmlNode.getAttribute("class"), context);
+        const imgClass = xmlNode.getAttribute("class") || xmlNode.getAttribute("className");
+        if (imgClass) el.className = engine.interpolate(imgClass, context);
         const rawSrc = xmlNode.getAttribute("src") || "";
         const alt = xmlNode.getAttribute("alt") || "";
         const resolvedSrc = engine.interpolate(rawSrc, context);
@@ -1904,7 +1443,8 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
     if (tagName === "button") {
         const el = document.createElement("button");
-        if (xmlNode.getAttribute("class")) el.className = engine.interpolate(xmlNode.getAttribute("class"), context);
+        const btnClass = xmlNode.getAttribute("class") || xmlNode.getAttribute("className");
+        if (btnClass) el.className = engine.interpolate(btnClass, context);
         const btnType = xmlNode.getAttribute("type");
         if (btnType) el.type = btnType;
         engine.bindEvents(xmlNode, el, context);
@@ -1941,20 +1481,28 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         return engine.applyRef(el, xmlNode, context);
     }
 
-    if (tagName === "collapse") {
-        return isFn(engine.renderCollapse) ? engine.renderCollapse(xmlNode, context) : null;
+    // Dynamic Custom Tag Renderer (Plugins)
+    const customRenderer =
+        (engine._customTagRenderers && engine._customTagRenderers.get(tagName)) ||
+        (engine.constructor._customTagRenderers && engine.constructor._customTagRenderers.get(tagName));
+    if (customRenderer) {
+        return customRenderer.call(engine, xmlNode, context);
     }
 
-    if (tagName === "dialog") {
-        return isFn(engine.renderDialog) ? engine.renderDialog(xmlNode, context) : null;
+    if (tagName === "collapse" && isFn(engine.renderCollapse)) {
+        return engine.renderCollapse(xmlNode, context);
     }
 
-    if (tagName === "live_region" || tagName === "live-region") {
-        return isFn(engine.renderLiveRegion) ? engine.renderLiveRegion(xmlNode, context) : null;
+    if (tagName === "dialog" && isFn(engine.renderDialog)) {
+        return engine.renderDialog(xmlNode, context);
     }
 
-    if (tagName === "head" || tagName === "helmet") {
-        return isFn(engine.renderHead) ? engine.renderHead(xmlNode, context) : null;
+    if ((tagName === "live_region" || tagName === "live-region") && isFn(engine.renderLiveRegion)) {
+        return engine.renderLiveRegion(xmlNode, context);
+    }
+
+    if ((tagName === "head" || tagName === "helmet") && isFn(engine.renderHead)) {
+        return engine.renderHead(xmlNode, context);
     }
 
     if (tagName === "title" && isFn(engine.renderHeadTitle)) {
@@ -2074,7 +1622,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
             }
         }
 
-        const elClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
+        const elClass = engine.interpolate(xmlNode.getAttribute("class") || xmlNode.getAttribute("className") || "", context);
         if (elClass && el) el.className = elClass;
 
         if (type === "text" && bindPath) {
@@ -2142,7 +1690,7 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
     const div = isSvg
         ? document.createElementNS(SVG_NAMESPACE, xmlNode.tagName || tagName)
         : document.createElement(elementTagName);
-    const xmlClass = engine.interpolate(xmlNode.getAttribute("class") || "", context);
+    const xmlClass = engine.interpolate(xmlNode.getAttribute("class") || xmlNode.getAttribute("className") || "", context);
     if (xmlClass) {
         if (isSvg) div.setAttribute("class", xmlClass);
         else div.className = xmlClass;
@@ -2355,174 +1903,15 @@ export function render(engine) {
     }
 }
 
-export function scopeCSS(cssText, scopeSelector) {
-    if (!cssText || !scopeSelector) return cssText;
-    const scopeAttr = scopeSelector.startsWith("[") ? scopeSelector : `[${scopeSelector}]`;
+export { scopeCSS, processStyleTag };
 
-    // Strip comments
-    const cleanCss = cssText.replace(/\/\*[\s\S]*?\*\//g, "");
-
-    // Regex to match at-rules like @media (...) { ... } or regular rules selector { ... }
-    return cleanCss
-        .replace(/(@[^{]+)\{([\s\S]+?)\}\s*\}/gi, (match, atRule, innerRules) => {
-            if (atRule.trim().startsWith("@keyframes") || atRule.trim().startsWith("@-webkit-keyframes")) {
-                return match;
-            }
-            const scopedInner = scopeCSS(innerRules, scopeAttr);
-            return `${atRule} {\n${scopedInner}\n}`;
-        })
-        .replace(/([^{}]+)\{([^}]+)\}/g, (match, selectorList, declarations) => {
-            const trimmed = selectorList.trim();
-            if (trimmed.startsWith("@")) return match;
-
-            const scopedSelectors = selectorList
-                .split(",")
-                .map((sel) => {
-                    const s = sel.trim();
-                    if (!s) return s;
-                    if (s === ":host") return scopeAttr;
-                    if (s.startsWith(":host(")) return s.replace(/:host\((.*?)\)/, `${scopeAttr}$1`);
-                    if (s.startsWith(":root") || s.startsWith("html") || s.startsWith("body")) {
-                        return s;
-                    }
-                    return `${scopeAttr} ${s}, ${scopeAttr}${s}`;
-                })
-                .join(", ");
-
-            return `${scopedSelectors} {${declarations}}`;
-        });
-}
-
-export function processStyleTag(engine, xmlNode, context = {}, targetEl = null) {
-    if (!xmlNode || !engine) return null;
-    const href = xmlNode.getAttribute("src") || xmlNode.getAttribute("href") || xmlNode.getAttribute("url");
-    if (href) {
-        engine.loadStyle(href);
-        return null;
-    }
-
-    const rawCss = xmlNode.textContent || "";
-    if (!rawCss.trim()) return null;
-
-    const isScoped =
-        xmlNode.getAttribute("scoped") === "true" ||
-        xmlNode.getAttribute("scoped") === "" ||
-        (typeof xmlNode.hasAttribute === "function" && xmlNode.hasAttribute("scoped"));
-
-    let scopeId = null;
-    if (isScoped) {
-        scopeId = context._instanceId || context._scopeId || `euix-s-${Math.random().toString(36).substring(2, 8)}`;
-        if (targetEl && isElem(targetEl)) {
-            targetEl.setAttribute("data-euix-scope", scopeId);
-        } else if (context._rootEl && isElem(context._rootEl)) {
-            context._rootEl.setAttribute("data-euix-scope", scopeId);
-        } else if (engine.container && isElem(engine.container)) {
-            engine.container.setAttribute("data-euix-scope", scopeId);
-        }
-    }
-
-    const styleEl = typeof document !== "undefined" ? document.createElement("style") : null;
-    if (!styleEl) return null;
-
-    if (xmlNode.getAttribute("id")) {
-        styleEl.id = xmlNode.getAttribute("id");
-    }
-    if (xmlNode.getAttribute("media")) {
-        styleEl.media = xmlNode.getAttribute("media");
-    }
-    if (xmlNode.getAttribute("type")) {
-        styleEl.type = xmlNode.getAttribute("type");
-    }
-    if (isScoped && scopeId) {
-        styleEl.setAttribute("data-euix-scoped-for", scopeId);
-    }
-    let cleanCss = rawCss.replace(/\/\*<!\[CDATA\[\*\//g, "").replace(/\/\*\]\]>\*\//g, "");
-    if (isScoped && scopeId) {
-        cleanCss = scopeCSS(cleanCss, `[data-euix-scope="${scopeId}"]`);
-    }
-    const scopedTemplate = cleanCss;
-
-    const cssSegments = [];
-    const cssExtractors = [];
-    let lastIndex = 0;
-    const cssRegex = /\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g;
-    let m;
-    while ((m = cssRegex.exec(scopedTemplate)) !== null) {
-        cssSegments.push(scopedTemplate.slice(lastIndex, m.index));
-        cssExtractors.push(`{${m[1]}}`);
-        lastIndex = cssRegex.lastIndex;
-    }
-    cssSegments.push(scopedTemplate.slice(lastIndex));
-
-    const hasDyn = cssExtractors.length > 0;
-    const numExtr = cssExtractors.length;
-
-    const renderCss = () => {
-        let css;
-        if (!hasDyn) {
-            css = scopedTemplate;
-        } else if (numExtr === 1) {
-            css = cssSegments[0] + engine.interpolate(cssExtractors[0], context) + cssSegments[1];
-        } else {
-            let out = cssSegments[0];
-            for (let i = 0; i < numExtr; i++) {
-                out += engine.interpolate(cssExtractors[i], context) + cssSegments[i + 1];
-            }
-            css = out;
-        }
-        if (styleEl.textContent !== css) {
-            styleEl.textContent = css;
-        }
-    };
-
-    renderCss();
-
-    if (!engine._injectedStyles) {
-        engine._injectedStyles = new Set();
-    }
-    engine._injectedStyles.add(styleEl);
-
-    // Dynamic state expressions in CSS (deduplicated per bindKey)
-    const exprMatches =
-        rawCss.match(/\{(\s*(?:data|local|\$local|props|\$props|const|\$data|\$state|state)\.[^}]+)\}/g) || [];
-    if (exprMatches.length > 0) {
-        const registeredKeys = new Set();
-        exprMatches.forEach((match) => {
-            const rawExpr = match.slice(1, -1).trim();
-            const keys = rawExpr.match(/(?:data\.|local\.|computed\.)?[a-zA-Z0-9_.]+/g) || [];
-            keys.forEach((key) => {
-                const cleanKey = engine.parseBindPath(key);
-                if (cleanKey) {
-                    const bindKey =
-                        key.startsWith("local.") && context._instanceId
-                            ? `${context._instanceId}:${cleanKey}`
-                            : cleanKey;
-                    if (!registeredKeys.has(bindKey)) {
-                        registeredKeys.add(bindKey);
-                        engine.registerBinding(bindKey, styleEl, "style_tag", () => {
-                            renderCss();
-                        });
-                    }
-                }
-            });
-        });
-    }
-
-    const docHead = typeof document !== "undefined" ? document.head || document.documentElement : null;
-    if (docHead) {
-        docHead.appendChild(styleEl);
-    }
-
-    if (context._instanceId && typeof engine.onUnmount === "function") {
-        engine.onUnmount(() => {
-            if (styleEl.parentNode) {
-                styleEl.parentNode.removeChild(styleEl);
-            }
-            engine._injectedStyles?.delete(styleEl);
-        });
-    }
-
-    return styleEl;
-}
-
-export { renderErrorBoundary };
+export {
+    renderErrorBoundary,
+    renderSlotElement,
+    renderFormControl,
+    renderInputElement,
+    renderSelectElement,
+    renderOptionElement,
+    renderTextareaElement,
+    renderFormElement,
+};

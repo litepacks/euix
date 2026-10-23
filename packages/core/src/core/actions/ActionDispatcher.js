@@ -86,6 +86,15 @@ export function handleAction(engine, actionNode, context = {}) {
     }
 }
 
+function _logErrorScope(engine, eventType, payload) {
+    if (engine._devtools && isFn(engine._devtools.logErrorScope)) {
+        engine._devtools.logErrorScope(eventType, payload);
+    }
+    if (engine.hooks?.emit) {
+        engine.hooks.emit("devtools:errorScope", { eventType, ...payload });
+    }
+}
+
 export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
     const catchNodes = engine.getChildren(tryNode, "catch");
     const finallyNodes = engine.getChildren(tryNode, "finally");
@@ -120,9 +129,7 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
     const scopeId = genId("try_");
     const startTime = getNow();
 
-    if (engine._devtools && isFn(engine._devtools.logErrorScope)) {
-        engine._devtools.logErrorScope("TRY_ENTER", { scopeId, component: context._componentName });
-    }
+    _logErrorScope(engine, "TRY_ENTER", { scopeId, component: context._componentName });
 
     let tryResult;
     let caughtError = null;
@@ -136,21 +143,17 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
         for (const childNode of tryActionNodes) {
             tryResult = await _handleActionInternal(engine, childNode, tryContext);
         }
-        if (engine._devtools && isFn(engine._devtools.logErrorScope)) {
-            engine._devtools.logErrorScope("TRY_SUCCESS", {
-                scopeId,
-                duration: getNow() - startTime,
-            });
-        }
+        _logErrorScope(engine, "TRY_SUCCESS", {
+            scopeId,
+            duration: getNow() - startTime,
+        });
     } catch (rawErr) {
         caughtError = EUIXStructuredError.from(rawErr, {
             originatingAction: tryNode.getAttribute("action") || "TRY",
             component: context._componentName,
         });
 
-        if (engine._devtools && isFn(engine._devtools.logErrorScope)) {
-            engine._devtools.logErrorScope("ACTION_ERROR", { scopeId, error: caughtError.toJSON() });
-        }
+        _logErrorScope(engine, "ACTION_ERROR", { scopeId, error: caughtError.toJSON() });
 
         const catchNode = catchNodes[0];
         if (catchNode) {
@@ -165,9 +168,7 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
                 _lastError: caughtError,
             };
 
-            if (engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                engine._devtools.logErrorScope("CATCH_ENTER", { scopeId, varName, error: caughtError.toJSON() });
-            }
+            _logErrorScope(engine, "CATCH_ENTER", { scopeId, varName, error: caughtError.toJSON() });
 
             try {
                 const catchActions = engine.getChildren(catchNode);
@@ -186,17 +187,13 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
         let pendingError = caughtError;
 
         if (finallyNode) {
-            if (engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                engine._devtools.logErrorScope("FINALLY_ENTER", { scopeId });
-            }
+            _logErrorScope(engine, "FINALLY_ENTER", { scopeId });
             try {
                 const finallyActions = engine.getChildren(finallyNode);
                 for (const finAct of finallyActions) {
                     await _handleActionInternal(engine, finAct, context);
                 }
-                if (engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                    engine._devtools.logErrorScope("FINALLY_COMPLETE", { scopeId });
-                }
+                _logErrorScope(engine, "FINALLY_COMPLETE", { scopeId });
             } catch (finErr) {
                 pendingError = EUIXStructuredError.from(finErr, {
                     originatingAction: "FINALLY",
@@ -206,9 +203,7 @@ export async function _handleTryCatchFinally(engine, tryNode, context = {}) {
         }
 
         if (pendingError) {
-            if (engine._devtools && typeof engine._devtools.logErrorScope === "function") {
-                engine._devtools.logErrorScope("ERROR_PROPAGATED", { scopeId, error: pendingError.toJSON() });
-            }
+            _logErrorScope(engine, "ERROR_PROPAGATED", { scopeId, error: pendingError.toJSON() });
             throw pendingError;
         }
     }
@@ -242,11 +237,15 @@ export function _handleActionInternal(engine, actionNode, context = {}) {
     }
     if (typeof engine._updateDevToolsStatus === "function") {
         engine._updateDevToolsStatus("pendingActions", 1);
+    } else if (engine.hooks) {
+        engine.hooks.emit("devtools:status", { key: "pendingActions", deltaOrValue: 1 });
     }
 
     const onComplete = (err, result) => {
         if (typeof engine._updateDevToolsStatus === "function") {
             engine._updateDevToolsStatus("pendingActions", -1);
+        } else if (engine.hooks) {
+            engine.hooks.emit("devtools:status", { key: "pendingActions", deltaOrValue: -1 });
         }
         const duration =
             (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startTime;

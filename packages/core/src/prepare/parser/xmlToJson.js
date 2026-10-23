@@ -4,6 +4,7 @@
  */
 
 import { parseXmlToAst } from "../../core/parser/AstParser.js";
+import { toonToJson } from "../converter/toon.js";
 import { DIAGNOSTIC_CODES, createDiagnostic } from "../validator/diagnostics.js";
 
 /**
@@ -49,8 +50,22 @@ function parseAttributeValue(val) {
  */
 function parseStateValue(stateEl) {
     const type = stateEl.getAttribute("type") || "string";
+    const format = stateEl.getAttribute("format");
     const raw = (stateEl.textContent || "").trim();
 
+    if (format === "toon") {
+        const id = stateEl.getAttribute("id") || stateEl.getAttribute("name");
+        const parsed = toonToJson(raw);
+        if (type === "array") {
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && Array.isArray(parsed[id])) return parsed[id];
+            if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
+                return Object.values(parsed)[0];
+            }
+            return parsed ? [parsed] : [];
+        }
+        return parsed;
+    }
     if (type === "number") {
         const num = Number(raw);
         return isNaN(num) ? 0 : num;

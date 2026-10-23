@@ -93,6 +93,10 @@
       "types": "./types/plugins.d.ts",
       "import": "./dist/plugins/EUIXDatePlugin.es.js"
     },
+    "./profiler": {
+      "types": "./types/plugins.d.ts",
+      "import": "./dist/plugins/EUIXProfilerPlugin.es.js"
+    },
     "./devtools": {
       "types": "./types/plugins.d.ts",
       "import": "./dist/EUIXDevTools.es.js",

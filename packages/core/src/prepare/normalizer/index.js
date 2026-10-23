@@ -130,6 +130,10 @@ function normalizeViewNode(node, stateMap, componentMap, actionMap) {
  * @returns {object} Runtime IR
  */
 export function normalizeToRuntimeIR(source, scope, route) {
+    const effectiveScope = scope || {
+        components: new Set(Object.keys(source?.components || {})),
+        importMap: new Map(),
+    };
     // 1. Deterministic Indexed States
     const stateKeys = Object.keys(source.state || {}).sort();
     const stateMap = new Map();
@@ -184,14 +188,14 @@ export function normalizeToRuntimeIR(source, scope, route) {
     });
 
     // 4. Deterministic Indexed Components (local + imported)
-    const componentNames = Array.from(scope.components).sort();
+    const componentNames = Array.from(effectiveScope.components).sort();
     const componentMap = new Map();
     const components = componentNames.map((name, idx) => {
         componentMap.set(name, idx);
         return {
             id: idx,
             name,
-            src: scope.importMap.get(name) || null,
+            src: effectiveScope.importMap.get(name) || null,
             inline: Boolean(source.components?.[name]),
             view: source.components?.[name]?.view || null,
         };

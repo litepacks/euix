@@ -58,6 +58,7 @@ import { EUIXStoragePlugin } from "./plugins/EUIXStoragePlugin.js";
 import { EUIXStreamPlugin } from "./plugins/EUIXStreamPlugin.js";
 import { EUIXValidationPlugin } from "./plugins/EUIXValidationPlugin.js";
 import { EUIXWebMCPError, EUIXWebMCPPlugin, WebMCPPlugin } from "./plugins/EUIXWebMCPPlugin.js";
+import { EUIXProfilerPlugin } from "./plugins/EUIXProfilerPlugin.js";
 
 // Register default plugins automatically for full bundle backward compatibility
 EUIXEngineCore.use(EUIXA11yPlugin);
@@ -80,8 +81,10 @@ EUIXEngineCore.use(EUIXRouterPlugin);
 EUIXEngineCore.use(EUIXDatePlugin);
 EUIXEngineCore.use(EUIXLazyPlugin);
 EUIXEngineCore.use(EUIXWebMCPPlugin);
+EUIXEngineCore.use(EUIXProfilerPlugin);
 
 const EUIXEngine = EUIXEngineCore;
+EUIXEngine.EUIXProfilerPlugin = EUIXProfilerPlugin;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;
@@ -117,6 +120,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXWebMCPPlugin = EUIXWebMCPPlugin;
     window.WebMCPPlugin = WebMCPPlugin;
     window.EUIXWebMCPError = EUIXWebMCPError;
+    window.EUIXProfilerPlugin = EUIXProfilerPlugin;
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
@@ -157,6 +161,7 @@ export {
     EUIXEngine,
     EUIXEngineCore,
     EUIXExpressionParser,
+    EUIXProfilerPlugin,
     EUIXReactivePlugin,
     EUIXResiliencePlugin,
     EUIXRouter,

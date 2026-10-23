@@ -46,7 +46,9 @@ export {
     clearAstCache,
     generateCodeFrame,
     getAstCacheStats,
+    getSharedParser,
     parseXmlToAst,
+    resetSharedParser,
     setAstCacheSize,
 } from "./parser/AstParser.js";
 export { EUIXExpressionParser as ExpressionParser } from "./parser/ExpressionParser.js";

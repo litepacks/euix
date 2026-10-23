@@ -234,3 +234,10 @@ export function mountPrepared(preparedOrIr, containerSelector = "#app", options 
     engine.mount(xml, options);
     return engine;
 }
+
+if (typeof EUIXEngineCore !== "undefined" && EUIXEngineCore) {
+    EUIXEngineCore.irAdapter = irToXmlSpec;
+}
+if (typeof globalThis !== "undefined") {
+    globalThis.__EUIX_IR_ADAPTER__ = irToXmlSpec;
+}

@@ -28,7 +28,12 @@ import {
     convert,
     fixSource,
     generateSourceSchema,
+    generateLlmSchema,
+    formatOpenAiStructuredOutput,
+    formatGeminiResponseSchema,
+    verifyLlmOutput,
     renderToString,
+    streamRender,
     updateSnapshotFile,
     verifySnapshotFile,
 } from "../src/prepare/index.js";
@@ -50,9 +55,10 @@ function printHelp() {
     context <path> [opts]    Generate compact project context for LLM prompt injection
     convert <file> [opts]    Convert between EUIX XML (<uid_spec>) and Canonical JSON
     doctor [path] [opts]     Analyze EUIX project semantics, flows, and generated tests
-    render <file> [opts]     Server-Side Render (SSR) template/IR to HTML string
+    verify <file> [opts]     Verify LLM output in-memory with self-repair (use --json for agents)
+    render <file> [opts]     Server-Side Render (SSR) template/IR to HTML string (use --stream for partials)
     snapshot <file> [opts]   Verify or update Runtime IR regression snapshots (-u to update)
-    schema [opts]            Generate IDE JSON Schema for EUIX Source JSON (use --vscode to configure IDE)
+    schema [path] [opts]     Generate JSON Schema (use --llm for LLM structured output, --vscode for IDE)
     schema:xsd               Generate official XML Schema Definition (uid_spec.xsd)
     schema:json              Generate JSON Schema validator (uid_spec.schema.json)
     typegen <file.xml>       Generate TypeScript declaration (.d.ts) from XML template
@@ -281,9 +287,11 @@ async function main() {
         case "context": {
             const targetPath = args[1] && !args[1].startsWith("-") ? args[1] : ".";
             const asJson = args.includes("--json");
+            const asToon = args.includes("--toon") || args.includes("--format=toon") || getArgValue("-f", "--format") === "toon";
+            const chosenFormat = asToon ? "toon" : asJson ? "json" : "markdown";
             const result = await generateLlmContext(targetPath, {
                 baseDir: process.cwd(),
-                format: asJson ? "json" : "markdown",
+                format: chosenFormat,
             });
 
             const outputContent = asJson ? JSON.stringify(result.data, null, 2) : result.text;
@@ -345,7 +353,28 @@ async function main() {
 
         case "schema": {
             const isVsCode = args.includes("--vscode");
-            const schemaObj = generateSourceSchema();
+            const isLlm = args.includes("--llm");
+            const isStrict = args.includes("--strict");
+            const isOpenAi = args.includes("--openai");
+            const isGemini = args.includes("--gemini");
+
+            let schemaObj;
+            if (isLlm) {
+                const targetPath = args.find((a, idx) => idx > 0 && !a.startsWith("-")) || "./";
+                const absPath = path.resolve(targetPath);
+                schemaObj = await generateLlmSchema({
+                    projectPath: fs.existsSync(absPath) ? absPath : undefined,
+                    strict: isStrict,
+                });
+                if (isOpenAi) {
+                    schemaObj = formatOpenAiStructuredOutput(schemaObj);
+                } else if (isGemini) {
+                    schemaObj = formatGeminiResponseSchema(schemaObj);
+                }
+            } else {
+                schemaObj = generateSourceSchema();
+            }
+
             const json = JSON.stringify(schemaObj, null, 2);
 
             let outTarget = outputFile;
@@ -401,22 +430,82 @@ async function main() {
             break;
         }
 
+        case "verify": {
+            const inputFile = args.find((a, idx) => idx > 0 && !a.startsWith("-"));
+            const isJsonOut = args.includes("--json");
+            const isNoFix = args.includes("--no-fix");
+            const projectPath = getArgValue("-p", "--project");
+
+            let content;
+            if (inputFile) {
+                const absFile = path.resolve(inputFile);
+                if (!fs.existsSync(absFile)) {
+                    console.error(`❌ File does not exist: ${inputFile}`);
+                    process.exit(1);
+                }
+                content = fs.readFileSync(absFile, "utf8");
+            } else {
+                try {
+                    content = fs.readFileSync(0, "utf8");
+                } catch (_) {
+                    console.error("❌ Error: Input file or stdin required for verify command.");
+                    console.error("Usage: euix verify <file> [--json] [--no-fix] [-p projectPath]");
+                    process.exit(1);
+                }
+            }
+
+            const result = await verifyLlmOutput(content, {
+                autoFix: !isNoFix,
+                projectPath: projectPath ? path.resolve(projectPath) : undefined,
+                currentFile: inputFile || "input.euix",
+            });
+
+            if (isJsonOut) {
+                process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+            } else {
+                if (result.isValid) {
+                    console.log(`✅ Valid EUIX specification (${result.stats.durationMs}ms). 0 errors.`);
+                    if (result.modified) {
+                        console.log(`🛠️  Applied ${result.fixesApplied.length} auto-repair(s):`);
+                        for (const f of result.fixesApplied) {
+                            console.log(`  ✔ ${f.message}`);
+                        }
+                    }
+                } else {
+                    console.error(`❌ Verification failed with ${result.errors.length} error(s):\n`);
+                    console.error(result.promptFeedback);
+                    process.exit(1);
+                }
+            }
+            break;
+        }
+
         case "render":
         case "ssr": {
-            const inputFile = args[1] && !args[1].startsWith("-") ? args[1] : null;
+            const inputFile = args[1] && !args[1].startsWith("-") ? args[1] : (args.includes("-") ? "-" : null);
             if (!inputFile) {
                 console.error("❌ Error: Input file required for render/ssr command.");
-                console.error("Usage: euix render <file.euix.json|file.xml> [--data '{\"key\":\"val\"}'] [-o output.html]");
+                console.error("Usage: euix render <file.euix.json|file.xml|-> [--data '{\"key\":\"val\"}'] [--stream] [-o output.html]");
                 process.exit(1);
             }
 
-            const absInput = path.resolve(inputFile);
-            if (!fs.existsSync(absInput)) {
-                console.error(`❌ Input file does not exist: ${inputFile}`);
-                process.exit(1);
+            let content = "";
+            if (inputFile === "-") {
+                try {
+                    content = fs.readFileSync(0, "utf8");
+                } catch (err) {
+                    console.error(`❌ Failed to read from stdin: ${err.message}`);
+                    process.exit(1);
+                }
+            } else {
+                const absInput = path.resolve(inputFile);
+                if (!fs.existsSync(absInput)) {
+                    console.error(`❌ Input file does not exist: ${inputFile}`);
+                    process.exit(1);
+                }
+                content = fs.readFileSync(absInput, "utf8");
             }
 
-            const content = fs.readFileSync(absInput, "utf8");
             let initialData = {};
             const dataArg = getArgValue("--data", "-d");
             if (dataArg) {
@@ -428,9 +517,14 @@ async function main() {
                 }
             }
 
+            const isStream = args.includes("--stream") || args.includes("--partial");
+
             try {
                 let html = "";
-                if (inputFile.endsWith(".json")) {
+                if (isStream) {
+                    const streamRes = streamRender(content, initialData);
+                    html = streamRes.html;
+                } else if (inputFile.endsWith(".json")) {
                     const parsed = JSON.parse(content);
                     const preparedApp = await prepare(parsed, { currentFile: path.basename(inputFile) });
                     html = preparedApp.renderToString(initialData);

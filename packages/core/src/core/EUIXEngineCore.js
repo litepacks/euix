@@ -32,6 +32,7 @@ import {
     _handleUndoStateAction,
     _handleResetErrorBoundaryAction,
     _handleEmitAction,
+    clearActionCaches,
 } from "./actions/BuiltInActions.js";
 import {
     escapeHtml,
@@ -81,7 +82,9 @@ import {
     deserializeAst,
     generateCodeFrame,
     getAstCacheStats,
+    getSharedParser,
     parseXmlToAst,
+    resetSharedParser,
     serializeAst,
     setAstCacheSize,
 } from "./parser/AstParser.js";
@@ -137,6 +140,17 @@ class EUIXEngineCore {
         if (EUIXEngineCore._componentUrlCache) EUIXEngineCore._componentUrlCache.clear();
     }
 
+    static clearActionCaches() {
+        clearActionCaches();
+    }
+
+    static registerIrAdapter(adapter) {
+        EUIXEngineCore.irAdapter = adapter;
+        if (typeof globalThis !== "undefined") {
+            globalThis.__EUIX_IR_ADAPTER__ = adapter;
+        }
+    }
+
     static use(plugin) {
         if (!plugin) return EUIXEngineCore;
         if (EUIXEngineCore._installedPlugins.has(plugin)) return EUIXEngineCore;
@@ -177,6 +191,24 @@ class EUIXEngineCore {
         return EUIXEngineCore;
     }
 
+    static _customTagRenderers = new Map();
+
+    static registerTag(tagName, renderer) {
+        if (!EUIXEngineCore._customTagRenderers) EUIXEngineCore._customTagRenderers = new Map();
+        if (tagName && isFn(renderer)) {
+            EUIXEngineCore._customTagRenderers.set(String(tagName).toLowerCase(), renderer);
+        }
+        return EUIXEngineCore;
+    }
+
+    registerTag(tagName, renderer) {
+        if (!this._customTagRenderers) this._customTagRenderers = new Map();
+        if (tagName && isFn(renderer)) {
+            this._customTagRenderers.set(String(tagName).toLowerCase(), renderer);
+        }
+        return this;
+    }
+
     constructor(containerSelector) {
         this.container =
             typeof containerSelector === "string" ? document.querySelector(containerSelector) : containerSelector;
@@ -198,21 +230,13 @@ class EUIXEngineCore {
         this.constants = new Map();
         this._stateWatchers = new Map();
         this._globalStateWatchers = [];
-        this._persistenceConfig = new Map();
+        this._persistenceConfig = null;
         this._pendingAsyncLoads = [];
         this._activeIntervals = [];
-        this._apiConfig = {
-            baseUrl: "",
-            credentials: undefined,
-            headers: new Map(),
-            timeout: 0,
-            onRequest: null,
-            onResponse: null,
-            revalidateFocus: false,
-            revalidateOnline: false,
-        };
-        this._registeredXhrs = new Set();
-        this._xhrCache = new Map();
+        this._apiConfig = null;
+        this._registeredXhrs = null;
+        this._xhrCache = null;
+        this._customTagRenderers = null;
         if (!EUIXEngineCore._globalConstants) {
             EUIXEngineCore._globalConstants = new Map();
         }
@@ -229,8 +253,6 @@ class EUIXEngineCore {
         this._destroyHooks = [];
         this.hooks = new EUIXHookEmitter();
         EUIXEngineCore.hooks.emit("engine:init", this);
-        if (isFn(this._setupStorageListener)) this._setupStorageListener();
-        if (isFn(this._initRevalidationListeners)) this._initRevalidationListeners();
     }
 
     async loadDataModel(urlOrObj) {
@@ -301,10 +323,19 @@ class EUIXEngineCore {
     }
 
     _updateDevToolsStatus(key, deltaOrValue) {
+        if (this.hooks && this.hooks.has("devtools:status")) {
+            this.hooks.emit("devtools:status", { key, deltaOrValue });
+            return typeof window !== "undefined" ? window.__EUIX_DEVTOOLS__ : null;
+        }
         return updateDevToolsStatus(this, key, deltaOrValue);
     }
 
     static updateDevToolsStatus(engine, key, deltaOrValue) {
+        const targetHooks = engine && engine !== EUIXEngineCore && engine.hooks ? engine.hooks : EUIXEngineCore.hooks;
+        if (targetHooks && targetHooks.has("devtools:status")) {
+            targetHooks.emit("devtools:status", { key, deltaOrValue });
+            return typeof window !== "undefined" ? window.__EUIX_DEVTOOLS__ : null;
+        }
         return updateDevToolsStatus(engine, key, deltaOrValue);
     }
 
@@ -359,6 +390,26 @@ class EUIXEngineCore {
 
     static deserializeAst(astJson) {
         return deserializeAst(astJson);
+    }
+
+    static getSharedParser() {
+        return getSharedParser();
+    }
+
+    static resetSharedParser() {
+        return resetSharedParser();
+    }
+
+    static clearExpressionCache() {
+        return EUIXExpressionParser.clearExpressionCache();
+    }
+
+    static getExpressionCacheStats() {
+        return EUIXExpressionParser.getExpressionCacheStats();
+    }
+
+    static setExpressionCacheSize(maxSize) {
+        return EUIXExpressionParser.setExpressionCacheSize(maxSize);
     }
 
     get isPending() {

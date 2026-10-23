@@ -9,6 +9,12 @@ let collapseUidCounter = 0;
 export const EUIXCollapsePlugin = {
     name: "collapse",
     install(engineClass) {
+        if (typeof engineClass.registerTag === "function") {
+            engineClass.registerTag("collapse", function (xmlNode, context) {
+                return this.renderCollapse(xmlNode, context);
+            });
+        }
+
         engineClass.prototype.renderCollapse = function (xmlNode, context = {}) {
             const rawBind = xmlNode.getAttribute("bind") || "";
             const interpolatedBind = this.interpolate(rawBind, context);

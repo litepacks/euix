@@ -6,6 +6,7 @@
 import fs from "fs";
 import path from "path";
 import { parseSource } from "../parser/index.js";
+import { formatToonValue } from "../converter/toon.js";
 
 /**
  * Recursively scans a directory for EUIX source files (.euix, .euix.json, .xml).
@@ -54,6 +55,62 @@ function formatPropSignature(propName, propDef) {
     const type = propDef.type || "any";
     const optional = !propDef.required;
     return `${propName}${optional ? "?" : ""}: ${type}`;
+}
+
+/**
+ * Formats aggregated project context data into compact TOON tables.
+ *
+ * @param {object} data
+ * @returns {string}
+ */
+export function formatContextToToon(data) {
+    const lines = [];
+
+    if (data.components && data.components.length > 0) {
+        lines.push(`components[${data.components.length}]{name,props,file}:`);
+        for (const comp of data.components) {
+            const propKeys = Object.entries(comp.props || {});
+            const propsSig = propKeys.length > 0
+                ? `{ ${propKeys.map(([k, v]) => formatPropSignature(k, v)).join(", ")} }`
+                : "none";
+            lines.push(`${formatToonValue(comp.name)},${formatToonValue(propsSig)},${formatToonValue(comp.file)}`);
+        }
+    }
+
+    if (data.routes && data.routes.length > 0) {
+        if (lines.length > 0) lines.push("");
+        lines.push(`routes[${data.routes.length}]{path,params,file}:`);
+        for (const r of data.routes) {
+            const paramsStr = r.params.length > 0 ? `[${r.params.join(",")}]` : "[]";
+            lines.push(`${formatToonValue(r.path)},${formatToonValue(paramsStr)},${formatToonValue(r.file)}`);
+        }
+    }
+
+    if (data.services && data.services.length > 0) {
+        if (lines.length > 0) lines.push("");
+        lines.push(`services[${data.services.length}]{service}:`);
+        for (const s of data.services) {
+            lines.push(`${formatToonValue(s)}`);
+        }
+    }
+
+    if (data.actions && data.actions.length > 0) {
+        if (lines.length > 0) lines.push("");
+        lines.push(`actions[${data.actions.length}]{action}:`);
+        for (const a of data.actions) {
+            lines.push(`${formatToonValue(a)}`);
+        }
+    }
+
+    if (data.states && data.states.length > 0) {
+        if (lines.length > 0) lines.push("");
+        lines.push(`states[${data.states.length}]{name,type}:`);
+        for (const st of data.states) {
+            lines.push(`${formatToonValue(st.name)},${formatToonValue(st.type)}`);
+        }
+    }
+
+    return lines.join("\n");
 }
 
 /**
@@ -158,47 +215,58 @@ export async function generateLlmContext(targetPathOrFiles, options = {}) {
             .sort((a, b) => a.name.localeCompare(b.name)),
     };
 
-    // Format Markdown
-    const mdLines = ["# EUIX Project Context"];
+    const format = options.format || "markdown";
+    let text = "";
 
-    if (data.components.length > 0) {
-        mdLines.push("\n## Components");
-        for (const comp of data.components) {
-            const propKeys = Object.entries(comp.props || {});
-            const propsSig = propKeys.length > 0
-                ? `{ ${propKeys.map(([k, v]) => formatPropSignature(k, v)).join(", ")} }`
-                : "none";
-            mdLines.push(`- ${comp.name}(props: ${propsSig}) [${comp.file}]`);
+    if (format === "json") {
+        text = JSON.stringify(data, null, 2);
+    } else if (format === "toon") {
+        text = formatContextToToon(data);
+    } else {
+        // Format Markdown
+        const mdLines = ["# EUIX Project Context"];
+
+        if (data.components.length > 0) {
+            mdLines.push("\n## Components");
+            for (const comp of data.components) {
+                const propKeys = Object.entries(comp.props || {});
+                const propsSig = propKeys.length > 0
+                    ? `{ ${propKeys.map(([k, v]) => formatPropSignature(k, v)).join(", ")} }`
+                    : "none";
+                mdLines.push(`- ${comp.name}(props: ${propsSig}) [${comp.file}]`);
+            }
         }
+
+        if (data.routes.length > 0) {
+            mdLines.push("\n## Routes");
+            for (const r of data.routes) {
+                const paramsStr = r.params.length > 0 ? ` (params: ${r.params.join(", ")})` : "";
+                mdLines.push(`- ${r.path}${paramsStr}`);
+            }
+        }
+
+        if (data.services.length > 0 || data.actions.length > 0) {
+            mdLines.push("\n## Services & Actions");
+            if (data.services.length > 0) {
+                mdLines.push(`- Services: ${data.services.join(", ")}`);
+            }
+            if (data.actions.length > 0) {
+                mdLines.push(`- Actions: ${data.actions.join(", ")}`);
+            }
+        }
+
+        if (data.states.length > 0) {
+            mdLines.push("\n## States");
+            const stateList = data.states.map((s) => `${s.name} (${s.type})`).join(", ");
+            mdLines.push(`- ${stateList}`);
+        }
+
+        text = mdLines.join("\n");
     }
 
-    if (data.routes.length > 0) {
-        mdLines.push("\n## Routes");
-        for (const r of data.routes) {
-            const paramsStr = r.params.length > 0 ? ` (params: ${r.params.join(", ")})` : "";
-            mdLines.push(`- ${r.path}${paramsStr}`);
-        }
-    }
-
-    if (data.services.length > 0 || data.actions.length > 0) {
-        mdLines.push("\n## Services & Actions");
-        if (data.services.length > 0) {
-            mdLines.push(`- Services: ${data.services.join(", ")}`);
-        }
-        if (data.actions.length > 0) {
-            mdLines.push(`- Actions: ${data.actions.join(", ")}`);
-        }
-    }
-
-    if (data.states.length > 0) {
-        mdLines.push("\n## States");
-        const stateList = data.states.map((s) => `${s.name} (${s.type})`).join(", ");
-        mdLines.push(`- ${stateList}`);
-    }
-
-    const text = mdLines.join("\n");
     return {
         text,
         data,
     };
 }
+
