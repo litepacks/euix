@@ -418,14 +418,15 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         const rawSrc = xmlNode.getAttribute("src") || "";
         const alt = xmlNode.getAttribute("alt") || "";
         const resolvedSrc = engine.interpolate(rawSrc, context);
-        const fallbackSrc =
-            "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80";
+        const fallbackSrc = xmlNode.getAttribute("fallback") || "";
 
         el.src = resolvedSrc || fallbackSrc;
         el.alt = engine.interpolate(alt, context);
-        el.onerror = () => {
-            el.src = fallbackSrc;
-        };
+        if (fallbackSrc) {
+            el.onerror = () => {
+                el.src = fallbackSrc;
+            };
+        }
 
         if (xmlNode.getAttribute("width")) el.width = parseInt(xmlNode.getAttribute("width"), 10) || undefined;
         if (xmlNode.getAttribute("height")) el.height = parseInt(xmlNode.getAttribute("height"), 10) || undefined;
@@ -481,24 +482,14 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
         return customRenderer.call(engine, xmlNode, context);
     }
 
-    if (tagName === "collapse" && isFn(engine.renderCollapse)) {
-        return engine.renderCollapse(xmlNode, context);
-    }
-
-    if (tagName === "dialog" && isFn(engine.renderDialog)) {
-        return engine.renderDialog(xmlNode, context);
-    }
-
-    if ((tagName === "live_region" || tagName === "live-region") && isFn(engine.renderLiveRegion)) {
-        return engine.renderLiveRegion(xmlNode, context);
-    }
-
-    if ((tagName === "head" || tagName === "helmet") && isFn(engine.renderHead)) {
-        return engine.renderHead(xmlNode, context);
-    }
-
-    if (tagName === "title" && isFn(engine.renderHeadTitle)) {
-        return engine.renderHeadTitle(xmlNode, context);
+    const pluginRenderer =
+        (tagName === "collapse" && engine.renderCollapse) ||
+        (tagName === "dialog" && engine.renderDialog) ||
+        ((tagName === "live_region" || tagName === "live-region") && engine.renderLiveRegion) ||
+        ((tagName === "head" || tagName === "helmet") && engine.renderHead) ||
+        (tagName === "title" && engine.renderHeadTitle);
+    if (isFn(pluginRenderer)) {
+        return pluginRenderer.call(engine, xmlNode, context);
     }
 
     if (tagName === "component") {

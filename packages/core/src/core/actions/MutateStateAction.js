@@ -5,6 +5,13 @@
 
 import { isFn, MUTATION_OPS, trimStr, isObj, isStr, getAttr, safeParse } from "../utils/constants.js";
 
+export function getMutableList(engine, path) {
+    const v = engine.getState(path);
+    if (Array.isArray(v)) return [...v];
+    const raw = engine._rawState ? engine._rawState[path] : null;
+    return Array.isArray(raw) ? [...raw] : [];
+}
+
 export function interpolateObjectProperties(engine, obj, context) {
     if (!obj || typeof obj !== "object" || !engine) return obj;
     for (const [k, v] of Object.entries(obj)) {
@@ -203,12 +210,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const fieldName = fieldNode ? fieldNode.textContent.trim() : actionNode.getAttribute("field") || "quantity";
         const index = parseInt(this.interpolate(rawIdx, context), 10);
 
-        const currentVal = this.getState(path);
-        const currentList = Array.isArray(currentVal)
-            ? [...currentVal]
-            : Array.isArray(this._rawState[path])
-              ? [...this._rawState[path]]
-              : [];
+        const currentList = getMutableList(this, path);
         if (!Number.isNaN(index) && index >= 0 && index < currentList.length) {
             const item = { ...currentList[index] };
             let currVal = parseInt(item[fieldName] || 1, 10);
@@ -292,12 +294,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const rawWhereEquals = whereNode ? whereNode.getAttribute("equals") : null;
         const targetId = rawWhereEquals ? this.interpolate(rawWhereEquals, context) : newItem.id;
 
-        const curVal = this.getState(path);
-        const currentList = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState[path])
-              ? [...this._rawState[path]]
-              : [];
+        const currentList = getMutableList(this, path);
         const existingIdx = currentList.findIndex((it) => String(it.id) === String(targetId));
 
         if (existingIdx >= 0 && targetId) {
@@ -324,12 +321,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     if (operation === MUTATION_OPS.REMOVE || operation === MUTATION_OPS.DELETE) {
         const indexNode = this.getChild(actionNode, "index");
         const whereNode = this.getChild(actionNode, "where");
-        const curVal = this.getState(path);
-        let list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState[path])
-              ? [...this._rawState[path]]
-              : [];
+        let list = getMutableList(this, path);
 
         if (indexNode) {
             const rawIdx = indexNode.textContent.trim() || indexNode.getAttribute("value") || "";
@@ -380,12 +372,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.POP) {
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         list.pop();
         this.batch(() => {
             this.setState(path, list);
@@ -395,12 +382,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SHIFT) {
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         list.shift();
         this.batch(() => {
             this.setState(path, list);
@@ -444,12 +426,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
             }
         }
 
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
 
         for (let i = 0; i < list.length; i++) {
             const item = list[i];
@@ -483,12 +460,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     if (operation === MUTATION_OPS.MOVE_UP || operation === MUTATION_OPS.MOVE_DOWN) {
         const idxNode = this.getChild(actionNode, "index");
         const whereNode = this.getChild(actionNode, "where");
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         let targetIdx = -1;
 
         if (idxNode) {
@@ -518,12 +490,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SWAP) {
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         const indexANode = this.getChild(actionNode, "indexA");
         const indexBNode = this.getChild(actionNode, "indexB");
         const fromNode = this.getChild(actionNode, "from");
@@ -576,12 +543,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.REVERSE) {
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         list.reverse();
         this.batch(() => {
             this.setState(path, list);
@@ -591,12 +553,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
     }
 
     if (operation === MUTATION_OPS.SORT) {
-        const curVal = this.getState(path);
-        const list = Array.isArray(curVal)
-            ? [...curVal]
-            : Array.isArray(this._rawState?.[path])
-              ? [...this._rawState[path]]
-              : [];
+        const list = getMutableList(this, path);
         const byNode =
             this.getChild(actionNode, "by") || this.getChild(actionNode, "field") || this.getChild(actionNode, "key");
         const rawBy = byNode
@@ -664,7 +621,7 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         const newItem =
             parsedObj && typeof parsedObj === "object" ? { id: itemId, ...parsedObj } : { id: itemId, text: textValue };
 
-        const list = Array.isArray(this._rawState[path]) ? [...this._rawState[path]] : [];
+        const list = getMutableList(this, path);
         const safeIdx = Math.max(0, Math.min(list.length, Number.isNaN(idx) ? list.length : idx));
         list.splice(safeIdx, 0, newItem);
         this.batch(() => {
@@ -673,74 +630,5 @@ export function _handleMutateStateAction(actionNode, context = {}) {
         });
         return;
     }
-
-    if (operation === MUTATION_OPS.UPDATE) {
-        const whereNode = this.getChild(actionNode, "where");
-        const valNode = this.getChild(actionNode, "value");
-        const fieldsNode =
-            this.getChild(actionNode, "fields") || this.getChild(actionNode, "item") || valNode || actionNode;
-        if (!fieldsNode) return;
-
-        const list = Array.isArray(this._rawState[path]) ? this._rawState[path] : [];
-        const updates = {};
-        const fnAttrs = fieldsNode.attributes;
-        if (fnAttrs) {
-            const fnLen = fnAttrs.length;
-            for (let fnIdx = 0; fnIdx < fnLen; fnIdx++) {
-                const attr = fnAttrs[fnIdx];
-                updates[attr.name] = this.interpolate(attr.value, context);
-            }
-        }
-        if (valNode && valNode.textContent?.trim()) {
-            const rawValText = valNode.textContent.trim();
-            const smartObj =
-                evaluateObjectExpression(this, rawValText, context) ||
-                evaluateObjectExpression(this, this.interpolate(rawValText, context), context);
-            if (smartObj && typeof smartObj === "object") {
-                Object.assign(updates, smartObj);
-            }
-        }
-
-        if (updates.text !== undefined && !String(updates.text).trim()) return;
-
-        const matchesWhere = (item) => {
-            if (!whereNode) return true;
-            if (!item) return false;
-            const field = whereNode.getAttribute("field") || "id";
-            const op = (whereNode.getAttribute("op") || "eq").toLowerCase();
-            const rawMatch =
-                whereNode.getAttribute("equals") ?? whereNode.getAttribute("value") ?? whereNode.textContent.trim();
-            const expected = this.interpolate(rawMatch, context);
-            const actual = item[field];
-
-            const isMatch =
-                actual === expected ||
-                (actual !== undefined &&
-                    actual !== null &&
-                    expected !== undefined &&
-                    expected !== null &&
-                    String(actual) === String(expected));
-
-            if (op === "neq" || op === "!=" || op === "ne") {
-                return !isMatch;
-            }
-            return isMatch;
-        };
-
-        const touchedIds = [];
-        this.batch(() => {
-            const nextList = list.map((item) => {
-                if (!matchesWhere(item)) return item;
-                touchedIds.push(item.id);
-                return { ...item, ...updates };
-            });
-            this.setState(path, nextList);
-            this.applyResets(actionNode);
-
-            if (touchedIds.length === 1 && String(this._rawState.editing_id) === String(touchedIds[0])) {
-                if ("editing_id" in this._rawState) this.setState("editing_id", "", { silent: true });
-                if ("edit_todo_input" in this._rawState) this.setState("edit_todo_input", "", { silent: true });
-            }
-        });
-    }
 }
+
