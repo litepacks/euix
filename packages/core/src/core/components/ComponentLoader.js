@@ -4,7 +4,7 @@
  */
 
 import { EUIXExpressionParser } from "../parser/ExpressionParser.js";
-import { toonToJson } from "../parser/toon.js";
+import { parseStateValue } from "../state/ReactiveStore.js";
 import { processStyleTag } from "../renderer/DOMRenderer.js";
 import {
     getAttr,
@@ -19,7 +19,6 @@ import {
     isObj,
     isStr,
     queryAll,
-    safeParse,
     isCycleError,
 } from "../utils/constants.js";
 
@@ -393,63 +392,7 @@ export function renderComponentSpec(engine, specNode, usageNode, context = {}) {
         const isStateLocal = isIsolated || scope === "local" || scope === "isolated" || scope === "scoped";
         const type = node.getAttribute("type");
 
-        let parsedValue;
-        if (type === "array") {
-            const items = engine.getChildren(node, "item");
-            const itLen = items.length;
-            if (itLen > 0) {
-                parsedValue = new Array(itLen);
-                for (let itIdx = 0; itIdx < itLen; itIdx++) {
-                    const item = items[itIdx];
-                    const obj = {};
-                    const itAttrs = item.attributes;
-                    if (itAttrs) {
-                        const iaLen = itAttrs.length;
-                        for (let iaIdx = 0; iaIdx < iaLen; iaIdx++) {
-                            const attr = itAttrs[iaIdx];
-                            obj[attr.name] = attr.value;
-                        }
-                    }
-                    parsedValue[itIdx] = obj;
-                }
-            } else {
-                const txt = node.textContent.trim();
-                const format = node.getAttribute("format");
-                if (format === "toon") {
-                    const parsed = toonToJson(txt);
-                    if (Array.isArray(parsed)) {
-                        parsedValue = parsed;
-                    } else if (parsed && Array.isArray(parsed[id])) {
-                        parsedValue = parsed[id];
-                    } else if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
-                        parsedValue = Object.values(parsed)[0];
-                    } else {
-                        parsedValue = parsed ? [parsed] : [];
-                    }
-                } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
-                    parsedValue = safeParse(txt, []);
-                } else {
-                    parsedValue = [];
-                }
-            }
-        } else if (type === "number" || type === "int" || type === "float") {
-            const txt = node.textContent.trim();
-            parsedValue = txt !== "" ? Number(txt) : 0;
-        } else if (type === "boolean" || type === "bool") {
-            const txt = node.textContent.trim().toLowerCase();
-            parsedValue = txt === "true";
-        } else if (type === "object" || type === "json") {
-            const txt = node.textContent.trim();
-            const format = node.getAttribute("format");
-            if (format === "toon") {
-                const parsed = toonToJson(txt);
-                parsedValue = isObj(parsed) ? parsed : {};
-            } else {
-                parsedValue = safeParse(txt, {});
-            }
-        } else {
-            parsedValue = node.textContent.trim() || "";
-        }
+        const parsedValue = parseStateValue(node, engine);
 
         if (isStateLocal && scope !== "global") {
             hasLocalState = true;

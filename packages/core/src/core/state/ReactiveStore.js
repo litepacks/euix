@@ -4,7 +4,8 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath, isObj } from "../utils/constants.js";
+import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath, isObj, safeParse } from "../utils/constants.js";
+import { toonToJson } from "../parser/toon.js";
 import { applyArrayMutation } from "./Mutations.js";
 import { resolveScopedValue } from "../binding/BindingResolver.js";
 
@@ -550,4 +551,67 @@ export function toggleState(engine, key) {
     const currentVal = engine.getState(key);
     engine.setState(key, !currentVal);
     return engine.getState(key);
+}
+
+export function parseStateValue(node, engine) {
+    if (!node) return "";
+    const id = node.getAttribute("id");
+    const type = (node.getAttribute("type") || "string").toLowerCase();
+
+    if (type === "array") {
+        const childItems = engine && isFn(engine.getChildren) ? engine.getChildren(node, "item") : [];
+        const ciLen = childItems ? childItems.length : 0;
+        if (ciLen > 0) {
+            const items = new Array(ciLen);
+            for (let ci = 0; ci < ciLen; ci++) {
+                const item = childItems[ci];
+                const obj = {};
+                const iAttrs = item.attributes;
+                if (iAttrs) {
+                    const iaLen = iAttrs.length;
+                    for (let ia = 0; ia < iaLen; ia++) {
+                        const attr = iAttrs[ia];
+                        obj[attr.name] = attr.value;
+                    }
+                }
+                items[ci] = obj;
+            }
+            return items;
+        }
+        const txt = node.textContent.trim();
+        const format = node.getAttribute("format");
+        if (format === "toon") {
+            const parsed = toonToJson(txt);
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && id && Array.isArray(parsed[id])) return parsed[id];
+            if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
+                return Object.values(parsed)[0];
+            }
+            return parsed ? [parsed] : [];
+        }
+        if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
+            return safeParse(txt, []);
+        }
+        return [];
+    }
+    if (type === "number" || type === "int" || type === "float") {
+        const txt = node.textContent.trim();
+        return txt !== "" ? Number(txt) : 0;
+    }
+    if (type === "boolean" || type === "bool") {
+        return node.textContent.trim().toLowerCase() === "true";
+    }
+    if (type === "object" || type === "json") {
+        const txt = node.textContent.trim();
+        const format = node.getAttribute("format");
+        if (format === "toon") {
+            const parsed = toonToJson(txt);
+            return isObj(parsed) ? parsed : {};
+        }
+        return safeParse(txt, {});
+    }
+    if (type === "html" || (node.children && node.children.length > 0)) {
+        return node.innerHTML.trim();
+    }
+    return node.textContent.trim() || "";
 }

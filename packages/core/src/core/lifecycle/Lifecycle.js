@@ -17,7 +17,7 @@ import {
     safeParse,
     toInt,
 } from "../utils/constants.js";
-import { toonToJson } from "../parser/toon.js";
+import { parseStateValue } from "../state/ReactiveStore.js";
 import { autoInit as declarativeAutoInit } from "./DeclarativeLoader.js";
 
 export function mount(engine, appXmlString, options = {}) {
@@ -426,64 +426,8 @@ export function initDataModel(engine) {
                     })
                     .catch((err) => engine.reportError(err, `Failed to load external state '${id}' from '${src}'`));
                 if (engine._pendingAsyncLoads) engine._pendingAsyncLoads.push(p);
-            } else if (type === "array") {
-                const childItems = engine.getChildren(node, "item");
-                const ciLen = childItems ? childItems.length : 0;
-                if (ciLen > 0) {
-                    const items = new Array(ciLen);
-                    for (let ci = 0; ci < ciLen; ci++) {
-                        const item = childItems[ci];
-                        const obj = {};
-                        const iAttrs = item.attributes;
-                        if (iAttrs) {
-                            const iaLen = iAttrs.length;
-                            for (let ia = 0; ia < iaLen; ia++) {
-                                const attr = iAttrs[ia];
-                                obj[attr.name] = attr.value;
-                            }
-                        }
-                        items[ci] = obj;
-                    }
-                    rawState[id] = items;
-                } else {
-                    const txt = node.textContent.trim();
-                    const format = node.getAttribute("format");
-                    if (format === "toon") {
-                        const parsed = toonToJson(txt);
-                        if (Array.isArray(parsed)) {
-                            rawState[id] = parsed;
-                        } else if (parsed && Array.isArray(parsed[id])) {
-                            rawState[id] = parsed[id];
-                        } else if (parsed && typeof parsed === "object" && Object.keys(parsed).length === 1 && Array.isArray(Object.values(parsed)[0])) {
-                            rawState[id] = Object.values(parsed)[0];
-                        } else {
-                            rawState[id] = parsed ? [parsed] : [];
-                        }
-                    } else if (txt && (txt.startsWith("[") || txt.startsWith("{"))) {
-                        rawState[id] = safeParse(txt, []);
-                    } else {
-                        rawState[id] = [];
-                    }
-                }
-            } else if (type === "number" || type === "int" || type === "float") {
-                const txt = node.textContent.trim();
-                rawState[id] = txt !== "" ? Number(txt) : 0;
-            } else if (type === "boolean" || type === "bool") {
-                const txt = node.textContent.trim().toLowerCase();
-                rawState[id] = txt === "true";
-            } else if (type === "object" || type === "json") {
-                const txt = node.textContent.trim();
-                const format = node.getAttribute("format");
-                if (format === "toon") {
-                    const parsed = toonToJson(txt);
-                    rawState[id] = isObj(parsed) ? parsed : {};
-                } else {
-                    rawState[id] = safeParse(txt, {});
-                }
-            } else if (type === "html" || (node.children && node.children.length > 0)) {
-                rawState[id] = node.innerHTML.trim();
             } else {
-                rawState[id] = node.textContent.trim() || "";
+                rawState[id] = parseStateValue(node, engine);
             }
 
             if (persistAttr) {
