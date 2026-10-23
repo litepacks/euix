@@ -201,7 +201,18 @@ export async function resolveXmlSource(element, options = {}, EngineClass) {
         if (!res.ok) {
             throw new Error(`[EUIX] Failed to fetch component from '${finalUrl}': ${res.status} ${res.statusText}`);
         }
-        return await res.text();
+        const text = await res.text();
+        const contentType = res.headers?.get?.("content-type") || "";
+        const trimmed = text.trim();
+        if (
+            finalUrl.endsWith(".xml") &&
+            (contentType.includes("text/html") || trimmed.toLowerCase().startsWith("<!doctype html")) &&
+            !trimmed.includes("<uid_spec") &&
+            !trimmed.includes("<component_def")
+        ) {
+            throw new Error(`[EUIX] Expected XML component at '${finalUrl}', but received HTML document (SPA fallback).`);
+        }
+        return text;
     })();
 
     EngineClass._xmlFetchCache.set(finalUrl, fetchPromise);

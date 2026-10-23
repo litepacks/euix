@@ -157,7 +157,7 @@ scratch/*
 .docboot/
 .docup/
 dist-docs/
-public/
+/public/
 
 # Kiremit cache
 .kiremit/

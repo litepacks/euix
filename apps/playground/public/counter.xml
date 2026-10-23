@@ -1,0 +1,28 @@
+<uid_spec>
+    <data_model>
+        <state id="count" type="number">0</state>
+    </data_model>
+
+    <div class="p-6 bg-slate-900 border border-slate-800 rounded-2xl shadow-xl flex flex-col items-center gap-4 text-white max-w-sm mx-auto">
+        <h3 class="text-lg font-bold tracking-wide text-slate-200">{props.title || "Interactive Counter"}</h3>
+        
+        <div class="text-5xl font-black font-mono text-emerald-400 py-2">
+            {data.count}
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button class="w-12 h-12 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold text-xl rounded-xl transition flex items-center justify-center cursor-pointer shadow-lg shadow-rose-600/20"
+                    on_click:set="count={data.count - 1}">
+                -
+            </button>
+            <button class="px-4 h-12 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-sm rounded-xl transition cursor-pointer border border-slate-700"
+                    on_click:set="count=0">
+                Reset
+            </button>
+            <button class="w-12 h-12 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xl rounded-xl transition flex items-center justify-center cursor-pointer shadow-lg shadow-emerald-600/20"
+                    on_click:set="count={data.count + 1}">
+                +
+            </button>
+        </div>
+    </div>
+</uid_spec>
