@@ -428,6 +428,77 @@ describe('EUIXEngine State Persistence Suite (LocalStorage & SessionStorage)', (
         expect(engine1.getState('shared_count')).toBe(2);
         expect(island1Container.querySelector('.count-val').textContent).toBe('2');
     });
+
+    it('should synchronize complex array and object state across independent engines without ping-pong cascade loops', () => {
+        const island1Container = document.createElement('div');
+        const island2Container = document.createElement('div');
+        document.body.appendChild(island1Container);
+        document.body.appendChild(island2Container);
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="items" type="array" persist="local">
+                    <item id="1" title="Initial Item" />
+                </state>
+                <state id="user" type="object" persist="local">{"name":"Ahmet"}</state>
+            </data_model>
+            <flex>
+                <div class="user-name">{data.user.name}</div>
+                <div class="items-count">{data.items.length}</div>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine1 = new EUIXEngine(island1Container);
+        engine1.mount(xml);
+
+        const engine2 = new EUIXEngine(island2Container);
+        engine2.mount(xml);
+
+        expect(island1Container.querySelector('.items-count').textContent).toBe('1');
+        expect(island2Container.querySelector('.items-count').textContent).toBe('1');
+        expect(island1Container.querySelector('.user-name').textContent).toBe('Ahmet');
+        expect(island2Container.querySelector('.user-name').textContent).toBe('Ahmet');
+
+        // Spy on engine2's setState to ensure it is called exactly once when engine1 mutates state
+        const spyEngine2SetState = vi.spyOn(engine2, 'setState');
+
+        // Engine 1 mutates array state
+        engine1.mutateState('items', 'PUSH', { id: '2', title: 'Second Item' });
+
+        // Verify Engine 1 has 2 items
+        expect(engine1.getState('items').length).toBe(2);
+        expect(island1Container.querySelector('.items-count').textContent).toBe('2');
+
+        // Verify Engine 2 received the update without ping-ponging back to Engine 1
+        expect(engine2.getState('items').length).toBe(2);
+        expect(island2Container.querySelector('.items-count').textContent).toBe('2');
+
+        // Engine 2 should have been updated via storage exactly once for 'items'
+        const itemsCalls = spyEngine2SetState.mock.calls.filter(c => c[0] === 'items');
+        expect(itemsCalls.length).toBe(1);
+
+        // Verify both engines have reset update depth to 0 (no lingering cascades)
+        expect(engine1._updateDepth || 0).toBe(0);
+        expect(engine2._updateDepth || 0).toBe(0);
+
+        // Now mutate object state from Engine 2
+        const spyEngine1SetState = vi.spyOn(engine1, 'setState');
+        engine2.setState('user', { name: 'Mehmet' });
+
+        expect(engine2.getState('user').name).toBe('Mehmet');
+        expect(island2Container.querySelector('.user-name').textContent).toBe('Mehmet');
+
+        expect(engine1.getState('user').name).toBe('Mehmet');
+        expect(island1Container.querySelector('.user-name').textContent).toBe('Mehmet');
+
+        const userCalls = spyEngine1SetState.mock.calls.filter(c => c[0] === 'user');
+        expect(userCalls.length).toBe(1);
+
+        expect(engine1._updateDepth || 0).toBe(0);
+        expect(engine2._updateDepth || 0).toBe(0);
+    });
 });
 
 

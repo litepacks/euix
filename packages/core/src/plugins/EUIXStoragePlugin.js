@@ -26,19 +26,20 @@ export const EUIXStoragePlugin = {
                 const key = isCustom ? event.detail?.key : event.key;
                 const newValue = isCustom ? event.detail?.newValue : event.newValue;
                 const sourceEngine = isCustom ? event.detail?.sourceEngine : null;
+                const eventStorage = isCustom ? event.detail?.storage : "local";
 
                 if (!key || !this._rawState || !this._persistenceConfig) return;
                 if (sourceEngine === this) return;
 
                 for (const [stateKey, config] of this._persistenceConfig.entries()) {
-                    if (config.storage === "local" && config.storageKey === key) {
+                    if (config.storage === (eventStorage || "local") && config.storageKey === key) {
                         let currentSerialized;
                         try {
                             currentSerialized = JSON.stringify(this._rawState[stateKey] !== undefined ? this._rawState[stateKey] : "");
                         } catch (_) {
                             currentSerialized = safeStringify(this._rawState[stateKey] !== undefined ? this._rawState[stateKey] : "");
                         }
-                        const targetSerialized = newValue !== null && newValue !== undefined ? String(newValue) : "";
+                        const targetSerialized = newValue !== null && newValue !== undefined ? String(newValue) : '""';
                         if (currentSerialized === targetSerialized) {
                             continue;
                         }
