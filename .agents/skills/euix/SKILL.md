@@ -132,19 +132,36 @@ npx euix doctor
 npx euix doctor apps/playground
 npx euix doctor path/to/Component.xml
 
-# Auto-fix rule EUIX0001 (wraps JS scripts in CDATA)
+# Auto-fix supported rules (EUIX0001, EUIX1001, EUIX1501, EUIX3001)
 npx euix doctor path/to/App.xml --fix
 
 # Run safe generated test scenarios statically
 npx euix doctor apps/playground --test
+
+# Continuous watch mode & GitHub Actions CI reporter
+npx euix doctor apps/playground --watch
+npx euix doctor . --github
 ```
 
-### Critical Doctor Diagnostics
-- `EUIX0001` (error): Wrap inline JS in `<![CDATA[ ... ]]>` inside `<computed>`, `<step>`, or `RUN_SCRIPT`.
-- `EUIX1001` (error): Action writes to state path missing from `<data_model>`.
+### Critical Doctor Diagnostics & Rules
+- `EUIX0001` (error): Wrap inline JS in `<![CDATA[ ... ]]>` inside `<computed>`, `<step>`, or `RUN_SCRIPT` (auto-fixable).
+- `EUIX0101` (error): Island architecture target component source not found or `#template` ID missing.
+- `EUIX0102` (error): Invalid JSON syntax in island `data-props` or `data-state`.
+- `EUIX0103` (error): Island container missing required prop `<param required="true">`.
+- `EUIX1001` (error): Action or shorthand writes to state path missing from `<data_model>` (auto-fixable: auto-declares `<state>`).
 - `EUIX1101` (error): Dependency cycle detected in `<computed>` expressions.
 - `EUIX1201` (warning): Watcher writes to the exact state key it watches (loop risk).
+- `EUIX1310` (warning): Boolean toggle action (`on_*:toggle`) used on non-boolean state.
+- `EUIX1311` (warning): Arithmetic operation on string-typed state in `on_*:set` shorthand.
 - `EUIX1401` (error): Missing component source or unresolved child component.
+- `EUIX1501` (warning): Unhandled API error path on `<api_endpoint>` (auto-fixable: adds `error="<id>_error"`).
+- `EUIX1702` (error): Revalidation action (`on_*:revalidate`) targets non-existent API endpoint tag or id.
+- `EUIX3001` (warning): `<for_each>` loop missing `key` attribute for optimal DOM reconciliation (auto-fixable: adds `key="id"`).
+- `EUIX3002` (warning): Un-debounced watcher triggering API revalidation on rapid state changes.
+- `EUIX3003` (warning): Large inline static state in template (> 2000 chars); consider external JSON or API.
+- `EUIX4001` (warning): Interactive button without accessible text, `aria-label`, or `title`.
+- `EUIX4002` (warning): Non-interactive container (`div`, `span`) with `<on_click>` missing `role="button"` or `tabindex="0"`.
+- `EUIX4003` (warning): Form input element without associated `<label>` or `aria-label`.
 
 ---
 

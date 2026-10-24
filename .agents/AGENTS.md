@@ -96,14 +96,26 @@ npx euix doctor path/to/App.xml --fix=EUIX0001 --dry-run
 | Rule | Severity | Fix |
 |------|----------|-----|
 | `EUIX0001` | error | Wrap inline JS in `<![CDATA[ ... ]]>` inside `<computed>`, `<step>`, or `RUN_SCRIPT` — never escape operators like `<=` as XML entities (`&lt;=`). Auto-fix: `euix doctor <path> --fix` |
-| `EUIX1001` | error | Action writes to a state that does not exist in `<data_model>` |
+| `EUIX0101` | error | Island architecture target component source not found or `#template` ID missing |
+| `EUIX0102` | error | Invalid JSON syntax in island `data-props` or `data-state` attribute |
+| `EUIX0103` | error | Island container missing required prop `<param required="true">` |
+| `EUIX1001` | error | Action or shorthand writes to a state that does not exist in `<data_model>`. Auto-fix: auto-declares `<state>` |
 | `EUIX1101` | error | Break computed dependency cycle |
 | `EUIX1201` | warning | Watcher must not write the path it watches |
 | `EUIX1301` | error | Define missing **custom** `<action_def>` — do **not** stub built-ins (`SET_STATE`, `REVALIDATE_API`, …) or shorthands (`on_click:set`) |
+| `EUIX1310` | warning | `on_*:toggle` action used on non-boolean state |
+| `EUIX1311` | warning | Math arithmetic on string-typed state in `on_*:set` shorthand |
 | `EUIX1401` | error | Fix component `src`, custom tag name, or add missing sibling `.xml` file |
 | `EUIX1402` | error | Pass all `<param required="true">` props from parent |
 | `EUIX1403` | error | Match parent binding type to child `<param type="...">` (or fix `enum`) |
-| `EUIX1501` | warning | Add `error="..."` on `<api_endpoint>` or `<catch>` for fetch actions |
+| `EUIX1501` | warning | Add `error="..."` on `<api_endpoint>` or `<catch>` for fetch actions. Auto-fix: adds `error="<id>_error"` |
+| `EUIX1702` | error | `on_*:revalidate` action targets non-existent API endpoint tag or id |
+| `EUIX3001` | warning | `<for_each>` loop missing `key` attribute. Auto-fix: adds `key="id"` |
+| `EUIX3002` | warning | Un-debounced watcher triggering API revalidation on rapid state changes |
+| `EUIX3003` | warning | Large inline static state in template (> 2000 chars); consider external JSON |
+| `EUIX4001` | warning | Button without accessible text, `aria-label`, or `title` |
+| `EUIX4002` | warning | Non-interactive container (`div`, `span`) with `<on_click>` missing `role="button"` or `tabindex="0"` |
+| `EUIX4003` | warning | Form `<input>` without accessible label or `aria-label` |
 
 ### VS Code / Cursor extension
 
