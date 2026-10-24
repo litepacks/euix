@@ -312,4 +312,66 @@ describe("EUIX Declarative Data-Attribute Auto-Mount Suite", () => {
         expect(div.classList.contains("euix-error")).toBe(true);
         expect(div.querySelector(".euix-mount-error")).not.toBeNull();
     });
+
+    it("should synchronize two declarative HTML islands without any JS code via <state persist='local'>", async () => {
+        // Setup template and two separate HTML island elements
+        const tpl = document.createElement("template");
+        tpl.id = "shared-counter-template";
+        tpl.innerHTML = `
+        <uid_spec>
+            <data_model>
+                <state id="cart_qty" type="number" persist="local">0</state>
+            </data_model>
+            <div class="island-box">
+                <span class="qty-badge">{data.cart_qty}</span>
+                <button class="add-one-btn">
+                    <on_click action="SET_STATE">
+                        <path>data.cart_qty</path>
+                        <value>{data.cart_qty + 1}</value>
+                    </on_click>
+                    Add
+                </button>
+            </div>
+        </uid_spec>
+        `;
+        document.body.appendChild(tpl);
+
+        const island1 = document.createElement("div");
+        island1.id = "island-header";
+        island1.setAttribute("data-euix", "#shared-counter-template");
+
+        const island2 = document.createElement("div");
+        island2.id = "island-sidebar";
+        island2.setAttribute("data-euix", "#shared-counter-template");
+
+        container.appendChild(island1);
+        container.appendChild(island2);
+
+        // Run declarative scan as <script euix /> does automatically
+        await scan(EUIXEngine, container);
+
+        const badge1 = island1.querySelector(".qty-badge");
+        const badge2 = island2.querySelector(".qty-badge");
+        expect(badge1.textContent).toBe("0");
+        expect(badge2.textContent).toBe("0");
+
+        // User clicks "Add" in island 1
+        const btn1 = island1.querySelector(".add-one-btn");
+        btn1.click();
+
+        // Island 1 updates to 1
+        expect(badge1.textContent).toBe("1");
+        // Island 2 automatically synchronizes to 1 with ZERO JS calls!
+        expect(badge2.textContent).toBe("1");
+
+        // User clicks "Add" in island 2
+        const btn2 = island2.querySelector(".add-one-btn");
+        btn2.click();
+
+        // Both islands now reflect 2
+        expect(badge1.textContent).toBe("2");
+        expect(badge2.textContent).toBe("2");
+
+        tpl.remove();
+    });
 });

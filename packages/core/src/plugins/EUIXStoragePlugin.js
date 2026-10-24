@@ -30,21 +30,35 @@ export const EUIXStoragePlugin = {
             this._storageListenerBound = true;
 
             this._storageHandler = (event) => {
-                if (!event.key || !this._rawState || !this._persistenceConfig) return;
+                const isCustom = event.type === "euix:storage";
+                const key = isCustom ? event.detail?.key : event.key;
+                const newValue = isCustom ? event.detail?.newValue : event.newValue;
+                const sourceEngine = isCustom ? event.detail?.sourceEngine : null;
+
+                if (!key || !this._rawState || !this._persistenceConfig) return;
+                if (sourceEngine === this) return;
+
                 for (const [stateKey, config] of this._persistenceConfig.entries()) {
-                    if (config.storage === "local" && config.storageKey === event.key) {
-                        const parsed = event.newValue !== null ? safeParse(event.newValue, event.newValue || "") : "";
-                        this.setState(stateKey, parsed, { silent: false });
+                    if (config.storage === "local" && config.storageKey === key) {
+                        const parsed =
+                            newValue !== null && newValue !== undefined
+                                ? safeParse(newValue, newValue || "")
+                                : "";
+                        if (this._rawState[stateKey] !== parsed) {
+                            this.setState(stateKey, parsed, { silent: false });
+                        }
                     }
                 }
             };
 
             window.addEventListener("storage", this._storageHandler);
+            window.addEventListener("euix:storage", this._storageHandler);
 
             if (isFn(this.onUnmount)) {
                 this.onUnmount(() => {
                     if (typeof window !== "undefined" && this._storageHandler) {
                         window.removeEventListener("storage", this._storageHandler);
+                        window.removeEventListener("euix:storage", this._storageHandler);
                     }
                     this._storageListenerBound = false;
                 });
@@ -82,6 +96,20 @@ export const EUIXStoragePlugin = {
             if (config) {
                 const store = getStore(config.storage);
                 if (store) store.removeItem(config.storageKey);
+                if (typeof window !== "undefined" && isFn(window.dispatchEvent)) {
+                    try {
+                        window.dispatchEvent(
+                            new CustomEvent("euix:storage", {
+                                detail: {
+                                    key: config.storageKey,
+                                    newValue: null,
+                                    sourceEngine: this,
+                                    storage: config.storage,
+                                },
+                            })
+                        );
+                    } catch (_) {}
+                }
             }
             return this;
         };
@@ -100,6 +128,20 @@ export const EUIXStoragePlugin = {
                     valToStore = safeStringify(value !== undefined ? value : "");
                 }
                 store.setItem(config.storageKey, valToStore);
+                if (typeof window !== "undefined" && isFn(window.dispatchEvent)) {
+                    try {
+                        window.dispatchEvent(
+                            new CustomEvent("euix:storage", {
+                                detail: {
+                                    key: config.storageKey,
+                                    newValue: valToStore,
+                                    sourceEngine: this,
+                                    storage: config.storage,
+                                },
+                            })
+                        );
+                    } catch (_) {}
+                }
             } catch (err) {
                 this.reportError(err, `Error persisting state key "${key}"`);
             }

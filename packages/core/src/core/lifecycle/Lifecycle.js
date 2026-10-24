@@ -598,6 +598,9 @@ export function initDataModel(engine) {
             }
         }
         }
+        if (isFn(engine._setupStorageListener)) {
+            engine._setupStorageListener();
+        }
     }
 
     if (engine._mountOptions?.state && typeof engine._mountOptions.state === "object") {

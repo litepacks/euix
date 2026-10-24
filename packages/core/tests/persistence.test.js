@@ -372,6 +372,62 @@ describe('EUIXEngine State Persistence Suite (LocalStorage & SessionStorage)', (
         engine.clearPersistedState('baz');
         engine._savePersistedState('baz', 'val');
     });
+
+    it('should synchronize two separate declarative islands on the same page with zero JS via <state persist="local">', async () => {
+        const island1Container = document.createElement('div');
+        const island2Container = document.createElement('div');
+        document.body.appendChild(island1Container);
+        document.body.appendChild(island2Container);
+
+        const xml = `
+        <uid_spec>
+            <data_model>
+                <state id="shared_count" type="number" persist="local">0</state>
+            </data_model>
+            <flex>
+                <button class="add-btn">
+                    <on_click action="SET_STATE">
+                        <path>data.shared_count</path>
+                        <value>{data.shared_count + 1}</value>
+                    </on_click>
+                    +1
+                </button>
+                <span class="count-val">{data.shared_count}</span>
+            </flex>
+        </uid_spec>
+        `;
+
+        const engine1 = new EUIXEngine(island1Container);
+        engine1.mount(xml);
+
+        const engine2 = new EUIXEngine(island2Container);
+        engine2.mount(xml);
+
+        expect(island1Container.querySelector('.count-val').textContent).toBe('0');
+        expect(island2Container.querySelector('.count-val').textContent).toBe('0');
+
+        // Click button on Island 1
+        const btn1 = island1Container.querySelector('.add-btn');
+        btn1.click();
+
+        // Island 1 updates to 1
+        expect(engine1.getState('shared_count')).toBe(1);
+        expect(island1Container.querySelector('.count-val').textContent).toBe('1');
+
+        // Island 2 automatically synchronized to 1 without any manual JS!
+        expect(engine2.getState('shared_count')).toBe(1);
+        expect(island2Container.querySelector('.count-val').textContent).toBe('1');
+
+        // Click button on Island 2
+        const btn2 = island2Container.querySelector('.add-btn');
+        btn2.click();
+
+        // Both now reflect 2!
+        expect(engine2.getState('shared_count')).toBe(2);
+        expect(island2Container.querySelector('.count-val').textContent).toBe('2');
+        expect(engine1.getState('shared_count')).toBe(2);
+        expect(island1Container.querySelector('.count-val').textContent).toBe('2');
+    });
 });
 
 
