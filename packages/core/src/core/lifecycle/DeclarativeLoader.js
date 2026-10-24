@@ -583,7 +583,7 @@ export function initGlobalEuix(EngineClass) {
         get instances() {
             return EngineClass.instances || (EngineClass.instances = new Set());
         },
-        version: "0.3.79",
+        version: "0.3.80",
         config: EngineClass.config || (EngineClass.config = { showMountErrors: true, defaultMountError: null }),
     };
     window.euix = euixApi;
