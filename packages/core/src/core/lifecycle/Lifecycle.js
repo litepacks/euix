@@ -909,6 +909,11 @@ export function destroy(engine) {
         });
         engine._globalListeners.clear();
     }
+    if (isFn(engine.abortAllApiRequests)) {
+        try {
+            engine.abortAllApiRequests("unmounted");
+        } catch (_) {}
+    }
     if (engine._devtools && isFn(engine._devtools.destroy)) {
         try {
             engine._devtools.destroy();

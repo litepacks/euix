@@ -214,6 +214,9 @@ export const EUIXApiPlugin = {
 
             if (isFn(this.onUnmount)) {
                 this.onUnmount(() => {
+                    if (isFn(this.abortAllApiRequests)) {
+                        this.abortAllApiRequests("unmounted");
+                    }
                     if (typeof window !== "undefined") {
                         if (this._focusRevalidateHandler)
                             window.removeEventListener("focus", this._focusRevalidateHandler);
@@ -225,13 +228,31 @@ export const EUIXApiPlugin = {
             }
         };
 
+        proto.abortAllApiRequests = function (reason = "unmounted") {
+            if (this._inFlightControllers && this._inFlightControllers.size > 0) {
+                this._inFlightControllers.forEach((ctrl) => {
+                    try {
+                        ctrl.abort(reason);
+                    } catch (_) {}
+                });
+                this._inFlightControllers.clear();
+            }
+            if (this._inFlightFetchPromises) {
+                this._inFlightFetchPromises.clear();
+            }
+            if (this._apiSequenceCounters) {
+                this._apiSequenceCounters.clear();
+            }
+            if (this._apiLatestResolvedSequence) {
+                this._apiLatestResolvedSequence.clear();
+            }
+            return this;
+        };
+
         proto.revalidateApi = async function (tagOrUrl = "") {
             const filter = String(tagOrUrl).trim();
             if (!this._registeredXhrs || this._registeredXhrs.size === 0) return this;
-            if (!this._revalidatingTags) this._revalidatingTags = new Set();
-            if (this._revalidatingTags.has(filter)) return this;
 
-            this._revalidatingTags.add(filter);
             try {
                 const targets = [];
                 this._registeredXhrs.forEach((item) => {
@@ -256,8 +277,8 @@ export const EUIXApiPlugin = {
                     return this.handleXHR(item.actionNode, item.context);
                 });
                 await Promise.all(promises);
-            } finally {
-                this._revalidatingTags.delete(filter);
+            } catch (err) {
+                this.reportError(err, "REVALIDATE_API");
             }
 
             return this;
@@ -596,6 +617,45 @@ export const EUIXApiPlugin = {
                 fetchOptions.body = body;
             }
 
+            const raceKey =
+                target ||
+                epId ||
+                (actionNode
+                    ? actionNode.getAttribute("id") ||
+                      actionNode.getAttribute("tag") ||
+                      actionNode.getAttribute("url")
+                    : "") ||
+                finalUrl;
+
+            if (!this._apiSequenceCounters) this._apiSequenceCounters = new Map();
+            if (!this._apiLatestResolvedSequence) this._apiLatestResolvedSequence = new Map();
+
+            const currentSeq = (this._apiSequenceCounters.get(raceKey) || 0) + 1;
+            this._apiSequenceCounters.set(raceKey, currentSeq);
+
+            if (!this._inFlightControllers) this._inFlightControllers = new Map();
+
+            const isGetOrHead = method === "GET" || method === "HEAD";
+            const dedupAttr = actionNode.getAttribute("deduplicate");
+            const shouldDeduplicate = isGetOrHead && dedupAttr !== "false";
+            const dedupKey = shouldDeduplicate ? `${method}:${finalUrl}` : null;
+
+            const abortPreviousAttr = actionNode.getAttribute("abort_previous") || actionNode.getAttribute("abort_superseded");
+            const shouldAbortPrevious =
+                abortPreviousAttr === "true" ||
+                (abortPreviousAttr !== "false" && isGetOrHead);
+
+            if (shouldAbortPrevious && this._inFlightControllers.has(raceKey)) {
+                const prevController = this._inFlightControllers.get(raceKey);
+                try {
+                    prevController.abort("superseded");
+                } catch (_) {}
+                this._inFlightControllers.delete(raceKey);
+                if (dedupKey && this._inFlightFetchPromises) {
+                    this._inFlightFetchPromises.delete(dedupKey);
+                }
+            }
+
             const cancellationSignal =
                 context._cancellationSignal ||
                 (this._currentActionContext && this._currentActionContext._cancellationSignal);
@@ -604,6 +664,7 @@ export const EUIXApiPlugin = {
             }
 
             let timeoutId = null;
+            let controller = null;
             const timeoutAttr = actionNode.getAttribute("timeout");
             const configTimeout = compApiConfig.timeout !== undefined ? compApiConfig.timeout : (this._apiConfig && this._apiConfig.timeout);
             const timeoutMs = timeoutAttr !== null 
@@ -612,10 +673,14 @@ export const EUIXApiPlugin = {
                   ? toInt(configTimeout, DEFAULT_TIMEOUTS.API_REQUEST)
                   : DEFAULT_TIMEOUTS.API_REQUEST;
             if (typeof AbortController !== "undefined") {
-                const controller = new AbortController();
+                controller = new AbortController();
                 fetchOptions.signal = controller.signal;
                 if (timeoutMs > 0) {
-                    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                    timeoutId = setTimeout(() => {
+                        try {
+                            controller.abort("timeout");
+                        } catch (_) {}
+                    }, timeoutMs);
                 }
                 if (cancellationSignal) {
                     cancellationSignal.onCancel((reason) => {
@@ -624,6 +689,7 @@ export const EUIXApiPlugin = {
                         } catch (_) {}
                     });
                 }
+                this._inFlightControllers.set(raceKey, controller);
             }
 
             if (this._apiConfig && isFn(this._apiConfig.onRequest)) {
@@ -631,10 +697,15 @@ export const EUIXApiPlugin = {
                     this._apiConfig.onRequest({ url: finalUrl, options: fetchOptions });
                 } catch (_) {}
             }
-
-            return fetch(finalUrl, fetchOptions)
-                .then(async (response) => {
-                    if (timeoutId) clearTimeout(timeoutId);
+            let fetchPromise;
+            if (shouldDeduplicate && this._inFlightFetchPromises && this._inFlightFetchPromises.has(dedupKey)) {
+                fetchPromise = this._inFlightFetchPromises.get(dedupKey);
+            } else {
+                fetchPromise = fetch(finalUrl, fetchOptions).then(async (response) => {
+                    if (timeoutId) {
+                        clearTimeout(timeoutId);
+                        timeoutId = null;
+                    }
                     if (this._apiConfig && isFn(this._apiConfig.onResponse)) {
                         try {
                             this._apiConfig.onResponse(response);
@@ -660,11 +731,47 @@ export const EUIXApiPlugin = {
                         data = safeParse(textData, textData);
                     }
                     return data;
-                })
+                });
+
+                if (shouldDeduplicate) {
+                    if (!this._inFlightFetchPromises) this._inFlightFetchPromises = new Map();
+                    this._inFlightFetchPromises.set(dedupKey, fetchPromise);
+                    const cleanUpDedup = () => {
+                        if (this._inFlightFetchPromises && this._inFlightFetchPromises.get(dedupKey) === fetchPromise) {
+                            this._inFlightFetchPromises.delete(dedupKey);
+                        }
+                    };
+                    fetchPromise.then(cleanUpDedup, cleanUpDedup);
+                }
+            }
+
+            return fetchPromise
                 .then((data) => {
+                    if (this._isMounted === false) {
+                        return null;
+                    }
                     if (cancellationSignal && cancellationSignal.isCancelled) {
                         return null;
                     }
+
+                    // Monotonic sequence verification: Out-of-Order / Superseded Response Discard
+                    const latestResolved = this._apiLatestResolvedSequence?.get(raceKey) || 0;
+                    if (currentSeq < latestResolved) {
+                        // Out-of-order response: a newer request already resolved and updated the UI!
+                        return null;
+                    }
+
+                    const discardStale = actionNode.getAttribute("discard_stale") !== "false";
+                    const highestSeq = this._apiSequenceCounters?.get(raceKey) || 0;
+                    if (discardStale && currentSeq < highestSeq && shouldAbortPrevious) {
+                        // Superseded response: a newer request was dispatched while this was in flight.
+                        return null;
+                    }
+
+                    if (this._apiLatestResolvedSequence) {
+                        this._apiLatestResolvedSequence.set(raceKey, currentSeq);
+                    }
+
                     this.batch(() => {
                         if (loadingPath) this.setState(loadingPath, "false", { silent: true });
                         if (epId) {
@@ -772,6 +879,31 @@ export const EUIXApiPlugin = {
                     return data;
                 })
                 .catch((err) => {
+                    const isAborted =
+                        err.name === "AbortError" ||
+                        (controller && controller.signal && controller.signal.aborted) ||
+                        (cancellationSignal && cancellationSignal.isCancelled) ||
+                        String(err.message || "").toLowerCase().includes("aborted");
+
+                    if (isAborted) {
+                        if (this._isMounted !== false) {
+                            const highestSeq = this._apiSequenceCounters?.get(raceKey) || 0;
+                            if (currentSeq >= highestSeq) {
+                                if (loadingPath) this.setState(loadingPath, "false", { silent: true });
+                                if (epId && this._apiStatus && this._apiStatus[epId]) {
+                                    this._apiStatus[epId].loading = false;
+                                    this.syncBindings(`api:${epId}:loading`, false);
+                                    this.syncBindings(`api.${epId}.loading`, false);
+                                }
+                            }
+                        }
+                        return null;
+                    }
+
+                    if (this._isMounted === false) {
+                        return null;
+                    }
+
                     const status =
                         err.status ||
                         (err.message && err.message.match(/HTTP (\d+)/) ? toInt(err.message.match(/HTTP (\d+)/)[1], null) : null);
@@ -828,6 +960,9 @@ export const EUIXApiPlugin = {
                     if (timeoutId) {
                         clearTimeout(timeoutId);
                         timeoutId = null;
+                    }
+                    if (this._inFlightControllers && this._inFlightControllers.get(raceKey) === controller) {
+                        this._inFlightControllers.delete(raceKey);
                     }
                 });
         };
