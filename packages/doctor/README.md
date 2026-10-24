@@ -210,31 +210,30 @@ npm run doctor
 
 # Specific directory or file
 npx euix doctor apps/playground/components
-node packages/core/bin/euix.js doctor packages/doctor/fixtures
-```
+npx euix doctor packages/doctor/fixtures
 
 ### Run generated test scenarios
 
 ```bash
-node packages/core/bin/euix.js doctor packages/doctor/fixtures --test
+npx euix doctor packages/doctor/fixtures --test
 ```
 
 ### Behavior graph and flows
 
 ```bash
-node packages/core/bin/euix.js doctor apps/playground --flows --graph
+npx euix doctor apps/playground --flows --graph
 ```
 
 ### Inspect a single file
 
 ```bash
-node packages/core/bin/euix.js doctor inspect packages/doctor/fixtures/simple-component.xml
+npx euix doctor inspect packages/doctor/fixtures/simple-component.xml
 ```
 
 ### JSON output (CI)
 
 ```bash
-node packages/core/bin/euix.js doctor . --json > doctor-report.json
+npx euix doctor . --json > doctor-report.json
 ```
 
 ### Config (`euix.doctor.json`)
@@ -270,14 +269,13 @@ node packages/doctor/bin/euix-doctor-pre-commit.js
 
 ```bash
 # Preview fixes without writing
-node packages/core/bin/euix.js doctor path/to/App.xml --fix --dry-run
+npx euix doctor path/to/App.xml --fix --dry-run
 
 # Apply all supported auto-fixes
-node packages/core/bin/euix.js doctor path/to/App.xml --fix
+npx euix doctor path/to/App.xml --fix
 
 # Apply CDATA wrap for <= / >= / && in <computed> and RUN_SCRIPT blocks
-node packages/core/bin/euix.js doctor path/to/App.xml --fix
-node packages/core/bin/euix.js doctor path/to/App.xml --fix=EUIX0001
+npx euix doctor path/to/App.xml --fix=EUIX0001
 ```
 
 ### All flags

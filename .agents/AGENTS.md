@@ -61,25 +61,25 @@ EUIX Engine is built on a **Modular Plugin Architecture**:
 ### Commands (always use these)
 
 ```bash
-# From monorepo root — scan default target
-npm run doctor
+# Scan default target or all components in project
+npx euix doctor
 
 # Scan a specific directory or file (preferred after localized edits)
-node packages/core/bin/euix.js doctor apps/playground/components
-node packages/core/bin/euix.js doctor path/to/YourComponent.xml
+npx euix doctor apps/playground/components
+npx euix doctor path/to/YourComponent.xml
 
 # Run generated safe test scenarios
-node packages/core/bin/euix.js doctor apps/playground/components --test
+npx euix doctor apps/playground/components --test
 
 # Inspect a single file (entity breakdown + diagnostics)
-node packages/core/bin/euix.js doctor inspect path/to/YourComponent.xml
+npx euix doctor inspect path/to/YourComponent.xml
 
 # CI-friendly JSON output
-node packages/core/bin/euix.js doctor . --json > doctor-report.json
+npx euix doctor . --json > doctor-report.json
 
 # Auto-fix supported rules (EUIX0001: wrap <computed>/<step> JS in CDATA)
-node packages/core/bin/euix.js doctor path/to/App.xml --fix
-node packages/core/bin/euix.js doctor path/to/App.xml --fix=EUIX0001 --dry-run
+npx euix doctor path/to/App.xml --fix
+npx euix doctor path/to/App.xml --fix=EUIX0001 --dry-run
 ```
 
 ### Recommended agent workflow
@@ -2506,6 +2506,25 @@ engine.hooks.on('error:boundary', (payload) => {
 });
 ```
 
+### 4. Custom Mount Error Handling & Console Fallback Suppression
+When a remote XML template or component fails to fetch or parse, EUIX Engine delegates to configured error handlers and falls back gracefully. You can suppress default console warnings or register custom telemetry/UI notifications:
+
+```js
+// 1. Globally suppress default [EUIXEngine Fallback] console.warn warnings
+EUIXEngine.silent = true;
+
+// 2. Global application-level error handler for all unhandled mount/component errors
+EUIXEngine.onError((error, contextInfo, engine) => {
+  console.log('Custom error logger:', error.message, contextInfo);
+  // Send to Sentry, Datadog, or custom UI toast
+});
+
+// 3. Instance-scoped error handler
+engine.onError((error, contextInfo) => {
+  // Handle per-instance mount or action failures
+});
+```
+
 ---
 
 ## 🟦 29. TypeScript State Schema & Generic Typing (`mount<TState>()`)
@@ -2567,4 +2586,60 @@ import { EUIXEngineCore } from 'euixjs/core';
 const coreEngine = EUIXEngineCore.mount<DashboardState>(xml, '#app');
 const currentCount: number = coreEngine.getState('counter');
 ```
+
+---
+
+## ⏱️ 32. Standardized Timeouts, Abort Signals & Hardened Core Utilities
+
+EUIX Engine standardizes all network and execution timeouts into a centralized configuration and exposes resilient utility primitives:
+
+### 1. Default Timeouts (`DEFAULT_TIMEOUTS`)
+All subsystem timeouts are centralized in `DEFAULT_TIMEOUTS` (available via `euixjs/core` and `euixjs`):
+
+```js
+import { DEFAULT_TIMEOUTS } from 'euixjs/core';
+
+DEFAULT_TIMEOUTS.API_REQUEST       // 12000 ms - Default XHR / API endpoint request timeout
+DEFAULT_TIMEOUTS.COMPONENT_LOAD    // 10000 ms - Remote XML component load (ComponentLoader & DeclarativeLoader)
+DEFAULT_TIMEOUTS.RESOURCE_LOAD     // 10000 ms - Remote data model & constants load (<data_model src="...">, <constants src="...">)
+DEFAULT_TIMEOUTS.SCRIPT_LOAD       // 8000 ms  - Remote external script load (<use_script src="...">)
+DEFAULT_TIMEOUTS.ROUTER_LOADER     // 10000 ms - Router declarative / programmatic loader fetch
+DEFAULT_TIMEOUTS.STREAM_CONNECT    // 10000 ms - Stream connection timeout (WebSocket, SSE handshake)
+DEFAULT_TIMEOUTS.ACTION_EXECUTION  // 30000 ms - Resilience timeout guard for actions (<timeout ms="...">)
+DEFAULT_TIMEOUTS.PLAYWRIGHT_IDLE   // 15000 ms - Playwright waitForIdle
+DEFAULT_TIMEOUTS.PLAYWRIGHT_LAZY   // 10000 ms - Playwright waitForLazy
+DEFAULT_TIMEOUTS.PLAYWRIGHT_READY  // 5000 ms  - Playwright waitForReady
+```
+
+### 2. Timeout Signals & Safe Fetch (`createTimeoutSignal`, `safeFetchWithTimeout`)
+```js
+import { createTimeoutSignal, safeFetchWithTimeout, DEFAULT_TIMEOUTS } from 'euixjs/core';
+
+// Automatically aborts after specified duration and merges with parent AbortSignal
+const { signal, cleanup } = createTimeoutSignal(5000, externalSignal);
+try {
+  const res = await fetch(url, { signal });
+} finally {
+  cleanup();
+}
+
+// Higher-level wrapper with automatic timeout and cleanup:
+const response = await safeFetchWithTimeout(url, options, DEFAULT_TIMEOUTS.API_REQUEST);
+```
+
+### 3. Hardened Core Utilities
+Resilient, DOM-clobbering-safe and circular-safe primitives exported directly from `euixjs` and `euixjs/core`:
+
+| Utility | Behavior & Resilience |
+| :--- | :--- |
+| **`safeStringify(val, space)`** | Serializes values to JSON without throwing on circular references (`[Circular]`), DOM nodes (`[DOM Node]`), `BigInt`, or `Symbol`. |
+| **`safeParse(str, fallback)`** | Parses JSON strings safely. Returns `fallback` (default `null`) on syntax error, empty string, or non-string input. |
+| **`toNum(val, defaultVal)`** | Coerces values to number with `defaultVal` (default 0) fallback for `null`, `undefined`, empty string, whitespace, or `NaN`. |
+| **`toInt(val, defaultVal)`** | Safely parses integers with `defaultVal` (default 0) fallback for empty strings, whitespace, or invalid numbers. |
+| **`isPlainObj(val)`** | Strictly checks if value is a plain JavaScript object (not an Array, DOM Node, Date, or class instance). |
+| **`getTagName(node)`** | Returns lowercase tag name resistant to DOM clobbering (e.g. `<input name="tagName">`). |
+| **`getAttr(node, ...names)`** | Retrieves attribute value by name aliases resistant to clobbered `.getAttribute` properties. |
+| **`isElem(node)`** | Checks if node is a valid DOM Element (`nodeType === 1`). |
+| **`isFn(val)`** | Checks if value is a callable function (`typeof val === "function"`). |
+
 

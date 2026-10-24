@@ -55,7 +55,7 @@ This skill defines practical rules, patterns, and validation checklists to ensur
   }
   ```
 * **Reentrancy Locks**: Use explicit boolean or token guards (`_isProcessing`, `_isRevalidating`) to prevent duplicate simultaneous execution of critical async tasks.
-* **AbortController Propagation**: Always accept and forward `AbortSignal` to async operations (fetch, worker tasks, timers).
+* **AbortController Propagation & Centralized Timeouts**: Always accept and forward `AbortSignal` to async operations. Standardize timeouts across subsystems (`DEFAULT_TIMEOUTS`) and pair them with abort signals (`createTimeoutSignal`) so requests never hang indefinitely.
 
 ---
 
@@ -91,6 +91,15 @@ try {
 ### 2.3 Resilient Fallbacks
 * If a secondary feature fails (e.g. telemetry, analytics, cache persistence), it must **never** crash the primary user workflow.
 * Always wrap optional non-critical features in isolated `try/catch` boundaries.
+
+### 2.4 DOM Clobbering Defense
+* Form elements (`<input name="tagName">`, `<button id="getAttribute">`) clobber DOM properties on parent elements.
+* Avoid raw `el.tagName.toLowerCase()` or `el.getAttribute()`; use hardened helpers (`getTagName(node)`, `getAttr(node, ...names)`, `isElem(node)`).
+
+### 2.5 Circular & Complex Data Serialization
+* Never assume state or telemetry objects are simple JSON.
+* Unchecked `JSON.stringify()` throws on circular references, `BigInt`, `Symbol`, and DOM nodes.
+* Use `safeStringify(val)` with cycle detection (`WeakSet`) and `safeParse(str, fallback)` for resilient serialization.
 
 ---
 

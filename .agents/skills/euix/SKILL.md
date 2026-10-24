@@ -125,15 +125,18 @@ window.euix.unmount(element);
 **Rule:** Always validate markup and components with `@euix/doctor` before committing changes.
 
 ```bash
+# Scan default target or all components in project
+npx euix doctor
+
 # Scan directory or component
-node packages/core/bin/euix.js doctor apps/playground
-node packages/core/bin/euix.js doctor path/to/Component.xml
+npx euix doctor apps/playground
+npx euix doctor path/to/Component.xml
 
 # Auto-fix rule EUIX0001 (wraps JS scripts in CDATA)
-node packages/core/bin/euix.js doctor path/to/App.xml --fix
+npx euix doctor path/to/App.xml --fix
 
 # Run safe generated test scenarios statically
-node packages/core/bin/euix.js doctor apps/playground --test
+npx euix doctor apps/playground --test
 ```
 
 ### Critical Doctor Diagnostics
@@ -145,7 +148,54 @@ node packages/core/bin/euix.js doctor apps/playground --test
 
 ---
 
-## 🧪 5. Testing & Verification Standards
+## 🛡️ 5. Error Resilience, Default Timeouts & Core Utilities
+
+### Custom Mount Error Handling & Console Fallback Suppression
+```js
+import { EUIXEngine } from 'euixjs';
+
+// 1. Globally suppress default [EUIXEngine Fallback] console.warn warnings
+EUIXEngine.silent = true;
+
+// 2. Global application-level error handler for unhandled mount/component errors
+EUIXEngine.onError((error, contextInfo, engine) => {
+  console.log('Custom error logger:', error.message, contextInfo);
+});
+
+// 3. Instance-scoped error handler
+engine.onError((error, contextInfo) => {
+  // Handle per-instance mount or action failures
+});
+```
+
+### Standardized Timeouts (`DEFAULT_TIMEOUTS`) & Abort Signals
+All subsystem timeouts are centralized in `DEFAULT_TIMEOUTS` (`euixjs/core`):
+- `DEFAULT_TIMEOUTS.API_REQUEST`: 12000 ms
+- `DEFAULT_TIMEOUTS.COMPONENT_LOAD`: 10000 ms
+- `DEFAULT_TIMEOUTS.RESOURCE_LOAD`: 10000 ms
+- `DEFAULT_TIMEOUTS.SCRIPT_LOAD`: 8000 ms
+- `DEFAULT_TIMEOUTS.ROUTER_LOADER`: 10000 ms
+- `DEFAULT_TIMEOUTS.STREAM_CONNECT`: 10000 ms
+- `DEFAULT_TIMEOUTS.ACTION_EXECUTION`: 30000 ms
+
+```js
+import { safeFetchWithTimeout, createTimeoutSignal, DEFAULT_TIMEOUTS } from 'euixjs/core';
+
+// Safe fetch with automatic timeout abort signal and cleanup:
+const response = await safeFetchWithTimeout(url, options, DEFAULT_TIMEOUTS.API_REQUEST);
+```
+
+### Exported Resilient Core Utilities
+Exported from `euixjs` and `euixjs/core`:
+- `safeStringify(val, space)`: JSON serialization resistant to circular structures, DOM nodes, BigInt, Symbol.
+- `safeParse(str, fallback)`: Safe JSON parse with fallback.
+- `toNum(val, defaultVal)` & `toInt(val, defaultVal)`: Safe numeric coercion with default fallback.
+- `isPlainObj(val)`: Strict plain object validation.
+- `getTagName(node)`, `getAttr(node, ...names)`: DOM clobbering-resistant inspection.
+
+---
+
+## 🧪 6. Testing & Verification Standards
 
 ### Vitest Unit & Integration
 ```bash

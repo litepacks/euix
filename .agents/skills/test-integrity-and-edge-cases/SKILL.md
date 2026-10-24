@@ -156,7 +156,7 @@ Mac keyboards mutate `event.key` when Alt/Option is pressed (e.g. `Alt+Shift+X` 
 Always run static semantic validation before spending execution budget on heavy browser tests:
 ```bash
 # 1. Static validation (zero-DOM, instant)
-node packages/core/bin/euix.js doctor apps/playground
+npx euix doctor apps/playground
 
 # 2. End-to-End browser verification
 npx playwright test apps/playground/e2e/declarative_automount.spec.js

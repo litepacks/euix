@@ -37,6 +37,12 @@
 - [src/plugins/EUIXInspectorPlugin.js](src/plugins/EUIXInspectorPlugin.js) (`euixjs/inspector`): Lightweight development inspector with fixed hover highlight, stable E2E selector generator & scorer, component tree, boundary visualizer, and action logs.
 - [src/plugins/inspector/playwright.js](src/plugins/inspector/playwright.js) (`euixjs/inspector/playwright` / `euixjs/playwright`): Playwright E2E testing helper suite (`euix(page)`, `.component()`, `.getByTestId()`, `.waitForIdle()`, `.debug()`).
 
+### 3. Error Resilience & Hardened Core Utilities
+- **Mount Error Interception & Silent Mode**: `EUIXEngine.silent = true` suppresses red error console banners; `EUIXEngine.onError((err, ctx) => ...)` and `engine.onError((err) => ...)` intercept mount failures cleanly.
+- **Standardized Timeouts**: `DEFAULT_TIMEOUTS` from `euixjs/core` (`FETCH_TIMEOUT_MS: 15000`, `SCRIPT_TIMEOUT_MS: 5000`, `TRANSITION_TIMEOUT_MS: 300`, `SWAP_TIMEOUT_MS: 500`, `LONG_RUNNING_TIMEOUT_MS: 30000`).
+- **Hardened Utilities**: Directly exported from `euixjs` and `euixjs/core` (`safeStringify`, `safeParse`, `safeFetchWithTimeout`, `createTimeoutSignal`, `toNum`, `toInt`, `isPlainObj`, `getTagName`, `getAttr`, `isElem`, `isFn`).
+- **Static AST Validation**: Run `npx euix doctor <path>` for comprehensive static semantic diagnostics.
+
 ---
 
 ## 📜 Declarative XML DSL Grammar Reference
