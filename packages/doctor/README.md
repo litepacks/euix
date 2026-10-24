@@ -288,18 +288,67 @@ euix doctor . --watch
 node packages/doctor/bin/euix-doctor-pre-commit.js
 ```
 
-### Auto-fix (EUIX0001 CDATA wrap)
+### Auto-Fix Subsystem (`--fix`)
+
+The `--fix` command supports safe, deterministic auto-repairs for common errors and warnings:
 
 ```bash
-# Preview fixes without writing
+# Preview fixes without modifying files
 npx euix doctor path/to/App.xml --fix --dry-run
 
 # Apply all supported auto-fixes
 npx euix doctor path/to/App.xml --fix
 
-# Apply CDATA wrap for <= / >= / && in <computed> and RUN_SCRIPT blocks
-npx euix doctor path/to/App.xml --fix=EUIX0001
+# Target specific rule auto-fixes
+npx euix doctor path/to/App.xml --fix=EUIX0001   # Wrap inline JS in CDATA
+npx euix doctor path/to/App.xml --fix=EUIX1001   # Auto-declare missing states in <data_model>
+npx euix doctor path/to/App.xml --fix=EUIX1501   # Add error fallback to <api_endpoint>
+npx euix doctor path/to/App.xml --fix=EUIX3001   # Add key="id" attribute to <for_each>
 ```
+
+#### Step-by-Step Supported Auto-Fixes:
+
+1. **`EUIX0001` (Script CDATA Wrap):**
+   Wraps inline JS expressions containing XML-sensitive operators (`<=`, `>=`, `&&`, `<`) inside `<![CDATA[ ... ]]>`.
+   ```xml
+   <!-- Before -->
+   <computed id="is_valid">data.count <= 10 && data.ready</computed>
+
+   <!-- After --fix=EUIX0001 -->
+   <computed id="is_valid"><![CDATA[data.count <= 10 && data.ready]]></computed>
+   ```
+
+2. **`EUIX1001` (Undeclared State Auto-Declaration):**
+   When an action or shorthand writes to an undeclared state (`on_click:set="counter=0"`), Doctor infers the data type from the assignment (`number`, `boolean`, `string`) and inserts the declaration into `<data_model>`.
+   ```xml
+   <!-- Before: counter is written via shorthand but not declared in <data_model> -->
+   <button on_click:set="counter=0">Reset</button>
+
+   <!-- After --fix=EUIX1001: automatically inserted into <data_model> -->
+   <data_model>
+     <state id="counter" type="number">0</state>
+   </data_model>
+   ```
+
+3. **`EUIX1501` (API Error Fallback Channel):**
+   When an `<api_endpoint>` lacks an `error="..."` channel, network failures leave loading spinners stuck indefinitely. Doctor adds an explicit `error="<id>_error"` attribute.
+   ```xml
+   <!-- Before -->
+   <api_endpoint id="fetch_users" url="/api/users" bind_target="users" />
+
+   <!-- After --fix=EUIX1501 -->
+   <api_endpoint id="fetch_users" url="/api/users" bind_target="users" error="fetch_users_error" />
+   ```
+
+4. **`EUIX3001` (Keyed Reconciliation on Loops):**
+   `<for_each>` containers without a `key` attribute cause full DOM re-renders instead of minimal keyed reconciliation. Doctor adds `key="id"`.
+   ```xml
+   <!-- Before -->
+   <for_each items="{data.items}" var="item">
+
+   <!-- After --fix=EUIX3001 -->
+   <for_each items="{data.items}" var="item" key="id">
+   ```
 
 ### All flags
 
@@ -329,23 +378,11 @@ npx euix doctor path/to/App.xml --fix=EUIX0001
 
 ## Programmatic API
 
-The package can be imported directly:
+The `@euix/doctor` package exposes both a high-level one-step analysis runner and a granular step-by-step pipeline for custom tooling, language servers, and AI agents.
 
-```typescript
-import { applyFixes, buildProject, runDoctor } from "@euix/doctor";
-import { buildDependencyEdges } from "@euix/doctor"; // via analysis module
+### Option 1: One-Step Analysis (`runDoctor`)
 
-const project = await buildProject("./apps/playground", "components/CounterSection.xml");
-buildDependencyEdges(project);
-
-console.log([...project.states.values()].map((s) => s.name));
-console.log(project.diagnostics);
-
-// Apply EUIX0001 CDATA auto-fixes
-applyFixes(project, { rules: ["EUIX0001"] });
-```
-
-Full analysis pipeline:
+Runs the entire static analysis, test simulation, and scoring pipeline in a single call:
 
 ```typescript
 import { runDoctor } from "@euix/doctor";
@@ -353,11 +390,68 @@ import { runDoctor } from "@euix/doctor";
 const result = await runDoctor({
   root: process.cwd(),
   target: "apps/playground/components",
-  test: true,
+  test: true,     // Run safe dry-run test scenarios
+  memory: true,   // Collect memory & reactive leak signals
+  flows: true,    // Generate behavior graph paths
 });
 
-console.log(result.health.score);
-console.log(result.testResults.filter((r) => !r.passed));
+console.log(`Health Score: ${result.health.score}%`);
+console.log(`Diagnostics: ${result.diagnostics.length} issues found`);
+console.log(`Failed Tests:`, result.testResults.filter((r) => !r.passed));
+```
+
+### Option 2: Step-by-Step Low-Level Pipeline
+
+For granular control, IDE extensions, or custom agent workflows, run each step sequentially:
+
+```typescript
+import {
+  buildProject,
+  buildDependencyEdges,
+  runDiagnostics,
+  validateHtmlIslands,
+  validateActionShorthands,
+  validatePerformanceAndMemory,
+  validateAccessibility,
+  applyFixes,
+  doctorResultToGithub,
+  generateHtmlReport,
+} from "@euix/doctor";
+
+// Step 1: Scan files and build the Semantic IR project
+const project = await buildProject(process.cwd(), "apps/playground/components");
+console.log(`Discovered ${project.components.size} components, ${project.states.size} states`);
+
+// Step 2: Build dependency edges (state read/write, computed dependencies, cycle detection)
+buildDependencyEdges(project);
+
+// Step 3: Run core diagnostics (cycles, unknown variables, unused state, broken handlers)
+runDiagnostics(project);
+
+// Step 4: Run specialized validation modules
+validateHtmlIslands(project);          // EUIX0101, EUIX0102, EUIX0103
+validateActionShorthands(project);     // EUIX1001, EUIX1310, EUIX1311, EUIX1702
+validatePerformanceAndMemory(project); // EUIX3001, EUIX3002, EUIX3003
+validateAccessibility(project);        // EUIX4001, EUIX4002, EUIX4003
+
+// Step 5: Inspect diagnostics
+for (const diag of project.diagnostics) {
+  console.log(`[${diag.severity.toUpperCase()}] ${diag.code}: ${diag.message} at ${diag.location.file}:${diag.location.line}`);
+}
+
+// Step 6: Apply auto-fixes step-by-step or all at once
+// Option 6A: Apply individual rule fixes step-by-step
+applyFixes(project, { rules: ["EUIX0001"] }); // Wrap scripts in CDATA
+applyFixes(project, { rules: ["EUIX1001"] }); // Declare missing states
+applyFixes(project, { rules: ["EUIX1501"] }); // Add API error channels
+applyFixes(project, { rules: ["EUIX3001"] }); // Add loop keys
+
+// Option 6B: Apply all available auto-fixes at once
+applyFixes(project);
+
+// Step 7: Export reports in various formats
+const githubAnnotations = doctorResultToGithub(project); // GitHub Actions ::error/::warning format
+const htmlReport = generateHtmlReport(project, { title: "EUIX Doctor Audit" }); // Interactive HTML
 ```
 
 ---

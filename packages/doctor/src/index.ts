@@ -14,4 +14,8 @@ export { RULE_CATALOG, getRuleMetadata, getRuleCategory, getRuleExplanation } fr
 export { applyFixes, collectFixes, collectEuix0001Fixes, collectEuix1001Fixes, collectEuix3001Fixes, collectEuix1501Fixes } from "./fixes/index.js";
 export { attachFixesToDiagnostics } from "./fixes/attach.js";
 export { scanProject } from "./scanner/index.js";
+export { validateHtmlIslands } from "./analysis/islandValidation.js";
+export { validateActionShorthands } from "./analysis/shorthandValidation.js";
+export { validatePerformanceAndMemory } from "./analysis/performanceValidation.js";
+export { validateAccessibility } from "./analysis/a11yValidation.js";
 export type * from "./ir/types.js";
