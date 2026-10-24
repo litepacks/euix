@@ -8,12 +8,22 @@ function fixLineRange(source: string, fix: FileFix): { startLine: number; endLin
     };
 }
 
+const SUPPORTED_FIX_RULES = [
+    "EUIX0001",
+    "EUIX1110",
+    "EUIX1102",
+    "EUIX1701",
+    "EUIX1001",
+    "EUIX3001",
+    "EUIX1501",
+] as const;
+
 /** Attach deterministic fix metadata to diagnostics that support auto-repair. */
 export function attachFixesToDiagnostics(project: EuixProject): void {
-    const fixes = collectFixes(project, ["EUIX0001", "EUIX1110", "EUIX1102", "EUIX1701"]);
+    const fixes = collectFixes(project, [...SUPPORTED_FIX_RULES]);
 
     for (const diag of project.diagnostics) {
-        if (!["EUIX0001", "EUIX1110", "EUIX1102", "EUIX1701"].includes(diag.rule)) continue;
+        if (!SUPPORTED_FIX_RULES.includes(diag.rule as any)) continue;
 
         const file = project.files.find((f) => f.path === diag.file);
         if (!file) continue;

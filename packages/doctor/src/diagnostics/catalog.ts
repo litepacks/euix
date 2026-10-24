@@ -17,6 +17,8 @@ export interface RuleMetadata {
         | "api"
         | "router"
         | "webmcp"
+        | "performance"
+        | "a11y"
         | "general";
     summary: string;
     risk: string;
@@ -263,6 +265,106 @@ export const RULE_CATALOG: Record<string, RuleMetadata> = {
         risk: "Network bandwidth is consumed but the received data is discarded immediately.",
         solution: "Add bind_target=\"dataKey\" on <api_endpoint> to store the fetched data in state.",
         hint: "Set bind_target/select on the endpoint or consume the response in an action.",
+    },
+    EUIX0101: {
+        rule: "EUIX0101",
+        title: "Unresolved Island Component Source",
+        category: "composition",
+        summary: "An HTML island declares a data-euix source that does not exist.",
+        risk: "The declarative island loader will fail to mount, displaying an error or blank element.",
+        solution: "Ensure the referenced template (<template id=\"...\">) or XML file exists at the specified path.",
+        hint: "Fix data-euix path or define the referenced <template id=\"...\"> element.",
+    },
+    EUIX0102: {
+        rule: "EUIX0102",
+        title: "Invalid Island JSON Attribute",
+        category: "general",
+        summary: "The data-props or data-state attribute on an island element contains malformed JSON.",
+        risk: "Parsing will fail at runtime, preventing props or state initialization.",
+        solution: "Provide valid JSON (e.g. data-props='{\"count\": 10}').",
+        hint: "Ensure data-props and data-state contain valid JSON strings.",
+    },
+    EUIX0103: {
+        rule: "EUIX0103",
+        title: "Missing Required Island Prop",
+        category: "composition",
+        summary: "An island mounts a component that requires a prop not supplied via data-prop-* or data-props.",
+        risk: "The component may fail or render incomplete data.",
+        solution: "Add data-prop-<name>=\"...\" or pass the prop in data-props.",
+        hint: "Provide the required prop via data-prop-<name> on the island element.",
+    },
+    EUIX1310: {
+        rule: "EUIX1310",
+        title: "Invalid Toggle Target State",
+        category: "action",
+        summary: "An on_*:toggle action targets a state that is not a boolean.",
+        risk: "Toggling a non-boolean (string/number) creates unpredictable truthy/falsy mutations.",
+        solution: "Specify type=\"boolean\" on the target state or use SET_STATE with an explicit value.",
+        hint: "Change the state type to 'boolean' or use on_click:set instead of toggle.",
+    },
+    EUIX1311: {
+        rule: "EUIX1311",
+        title: "Arithmetic on String State in Shorthand",
+        category: "action",
+        summary: "An on_*:set action performs math arithmetic on a state with string type.",
+        risk: "String concatenation results in '011' instead of numeric addition (2).",
+        solution: "Declare type=\"number\" on the state in <data_model>.",
+        hint: "Add type='number' to the state definition to ensure numeric addition.",
+    },
+    EUIX3001: {
+        rule: "EUIX3001",
+        title: "Missing Key on Loop Container",
+        category: "performance",
+        summary: "<for_each> is missing a 'key' attribute for keyed reconciliation.",
+        risk: "Array mutations trigger full container DOM re-renders instead of minimal keyed node reuse.",
+        solution: "Add key=\"id\" (or another unique property) to the <for_each> container.",
+        hint: "Add key=\"id\" to <for_each items=\"...\"> to enable 60 FPS keyed reconciliation.",
+        autoFixable: true,
+    },
+    EUIX3002: {
+        rule: "EUIX3002",
+        title: "Un-debounced Watcher on Rapid Input",
+        category: "performance",
+        summary: "A watcher observes an input-bound state and triggers API requests on every keystroke without debounce.",
+        risk: "Floods the network with requests, degrades typing responsiveness, and risks rate limiting.",
+        solution: "Add debounce=\"300\" or throttle=\"300\" to the <watch> tag.",
+        hint: "Add debounce=\"300\" to the <watch> tag on input-bound state.",
+    },
+    EUIX3003: {
+        rule: "EUIX3003",
+        title: "Large Embedded State in Template",
+        category: "performance",
+        summary: "A <state> tag contains a large embedded static data payload (>2000 characters).",
+        risk: "Bloats template size and increases initial parse latency.",
+        solution: "Move large datasets to external JSON files via <state src=\"...\"> or <api_endpoint>.",
+        hint: "Load large datasets via <state src=\"...\"> or <api_endpoint> instead of inlining.",
+    },
+    EUIX4001: {
+        rule: "EUIX4001",
+        title: "Button Missing Accessible Label",
+        category: "a11y",
+        summary: "A <button> has no text content, aria-label, aria-labelledby, or title.",
+        risk: "Screen readers and assistive technologies announce an unlabeled button.",
+        solution: "Add aria-label=\"...\" or textual label inside the button.",
+        hint: "Add aria-label or visible text to <button>.",
+    },
+    EUIX4002: {
+        rule: "EUIX4002",
+        title: "Non-Interactive Element Click Handler",
+        category: "a11y",
+        summary: "A non-interactive element (div, span) has an on_click handler without role or tabindex.",
+        risk: "Keyboard users and screen reader users cannot focus or activate the element.",
+        solution: "Use a <button> instead, or add role=\"button\" tabindex=\"0\".",
+        hint: "Prefer <button> or add role=\"button\" and tabindex=\"0\".",
+    },
+    EUIX4003: {
+        rule: "EUIX4003",
+        title: "Form Input Missing Accessible Name",
+        category: "a11y",
+        summary: "An <input> element lacks an accessible name (label, aria-label, or title).",
+        risk: "Assistive technologies cannot announce the purpose of the input field.",
+        solution: "Add a matching <label for=\"...\">, aria-label=\"...\", or placeholder.",
+        hint: "Associate with a <label> or add aria-label to <input>.",
     },
 };
 

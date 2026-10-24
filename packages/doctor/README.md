@@ -92,26 +92,49 @@ Static rules are evaluated. Key rules:
 
 | Rule | Level | Meaning |
 |------|-------|---------|
-| `EUIX0001` | error | XML-unsafe JS in `<computed>` / `<step>` / script body (e.g. `<=` without CDATA) |
-| `EUIX1001` | error | Action writes to an unknown state |
+| `EUIX0001` | error | XML-unsafe JS in `<computed>` / `<step>` / script body (e.g. `<=` without CDATA) *(auto-fixable)* |
+| `EUIX0101` | error | Island architecture template `#id` or remote file path missing / 404 |
+| `EUIX0102` | error | Invalid JSON syntax in island `data-props` or `data-state` attribute |
+| `EUIX0103` | error | Island missing required prop declared on `<param required="true">` |
+| `EUIX1001` | error | Action or event writes to an unknown state *(auto-fixable)* |
 | `EUIX1002` | warning | State is never used |
 | `EUIX1101` | error | Computed dependency cycle |
-| `EUIX1102` | error | Computed references an unknown state/computed dependency |
-| `EUIX1110` | error | Template binding, watcher, or action references an unknown variable |
-
-### Format
-
-```bash
-node packages/doctor/bin/euix-doctor-format.js path/to/App.xml
-cat App.xml | node packages/doctor/bin/euix-doctor-format.js --stdin App.xml
-```
+| `EUIX1102` | error | Computed references an unknown state/computed dependency *(auto-fixable)* |
+| `EUIX1110` | error | Template binding, watcher, or action references an unknown variable *(auto-fixable)* |
 | `EUIX1201` | warning | Watcher writes its own path (reactive loop) |
 | `EUIX1301` | error | Custom action not defined (built-ins, shorthands, imported `<action_def>` recognized) |
 | `EUIX1302` | error | Plugin action used without matching plugin markup/import |
+| `EUIX1310` | error | `on_*:toggle` shorthand targets non-boolean state |
+| `EUIX1311` | warning | Arithmetic on string-typed state in `on_*:set` shorthand (evaluates as string concatenation) |
 | `EUIX1401` | error | Component reference could not be resolved |
 | `EUIX1402` | error | Missing required prop on child component |
 | `EUIX1403` | error | Prop `type` or `enum` mismatch (inferred) |
-| `EUIX1501` | warning | Missing API error path (loading state may stay stuck) |
+| `EUIX1501` | warning | Missing API error path (loading state may stay stuck) *(auto-fixable)* |
+| `EUIX1702` | error | `on_*:revalidate` references unknown API endpoint tag/id |
+| `EUIX3001` | warning | `<for_each>` is missing `key` attribute for keyed reconciliation *(auto-fixable)* |
+| `EUIX3002` | warning | Un-debounced watcher triggers API requests on rapid input keystrokes |
+| `EUIX3003` | info | State embeds large static payload (>2000 chars); recommend `<state src="...">` |
+| `EUIX4001` | warning | Button missing accessible label (aria-label, title, or visible text) |
+| `EUIX4002` | warning | Non-interactive element (div/span) has click handler without role or tabindex |
+| `EUIX4003` | warning | Form `<input>` missing accessible label (label, aria-label, or title) |
+
+### Auto-Fix Subsystem (`--fix`)
+
+The `--fix` command supports safe, deterministic auto-repairs:
+
+```bash
+# Apply all supported auto-fixes
+npx euix doctor path/to/App.xml --fix
+
+# Preview fixes without modifying files
+npx euix doctor path/to/App.xml --fix --dry-run
+
+# Target specific rule auto-fixes
+npx euix doctor path/to/App.xml --fix=EUIX0001   # Wrap scripts in CDATA
+npx euix doctor path/to/App.xml --fix=EUIX1001   # Auto-declare missing states in <data_model>
+npx euix doctor path/to/App.xml --fix=EUIX3001   # Add key="id" to <for_each>
+npx euix doctor path/to/App.xml --fix=EUIX1501   # Add error="..._error" to <api_endpoint>
+```
 
 ### 7. Behavior Graph (`src/graph/`)
 
@@ -288,10 +311,15 @@ npx euix doctor path/to/App.xml --fix=EUIX0001
 --fuzz           Add semantic fuzz scenarios (requires --test)
 --json           JSON output
 --sarif          SARIF 2.1.0 output (includes fix metadata when available)
+--github         GitHub Actions annotations format (::error, ::warning)
+--format=FORMAT  Output format: terminal | json | sarif | html | github
+--html[=FILE]    Generate standalone interactive HTML report
+--open           Open generated HTML report in browser
+--watch          Continuous analysis mode with debounced file watcher
 --baseline=FILE  Suppress known diagnostics
 --update-baseline  Refresh baseline file
 --fix            Apply auto-fixes for supported rules
---fix=RULE       Apply a single rule (e.g. EUIX0001)
+--fix=RULE       Apply a single rule (e.g. EUIX1001)
 --dry-run        Preview --fix without writing files
 --seed=<n>       Fuzz seed
 --repeat=<n>     Memory repeat count

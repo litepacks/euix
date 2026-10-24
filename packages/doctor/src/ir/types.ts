@@ -485,6 +485,10 @@ export interface DoctorOptions {
     dryRun?: boolean;
     /** Re-run analysis when files change. */
     watch?: boolean;
+    /** Output GitHub Actions annotations format (::error, ::warning). */
+    github?: boolean;
+    /** Output format: json | sarif | html | github | terminal. */
+    format?: "json" | "sarif" | "html" | "github" | "terminal";
     /** Print baseline diff summary (requires --baseline). */
     baselineDiff?: boolean;
 }

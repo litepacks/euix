@@ -3,10 +3,24 @@ import type { ApplyFixesResult, EuixProject, FileFix } from "../ir/types.js";
 import { collectEuix0001Fixes } from "./euix0001.js";
 import { collectEuix1110Fixes } from "./euix1110.js";
 import { collectEuix1701Fixes } from "./euix1701.js";
+import { collectEuix1001Fixes } from "./euix1001.js";
+import { collectEuix3001Fixes } from "./euix3001.js";
+import { collectEuix1501Fixes } from "./euix1501.js";
 
 export { collectEuix0001Fixes } from "./euix0001.js";
+export { collectEuix1001Fixes } from "./euix1001.js";
+export { collectEuix3001Fixes } from "./euix3001.js";
+export { collectEuix1501Fixes } from "./euix1501.js";
 
-const ALL_FIX_RULES = ["EUIX0001", "EUIX1110", "EUIX1102", "EUIX1701"] as const;
+const ALL_FIX_RULES = [
+    "EUIX0001",
+    "EUIX1110",
+    "EUIX1102",
+    "EUIX1701",
+    "EUIX1001",
+    "EUIX3001",
+    "EUIX1501",
+] as const;
 
 export function collectFixes(project: EuixProject, rules?: string[]): FileFix[] {
     const allowed = new Set(rules ?? [...ALL_FIX_RULES]);
@@ -22,6 +36,15 @@ export function collectFixes(project: EuixProject, rules?: string[]): FileFix[] 
         }
         if (allowed.has("EUIX1701")) {
             fixes.push(...collectEuix1701Fixes(project.diagnostics, file.source, file.path));
+        }
+        if (allowed.has("EUIX1001")) {
+            fixes.push(...collectEuix1001Fixes(project.diagnostics, file.source, file.path));
+        }
+        if (allowed.has("EUIX3001")) {
+            fixes.push(...collectEuix3001Fixes(project.diagnostics, file.source, file.path));
+        }
+        if (allowed.has("EUIX1501")) {
+            fixes.push(...collectEuix1501Fixes(project.diagnostics, file.source, file.path));
         }
     }
 

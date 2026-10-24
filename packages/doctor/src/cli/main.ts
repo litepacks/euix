@@ -10,6 +10,7 @@ import { applyBaseline, loadBaseline, saveBaseline } from "../reporters/baseline
 import { diffAgainstBaseline, printBaselineDiff } from "../reporters/baselineDiff.js";
 import { doctorResultToJson } from "../reporters/json.js";
 import { doctorResultToSarif } from "../reporters/sarif.js";
+import { doctorResultToGithub } from "../reporters/github.js";
 import { generateHtmlReport } from "../reporters/html.js";
 import { printDoctorReport, printInspectReport } from "../reporters/terminal.js";
 
@@ -29,15 +30,17 @@ Options:
   --fuzz           Enable semantic fuzzing (requires --test)
   --json           JSON output
   --sarif          SARIF 2.1.0 output (CI / GitHub Code Scanning)
+  --github         GitHub Actions annotations format (::error, ::warning)
+  --format=FORMAT  Output format: terminal | json | sarif | html | github
   --html[=FILE]    Generate standalone interactive HTML report (default: doctor-report.html)
   --report[=FILE]  Alias for --html
   --open           Open generated HTML report in default browser
   --baseline=FILE  Suppress known diagnostics listed in baseline file
   --update-baseline  Write current diagnostics to baseline file (with --baseline)
-  --fix            Apply auto-fixes (EUIX0001, EUIX1110/EUIX1102, EUIX1701)
-  --fix=RULE       Apply auto-fixes for a single rule (e.g. --fix=EUIX1701)
+  --fix            Apply auto-fixes (EUIX0001, EUIX1110, EUIX1701, EUIX1001, EUIX3001, EUIX1501)
+  --fix=RULE       Apply auto-fixes for a single rule (e.g. --fix=EUIX1001)
   --dry-run        Preview --fix edits without writing files
-  --watch          Re-run analysis when files change (no test scenarios)
+  --watch          Re-run analysis automatically when files change (with debounced watching)
   --baseline-diff  Show fixed/new diagnostics vs --baseline file
   --seed=<n>       Fuzz seed
   --repeat=<n>     Memory repeat count
@@ -80,11 +83,24 @@ export function parseDoctorArgs(argv: string[], cwd = process.cwd()): DoctorOpti
         ? (htmlArg ? htmlArg.split("=")[1] : reportArg ? reportArg.split("=")[1] : true)
         : undefined;
 
+    const formatArg = args.find((a) => a.startsWith("--format="));
+    const formatVal = (formatArg ? formatArg.split("=")[1] : undefined) as DoctorOptions["format"];
+    const isGithub =
+        args.includes("--github") ||
+        formatVal === "github" ||
+        (process.env.GITHUB_ACTIONS === "true" &&
+            !args.includes("--json") &&
+            !args.includes("--sarif") &&
+            !hasHtml &&
+            formatVal !== "terminal");
+
     return {
         root: cwd,
         target,
-        json: args.includes("--json"),
-        sarif: args.includes("--sarif"),
+        json: args.includes("--json") || formatVal === "json",
+        sarif: args.includes("--sarif") || formatVal === "sarif",
+        github: isGithub,
+        format: formatVal || (isGithub ? "github" : undefined),
         html: htmlVal,
         openReport: args.includes("--open"),
         test: args.includes("--test"),
@@ -208,9 +224,11 @@ export async function runDoctorCli(argv: string[], cwd = process.cwd()): Promise
             }
         }
 
-        if (options.sarif) {
+        if (options.github || options.format === "github") {
+            console.log(doctorResultToGithub(result, cwd));
+        } else if (options.sarif || options.format === "sarif") {
             console.log(doctorResultToSarif(result));
-        } else if (options.json) {
+        } else if (options.json || options.format === "json") {
             console.log(doctorResultToJson(result));
         } else if (!options.html) {
             printDoctorReport(result, options, suppressed);
@@ -240,11 +258,20 @@ async function runWatchLoop(options: DoctorOptions, cwd: string): Promise<void> 
             const errors = project.diagnostics.filter((d) => d.severity === "error").length;
             const warnings = project.diagnostics.filter((d) => d.severity === "warning").length;
             const stamp = new Date().toLocaleTimeString();
-            console.log(`[${stamp}] EUIX Doctor — ${errors} error(s), ${warnings} warning(s)`);
-            for (const diagnostic of project.diagnostics.filter((d) => d.severity === "error").slice(0, 10)) {
-                console.log(
-                    `  ${path.relative(cwd, diagnostic.file)}:${diagnostic.line} ${diagnostic.rule} ${diagnostic.message}`,
-                );
+
+            console.log(`\n[${stamp}] 🩺 EUIX Doctor Watcher — ${errors} error(s), ${warnings} warning(s) across ${project.files.length} file(s)`);
+            if (errors === 0 && warnings === 0) {
+                console.log(`  ✅ All checks passed! No issues detected.`);
+            } else {
+                for (const diagnostic of project.diagnostics.slice(0, 15)) {
+                    const icon = diagnostic.severity === "error" ? "❌" : "⚠️";
+                    console.log(
+                        `  ${icon} ${path.relative(cwd, diagnostic.file)}:${diagnostic.line}:${diagnostic.column} [${diagnostic.rule}] ${diagnostic.message}`,
+                    );
+                }
+                if (project.diagnostics.length > 15) {
+                    console.log(`  ...and ${project.diagnostics.length - 15} more diagnostics.`);
+                }
             }
         } finally {
             running = false;
@@ -253,12 +280,33 @@ async function runWatchLoop(options: DoctorOptions, cwd: string): Promise<void> 
 
     const schedule = () => {
         if (timer) clearTimeout(timer);
-        timer = setTimeout(() => void analyzeOnce(), 300);
+        timer = setTimeout(() => void analyzeOnce(), 250);
     };
 
-    console.log(`Watching ${watchTarget} …`);
+    console.log(`👀 Watching ${watchTarget} for changes (press Ctrl+C to exit)...`);
     await analyzeOnce();
-    fs.watch(watchTarget, { recursive: true }, schedule);
+
+    try {
+        fs.watch(watchTarget, { recursive: true }, (_event, filename) => {
+            if (filename) {
+                const norm = filename.replace(/\\/g, "/");
+                if (
+                    norm.includes("node_modules") ||
+                    norm.includes(".git") ||
+                    norm.includes("dist") ||
+                    norm.includes("coverage")
+                ) {
+                    return;
+                }
+                if (!/\.(xml|html|htm|js|ts|jsx|tsx)$/i.test(norm)) {
+                    return;
+                }
+            }
+            schedule();
+        });
+    } catch (e) {
+        console.warn(`Warning: Recursive fs.watch not fully supported on this platform: ${e}`);
+    }
 
     await new Promise<void>(() => {
         process.on("SIGINT", () => process.exit(0));

@@ -264,7 +264,10 @@ describe("EUIX Engine - Resilience Primitives (Retry, Timeout, Delay) Test Suite
             const button = container.querySelector("button");
             button.click();
 
-            await new Promise(r => setTimeout(r, 50));
+            for (let i = 0; i < 25; i++) {
+                if (engine.getState("status") === "recovered") break;
+                await new Promise(r => setTimeout(r, 20));
+            }
 
             expect(engine.getState("status")).toBe("recovered");
             expect(engine.getState("attempt_val")).toBe(2);

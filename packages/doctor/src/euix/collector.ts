@@ -592,7 +592,7 @@ function extractRevalidateTag(el: ParsedElement, handler: string): string | null
     return el.attributes.tag ?? null;
 }
 
-function extractDeclarativeStateWrites(el: ParsedElement, handler: string): string[] {
+function extractDeclarativeStateWrites(el: ParsedElement, handler: string, attrName?: string): string[] {
     const upper = handler.toUpperCase();
     if (upper === "SET_STATE" || upper.startsWith("SET_STATE:")) {
         const pathEl = findElements(el, new Set(["path"]))[0];
@@ -606,6 +606,19 @@ function extractDeclarativeStateWrites(el: ParsedElement, handler: string): stri
     }
     if (upper === "RUN_SCRIPT" || handler.startsWith("$") || handler.includes(";")) {
         return extractEngineSetStateWrites(elementTextContent(el));
+    }
+    // Handle shorthand attribute syntax like on_click:set="is_active=true"
+    if (handler.includes("=")) {
+        const left = handler.split("=")[0]?.trim().replace(/^data\./, "").replace(/^local\./, "");
+        if (left && /^[a-zA-Z_$][a-zA-Z0-9_$.]*$/.test(left)) {
+            return [left.split(".")[0]!];
+        }
+    }
+    if (attrName && (attrName.includes(":toggle") || attrName.includes(":set") || attrName.includes(":mutate"))) {
+        const clean = handler.trim().replace(/^data\./, "").replace(/^local\./, "");
+        if (clean && /^[a-zA-Z_$][a-zA-Z0-9_$.]*$/.test(clean)) {
+            return [clean.split(".")[0]!];
+        }
     }
     return [];
 }
@@ -745,7 +758,7 @@ function collectEventsAndBindings(
                     target,
                     handler: value,
                     handlerKind: "unknown",
-                    stateWrites: extractDeclarativeStateWrites(el, value),
+                    stateWrites: extractDeclarativeStateWrites(el, value, attr),
                     revalidateTag: extractRevalidateTag(el, value),
                     location: makeLocation(doc.file, doc.source, el.start, el.end),
                 };

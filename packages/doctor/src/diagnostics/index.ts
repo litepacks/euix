@@ -18,6 +18,10 @@ import { validateUnknownVariables } from "../analysis/variableRefs.js";
 import { validateXmlScriptSafety } from "../analysis/xmlScriptValidation.js";
 import { canonicalFilePath } from "../utils/paths.js";
 import { attachFixesToDiagnostics } from "../fixes/attach.js";
+import { validateHtmlIslands } from "../analysis/islandValidation.js";
+import { validatePerformanceAndMemory } from "../analysis/performanceValidation.js";
+import { validateActionShorthands } from "../analysis/shorthandValidation.js";
+import { validateAccessibility } from "../analysis/a11yValidation.js";
 import {
     createProjectActionContext,
     formatMissingHandlerMessage,
@@ -40,7 +44,13 @@ import {
 } from "./messages.js";
 
 export function runDiagnostics(project: EuixProject): Diagnostic[] {
-    const diagnostics: Diagnostic[] = [...validateXmlScriptSafety(project)];
+    const diagnostics: Diagnostic[] = [
+        ...validateXmlScriptSafety(project),
+        ...validateHtmlIslands(project),
+        ...validatePerformanceAndMemory(project),
+        ...validateActionShorthands(project),
+        ...validateAccessibility(project),
+    ];
     const stateNames = new Set([...project.states.values()].map((s) => s.name));
 
     for (const state of project.states.values()) {
@@ -302,6 +312,26 @@ export function runDiagnostics(project: EuixProject): Diagnostic[] {
                         action.file,
                         action.location.line,
                         action.location.column,
+                        "confirmed",
+                        ruleHint("EUIX1001"),
+                    ),
+                );
+            }
+        }
+    }
+
+    for (const event of project.events.values()) {
+        for (const write of event.stateWrites) {
+            const name = write.replace(/^data\./, "").replace(/^local\./, "");
+            if (name && !stateNames.has(name) && !name.startsWith("$") && !name.startsWith("props.")) {
+                diagnostics.push(
+                    diag(
+                        "EUIX1001",
+                        "error",
+                        `Event '${event.name}' writes unknown state '${name}' in '${event.componentName}'.`,
+                        event.file,
+                        event.location.line,
+                        event.location.column,
                         "confirmed",
                         ruleHint("EUIX1001"),
                     ),
