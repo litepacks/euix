@@ -15,14 +15,6 @@ const getStore = (type) => {
 export const EUIXStoragePlugin = {
     name: "storage",
     install(engineClass) {
-        if (engineClass.hooks && isFn(engineClass.hooks.on)) {
-            engineClass.hooks.on("engine:init", (engine) => {
-                if (isFn(engine._setupStorageListener)) {
-                    engine._setupStorageListener();
-                }
-            });
-        }
-
         const proto = engineClass.prototype;
 
         proto._setupStorageListener = function () {
@@ -40,12 +32,26 @@ export const EUIXStoragePlugin = {
 
                 for (const [stateKey, config] of this._persistenceConfig.entries()) {
                     if (config.storage === "local" && config.storageKey === key) {
+                        let currentSerialized;
+                        try {
+                            currentSerialized = JSON.stringify(this._rawState[stateKey] !== undefined ? this._rawState[stateKey] : "");
+                        } catch (_) {
+                            currentSerialized = safeStringify(this._rawState[stateKey] !== undefined ? this._rawState[stateKey] : "");
+                        }
+                        const targetSerialized = newValue !== null && newValue !== undefined ? String(newValue) : "";
+                        if (currentSerialized === targetSerialized) {
+                            continue;
+                        }
+
                         const parsed =
                             newValue !== null && newValue !== undefined
                                 ? safeParse(newValue, newValue || "")
                                 : "";
-                        if (this._rawState[stateKey] !== parsed) {
+                        this._isSyncingFromStorage = true;
+                        try {
                             this.setState(stateKey, parsed, { silent: false });
+                        } finally {
+                            this._isSyncingFromStorage = false;
                         }
                     }
                 }
@@ -115,6 +121,7 @@ export const EUIXStoragePlugin = {
         };
 
         proto._savePersistedState = function (key, value) {
+            if (this._isSyncingFromStorage) return;
             if (!this._persistenceConfig) return;
             const config = this._persistenceConfig.get(key);
             if (!config) return;
@@ -126,6 +133,10 @@ export const EUIXStoragePlugin = {
                     valToStore = JSON.stringify(value !== undefined ? value : "");
                 } catch (_) {
                     valToStore = safeStringify(value !== undefined ? value : "");
+                }
+                const existing = store.getItem(config.storageKey);
+                if (existing === valToStore) {
+                    return;
                 }
                 store.setItem(config.storageKey, valToStore);
                 if (typeof window !== "undefined" && isFn(window.dispatchEvent)) {

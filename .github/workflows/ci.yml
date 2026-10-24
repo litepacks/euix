@@ -42,7 +42,7 @@ jobs:
         run: npm run build
 
       - name: Run Unit & Integration Tests (Shard ${{ matrix.shard }})
-        run: npm test -- --shard=${{ matrix.shard }}
+        run: npm run test -w euixjs -- --shard=${{ matrix.shard }}
 
   battle_and_e2e:
     name: Battle Tests & E2E Matrix

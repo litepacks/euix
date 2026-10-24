@@ -27,6 +27,7 @@ describe('EUIXEngine Components Integration Test Suite', () => {
 
     beforeEach(() => {
         document.body.innerHTML = '<div id="app"></div>';
+        if (typeof localStorage !== 'undefined') localStorage.clear();
     });
 
     it('should correctly render AppHeader.xml and UserBadge.xml components', () => {
@@ -392,10 +393,6 @@ describe('EUIXEngine Components Integration Test Suite', () => {
                 <state id="dragged_id"></state>
                 <state id="new_kanban_title"></state>
                 <state id="new_kanban_col">todo</state>
-                <state id="kanban_tasks" type="array">
-                    <item id="task-1" title="Design EUIX Spec" category="Design" status="todo" />
-                    <item id="task-2" title="Implement Drag Handlers" category="Core" status="in_progress" />
-                </state>
             </data_model>
             <flex direction="column">
                 <kanban-section />
