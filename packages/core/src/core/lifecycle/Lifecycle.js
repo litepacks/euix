@@ -890,6 +890,17 @@ export function addGlobalListener(engine, target, eventType, handler, options) {
 
 export function destroy(engine) {
     engine._isMounted = false;
+    if (engine._pendingBatchChanges) {
+        engine._pendingBatchChanges.clear();
+    }
+    engine._microtaskScheduled = false;
+    engine._microtaskRecursionCount = 0;
+    engine._isFlushing = false;
+    if (engine._macrotaskResetTimer) {
+        clearTimeout(engine._macrotaskResetTimer);
+        engine._macrotaskResetTimer = null;
+    }
+    engine._macrotaskResetScheduled = false;
     if (engine._globalListeners && engine._globalListeners.size > 0) {
         engine._globalListeners.forEach((cleanup) => {
             try {

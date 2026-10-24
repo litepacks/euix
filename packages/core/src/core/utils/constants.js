@@ -240,8 +240,12 @@ export const isCycleError = (err) => {
         code === "WATCHER_CYCLE_ERROR" ||
         code === "COMPUTED_CYCLE_ERROR" ||
         code === "CIRCULAR_LAZY_DEPENDENCY" ||
+        code === "MICROTASK_CASCADE_LIMIT_EXCEEDED" ||
+        code === "BATCH_FLUSH_CYCLE_ERROR" ||
         msg.includes("CIRCULAR_LAZY_DEPENDENCY") ||
         msg.includes("Infinite Loop Guard") ||
+        msg.includes("Microtask Starvation Guard") ||
+        msg.includes("Batch Flush Guard") ||
         msg.includes("Maximum watcher reaction depth") ||
         msg.includes("Cascade limit exceeded")
     );

@@ -170,55 +170,87 @@ export function _invalidateComputed(engine, changedKey, allAffected) {
 }
 
 export function flushStateUpdates(engine) {
+    if (engine._isMounted === false) {
+        if (engine._pendingBatchChanges) engine._pendingBatchChanges.clear();
+        engine._dirtyBitmask = 0n;
+        return;
+    }
+
     if (!engine._pendingBatchChanges || engine._pendingBatchChanges.size === 0) {
         engine._dirtyBitmask = 0n;
         return;
     }
-    const pending = Array.from(engine._pendingBatchChanges.values());
-    engine._pendingBatchChanges.clear();
-    const _dirtyMask = engine._dirtyBitmask;
-    engine._dirtyBitmask = 0n;
 
-    const allAffected = new Set();
-    const executedFns = new Set();
-    const syncedPaths = new Set();
-
-    for (let i = 0; i < pending.length; i++) {
-        const { key, value, sourceEl } = pending[i];
-        _invalidateComputed(engine, key, allAffected);
-        engine.syncBindings(key, value, sourceEl, executedFns);
-        syncedPaths.add(key);
-        if (key.includes(".")) {
-            const rootKey = key.split(".")[0];
-            if (!syncedPaths.has(rootKey)) {
-                engine.syncBindings(rootKey, engine._rawState[rootKey], sourceEl, executedFns);
-                engine.syncBindings(`data.${rootKey}`, engine._rawState[rootKey], sourceEl, executedFns);
-                syncedPaths.add(rootKey);
-            }
-            engine.syncBindings(`data.${key}`, value, sourceEl, executedFns);
-        }
+    if (engine._isFlushing) {
+        return;
     }
 
-    allAffected.forEach((cId) => {
-        const cNode = engine._computedRegistry ? engine._computedRegistry.get(cId) : null;
-        if (cNode) {
-            const cVal = cNode.evaluate();
-            engine.syncBindings(`computed.${cId}`, cVal, null);
-            engine.syncBindings(cId, cVal, null);
-        }
-    });
+    engine._isFlushing = true;
+    let flushPasses = 0;
+    const maxFlushPasses = engine._maxFlushLoops || 25;
 
-    pending.forEach(({ key, value, oldValue, silent, context, force, mutated }) => {
-        if (!silent) {
-            if (!force && !mutated && isEqual(oldValue, value)) {
-                return;
+    try {
+        while (engine._pendingBatchChanges && engine._pendingBatchChanges.size > 0) {
+            flushPasses++;
+            if (flushPasses > maxFlushPasses) {
+                engine._pendingBatchChanges.clear();
+                const err = new EUIXStructuredError({
+                    message: `[EUIX Batch Flush Guard] Exceeded maximum inner flush passes (${maxFlushPasses}). Possible circular synchronous batch loop or recursive state mutations.`,
+                    code: "BATCH_FLUSH_CYCLE_ERROR",
+                });
+                engine.reportError(err, "Batch Flush Guard");
+                throw err;
             }
-            engine.triggerStateWatchers(key, value, oldValue);
-            if (isFn(engine._triggerReactiveWatchers)) {
-                engine._triggerReactiveWatchers(key, value, oldValue, context);
+
+            const pending = Array.from(engine._pendingBatchChanges.values());
+            engine._pendingBatchChanges.clear();
+            const _dirtyMask = engine._dirtyBitmask;
+            engine._dirtyBitmask = 0n;
+
+            const allAffected = new Set();
+            const executedFns = new Set();
+            const syncedPaths = new Set();
+
+            for (let i = 0; i < pending.length; i++) {
+                const { key, value, sourceEl } = pending[i];
+                _invalidateComputed(engine, key, allAffected);
+                engine.syncBindings(key, value, sourceEl, executedFns);
+                syncedPaths.add(key);
+                if (key.includes(".")) {
+                    const rootKey = key.split(".")[0];
+                    if (!syncedPaths.has(rootKey)) {
+                        engine.syncBindings(rootKey, engine._rawState[rootKey], sourceEl, executedFns);
+                        engine.syncBindings(`data.${rootKey}`, engine._rawState[rootKey], sourceEl, executedFns);
+                        syncedPaths.add(rootKey);
+                    }
+                    engine.syncBindings(`data.${key}`, value, sourceEl, executedFns);
+                }
             }
+
+            allAffected.forEach((cId) => {
+                const cNode = engine._computedRegistry ? engine._computedRegistry.get(cId) : null;
+                if (cNode) {
+                    const cVal = cNode.evaluate();
+                    engine.syncBindings(`computed.${cId}`, cVal, null);
+                    engine.syncBindings(cId, cVal, null);
+                }
+            });
+
+            pending.forEach(({ key, value, oldValue, silent, context, force, mutated }) => {
+                if (!silent) {
+                    if (!force && !mutated && isEqual(oldValue, value)) {
+                        return;
+                    }
+                    engine.triggerStateWatchers(key, value, oldValue);
+                    if (isFn(engine._triggerReactiveWatchers)) {
+                        engine._triggerReactiveWatchers(key, value, oldValue, context);
+                    }
+                }
+            });
         }
-    });
+    } finally {
+        engine._isFlushing = false;
+    }
 }
 
 export function setState(engine, key, value, options = {}) {
@@ -349,9 +381,54 @@ export function setState(engine, key, value, options = {}) {
             engine._pendingBatchChanges.set(key, { key, value, oldValue: origOldValue, silent, sourceEl, context, force, mutated });
             if (isFn(queueMicrotask) && !engine._microtaskScheduled) {
                 engine._microtaskScheduled = true;
+
+                if (!engine._macrotaskResetScheduled && typeof setTimeout !== "undefined") {
+                    engine._macrotaskResetScheduled = true;
+                    engine._macrotaskResetTimer = setTimeout(() => {
+                        engine._macrotaskResetScheduled = false;
+                        engine._macrotaskResetTimer = null;
+                        engine._microtaskRecursionCount = 0;
+                    }, 0);
+                }
+
                 queueMicrotask(() => {
                     engine._microtaskScheduled = false;
-                    engine.flushStateUpdates();
+                    if (engine._isMounted === false) {
+                        if (engine._pendingBatchChanges) engine._pendingBatchChanges.clear();
+                        engine._microtaskRecursionCount = 0;
+                        return;
+                    }
+
+                    engine._microtaskRecursionCount = (engine._microtaskRecursionCount || 0) + 1;
+                    const maxMicrotaskDepth = engine._maxMicrotaskDepth || 25;
+                    if (engine._microtaskRecursionCount > maxMicrotaskDepth) {
+                        const currentDepth = engine._microtaskRecursionCount;
+                        engine._microtaskRecursionCount = 0;
+                        if (engine._pendingBatchChanges) engine._pendingBatchChanges.clear();
+                        engine._isFlushing = false;
+                        if (engine._macrotaskResetTimer) {
+                            clearTimeout(engine._macrotaskResetTimer);
+                            engine._macrotaskResetTimer = null;
+                            engine._macrotaskResetScheduled = false;
+                        }
+                        const err = new EUIXStructuredError({
+                            message: `[EUIX Microtask Starvation Guard] Cascade limit exceeded (${currentDepth} recursive microtasks) during batch state updates. Possible circular reactive microtask loop.`,
+                            code: "MICROTASK_CASCADE_LIMIT_EXCEEDED",
+                        });
+                        engine.reportError(err, "Microtask Starvation Guard");
+                        if (!isFn(engine.onError)) {
+                            throw err;
+                        }
+                        return;
+                    }
+
+                    try {
+                        engine.flushStateUpdates();
+                    } catch (err) {
+                        if (!isFn(engine.onError)) {
+                            throw err;
+                        }
+                    }
                 });
             }
             return;

@@ -240,6 +240,11 @@ class EUIXEngineCore {
         this.xmlDoc = null;
         this._batching = false;
         this._isBatching = false;
+        this._maxMicrotaskDepth = 25;
+        this._maxFlushLoops = 25;
+        this._microtaskRecursionCount = 0;
+        this._microtaskScheduled = false;
+        this._isFlushing = false;
         this._pendingFocusKey = null;
         this._bindings = new Map();
         this._stateKeyBits = new Map();
