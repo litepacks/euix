@@ -14,12 +14,17 @@ import {
     isCycleError,
     getTagName,
     isElem,
+    isEqual,
 } from "../utils/constants.js";
 
 export function _setScopedState(engine, rawPath, path, nextValue, context = {}) {
     if (rawPath.startsWith("local.") || rawPath.startsWith("$local.")) {
         const localKey = rawPath.replace(/^(\$local|local)\./, "");
         if (context._localState) {
+            const oldLocal = context._localState[localKey];
+            if (Object.is(oldLocal, nextValue) || (oldLocal !== undefined && isEqual(oldLocal, nextValue))) {
+                return true;
+            }
             context._localState[localKey] = nextValue;
             if (context._instanceId) {
                 engine.syncBindings(`${context._instanceId}:${localKey}`, nextValue);
@@ -27,6 +32,10 @@ export function _setScopedState(engine, rawPath, path, nextValue, context = {}) 
             return true;
         }
     } else if (context._localState && context._localState[path] !== undefined && !rawPath.startsWith("global.")) {
+        const oldLocal = context._localState[path];
+        if (Object.is(oldLocal, nextValue) || (oldLocal !== undefined && isEqual(oldLocal, nextValue))) {
+            return true;
+        }
         context._localState[path] = nextValue;
         if (context._instanceId) {
             engine.syncBindings(`${context._instanceId}:${path}`, nextValue);

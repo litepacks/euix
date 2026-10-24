@@ -1,4 +1,4 @@
-import { getNow } from "../core/utils/constants.js";
+import { getNow, isEqual, deepClone } from "../core/utils/constants.js";
 /**
  * EUIXReactivePlugin
  * Declarative Computed State (derived state) and Reactive Watchers for EUIX Engine.
@@ -122,6 +122,7 @@ export class EUIXComputedNode {
         this.cachedValue = undefined;
         this.isDirty = true;
         this.evaluating = false;
+        this._hasEvaluated = false;
 
         // Auto-extract dependencies if deps array is empty and getter is a string expression
         if (this.deps.length === 0 && typeof getter === "string") {
@@ -187,7 +188,12 @@ export class EUIXComputedNode {
                 }
             }
 
+            if (this._hasEvaluated && isEqual(this.cachedValue, val)) {
+                this.isDirty = false;
+                return this.cachedValue;
+            }
             this.cachedValue = val;
+            this._hasEvaluated = true;
             this.isDirty = false;
             return val;
         } catch (err) {
@@ -217,6 +223,25 @@ export class EUIXWatchNode {
         this.engine = engine;
         this.component = component;
         this.options = options;
+        this._hasRun = false;
+        this._lastValue = undefined;
+
+        this.init();
+    }
+
+    init() {
+        if (!this.engine || typeof this.engine.getState !== "function") return;
+        const clean = String(this.path || "")
+            .replace(/^(data|state|computed)\./, "")
+            .trim();
+        if (clean) {
+            try {
+                const initial = this.engine.getState(clean);
+                if (initial !== undefined) {
+                    this._lastValue = typeof initial === "object" && initial !== null ? deepClone(initial) : initial;
+                }
+            } catch (_) {}
+        }
     }
 
     run(rawNewValue, rawOldValue, triggerPath, context = {}) {
@@ -234,12 +259,21 @@ export class EUIXWatchNode {
 
         if (cleanPath !== cleanTrigger) {
             val = typeof this.engine.getState === "function" ? this.engine.getState(cleanPath) : rawNewValue;
-            prevVal = this._lastValue !== undefined ? this._lastValue : rawOldValue;
-            if (val === prevVal) return;
-            this._lastValue = val;
+            if (this._lastValue !== undefined) {
+                prevVal = this._lastValue;
+            } else {
+                const cNode = this.engine._computedRegistry?.get(cleanPath);
+                prevVal = cNode?.cachedValue !== undefined ? cNode.cachedValue : undefined;
+            }
         } else {
-            this._lastValue = val;
+            prevVal = this._lastValue !== undefined ? this._lastValue : rawOldValue;
         }
+
+        if (this._lastValue !== undefined && !this.options?.force && isEqual(val, prevVal)) {
+            return;
+        }
+        this._hasRun = true;
+        this._lastValue = typeof val === "object" && val !== null ? deepClone(val) : val;
 
         const watchContext = {
             ...(context || {}),

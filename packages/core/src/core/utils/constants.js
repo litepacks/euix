@@ -65,6 +65,76 @@ export function safeParse(str, fallback = null) {
         return fallback;
     }
 }
+
+export function deepClone(val, seen = null) {
+    if (val === null || typeof val !== "object") return val;
+    if (val instanceof Date) return new Date(val.getTime());
+    if (val instanceof RegExp) return new RegExp(val.source, val.flags);
+    if (Array.isArray(val)) {
+        if (!seen) seen = new WeakMap();
+        if (seen.has(val)) return seen.get(val);
+        const copy = [];
+        seen.set(val, copy);
+        for (let i = 0; i < val.length; i++) {
+            copy[i] = deepClone(val[i], seen);
+        }
+        return copy;
+    }
+    if (isPlainObj(val)) {
+        if (!seen) seen = new WeakMap();
+        if (seen.has(val)) return seen.get(val);
+        const copy = {};
+        seen.set(val, copy);
+        const keys = Object.keys(val);
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            copy[k] = deepClone(val[k], seen);
+        }
+        return copy;
+    }
+    return val;
+}
+
+export function isEqual(a, b, seen = null) {
+    if (a === b) return true;
+    if (Object.is(a, b)) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null || a === undefined || b === undefined) return false;
+    if (typeof a !== "object") return false;
+
+    if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+    if (a instanceof RegExp && b instanceof RegExp) return a.source === b.source && a.flags === b.flags;
+
+    const isArrA = Array.isArray(a);
+    const isArrB = Array.isArray(b);
+    if (isArrA !== isArrB) return false;
+
+    if (seen) {
+        if (seen.has(a) && seen.get(a) === b) return true;
+    } else {
+        seen = new Map();
+    }
+    seen.set(a, b);
+
+    if (isArrA) {
+        if (a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (!isEqual(a[i], b[i], seen)) return false;
+        }
+        return true;
+    }
+
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    for (let i = 0; i < keysA.length; i++) {
+        const k = keysA[i];
+        if (!Object.prototype.hasOwnProperty.call(b, k) || !isEqual(a[k], b[k], seen)) {
+            return false;
+        }
+    }
+    return true;
+}
 export const trimStr = (s) => {
     if (s === null || s === undefined) return "";
     if (typeof s === "string") return s.trim();

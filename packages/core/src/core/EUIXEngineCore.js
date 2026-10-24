@@ -143,6 +143,8 @@ import {
     toNum,
     toInt,
     isPlainObj,
+    isEqual,
+    deepClone,
 } from "./utils/constants.js";
 import { getChild, getChildren, reportError } from "./utils/domHelpers.js";
 
@@ -996,5 +998,7 @@ export {
     toNum,
     toInt,
     isPlainObj,
+    isEqual,
+    deepClone,
 };
 export default EUIXEngineCore;

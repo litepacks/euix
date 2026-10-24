@@ -642,7 +642,7 @@ export function initDataModel(engine) {
                                 if (isFn(self._savePersistedState)) {
                                     self._savePersistedState(rootKey, rawState[rootKey]);
                                 }
-                                self.setState(rootKey, rawState[rootKey]);
+                                self.setState(rootKey, rawState[rootKey], { mutated: true });
                                 if (currentPath && currentPath !== rootKey) {
                                     self.syncBindings(currentPath, obj);
                                 }
@@ -700,6 +700,14 @@ export function initDataModel(engine) {
 
     engine.state = createDeepProxy(rawState, "", "");
     engine._proxyState = engine.state;
+
+    if (engine._watchRegistry && engine._watchRegistry.size > 0) {
+        engine._watchRegistry.forEach((wNode) => {
+            if (isFn(wNode?.init)) {
+                wNode.init();
+            }
+        });
+    }
 
     if (isFn(engine.handleXHR) && pendingEndpoints.length > 0) {
         pendingEndpoints.forEach(({ node, autoFetch }) => {

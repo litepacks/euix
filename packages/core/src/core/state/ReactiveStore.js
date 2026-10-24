@@ -4,7 +4,7 @@
  */
 
 import { EUIXStructuredError } from "../parser/errors.js";
-import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath, isObj, safeParse } from "../utils/constants.js";
+import { EMPTY_ARR, isBool, isFn, isStr, safeStringify, splitPath, isObj, safeParse, isEqual, deepClone } from "../utils/constants.js";
 import { toonToJson } from "../parser/toon.js";
 import { applyArrayMutation } from "./Mutations.js";
 import { resolveScopedValue } from "../binding/BindingResolver.js";
@@ -208,8 +208,11 @@ export function flushStateUpdates(engine) {
         }
     });
 
-    pending.forEach(({ key, value, oldValue, silent, context }) => {
+    pending.forEach(({ key, value, oldValue, silent, context, force, mutated }) => {
         if (!silent) {
+            if (!force && !mutated && isEqual(oldValue, value)) {
+                return;
+            }
             engine.triggerStateWatchers(key, value, oldValue);
             if (isFn(engine._triggerReactiveWatchers)) {
                 engine._triggerReactiveWatchers(key, value, oldValue, context);
@@ -229,7 +232,7 @@ export function setState(engine, key, value, options = {}) {
     }
 
     const opts = (isBool(options) ? { silent: options } : options) || {};
-    const { silent = false, sourceEl = null, context = null, batch = false } = opts;
+    const { silent = false, sourceEl = null, context = null, batch = false, force = false, mutated = false } = opts;
     if (!key || !isStr(key)) return;
     if (!engine._rawState) return;
 
@@ -256,6 +259,25 @@ export function setState(engine, key, value, options = {}) {
         return;
     }
 
+    const oldValue =
+        engine._rawState[key] !== undefined
+            ? engine._rawState[key]
+            : key.includes(".") || key.includes("[")
+              ? getState(engine, key)
+              : undefined;
+
+    if (!force && !mutated) {
+        if (typeof value !== "object" || value === null) {
+            if (Object.is(oldValue, value)) {
+                return;
+            }
+        } else if (oldValue !== undefined && oldValue !== null && typeof oldValue === "object") {
+            if (oldValue !== value && isEqual(oldValue, value)) {
+                return;
+            }
+        }
+    }
+
     engine._updateDepth = (engine._updateDepth || 0) + 1;
     if (engine._updateDepth > (engine._maxUpdateDepth || 50)) {
         const currentDepth = engine._updateDepth;
@@ -276,8 +298,15 @@ export function setState(engine, key, value, options = {}) {
     }
 
     try {
-        const oldValue = engine._rawState[key];
         engine._rawState[key] = value;
+
+        if (!key.includes(".") && !key.includes("[")) {
+            for (const k in engine._rawState) {
+                if (k.startsWith(`${key}.`) || k.startsWith(`${key}[`)) {
+                    delete engine._rawState[k];
+                }
+            }
+        }
 
         const keyMask = engine.getKeyMask(key);
         if (typeof keyMask === "bigint" || typeof engine._dirtyBitmask === "bigint") {
@@ -315,7 +344,9 @@ export function setState(engine, key, value, options = {}) {
 
         if (engine._isBatching || batch) {
             engine._pendingBatchChanges = engine._pendingBatchChanges || new Map();
-            engine._pendingBatchChanges.set(key, { key, value, oldValue, silent, sourceEl, context });
+            const existing = engine._pendingBatchChanges.get(key);
+            const origOldValue = existing ? existing.oldValue : oldValue;
+            engine._pendingBatchChanges.set(key, { key, value, oldValue: origOldValue, silent, sourceEl, context, force, mutated });
             if (isFn(queueMicrotask) && !engine._microtaskScheduled) {
                 engine._microtaskScheduled = true;
                 queueMicrotask(() => {
@@ -523,7 +554,7 @@ export function mutateState(engine, key, operation, payload = {}) {
           ? engine.getState(cleanKey).slice()
           : [];
     const mutated = applyArrayMutation(current, op, payload);
-    engine.setState(cleanKey, mutated);
+    engine.setState(cleanKey, mutated, { mutated: true });
     return mutated;
 }
 
