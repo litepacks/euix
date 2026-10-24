@@ -153,13 +153,13 @@ EUIX includes `@euix/doctor` to statically analyze your markup, state flow, and 
 
 ```bash
 # Analyze all EUIX components in your project
-npm run doctor
+npx euix doctor
 
 # Scan a specific file or directory
-node packages/core/bin/euix.js doctor apps/playground
+npx euix doctor apps/playground
 
 # Automatically wrap JS scripts in CDATA (EUIX0001)
-node packages/core/bin/euix.js doctor path/to/App.xml --fix
+npx euix doctor path/to/App.xml --fix
 ```
 
 ---
