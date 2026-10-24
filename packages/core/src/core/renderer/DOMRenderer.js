@@ -14,6 +14,7 @@ import {
     METADATA_AND_EVENT_TAGS,
     SVG_NAMESPACE,
     SVG_TAGS,
+    SVG_CANONICAL_TAGS,
     isStr,
     getAttr,
     queryAll,
@@ -672,9 +673,12 @@ export function _createHTMLElementInternal(engine, xmlNode, context = {}) {
 
     const isSvg = tagName === "svg" || context.isSvg || SVG_TAGS.has(tagName);
     const elementTagName = isSvg || ALLOWED_HTML_TAGS.has(tagName) ? tagName : "div";
+    const canonicalTagName = isSvg
+        ? (SVG_CANONICAL_TAGS[tagName.toLowerCase()] || xmlNode.tagName || tagName)
+        : elementTagName;
     const div = isSvg
-        ? document.createElementNS(SVG_NAMESPACE, xmlNode.tagName || tagName)
-        : document.createElement(elementTagName);
+        ? document.createElementNS(SVG_NAMESPACE, canonicalTagName)
+        : document.createElement(canonicalTagName);
     const xmlClass = engine.interpolate(xmlNode.getAttribute("class") || xmlNode.getAttribute("className") || "", context);
     if (xmlClass) {
         if (isSvg) div.setAttribute("class", xmlClass);

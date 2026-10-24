@@ -6,6 +6,7 @@
 import {
     BOOLEAN_ATTRS,
     SVG_NAMESPACE,
+    SVG_CANONICAL_ATTRS,
     isFn,
     isObj,
     isStr,
@@ -162,7 +163,10 @@ export function applyNodeAttributes(engine, el, xmlNode, context = {}) {
             el.setAttribute("type", engine.interpolate(attrValue, context));
         } else {
             const interpolatedVal = engine.interpolate(attrValue, context);
-            el.setAttribute(attrName, interpolatedVal);
+            const targetAttrName = (el.namespaceURI === SVG_NAMESPACE)
+                ? (SVG_CANONICAL_ATTRS[lowerAttrName] || attrName)
+                : attrName;
+            el.setAttribute(targetAttrName, interpolatedVal);
             if (attrName === "draggable") {
                 try {
                     const isDraggable = interpolatedVal === "true";

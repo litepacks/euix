@@ -146,6 +146,11 @@ import {
     isPlainObj,
     isEqual,
     deepClone,
+    ALLOWED_HTML_TAGS,
+    SVG_TAGS,
+    SVG_CANONICAL_TAGS,
+    SVG_CANONICAL_ATTRS,
+    HTML_VOID_TAGS,
 } from "./utils/constants.js";
 import { getChild, getChildren, reportError } from "./utils/domHelpers.js";
 
@@ -959,6 +964,11 @@ EUIXEngineCore.safeStringify = safeStringify;
 EUIXEngineCore.toNum = toNum;
 EUIXEngineCore.toInt = toInt;
 EUIXEngineCore.isPlainObj = isPlainObj;
+EUIXEngineCore.ALLOWED_HTML_TAGS = ALLOWED_HTML_TAGS;
+EUIXEngineCore.SVG_TAGS = SVG_TAGS;
+EUIXEngineCore.SVG_CANONICAL_TAGS = SVG_CANONICAL_TAGS;
+EUIXEngineCore.SVG_CANONICAL_ATTRS = SVG_CANONICAL_ATTRS;
+EUIXEngineCore.HTML_VOID_TAGS = HTML_VOID_TAGS;
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.EUIXExpressionParser = EUIXExpressionParser;

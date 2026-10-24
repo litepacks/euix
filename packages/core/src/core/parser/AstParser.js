@@ -1,4 +1,4 @@
-import { toInt, isElem, isFn } from "../utils/constants.js";
+import { toInt, isElem, isFn, HTML_VOID_TAGS } from "../utils/constants.js";
 /**
  * src/core/parser/AstParser.js
  * High-performance XML parser and AST caching module for EUIX Engine.
@@ -146,77 +146,173 @@ export function parseXmlToAst(xmlString, options = {}) {
         },
     );
 
-    // 2. Remove stray closing tags for void elements & ensure self-closing for unclosed void tags
-    processedXml = processedXml.replace(
-        /<\/(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)>/gi,
-        "",
-    );
-    processedXml = processedXml.replace(
-        /<(area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)(\s[^>]*?)?(?<!\/)>/gi,
-        "<$1$2 />",
-    );
+    // 2 & 3. Quote-aware XML Tag Tokenizer:
+    // Handles HTML void element self-closing, removes stray void closing tags,
+    // and normalizes attributes without getting confused by '>' or '<' inside quotes (e.g. placeholder="Filter (> 100)")
+    let sanitizedXml = "";
+    let pIdx = 0;
+    const pLen = processedXml.length;
 
-    // 3. Normalize bare/valueless boolean attributes & escape raw ampersands inside attributes
-    processedXml = processedXml.replace(/<([a-zA-Z0-9_-]+)([^>]*?)(\/?)>/g, (match, tagName, attrsStr, selfClose) => {
-        if (!attrsStr?.trim()) return match;
-        let inQuotes = false;
-        let quoteChar = "";
-        let newAttrs = "";
-        let i = 0;
+    while (pIdx < pLen) {
+        if (processedXml[pIdx] === "<") {
+            // Comments <!-- ... -->
+            if (processedXml.startsWith("<!--", pIdx)) {
+                const end = processedXml.indexOf("-->", pIdx + 4);
+                if (end === -1) {
+                    sanitizedXml += processedXml.slice(pIdx);
+                    break;
+                }
+                sanitizedXml += processedXml.slice(pIdx, end + 3);
+                pIdx = end + 3;
+                continue;
+            }
+            // CDATA <![CDATA[ ... ]]>
+            if (processedXml.startsWith("<![CDATA[", pIdx)) {
+                const end = processedXml.indexOf("]]>", pIdx + 9);
+                if (end === -1) {
+                    sanitizedXml += processedXml.slice(pIdx);
+                    break;
+                }
+                sanitizedXml += processedXml.slice(pIdx, end + 3);
+                pIdx = end + 3;
+                continue;
+            }
+            // DOCTYPE or Processing Instructions <? ... ?> <! ... >
+            if (processedXml[pIdx + 1] === "?" || processedXml[pIdx + 1] === "!") {
+                let j = pIdx + 2;
+                let inQuote = false;
+                let quoteChar = "";
+                while (j < pLen) {
+                    const c = processedXml[j];
+                    if (inQuote) {
+                        if (c === quoteChar) inQuote = false;
+                    } else if (c === '"' || c === "'") {
+                        inQuote = true;
+                        quoteChar = c;
+                    } else if (c === ">") {
+                        break;
+                    }
+                    j++;
+                }
+                sanitizedXml += processedXml.slice(pIdx, j + 1);
+                pIdx = j + 1;
+                continue;
+            }
 
-        while (i < attrsStr.length) {
-            const char = attrsStr[i];
-            if (inQuotes) {
-                if (char === "&" && !/^&(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);/.test(attrsStr.slice(i))) {
-                    newAttrs += "&amp;";
+            // Normal XML / HTML tag: <tag ...> or </tag>
+            let j = pIdx + 1;
+            let inQuote = false;
+            let quoteChar = "";
+            while (j < pLen) {
+                const c = processedXml[j];
+                if (inQuote) {
+                    if (c === quoteChar) inQuote = false;
+                } else if (c === '"' || c === "'") {
+                    inQuote = true;
+                    quoteChar = c;
+                } else if (c === ">") {
+                    break;
+                }
+                j++;
+            }
+            const rawTag = processedXml.slice(pIdx, j + 1);
+            pIdx = j + 1;
+
+            // Handle closing tags </tag>
+            if (rawTag.startsWith("</")) {
+                const closeTagName = rawTag.slice(2, -1).trim().toLowerCase();
+                if (HTML_VOID_TAGS.has(closeTagName)) {
+                    // Strip stray closing void tags (e.g. </input>, </br>, </img>)
+                    continue;
+                }
+                sanitizedXml += rawTag;
+                continue;
+            }
+
+            // Handle opening tag <tagName ...>
+            const tagMatch = rawTag.match(/^<([a-zA-Z0-9_\-.:]+)([\s\S]*?)(\/?)>$/);
+            if (!tagMatch) {
+                sanitizedXml += rawTag;
+                continue;
+            }
+
+            const [, tagName, attrsStr, selfClose] = tagMatch;
+            const lowerTag = tagName.toLowerCase();
+            const isVoid = HTML_VOID_TAGS.has(lowerTag);
+
+            if (!attrsStr || !attrsStr.trim()) {
+                if (isVoid) {
+                    sanitizedXml += `<${tagName} />`;
                 } else {
+                    sanitizedXml += rawTag;
+                }
+                continue;
+            }
+
+            // Process tag attributes (normalize boolean attributes, escape unescaped ampersands & '<' inside quotes)
+            let newAttrs = "";
+            let aIdx = 0;
+            let aInQuotes = false;
+            let aQuoteChar = "";
+
+            while (aIdx < attrsStr.length) {
+                const char = attrsStr[aIdx];
+                if (aInQuotes) {
+                    if (char === "&" && !/^&(?:amp|lt|gt|quot|apos|#[0-9]+|#x[0-9a-fA-F]+);/.test(attrsStr.slice(aIdx))) {
+                        newAttrs += "&amp;";
+                    } else if (char === "<") {
+                        newAttrs += "&lt;";
+                    } else {
+                        newAttrs += char;
+                    }
+                    if (char === aQuoteChar) aInQuotes = false;
+                    aIdx++;
+                    continue;
+                }
+                if (char === '"' || char === "'") {
+                    aInQuotes = true;
+                    aQuoteChar = char;
                     newAttrs += char;
+                    aIdx++;
+                    continue;
                 }
-                if (char === quoteChar) inQuotes = false;
-                i++;
-                continue;
-            }
-            if (char === '"' || char === "'") {
-                inQuotes = true;
-                quoteChar = char;
+                if (/\s/.test(char)) {
+                    newAttrs += char;
+                    aIdx++;
+                    continue;
+                }
+                if (/[a-zA-Z0-9_\-.:]/.test(char)) {
+                    let name = "";
+                    while (aIdx < attrsStr.length && /[a-zA-Z0-9_\-.:]/.test(attrsStr[aIdx])) {
+                        name += attrsStr[aIdx];
+                        aIdx++;
+                    }
+                    if (name.includes(".")) {
+                        name = name.replace(/\./g, ":");
+                    }
+                    let k = aIdx;
+                    while (k < attrsStr.length && /\s/.test(attrsStr[k])) k++;
+                    if (k < attrsStr.length && attrsStr[k] === "=") {
+                        newAttrs += name;
+                    } else {
+                        newAttrs += `${name}=""`;
+                    }
+                    continue;
+                }
                 newAttrs += char;
-                i++;
-                continue;
+                aIdx++;
             }
-            if (/\s/.test(char)) {
-                newAttrs += char;
-                i++;
-                continue;
-            }
-            if (/[a-zA-Z0-9_\-.:]/.test(char)) {
-                let name = "";
-                while (i < attrsStr.length && /[a-zA-Z0-9_\-.:]/.test(attrsStr[i])) {
-                    name += attrsStr[i];
-                    i++;
-                }
-                // If attribute name contains dot (e.g. bind.number, bind.trim), convert to valid XML colon QName
-                if (name.includes(".")) {
-                    name = name.replace(/\./g, ":");
-                }
-                let j = i;
-                while (j < attrsStr.length && /\s/.test(attrsStr[j])) j++;
-                if (j < attrsStr.length && attrsStr[j] === "=") {
-                    newAttrs += name;
-                } else {
-                    newAttrs += `${name}=""`;
-                }
-                continue;
-            }
-            newAttrs += char;
-            i++;
-        }
-        return `<${tagName}${newAttrs}${selfClose ? (newAttrs.endsWith(" ") ? "/>" : " />") : ">"}`;
-    });
 
-    // 4. Escape < inside attribute values: ="..." or ='\''...'\''
-    let sanitizedXml = processedXml.replace(/=("[^"]*"|'[^']*')/g, (match) => {
-        return match.replace(/</g, "&lt;");
-    });
+            if (isVoid) {
+                sanitizedXml += `<${tagName}${newAttrs} />`;
+            } else {
+                sanitizedXml += `<${tagName}${newAttrs}${selfClose ? (newAttrs.endsWith(" ") ? "/>" : " />") : ">"}`;
+            }
+        } else {
+            sanitizedXml += processedXml[pIdx];
+            pIdx++;
+        }
+    }
 
     // 5. Escape remaining unescaped ampersands (e.g. raw "&&", "Tom & Jerry", URLs)
     sanitizedXml = sanitizedXml.replace(/&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;");
