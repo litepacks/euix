@@ -184,6 +184,7 @@ export const EUIXApiPlugin = {
             this._revalidationBound = true;
 
             const onRevalidateEvent = (evtType) => {
+                if (this._isMounted === false) return;
                 if (!this._registeredXhrs || this._registeredXhrs.size === 0) return;
                 this._registeredXhrs.forEach((item) => {
                     const shouldFocus =

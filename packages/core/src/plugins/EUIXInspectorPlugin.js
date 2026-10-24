@@ -1,4 +1,4 @@
-import { safeStringify } from "../core/utils/constants.js";
+import { safeStringify, isFn } from "../core/utils/constants.js";
 /**
  * src/plugins/EUIXInspectorPlugin.js
  * EUIX Inspector & DevTools Plugin (@euix/inspector / @euix/devtools).
@@ -396,10 +396,20 @@ export class EUIXInspector {
 
     destroy() {
         this.disable();
-        this._listeners.forEach((fn) => fn());
+        this._listeners.forEach((fn) => {
+            try {
+                fn();
+            } catch (_) {}
+        });
         this._listeners = [];
-        if (this.overlay) this.overlay.destroy();
-        if (this.panel) this.panel.destroy();
+        if (this.overlay && isFn(this.overlay.destroy)) this.overlay.destroy();
+        if (this.panel && isFn(this.panel.destroy)) this.panel.destroy();
+        if (typeof window !== "undefined") {
+            if (window.$engine === this.engine) window.$engine = null;
+            if (window.$state === this.engine?._rawState) window.$state = null;
+            if (window.EUIXDevTools === this) delete window.EUIXDevTools;
+            if (window.EUIX_INSPECTOR === this) delete window.EUIX_INSPECTOR;
+        }
     }
 }
 
@@ -461,8 +471,17 @@ export function inspector(options = {}) {
             const origMount = engineClass.mount;
             engineClass.mount = function (xml, container, mountOptions = {}) {
                 const engine = origMount.call(this, xml, container, mountOptions);
-                if (options.enabled !== false) {
-                    engine._devtools = new EUIXInspector(engine, options);
+                if (options.enabled !== false && engine) {
+                    const devtools = new EUIXInspector(engine, options);
+                    engine._devtools = devtools;
+                    if (isFn(engine.onUnmount)) {
+                        engine.onUnmount(() => {
+                            if (engine._devtools === devtools) {
+                                devtools.destroy();
+                                engine._devtools = null;
+                            }
+                        });
+                    }
                 }
                 return engine;
             };

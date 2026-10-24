@@ -13,11 +13,10 @@ export const EUIXDialogPlugin = {
     name: "dialog",
     install(engineClass) {
         const proto = engineClass.prototype;
-        proto._activeDialogs = proto._activeDialogs || new Set();
 
         const originalUnmount = proto.unmount;
         proto.unmount = function () {
-            if (this._activeDialogs) {
+            if (this.hasOwnProperty("_activeDialogs") && this._activeDialogs) {
                 this._activeDialogs.forEach((cleanup) => {
                     try {
                         cleanup();
@@ -37,7 +36,20 @@ export const EUIXDialogPlugin = {
         }
 
         engineClass.prototype.renderDialog = function (xmlNode, context = {}) {
-            if (!this._activeDialogs) this._activeDialogs = new Set();
+            if (!this.hasOwnProperty("_activeDialogs")) this._activeDialogs = new Set();
+            if (!this._hasDialogUnmountHook && isFn(this.onUnmount)) {
+                this._hasDialogUnmountHook = true;
+                this.onUnmount(() => {
+                    if (this._activeDialogs) {
+                        this._activeDialogs.forEach((cleanup) => {
+                            try {
+                                cleanup();
+                            } catch (_) {}
+                        });
+                        this._activeDialogs.clear();
+                    }
+                });
+            }
             const rawBind =
                 xmlNode.getAttribute("bind") ||
                 xmlNode.getAttribute("show") ||

@@ -69,6 +69,7 @@ import {
     loadStyle,
     mount,
     onUnmount,
+    addGlobalListener,
     preloadAsyncResources,
     processLifecycleHooks,
     runMountActions,
@@ -291,6 +292,10 @@ class EUIXEngineCore {
 
     onUnmount(callback) {
         return onUnmount(this, callback);
+    }
+
+    addGlobalListener(target, eventType, handler, options) {
+        return addGlobalListener(this, target, eventType, handler, options);
     }
 
     unmount() {
@@ -971,7 +976,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
         });
     };
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", scheduleCoreInit);
+        document.addEventListener("DOMContentLoaded", scheduleCoreInit, { once: true });
     } else {
         scheduleCoreInit();
     }
@@ -1000,5 +1005,6 @@ export {
     isPlainObj,
     isEqual,
     deepClone,
+    addGlobalListener,
 };
 export default EUIXEngineCore;

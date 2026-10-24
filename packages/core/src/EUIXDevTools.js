@@ -32,7 +32,16 @@ export class EUIXDevTools extends EUIXInspector {
             }
         }
         if (!engine._devtools) {
-            engine._devtools = new EUIXDevTools(engine, options);
+            const devtools = new EUIXDevTools(engine, options);
+            engine._devtools = devtools;
+            if (typeof engine.onUnmount === "function") {
+                engine.onUnmount(() => {
+                    if (engine._devtools === devtools) {
+                        devtools.destroy();
+                        engine._devtools = null;
+                    }
+                });
+            }
         }
         return engine._devtools;
     }
@@ -224,7 +233,7 @@ if (typeof document !== "undefined") {
     if (document.readyState === "complete" || document.readyState === "interactive") {
         setTimeout(autoInitDevTools, 50);
     } else {
-        document.addEventListener("DOMContentLoaded", autoInitDevTools);
+        document.addEventListener("DOMContentLoaded", autoInitDevTools, { once: true });
     }
 }
 

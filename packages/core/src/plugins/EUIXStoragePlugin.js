@@ -22,6 +22,7 @@ export const EUIXStoragePlugin = {
             this._storageListenerBound = true;
 
             this._storageHandler = (event) => {
+                if (this._isMounted === false) return;
                 const isCustom = event.type === "euix:storage";
                 const key = isCustom ? event.detail?.key : event.key;
                 const newValue = isCustom ? event.detail?.newValue : event.newValue;
@@ -61,14 +62,21 @@ export const EUIXStoragePlugin = {
             window.addEventListener("storage", this._storageHandler);
             window.addEventListener("euix:storage", this._storageHandler);
 
+            const cleanupStorage = () => {
+                if (typeof window !== "undefined" && this._storageHandler) {
+                    window.removeEventListener("storage", this._storageHandler);
+                    window.removeEventListener("euix:storage", this._storageHandler);
+                }
+                this._storageListenerBound = false;
+                if (this._storageCleanup === cleanupStorage) {
+                    this._storageCleanup = null;
+                }
+            };
+
+            this._storageCleanup = cleanupStorage;
+
             if (isFn(this.onUnmount)) {
-                this.onUnmount(() => {
-                    if (typeof window !== "undefined" && this._storageHandler) {
-                        window.removeEventListener("storage", this._storageHandler);
-                        window.removeEventListener("euix:storage", this._storageHandler);
-                    }
-                    this._storageListenerBound = false;
-                });
+                this.onUnmount(cleanupStorage);
             }
         };
 

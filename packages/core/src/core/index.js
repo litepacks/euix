@@ -38,6 +38,7 @@ export {
     loadStyle,
     mount,
     onUnmount,
+    addGlobalListener,
     preloadAsyncResources,
     processLifecycleHooks,
     runMountActions,

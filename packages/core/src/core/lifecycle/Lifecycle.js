@@ -854,8 +854,74 @@ export function onUnmount(engine, callback) {
     return engine;
 }
 
+export function addGlobalListener(engine, target, eventType, handler, options) {
+    if (!target || !isFn(target.addEventListener) || !eventType || !isFn(handler)) {
+        return () => {};
+    }
+    if (engine._isMounted === false) {
+        return () => {};
+    }
+    if (options !== undefined) {
+        target.addEventListener(eventType, handler, options);
+    } else {
+        target.addEventListener(eventType, handler);
+    }
+    let removed = false;
+    const cleanup = () => {
+        if (removed) return;
+        removed = true;
+        try {
+            if (options !== undefined) {
+                target.removeEventListener(eventType, handler, options);
+            } else {
+                target.removeEventListener(eventType, handler);
+            }
+        } catch (_) {}
+        if (engine._globalListeners) {
+            engine._globalListeners.delete(cleanup);
+        }
+    };
+    if (!engine._globalListeners) {
+        engine._globalListeners = new Set();
+    }
+    engine._globalListeners.add(cleanup);
+    return cleanup;
+}
+
 export function destroy(engine) {
     engine._isMounted = false;
+    if (engine._globalListeners && engine._globalListeners.size > 0) {
+        engine._globalListeners.forEach((cleanup) => {
+            try {
+                cleanup();
+            } catch (_) {}
+        });
+        engine._globalListeners.clear();
+    }
+    if (engine._devtools && isFn(engine._devtools.destroy)) {
+        try {
+            engine._devtools.destroy();
+        } catch (_) {}
+        engine._devtools = null;
+    }
+    if (isFn(engine._delegatedCleanup)) {
+        try {
+            engine._delegatedCleanup();
+        } catch (_) {}
+        engine._delegatedCleanup = null;
+    }
+    if (isFn(engine._storageCleanup)) {
+        try {
+            engine._storageCleanup();
+        } catch (_) {}
+        engine._storageCleanup = null;
+    }
+    if (isFn(engine._activePointerDragTeardown)) {
+        try {
+            engine._activePointerDragTeardown();
+        } catch (_) {}
+        engine._activePointerDragTeardown = null;
+    }
     if (engine._destroyHooks && engine._destroyHooks.length > 0) {
         engine._destroyHooks.forEach((hook) => {
             try {

@@ -150,20 +150,28 @@ export const EUIXNavigatorPlugin = {
                     setDeviceState(updated);
                 };
 
-                window.addEventListener("online", updateNetwork);
-                window.addEventListener("offline", updateNetwork);
-                if (conn && conn.addEventListener) {
-                    conn.addEventListener("change", updateNetwork);
-                }
+                if (isFn(this.addGlobalListener)) {
+                    this.addGlobalListener(window, "online", updateNetwork);
+                    this.addGlobalListener(window, "offline", updateNetwork);
+                    if (conn && conn.addEventListener) {
+                        this.addGlobalListener(conn, "change", updateNetwork);
+                    }
+                } else {
+                    window.addEventListener("online", updateNetwork);
+                    window.addEventListener("offline", updateNetwork);
+                    if (conn && conn.addEventListener) {
+                        conn.addEventListener("change", updateNetwork);
+                    }
 
-                if (isFn(this.onUnmount)) {
-                    this.onUnmount(() => {
-                        window.removeEventListener("online", updateNetwork);
-                        window.removeEventListener("offline", updateNetwork);
-                        if (conn && conn.removeEventListener) {
-                            conn.removeEventListener("change", updateNetwork);
-                        }
-                    });
+                    if (isFn(this.onUnmount)) {
+                        this.onUnmount(() => {
+                            window.removeEventListener("online", updateNetwork);
+                            window.removeEventListener("offline", updateNetwork);
+                            if (conn && conn.removeEventListener) {
+                                conn.removeEventListener("change", updateNetwork);
+                            }
+                        });
+                    }
                 }
             }
 
@@ -174,8 +182,9 @@ export const EUIXNavigatorPlugin = {
                     if (batteryPromise && isFn(batteryPromise.then)) {
                         batteryPromise
                             .then((battery) => {
-                                if (!battery) return;
+                                if (!battery || this._isMounted === false) return;
                                 const updateBattery = () => {
+                                    if (this._isMounted === false) return;
                                     const latest = this.getState("$device") || {};
                                     const batLevel = battery.level !== undefined ? battery.level : 1;
                                     const updated = {
@@ -198,14 +207,19 @@ export const EUIXNavigatorPlugin = {
 
                                 updateBattery();
 
-                                battery.addEventListener("levelchange", updateBattery);
-                                battery.addEventListener("chargingchange", updateBattery);
+                                if (isFn(this.addGlobalListener)) {
+                                    this.addGlobalListener(battery, "levelchange", updateBattery);
+                                    this.addGlobalListener(battery, "chargingchange", updateBattery);
+                                } else {
+                                    battery.addEventListener("levelchange", updateBattery);
+                                    battery.addEventListener("chargingchange", updateBattery);
 
-                                if (isFn(this.onUnmount)) {
-                                    this.onUnmount(() => {
-                                        battery.removeEventListener("levelchange", updateBattery);
-                                        battery.removeEventListener("chargingchange", updateBattery);
-                                    });
+                                    if (isFn(this.onUnmount)) {
+                                        this.onUnmount(() => {
+                                            battery.removeEventListener("levelchange", updateBattery);
+                                            battery.removeEventListener("chargingchange", updateBattery);
+                                        });
+                                    }
                                 }
                             })
                             .catch(() => {});
@@ -217,6 +231,7 @@ export const EUIXNavigatorPlugin = {
             if (options.trackGeo && nav.geolocation && isFn(nav.geolocation.watchPosition)) {
                 const watchId = nav.geolocation.watchPosition(
                     (pos) => {
+                        if (this._isMounted === false) return;
                         const latest = this.getState("$device") || {};
                         const coords = {
                             latitude: pos.coords.latitude,
@@ -237,6 +252,7 @@ export const EUIXNavigatorPlugin = {
                         this.setState("device", updated);
                     },
                     (err) => {
+                        if (this._isMounted === false) return;
                         const latest = this.getState("$device") || {};
                         this.setState("$device", { ...latest, geolocationError: err.message });
                     },

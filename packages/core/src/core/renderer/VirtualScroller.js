@@ -156,6 +156,7 @@ export function renderVirtualSlice({
                 if (!ticking) {
                     (typeof requestAnimationFrame !== "undefined" ? requestAnimationFrame : (cb) => cb())(
                         () => {
+                            if (engine._isMounted === false) return;
                             render();
                             ticking = false;
                         },

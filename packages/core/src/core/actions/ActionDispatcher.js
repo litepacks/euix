@@ -573,12 +573,23 @@ export function executeEventHandlers(engine, handlerNodes, eventType, e, el, con
 }
 
 export function _setupContainerEventDelegation(engine, containerTarget) {
-    if (!containerTarget || containerTarget._delegatedBound) return;
-    containerTarget._delegatedBound = true;
+    if (!containerTarget) return;
+    if (containerTarget._delegatedEngine === engine) return;
+
+    if (isFn(containerTarget._delegatedCleanup)) {
+        try {
+            containerTarget._delegatedCleanup();
+        } catch (_) {}
+    }
+
+    containerTarget._delegatedEngine = engine;
     const events = ["click", "change", "input", "submit", "keyup", "keydown"];
+    const cleanupFns = [];
+
     for (let eIdx = 0; eIdx < events.length; eIdx++) {
         const evtType = events[eIdx];
-        containerTarget.addEventListener(evtType, (e) => {
+        const listener = (e) => {
+            if (engine._isMounted === false) return;
             let target = e.target;
             if (target && target.nodeType === 3) {
                 target = target.parentNode;
@@ -601,7 +612,39 @@ export function _setupContainerEventDelegation(engine, containerTarget) {
                 }
                 target = target.parentNode || target.parentElement;
             }
+        };
+
+        containerTarget.addEventListener(evtType, listener);
+        cleanupFns.push(() => {
+            try {
+                containerTarget.removeEventListener(evtType, listener);
+            } catch (_) {}
         });
+    }
+
+    const cleanup = () => {
+        cleanupFns.forEach((fn) => {
+            try {
+                fn();
+            } catch (_) {}
+        });
+        cleanupFns.length = 0;
+        if (containerTarget._delegatedEngine === engine) {
+            delete containerTarget._delegatedEngine;
+            delete containerTarget._delegatedCleanup;
+            delete containerTarget._delegatedBound;
+        }
+        if (engine._delegatedCleanup === cleanup) {
+            engine._delegatedCleanup = null;
+        }
+    };
+
+    containerTarget._delegatedCleanup = cleanup;
+    containerTarget._delegatedBound = true;
+    engine._delegatedCleanup = cleanup;
+
+    if (isFn(engine.onUnmount)) {
+        engine.onUnmount(cleanup);
     }
 }
 
@@ -847,6 +890,7 @@ export function bindEvents(engine, xmlNode, el, context = {}) {
         }
 
         el.addEventListener(eventType, (e) => {
+            if (engine._isMounted === false) return;
             if (e._euixHandled) return;
             e._euixHandled = true;
             executeEventHandlers(engine, handlerNodes, eventType, e, el, el._euixContext || context);

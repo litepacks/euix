@@ -146,7 +146,7 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.safeParse = safeParse;
 
     if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit());
+        document.addEventListener("DOMContentLoaded", () => EUIXEngine.autoInit(), { once: true });
     } else {
         EUIXEngine.autoInit();
     }

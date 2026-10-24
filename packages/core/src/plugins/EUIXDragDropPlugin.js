@@ -37,9 +37,16 @@ export const EUIXDragDropPlugin = {
             el.draggable = isDraggable;
             if (!isDraggable) return;
 
-            el.style.userSelect = "none";
-            el.style.webkitUserSelect = "none";
             el.style.webkitUserDrag = "element";
+
+            if (!this._hasDndUnmountHook && isFn(this.onUnmount)) {
+                this._hasDndUnmountHook = true;
+                this.onUnmount(() => {
+                    if (isFn(this._activePointerDragTeardown)) {
+                        this._activePointerDragTeardown();
+                    }
+                });
+            }
 
             el.addEventListener("dragstart", (e) => {
                 this.handleDragEvent("dragstart", e, el, context);
@@ -94,6 +101,7 @@ export const EUIXDragDropPlugin = {
                     };
 
                     const onUp = () => {
+                        this._activePointerDragTeardown = null;
                         if (ghost) {
                             ghost.remove();
                             ghost = null;
@@ -103,6 +111,7 @@ export const EUIXDragDropPlugin = {
                         window.removeEventListener("pointercancel", onUp);
                     };
 
+                    this._activePointerDragTeardown = onUp;
                     window.addEventListener("pointermove", onMove, { passive: true });
                     window.addEventListener("pointerup", onUp, { once: true });
                     window.addEventListener("pointercancel", onUp, { once: true });
